@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { CATEGORY_GROUPS, getCategoryMeta } from "@/lib/finance/categories"
 import { usePopoverAlign } from "@/hooks/finance/use-popover-align"
 
-const PANEL_WIDTH = 320 // w-[320px]
+const PANEL_WIDTH = 440 // w-[440px]
 
 interface TransactionCategoryFilterProps {
   selected: string[]
@@ -46,7 +46,7 @@ export function TransactionCategoryFilter({ selected, onToggle, onClear }: Trans
       </button>
 
       {open && (
-        <div className={cn("absolute top-full mt-1.5 z-50 w-[320px] bg-card border border-card-border rounded-xl shadow-xl p-3 max-h-[420px] overflow-y-auto scroll-touch animate-in fade-in slide-in-from-top-1 duration-150", alignRight ? "right-0" : "left-0")}>
+        <div className={cn("absolute top-full mt-1.5 z-50 w-[440px] max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-xl shadow-xl p-3 max-h-[420px] overflow-y-auto scroll-touch animate-in fade-in slide-in-from-top-1 duration-150", alignRight ? "right-0" : "left-0")}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-semibold text-foreground">Filter categories</span>
             {has && <button onClick={onClear} className="text-[11px] font-medium text-primary hover:text-primary-hover">Clear ({selected.length})</button>}
