@@ -16,13 +16,41 @@ interface OverviewTx {
   merchantName: string | null
   amount: number
   category: string | null
+  subcategory: string | null
   isExcluded: boolean
+  isPending: boolean
+  isRecurring: boolean
+  needsReview: boolean
   notes: string | null
+  logoUrl: string | null
+  website: string | null
+  paymentChannel: string | null
+  authorizedDate: string | null
+  location: { city?: string | null; region?: string | null; postalCode?: string | null; country?: string | null } | null
+  counterparties: Array<{ name: string; type: string; logoUrl?: string | null }> | null
   account: { name: string; mask: string | null }
 }
 
 // Same spending definition the budget totals use (outflows, minus transfers/income/investments).
 const EXCLUDE = new Set(["Transfer", "Income", "Investment"])
+
+/**
+ * Build a continuous daily series (one entry per calendar day between the first
+ * and last date), filling no-spend days with 0 so the bar chart reads as a real
+ * timeline instead of collapsing gaps. Capped so a long lookback can't run away.
+ */
+function buildDailySeries(start: string | undefined, end: string | undefined, dayMap: Map<string, number>) {
+  const out: Array<{ date: string; amount: number }> = []
+  if (!start || !end) return out
+  const cur = new Date(`${start}T00:00:00`)
+  const last = new Date(`${end}T00:00:00`)
+  for (let guard = 0; cur <= last && guard < 400; guard++) {
+    const iso = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, "0")}-${String(cur.getDate()).padStart(2, "0")}`
+    out.push({ date: iso, amount: dayMap.get(iso) ?? 0 })
+    cur.setDate(cur.getDate() + 1)
+  }
+  return out
+}
 
 interface BudgetOverviewProps {
   transactions: OverviewTx[]
@@ -37,6 +65,7 @@ interface BudgetOverviewProps {
  */
 export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: BudgetOverviewProps) {
   const [selected, setSelected] = useState<string | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const updateCat = useUpdateTransactionCategory()
   const bulkCat = useBulkCategorize()
   const updateTx = useUpdateTransaction()
@@ -68,7 +97,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
       .map(([category, amount]) => ({ category, amount, color: getCategoryMeta(category).hex }))
       .sort((a, b) => b.amount - a.amount)
     const totalSpend = catList.reduce((s, c) => s + c.amount, 0)
-    const daily = [...dayMap.entries()].map(([date, amount]) => ({ date, amount })).sort((a, b) => a.date.localeCompare(b.date))
+    const dates = transactions.map((t) => t.date.slice(0, 10)).sort()
+    const daily = buildDailySeries(dates[0], dates[dates.length - 1], dayMap)
     return { slices: catList as DonutSlice[], catList, daily, totalSpend }
   }, [transactions])
 
@@ -76,8 +106,16 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
     () =>
       transactions
         .filter((t) => selected == null || (t.category ?? "Uncategorized") === selected)
-        .map((t) => ({ id: t.id, date: t.date, name: t.name, merchantName: t.merchantName, category: t.category, amount: t.amount, notes: t.notes, account: t.account })),
-    [transactions, selected],
+        .filter((t) => selectedDay == null || t.date.slice(0, 10) === selectedDay)
+        .map((t) => ({
+          id: t.id, date: t.date, name: t.name, merchantName: t.merchantName,
+          category: t.category, subcategory: t.subcategory, amount: t.amount, notes: t.notes,
+          isPending: t.isPending, isRecurring: t.isRecurring, needsReview: t.needsReview,
+          logoUrl: t.logoUrl, website: t.website, paymentChannel: t.paymentChannel,
+          authorizedDate: t.authorizedDate, location: t.location, counterparties: t.counterparties,
+          account: t.account,
+        })),
+    [transactions, selected, selectedDay],
   )
 
   return (
@@ -110,7 +148,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
           {/* Daily bars */}
           <div className="flex-1 min-w-0">
             <p className="text-[10px] uppercase tracking-wider text-foreground-muted mb-2">Daily spending</p>
-            <BudgetDailyBars data={daily} />
+            <BudgetDailyBars data={daily} selected={selectedDay} onSelect={setSelectedDay} />
           </div>
         </div>
       </div>
@@ -119,6 +157,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
         transactions={tableRows}
         activeCategory={selected}
         onClearCategory={() => setSelected(null)}
+        activeDay={selectedDay}
+        onClearDay={() => setSelectedDay(null)}
         onRecategorize={handleRecategorize}
         onSaveNote={handleSaveNote}
       />

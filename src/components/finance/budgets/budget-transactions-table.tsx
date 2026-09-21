@@ -5,6 +5,7 @@ import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
 import { CategoryPicker } from "@/components/finance/category-picker"
 import { NoteCell } from "@/components/finance/note-cell"
+import { TransactionRow } from "@/components/finance/transaction-row"
 
 export interface BudgetTxRow {
   id: string
@@ -12,27 +13,49 @@ export interface BudgetTxRow {
   name: string
   merchantName: string | null
   category: string | null
+  subcategory: string | null
   amount: number
   notes: string | null
+  isPending: boolean
+  isRecurring: boolean
+  needsReview: boolean
+  logoUrl: string | null
+  website: string | null
+  paymentChannel: string | null
+  authorizedDate: string | null
+  location: { city?: string | null; region?: string | null; postalCode?: string | null; country?: string | null } | null
+  counterparties: Array<{ name: string; type: string; logoUrl?: string | null }> | null
   account: { name: string; mask: string | null }
 }
 
 const PAGE_SIZE = 25
+// Shared with the main Transactions page so the List/Table preference stays
+// consistent across both.
+const VIEW_KEY = "tx-view"
 
 interface BudgetTransactionsTableProps {
   transactions: BudgetTxRow[]
   /** Non-null when the donut/category list has drilled into one category. */
   activeCategory: string | null
   onClearCategory: () => void
+  /** Non-null (YYYY-MM-DD) when the daily bar chart has drilled into one day. */
+  activeDay?: string | null
+  onClearDay?: () => void
   /** Re-categorize a transaction to a new category (opens the smart dialog upstream). */
   onRecategorize?: (tx: BudgetTxRow, category: string) => void
   /** Save a per-transaction note. */
   onSaveNote?: (txId: string, note: string) => void
 }
 
-export function BudgetTransactionsTable({ transactions, activeCategory, onClearCategory, onRecategorize, onSaveNote }: BudgetTransactionsTableProps) {
+export function BudgetTransactionsTable({ transactions, activeCategory, onClearCategory, activeDay, onClearDay, onRecategorize, onSaveNote }: BudgetTransactionsTableProps) {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
+  // List (rich rows) vs. table (compact) — defaults to list, persisted per-browser.
+  const [view, setView] = useState<"list" | "table">("list")
+  useEffect(() => {
+    try { const v = localStorage.getItem(VIEW_KEY); if (v === "list" || v === "table") setView(v) } catch { /* ignore */ }
+  }, [])
+  const changeView = (v: "list" | "table") => { setView(v); try { localStorage.setItem(VIEW_KEY, v) } catch { /* ignore */ } }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -44,7 +67,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
   }, [transactions, search])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  useEffect(() => { setPage(0) }, [search, activeCategory])
+  useEffect(() => { setPage(0) }, [search, activeCategory, activeDay])
   const rows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   return (
@@ -65,8 +88,35 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
               <span className="material-symbols-rounded" style={{ fontSize: 13 }}>close</span>
             </button>
           )}
+          {activeDay && (
+            <button onClick={onClearDay} className="inline-flex items-center gap-1 text-[11px] font-medium text-primary bg-primary-muted rounded-full px-2 py-0.5">
+              {new Date(`${activeDay}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              <span className="material-symbols-rounded" style={{ fontSize: 13 }}>close</span>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-foreground-muted tabular-nums">
+          {/* List / Table view toggle */}
+          <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg mr-1">
+            {([
+              { key: "list", label: "List", icon: "view_agenda" },
+              { key: "table", label: "Table", icon: "table_rows" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => changeView(opt.key)}
+                title={`${opt.label} view`}
+                aria-pressed={view === opt.key}
+                className={cn(
+                  "inline-flex items-center justify-center w-7 h-6 rounded-md transition-colors",
+                  view === opt.key ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
+                )}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">{opt.icon}</span>
+              </button>
+            ))}
+          </div>
           <span>{filtered.length === 0 ? "0" : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, filtered.length)}`} of {filtered.length}</span>
           <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))} className="p-1 rounded-md hover:bg-background-secondary disabled:opacity-30 transition-colors">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>chevron_left</span>
@@ -77,7 +127,40 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
         </div>
       </div>
 
-      {/* Table (no overflow wrapper so the category picker popover isn't clipped) */}
+      {view === "list" ? (
+        /* List view — rich expandable rows, same as the main Transactions page */
+        <div>
+          {rows.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-foreground-muted">No transactions.</p>
+          ) : rows.map((t) => (
+            <TransactionRow
+              key={t.id}
+              id={t.id}
+              date={t.date}
+              merchantName={t.merchantName}
+              name={t.name}
+              amount={t.amount}
+              category={t.category}
+              subcategory={t.subcategory}
+              notes={t.notes}
+              isPending={t.isPending}
+              accountName={t.account.name}
+              accountMask={t.account.mask}
+              logoUrl={t.logoUrl}
+              website={t.website}
+              location={t.location}
+              counterparties={t.counterparties}
+              paymentChannel={t.paymentChannel}
+              authorizedDate={t.authorizedDate}
+              needsReview={t.needsReview}
+              isRecurring={t.isRecurring}
+              onRecategorize={onRecategorize ? (cat) => onRecategorize(t, cat) : undefined}
+              onSaveNote={onSaveNote ? (note) => onSaveNote(t.id, note) : undefined}
+            />
+          ))}
+        </div>
+      ) : (
+      /* Table (no overflow wrapper so the category picker popover isn't clipped) */
       <div>
         <table className="w-full text-sm">
           <thead>
@@ -133,6 +216,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
