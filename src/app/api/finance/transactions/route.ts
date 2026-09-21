@@ -46,7 +46,22 @@ export async function GET(req: NextRequest) {
     if (endDate) where.date = { ...((where.date as object) ?? {}), lte: new Date(endDate) }
     if (category) {
       const cats = category.split(",").map((c) => c.trim()).filter(Boolean)
-      if (cats.length) where.category = cats.length > 1 ? { in: cats } : cats[0]
+      if (cats.length) {
+        const hasUncat = cats.some((c) => c.toLowerCase() === "uncategorized")
+        const named = cats.filter((c) => c.toLowerCase() !== "uncategorized")
+        if (hasUncat) {
+          // Uncategorized rows may be stored as null, "" or the literal
+          // "Uncategorized" — match all three (mirrors uncategorizedWhere) so the
+          // filtered list agrees with the uncategorized count.
+          const orClauses: Prisma.FinanceTransactionWhereInput[] = [
+            { category: null }, { category: "" }, { category: "Uncategorized" },
+          ]
+          if (named.length) orClauses.push({ category: named.length > 1 ? { in: named } : named[0] })
+          where.AND = [...((where.AND as Prisma.FinanceTransactionWhereInput[]) ?? []), { OR: orClauses }]
+        } else {
+          where.category = named.length > 1 ? { in: named } : named[0]
+        }
+      }
     }
     if (accountId) {
       const ids = accountId.split(",").map((a) => a.trim()).filter(Boolean)
