@@ -12,6 +12,8 @@ import {
 } from "./account-groups"
 
 type GroupChanges = Partial<Record<GroupKey, number>>
+type Timeframe = "W" | "M" | "Y"
+type AccountChanges = Record<string, Record<Timeframe, number>>
 
 /** Colored signed change: gain green / drainage red. For liabilities the sign
  *  flips (less debt = gain). */
@@ -26,7 +28,7 @@ function ChangeAmount({ change, isLiability, isHidden, className }: { change: nu
   )
 }
 
-export function NetWorthAccountsBreakdown({ isHidden, changes }: { isHidden: boolean; changes?: GroupChanges }) {
+export function NetWorthAccountsBreakdown({ isHidden, changes, accountChanges, timeframe = "M" }: { isHidden: boolean; changes?: GroupChanges; accountChanges?: AccountChanges; timeframe?: Timeframe }) {
   const { data: institutions, isLoading } = useFinanceAccounts()
 
   if (isLoading) {
@@ -61,6 +63,8 @@ export function NetWorthAccountsBreakdown({ isHidden, changes }: { isHidden: boo
         isHidden={isHidden}
         isLiability={false}
         changes={changes}
+        accountChanges={accountChanges}
+        timeframe={timeframe}
       />
       <Section
         title="Liabilities"
@@ -70,13 +74,15 @@ export function NetWorthAccountsBreakdown({ isHidden, changes }: { isHidden: boo
         isHidden={isHidden}
         isLiability
         changes={changes}
+        accountChanges={accountChanges}
+        timeframe={timeframe}
       />
     </div>
   )
 }
 
 function Section({
-  title, total, order, groups, isHidden, isLiability, changes,
+  title, total, order, groups, isHidden, isLiability, changes, accountChanges, timeframe,
 }: {
   title: string
   total: number
@@ -85,6 +91,8 @@ function Section({
   isHidden: boolean
   isLiability: boolean
   changes?: GroupChanges
+  accountChanges?: AccountChanges
+  timeframe: Timeframe
 }) {
   const visible = order.filter((k) => groups[k].length > 0)
   if (visible.length === 0) return null
@@ -113,6 +121,8 @@ function Section({
             isHidden={isHidden}
             isLiability={isLiability}
             change={changes?.[k]}
+            accountChanges={accountChanges}
+            timeframe={timeframe}
           />
         ))}
       </div>
@@ -121,7 +131,7 @@ function Section({
 }
 
 function AccountGroup({
-  meta, rows, total, isHidden, isLiability, change,
+  meta, rows, total, isHidden, isLiability, change, accountChanges, timeframe,
 }: {
   meta: { label: string; icon: string }
   rows: AccountRow[]
@@ -129,6 +139,8 @@ function AccountGroup({
   isHidden: boolean
   isLiability: boolean
   change?: number
+  accountChanges?: AccountChanges
+  timeframe: Timeframe
 }) {
   const [open, setOpen] = useState(true)
   return (
@@ -171,9 +183,12 @@ function AccountGroup({
                     Reconnect
                   </Link>
                 ) : (
-                  <p className="text-sm font-semibold tabular-nums text-foreground">
-                    <BlurredValue isHidden={isHidden}>{formatCurrency(row.balance)}</BlurredValue>
-                  </p>
+                  <div className="flex flex-col items-end leading-tight">
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
+                      <BlurredValue isHidden={isHidden}>{formatCurrency(row.balance)}</BlurredValue>
+                    </p>
+                    <ChangeAmount change={accountChanges?.[row.id]?.[timeframe]} isLiability={isLiability} isHidden={isHidden} className="text-[11px]" />
+                  </div>
                 )}
               </div>
             </div>

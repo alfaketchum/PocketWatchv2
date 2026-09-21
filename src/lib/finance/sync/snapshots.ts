@@ -112,6 +112,17 @@ export async function saveFinanceSnapshot(userId: string): Promise<void> {
       breakdown: JSON.stringify(breakdown),
     },
   })
+
+  // Per-account daily snapshots — power per-account change deltas.
+  await Promise.all(
+    canonicalAccounts.map((acct) =>
+      db.financeAccountSnapshot.upsert({
+        where: { accountId_date: { accountId: acct.id, date: today } },
+        create: { userId, accountId: acct.id, date: today, balance: acct.currentBalance ?? 0 },
+        update: { balance: acct.currentBalance ?? 0 },
+      }),
+    ),
+  )
 }
 
 /**
@@ -195,6 +206,18 @@ export async function backfillHistoricalSnapshots(userId: string): Promise<numbe
     }
 
     accountDailyBalances.set(acct.id, dailyBalances)
+  }
+
+  // Backfill per-account snapshots from the reconstructed daily balances so
+  // per-account change deltas have history immediately (not just going forward).
+  const accountSnapshotRows: Array<{ userId: string; accountId: string; date: Date; balance: number }> = []
+  for (const [accountId, dailyBalances] of accountDailyBalances) {
+    for (const [dateKey, balance] of dailyBalances) {
+      accountSnapshotRows.push({ userId, accountId, date: new Date(`${dateKey}T00:00:00.000Z`), balance })
+    }
+  }
+  if (accountSnapshotRows.length > 0) {
+    await db.financeAccountSnapshot.createMany({ data: accountSnapshotRows, skipDuplicates: true })
   }
 
   // Aggregate per-account balances into daily snapshots

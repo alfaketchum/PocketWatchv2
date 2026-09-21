@@ -105,7 +105,7 @@ export async function GET() {
     const historyStart = new Date()
     historyStart.setDate(historyStart.getDate() - 365)
 
-    const [financeSnapshots, portfolioSnapshots] = await Promise.all([
+    const [financeSnapshots, portfolioSnapshots, accountSnaps] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
@@ -115,6 +115,11 @@ export async function GET() {
         where: { userId: user.id, createdAt: { gte: historyStart } },
         orderBy: { createdAt: "asc" },
         select: { createdAt: true, totalValue: true },
+      }),
+      db.financeAccountSnapshot.findMany({
+        where: { userId: user.id, date: { gte: historyStart } },
+        orderBy: { date: "asc" },
+        select: { accountId: true, date: true, balance: true },
       }),
     ])
 
@@ -175,6 +180,29 @@ export async function GET() {
       breakdownHistory.push({ date: day, ...lastBd })
     }
 
+    // Per-account change over W / M / Y windows (from per-account snapshots).
+    const byAccount = new Map<string, Array<{ t: number; balance: number }>>()
+    for (const s of accountSnaps) {
+      const arr = byAccount.get(s.accountId) ?? []
+      arr.push({ t: s.date.getTime(), balance: s.balance })
+      byAccount.set(s.accountId, arr)
+    }
+    const nowMs = Date.now()
+    const changeFor = (arr: Array<{ t: number; balance: number }>, days: number) => {
+      const cutoff = nowMs - days * 86_400_000
+      const base = arr.find((p) => p.t >= cutoff) ?? arr[0]
+      return arr[arr.length - 1].balance - base.balance
+    }
+    const accountChanges: Record<string, { W: number; M: number; Y: number }> = {}
+    for (const [accountId, arr] of byAccount) {
+      if (arr.length === 0) continue
+      accountChanges[accountId] = {
+        W: changeFor(arr, 7),
+        M: changeFor(arr, 30),
+        Y: changeFor(arr, 365),
+      }
+    }
+
     return NextResponse.json({
       totalNetWorth,
       fiat: {
@@ -190,6 +218,7 @@ export async function GET() {
       },
       history,
       breakdownHistory,
+      accountChanges,
     })
   } catch (error) {
     return apiError("NW002", "Failed to compute net worth", 500, error)

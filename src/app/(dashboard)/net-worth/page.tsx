@@ -137,7 +137,7 @@ export default function NetWorthPage() {
 
       {/* Accounts — collapsible groups (Assets / Liabilities) */}
       <FadeIn delay={0.15}>
-        <div className="mt-8">
+        <div className="mt-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground-muted">
               Accounts
@@ -146,7 +146,7 @@ export default function NetWorthPage() {
               + Connect account
             </a>
           </div>
-          <NetWorthAccountsBreakdown isHidden={isHidden} changes={groupChanges} />
+          <NetWorthAccountsBreakdown isHidden={isHidden} changes={groupChanges} accountChanges={data?.accountChanges} timeframe={timeframe} />
         </div>
       </FadeIn>
 

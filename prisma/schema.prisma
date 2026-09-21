@@ -43,6 +43,7 @@ model User {
   financeCustomCategories       FinanceCustomCategory[]
   creditCardProfiles            CreditCardProfile[]
   financeSnapshots              FinanceSnapshot[]
+  financeAccountSnapshots       FinanceAccountSnapshot[]
   plaidDataSnapshots            PlaidDataSnapshot[]
   financeAccountIdentities      FinanceAccountIdentity[]
   financeLiabilityCreditCards   FinanceLiabilityCreditCard[]
@@ -993,6 +994,21 @@ model FinanceSnapshot {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+// Daily per-account balance snapshot — powers per-account change deltas.
+model FinanceAccountSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  accountId String
+  date      DateTime @db.Date
+  balance   Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
+  @@index([userId, date])
+  @@index([accountId, date])
 }
 
 model PlaidDataSnapshot {

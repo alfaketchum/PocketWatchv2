@@ -28,6 +28,8 @@ export interface CombinedNetWorthData {
     credit: number
     loan: number
   }>
+  /** Per-account balance change over the W / M / Y windows. */
+  accountChanges?: Record<string, { W: number; M: number; Y: number }>
 }
 
 async function fetchCombinedNetWorth(): Promise<CombinedNetWorthData> {
