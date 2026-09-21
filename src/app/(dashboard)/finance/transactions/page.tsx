@@ -12,14 +12,14 @@ import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { FinanceEmpty } from "@/components/finance/finance-empty"
 import { FinanceTableSkeleton } from "@/components/finance/finance-loading"
 import { TransactionRow } from "@/components/finance/transaction-row"
-import { getCategoryMeta, FINANCE_CATEGORIES } from "@/lib/finance/categories"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { BulkActionBar } from "@/components/finance/bulk-action-bar"
 import { DATE_PRESETS, getDateRange } from "@/components/finance/transactions-helpers"
 import { useHighlightScroll } from "@/hooks/finance/use-highlight-scroll"
-
-const categoryKeys = Object.keys(FINANCE_CATEGORIES)
+import { TransactionCategoryFilter } from "@/components/finance/transaction-category-filter"
+import { TransactionAccountFilter } from "@/components/finance/transaction-account-filter"
+import { DatePicker } from "@/components/ui/date-picker"
 
 export default function FinanceTransactionsPage() {
   const searchParams = useSearchParams()
@@ -132,6 +132,23 @@ export default function FinanceTransactionsPage() {
       {/* Filter Bar */}
       <div className="bg-card border border-card-border rounded-xl p-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Search — left aligned */}
+          <div className="flex items-center gap-2 w-full sm:w-[240px] px-3 py-1.5 min-h-[40px] rounded-lg bg-background-secondary border border-card-border">
+            <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 16 }}>search</span>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              placeholder="Search merchants..."
+              className="flex-1 min-w-0 bg-transparent border-0 text-sm text-foreground placeholder:text-foreground-muted/50 outline-none"
+            />
+            {search && (
+              <button onClick={() => { setSearch(""); setPage(1) }} className="text-foreground-muted hover:text-foreground transition-colors flex-shrink-0">
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>close</span>
+              </button>
+            )}
+          </div>
+
           {/* Timeframe pills */}
           <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg overflow-x-auto flex-shrink-0 mobile-pill-group">
             {DATE_PRESETS.map((preset) => (
@@ -141,9 +158,7 @@ export default function FinanceTransactionsPage() {
                 onClick={() => { setDateRange(preset.key); setPage(1) }}
                 className={cn(
                   "px-3 py-2 text-xs font-medium rounded-md transition-colors duration-150",
-                  dateRange === preset.key
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-transparent text-foreground-muted hover:text-foreground"
+                  dateRange === preset.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
                 )}
               >
                 {preset.label}
@@ -165,9 +180,7 @@ export default function FinanceTransactionsPage() {
                 onClick={() => { setTxType(opt.key); setPage(1) }}
                 className={cn(
                   "px-3 py-2 text-xs font-medium rounded-md transition-colors duration-150",
-                  txType === opt.key
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-transparent text-foreground-muted hover:text-foreground"
+                  txType === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
                 )}
               >
                 {opt.label}
@@ -175,97 +188,19 @@ export default function FinanceTransactionsPage() {
             ))}
           </div>
 
-          {/* Custom date range */}
+          {/* Grouped category + account chips */}
+          <TransactionCategoryFilter value={category} onChange={(c) => { setCategory(c); setPage(1) }} />
+          <TransactionAccountFilter institutions={institutions ?? []} value={accountId} onChange={(id) => { setAccountId(id); setPage(1) }} />
+
+          {/* Custom date range — pop-out calendar */}
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => { setCustomStart(e.target.value); setDateRange("custom"); setPage(1) }}
-              className="px-2 py-1.5 rounded-lg bg-background-secondary border border-card-border text-xs text-foreground"
-              placeholder="From"
-            />
+            <div className="w-[140px]">
+              <DatePicker value={customStart} onChange={(d) => { setCustomStart(d); setDateRange("custom"); setPage(1) }} placeholder="From" className="!min-h-0 !py-1.5 text-xs" />
+            </div>
             <span className="text-xs text-foreground-muted">to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => { setCustomEnd(e.target.value); setDateRange("custom"); setPage(1) }}
-              className="px-2 py-1.5 rounded-lg bg-background-secondary border border-card-border text-xs text-foreground"
-              placeholder="To"
-            />
-          </div>
-
-          {/* Category dropdown with color dots */}
-          <div className="relative">
-            <select
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setPage(1) }}
-              className="appearance-none px-3 py-1.5 pr-7 rounded-lg bg-background-secondary border border-card-border text-xs text-foreground cursor-pointer"
-            >
-              <option value="">All Categories</option>
-              {categoryKeys.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <span className="material-symbols-rounded absolute right-1.5 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" style={{ fontSize: 14 }}>
-              expand_more
-            </span>
-          </div>
-
-          {/* Active category indicator */}
-          {category && (
-            <button
-              onClick={() => { setCategory(""); setPage(1) }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-foreground border transition-colors hover:bg-background-secondary"
-              style={{
-                borderColor: getCategoryMeta(category).hex,
-              }}
-            >
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: getCategoryMeta(category).hex }}
-              />
-              {category}
-              <span className="material-symbols-rounded" style={{ fontSize: 12 }}>close</span>
-            </button>
-          )}
-
-          <div className="relative">
-            <select
-              value={accountId}
-              onChange={(e) => { setAccountId(e.target.value); setPage(1) }}
-              className="appearance-none px-3 py-1.5 pr-7 rounded-lg bg-background-secondary border border-card-border text-xs text-foreground cursor-pointer"
-            >
-              <option value="">All Accounts</option>
-              {institutions?.map((inst) =>
-                inst.accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}{a.mask ? ` ••${a.mask}` : ""} ({inst.institutionName})
-                  </option>
-                ))
-              )}
-            </select>
-            <span className="material-symbols-rounded absolute right-1.5 top-1/2 -translate-y-1/2 text-foreground-muted pointer-events-none" style={{ fontSize: 14 }}>
-              expand_more
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-1 min-w-0 sm:min-w-[180px] px-3 py-2 min-h-[44px] rounded-lg bg-background-secondary border border-card-border">
-            <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 16 }}>search</span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Search merchants, descriptions..."
-              className="flex-1 min-w-0 bg-transparent border-0 text-sm text-foreground placeholder:text-foreground-muted/50 outline-none"
-            />
-            {search && (
-              <button
-                onClick={() => { setSearch(""); setPage(1) }}
-                className="touch-target text-foreground-muted hover:text-foreground transition-colors flex-shrink-0"
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>close</span>
-              </button>
-            )}
+            <div className="w-[140px]">
+              <DatePicker value={customEnd} min={customStart} onChange={(d) => { setCustomEnd(d); setDateRange("custom"); setPage(1) }} placeholder="To" className="!min-h-0 !py-1.5 text-xs" />
+            </div>
           </div>
         </div>
       </div>
