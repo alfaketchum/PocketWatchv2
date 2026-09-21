@@ -63,6 +63,21 @@ export default function FinanceBudgetsPage() {
   const [showModal, setShowModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // Persisted toggle for the secondary analysis panels (pace, stats, subs,
+  // insights, untracked). Core ring + category list always show.
+  const [showDetails, setShowDetails] = useState(true)
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("pw-budget-show-details")
+      if (v !== null) setShowDetails(v === "1")
+    } catch { /* ignore */ }
+  }, [])
+  const toggleDetails = () => setShowDetails((s) => {
+    const next = !s
+    try { localStorage.setItem("pw-budget-show-details", next ? "1" : "0") } catch { /* ignore */ }
+    return next
+  })
+
   // Default to "my-budget" once budgets load (first load only)
   const hasInitialized = useRef(false)
   useEffect(() => {
@@ -96,6 +111,8 @@ export default function FinanceBudgetsPage() {
     isThisMonth ? dayOfMonth : windowDays,
     isThisMonth ? daysInMonth : windowDays,
   )
+  // Pace chart/stats only apply to the in-progress month AND when details are on.
+  const showPace = isThisMonth && showDetails
 
   const categoryData = useMemo(() => buildCategoryData(budgets, trendsData, subsData), [budgets, trendsData, subsData])
   const segments = useMemo(() => (budgets ?? []).map((b) => ({ category: b.category, spent: b.spent, monthlyLimit: b.monthlyLimit })), [budgets])
@@ -233,10 +250,23 @@ export default function FinanceBudgetsPage() {
 
           <FadeIn>
             <div className="flex flex-col md:flex-row md:items-stretch gap-4">
-              <div className={cn("flex-shrink-0", isThisMonth ? "md:w-[280px]" : "w-full")}>
+              <div className={cn("flex-shrink-0 flex flex-col", showPace ? "md:w-[280px]" : "w-full")}>
                 <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
+                {/* Toggle the secondary panels — sits under the spending ring */}
+                <button
+                  onClick={toggleDetails}
+                  className="mt-3 w-full flex items-center justify-between px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
+                  aria-pressed={showDetails}
+                >
+                  <span className="text-xs font-medium text-foreground-muted">
+                    {showDetails ? "Hide extra panels" : "Show extra panels"}
+                  </span>
+                  <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", showDetails ? "bg-primary" : "bg-card-border")}>
+                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", showDetails ? "translate-x-[18px]" : "translate-x-0.5")} />
+                  </span>
+                </button>
               </div>
-              {isThisMonth && (
+              {showPace && (
                 <div className="flex-1 min-w-0">
                   <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
                 </div>
@@ -244,7 +274,7 @@ export default function FinanceBudgetsPage() {
             </div>
           </FadeIn>
 
-          {isThisMonth && (
+          {showPace && (
             <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
           )}
 
@@ -252,14 +282,16 @@ export default function FinanceBudgetsPage() {
             <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
           </FadeIn>
 
-          <FadeIn delay={0.15}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
-              <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
-            </div>
-          </FadeIn>
+          {showDetails && (
+            <FadeIn delay={0.15}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
+                <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
+              </div>
+            </FadeIn>
+          )}
 
-          {untrackedCategories.length > 0 && (
+          {showDetails && untrackedCategories.length > 0 && (
             <FadeIn delay={0.2}>
               <BudgetUntrackedSection untrackedCategories={untrackedCategories} txByCategory={txByCategory} onAddBudget={(cat, limit) => createBudget.mutate({ category: cat, monthlyLimit: limit })} onBudgetAll={() => { for (const c of untrackedCategories) createBudget.mutate({ category: c.category, monthlyLimit: c.suggested }) }} />
             </FadeIn>

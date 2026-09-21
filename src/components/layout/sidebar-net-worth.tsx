@@ -47,7 +47,6 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
         const rows = groups[k]
         const groupTotal = rows.reduce((s, r) => s + r.balance, 0)
         const gOpen = hydrated && openGroups.has(k)
-        const isLiability = GROUP_META[k].kind === "liability"
         return (
           <div key={k}>
             <button
@@ -57,7 +56,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
             >
               <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 15 }} aria-hidden="true">{GROUP_META[k].icon}</span>
               <span className="text-[11px] font-medium text-foreground truncate">{GROUP_META[k].label}</span>
-              <span className={cn("ml-auto text-[11px] tabular-nums", isLiability ? "text-error" : "text-foreground-muted")}>{formatCurrency(groupTotal)}</span>
+              <span className="ml-auto text-[11px] tabular-nums text-foreground-muted">{formatCurrency(groupTotal)}</span>
               <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", gOpen && "rotate-180")} style={{ fontSize: 14 }} aria-hidden="true">expand_more</span>
             </button>
 
@@ -70,7 +69,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                 {r.needsReconnect ? (
                   <Link href="/finance/accounts" className="text-[10px] font-medium text-primary hover:text-primary-hover flex-shrink-0">Reconnect</Link>
                 ) : (
-                  <span className={cn("text-[11px] tabular-nums flex-shrink-0", isLiability ? "text-error" : "text-foreground-muted")}>{formatCurrency(r.balance)}</span>
+                  <span className="text-[11px] tabular-nums text-foreground-muted flex-shrink-0">{formatCurrency(r.balance)}</span>
                 )}
               </div>
             ))}

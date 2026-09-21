@@ -11,7 +11,22 @@ import {
   type GroupKey, type AccountRow,
 } from "./account-groups"
 
-export function NetWorthAccountsBreakdown({ isHidden }: { isHidden: boolean }) {
+type GroupChanges = Partial<Record<GroupKey, number>>
+
+/** Colored signed change: gain green / drainage red. For liabilities the sign
+ *  flips (less debt = gain). */
+function ChangeAmount({ change, isLiability, isHidden, className }: { change: number | undefined; isLiability: boolean; isHidden: boolean; className?: string }) {
+  if (change === undefined || Math.round(change) === 0) return null
+  const isGain = isLiability ? change < 0 : change > 0
+  const sign = change >= 0 ? "+" : "-"
+  return (
+    <span className={cn("tabular-nums font-semibold", isGain ? "text-success" : "text-error", className)}>
+      <BlurredValue isHidden={isHidden}>{sign}{formatCurrency(Math.abs(change))}</BlurredValue>
+    </span>
+  )
+}
+
+export function NetWorthAccountsBreakdown({ isHidden, changes }: { isHidden: boolean; changes?: GroupChanges }) {
   const { data: institutions, isLoading } = useFinanceAccounts()
 
   if (isLoading) {
@@ -45,6 +60,7 @@ export function NetWorthAccountsBreakdown({ isHidden }: { isHidden: boolean }) {
         groups={groups}
         isHidden={isHidden}
         isLiability={false}
+        changes={changes}
       />
       <Section
         title="Liabilities"
@@ -53,13 +69,14 @@ export function NetWorthAccountsBreakdown({ isHidden }: { isHidden: boolean }) {
         groups={groups}
         isHidden={isHidden}
         isLiability
+        changes={changes}
       />
     </div>
   )
 }
 
 function Section({
-  title, total, order, groups, isHidden, isLiability,
+  title, total, order, groups, isHidden, isLiability, changes,
 }: {
   title: string
   total: number
@@ -67,17 +84,24 @@ function Section({
   groups: Record<GroupKey, AccountRow[]>
   isHidden: boolean
   isLiability: boolean
+  changes?: GroupChanges
 }) {
   const visible = order.filter((k) => groups[k].length > 0)
   if (visible.length === 0) return null
+
+  const sectionChange = visible.reduce((s, k) => s + (changes?.[k] ?? 0), 0)
+  const hasChange = changes && visible.some((k) => changes[k] !== undefined)
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2 px-1">
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground-muted">{title}</p>
-        <p className={cn("text-sm font-semibold tabular-nums", isLiability ? "text-error" : "text-foreground")}>
-          <BlurredValue isHidden={isHidden}>{formatCurrency(total)}</BlurredValue>
-        </p>
+        <div className="flex items-baseline gap-2">
+          <p className="text-sm font-semibold tabular-nums text-foreground">
+            <BlurredValue isHidden={isHidden}>{formatCurrency(total)}</BlurredValue>
+          </p>
+          {hasChange && <ChangeAmount change={sectionChange} isLiability={isLiability} isHidden={isHidden} className="text-xs" />}
+        </div>
       </div>
       <div className="space-y-2">
         {visible.map((k) => (
@@ -88,6 +112,7 @@ function Section({
             total={groups[k].reduce((s, r) => s + r.balance, 0)}
             isHidden={isHidden}
             isLiability={isLiability}
+            change={changes?.[k]}
           />
         ))}
       </div>
@@ -96,13 +121,14 @@ function Section({
 }
 
 function AccountGroup({
-  meta, rows, total, isHidden, isLiability,
+  meta, rows, total, isHidden, isLiability, change,
 }: {
   meta: { label: string; icon: string }
   rows: AccountRow[]
   total: number
   isHidden: boolean
   isLiability: boolean
+  change?: number
 }) {
   const [open, setOpen] = useState(true)
   return (
@@ -115,8 +141,11 @@ function AccountGroup({
         <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 18 }} aria-hidden="true">{meta.icon}</span>
         <span className="text-sm font-semibold text-foreground">{meta.label}</span>
         <span className="ml-1 text-[11px] text-foreground-muted tabular-nums">{rows.length}</span>
-        <span className={cn("ml-auto text-sm font-semibold tabular-nums", isLiability ? "text-error" : "text-foreground")}>
-          <BlurredValue isHidden={isHidden}>{formatCurrency(total)}</BlurredValue>
+        <span className="ml-auto flex flex-col items-end leading-tight">
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            <BlurredValue isHidden={isHidden}>{formatCurrency(total)}</BlurredValue>
+          </span>
+          <ChangeAmount change={change} isLiability={isLiability} isHidden={isHidden} className="text-[11px]" />
         </span>
         <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", open && "rotate-180")} style={{ fontSize: 18 }} aria-hidden="true">expand_more</span>
       </button>
@@ -142,7 +171,7 @@ function AccountGroup({
                     Reconnect
                   </Link>
                 ) : (
-                  <p className={cn("text-sm font-semibold tabular-nums", isLiability ? "text-error" : "text-foreground")}>
+                  <p className="text-sm font-semibold tabular-nums text-foreground">
                     <BlurredValue isHidden={isHidden}>{formatCurrency(row.balance)}</BlurredValue>
                   </p>
                 )}

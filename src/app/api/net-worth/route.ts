@@ -109,7 +109,7 @@ export async function GET() {
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
-        select: { date: true, netWorth: true },
+        select: { date: true, netWorth: true, breakdown: true },
       }),
       db.portfolioSnapshot.findMany({
         where: { userId: user.id, createdAt: { gte: historyStart } },
@@ -135,22 +135,44 @@ export async function GET() {
       dayMap.set(key, entry)
     }
 
+    // Per-day category breakdown (from the snapshot's stored breakdown JSON),
+    // mapped to the Cash / Investments / Credit / Loans groups.
+    type GroupBreakdown = { cash: number; investment: number; credit: number; loan: number }
+    const bdByDay = new Map<string, GroupBreakdown>()
+    for (const snap of financeSnapshots) {
+      const key = snap.date.toISOString().slice(0, 10)
+      try {
+        const b = JSON.parse(snap.breakdown) as Record<string, number>
+        bdByDay.set(key, {
+          cash: (b.checking ?? 0) + (b.savings ?? 0),
+          investment: b.investment ?? 0,
+          credit: b.credit ?? 0,
+          loan: (b.loan ?? 0) + (b.mortgage ?? 0),
+        })
+      } catch { /* skip malformed breakdown */ }
+    }
+
     // Forward-fill gaps so each day has the latest known value
     const sortedDays = [...dayMap.keys()].sort()
     let lastFiat = 0
     let lastCrypto = 0
+    let lastBd: GroupBreakdown = { cash: 0, investment: 0, credit: 0, loan: 0 }
     const history: Array<{ date: string; fiat: number; crypto: number; total: number }> = []
+    const breakdownHistory: Array<{ date: string } & GroupBreakdown> = []
 
     for (const day of sortedDays) {
       const entry = dayMap.get(day)!
       if (entry.fiat !== null) lastFiat = entry.fiat
       if (entry.crypto !== null) lastCrypto = entry.crypto
+      const bd = bdByDay.get(day)
+      if (bd) lastBd = bd
       history.push({
         date: day,
         fiat: lastFiat,
         crypto: lastCrypto,
         total: lastFiat + lastCrypto,
       })
+      breakdownHistory.push({ date: day, ...lastBd })
     }
 
     return NextResponse.json({
@@ -167,6 +189,7 @@ export async function GET() {
         snapshotAt: null,
       },
       history,
+      breakdownHistory,
     })
   } catch (error) {
     return apiError("NW002", "Failed to compute net worth", 500, error)

@@ -20,6 +20,14 @@ export interface CombinedNetWorthData {
     crypto: number
     total: number
   }>
+  /** Per-day Cash/Investments/Credit/Loans totals (from snapshot breakdown). */
+  breakdownHistory?: Array<{
+    date: string
+    cash: number
+    investment: number
+    credit: number
+    loan: number
+  }>
 }
 
 async function fetchCombinedNetWorth(): Promise<CombinedNetWorthData> {

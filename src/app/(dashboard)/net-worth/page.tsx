@@ -40,6 +40,17 @@ export default function NetWorthPage() {
   const delta = totalNetWorth - firstTotal
   const deltaPct = firstTotal !== 0 ? (delta / firstTotal) * 100 : 0
 
+  // Per-group change over the same timeframe (from the category breakdown series).
+  const bh = data?.breakdownHistory ?? []
+  const bdBase = bh.find((h) => new Date(h.date).getTime() >= cutoff) ?? bh[0]
+  const bdLast = bh[bh.length - 1]
+  const groupChanges = bdBase && bdLast ? {
+    cash: bdLast.cash - bdBase.cash,
+    investment: bdLast.investment - bdBase.investment,
+    credit: bdLast.credit - bdBase.credit,
+    loan: bdLast.loan - bdBase.loan,
+  } : undefined
+
   if (isError) {
     return (
       <div className="space-y-6">
@@ -135,7 +146,7 @@ export default function NetWorthPage() {
               + Connect account
             </a>
           </div>
-          <NetWorthAccountsBreakdown isHidden={isHidden} />
+          <NetWorthAccountsBreakdown isHidden={isHidden} changes={groupChanges} />
         </div>
       </FadeIn>
 
