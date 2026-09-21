@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { CATEGORY_GROUPS, getCategoryMeta } from "@/lib/finance/categories"
+import { usePopoverAlign } from "@/hooks/finance/use-popover-align"
+
+const PANEL_WIDTH = 256 // w-64
 
 interface CategoryPickerProps {
   value: string | null
@@ -19,6 +22,10 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState("")
   const ref = useRef<HTMLDivElement>(null)
+  // Flip to right-alignment when a left-opening panel would run off the page,
+  // so the picker always fits on screen regardless of the caller's `align`.
+  const overflowsRight = usePopoverAlign(ref, open, PANEL_WIDTH)
+  const alignRight = align === "right" || overflowsRight
   useEffect(() => {
     if (!open) return
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
@@ -50,7 +57,7 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
       </button>
 
       {open && (
-        <div className={cn("absolute top-full mt-1 z-50 w-64 bg-card border border-card-border rounded-xl shadow-xl p-2 animate-in fade-in slide-in-from-top-1 duration-150", align === "right" ? "right-0" : "left-0")}>
+        <div className={cn("absolute top-full mt-1 z-50 w-64 bg-card border border-card-border rounded-xl shadow-xl p-2 animate-in fade-in slide-in-from-top-1 duration-150", alignRight ? "right-0" : "left-0")}>
           <input
             autoFocus
             value={q}
