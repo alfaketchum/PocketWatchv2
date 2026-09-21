@@ -125,6 +125,28 @@ export default function FinanceTransactionsPage() {
           )}
         />
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* View toggle — list (detailed rows) vs. table (compact budget-style) */}
+          <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg">
+            {([
+              { key: "list", label: "List", icon: "view_agenda" },
+              { key: "table", label: "Table", icon: "table_rows" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => changeView(opt.key)}
+                title={`${opt.label} view`}
+                aria-pressed={view === opt.key}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors duration-150",
+                  view === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
+                )}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>{opt.icon}</span>
+                <span className="hidden sm:inline">{opt.label}</span>
+              </button>
+            ))}
+          </div>
           <a
             href="/api/finance/transactions/export"
             download
@@ -226,28 +248,6 @@ export default function FinanceTransactionsPage() {
             <div className="w-[140px]">
               <DatePicker value={customEnd} min={customStart} onChange={(d) => { setCustomEnd(d); setDateRange("custom"); setPage(1) }} placeholder="To" className="!min-h-0 !py-1.5 text-xs" />
             </div>
-          </div>
-
-          {/* View toggle — list (detailed rows) vs. table (compact budget-style) */}
-          <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg flex-shrink-0 ml-auto">
-            {([
-              { key: "list", label: "List", icon: "view_agenda" },
-              { key: "table", label: "Table", icon: "table_rows" },
-            ] as const).map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => changeView(opt.key)}
-                title={`${opt.label} view`}
-                aria-pressed={view === opt.key}
-                className={cn(
-                  "flex items-center justify-center min-h-[36px] w-9 rounded-md transition-colors duration-150",
-                  view === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
-                )}
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 18 }}>{opt.icon}</span>
-              </button>
-            ))}
           </div>
         </div>
       </div>
