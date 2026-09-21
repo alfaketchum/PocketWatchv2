@@ -21,6 +21,7 @@ import { DATE_PRESETS, getDateRange } from "@/components/finance/transactions-he
 import { useHighlightScroll } from "@/hooks/finance/use-highlight-scroll"
 import { TransactionCategoryFilter } from "@/components/finance/transaction-category-filter"
 import { TransactionAccountFilter } from "@/components/finance/transaction-account-filter"
+import { TransactionsTableView } from "@/components/finance/transactions-table-view"
 import { DatePicker } from "@/components/ui/date-picker"
 
 export default function FinanceTransactionsPage() {
@@ -46,6 +47,13 @@ export default function FinanceTransactionsPage() {
   const [customStart, setCustomStart] = useState(monthParam ? `${monthParam}-01` : "")
   const [customEnd, setCustomEnd] = useState(monthEnd)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Layout toggle: "list" is the rich expandable rows, "table" is the compact
+  // budget-style table (persisted per-browser).
+  const [view, setView] = useState<"list" | "table">("list")
+  useEffect(() => {
+    try { const v = localStorage.getItem("tx-view"); if (v === "list" || v === "table") setView(v) } catch { /* ignore */ }
+  }, [])
+  const changeView = (v: "list" | "table") => { setView(v); try { localStorage.setItem("tx-view", v) } catch { /* ignore */ } }
 
   // Clear selections when page/filters change — track previous data identity
   const prevDataRef = useRef<string>("")
@@ -219,6 +227,28 @@ export default function FinanceTransactionsPage() {
               <DatePicker value={customEnd} min={customStart} onChange={(d) => { setCustomEnd(d); setDateRange("custom"); setPage(1) }} placeholder="To" className="!min-h-0 !py-1.5 text-xs" />
             </div>
           </div>
+
+          {/* View toggle — list (detailed rows) vs. table (compact budget-style) */}
+          <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg flex-shrink-0 ml-auto">
+            {([
+              { key: "list", label: "List", icon: "view_agenda" },
+              { key: "table", label: "Table", icon: "table_rows" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => changeView(opt.key)}
+                title={`${opt.label} view`}
+                aria-pressed={view === opt.key}
+                className={cn(
+                  "flex items-center justify-center min-h-[36px] w-9 rounded-md transition-colors duration-150",
+                  view === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
+                )}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 18 }}>{opt.icon}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -233,6 +263,16 @@ export default function FinanceTransactionsPage() {
       ) : data?.transactions.length ? (
         <>
         <BulkActionBar selectedIds={selectedIds} onClear={() => setSelectedIds(new Set())} />
+        {view === "table" ? (
+        <TransactionsTableView
+          transactions={data.transactions}
+          highlightId={highlightId}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          onRecategorize={(tx, cat) => handleRecategorize(tx, cat)}
+          onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
+        />
+        ) : (
         <div className="bg-card border border-card-border rounded-xl overflow-hidden">
           {/* Elevated Header */}
           <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 border-b border-card-border bg-card-elevated text-[10px] text-foreground-muted font-semibold uppercase tracking-widest">
@@ -298,6 +338,7 @@ export default function FinanceTransactionsPage() {
             </div>
           ))}
         </div>
+        )}
         </>
       ) : (
         <FinanceEmpty
