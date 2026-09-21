@@ -6,6 +6,7 @@ import { cn, formatCurrency } from "@/lib/utils"
 import { CategoryBadge } from "./category-badge"
 import { AmountDisplay } from "./amount-display"
 import { MerchantIcon } from "./merchant-icon"
+import { CategoryPicker } from "./category-picker"
 import { FINANCE_CATEGORIES, getCategoryMeta } from "@/lib/finance/categories"
 
 interface TransactionRowProps {
@@ -31,6 +32,10 @@ interface TransactionRowProps {
   isRecurring?: boolean
   isHighlighted?: boolean
   onCategoryChange?: (category: string, createRule: boolean) => void
+  /** Grouped-picker re-categorize (opt-in; takes precedence over onCategoryChange). */
+  onRecategorize?: (category: string) => void
+  /** Editable per-transaction note (opt-in). */
+  onSaveNote?: (note: string) => void
 }
 
 export function TransactionRow({
@@ -38,7 +43,7 @@ export function TransactionRow({
   notes, isPending, accountName, accountMask, className,
   paymentChannel, authorizedDate, logoUrl, website, location, counterparties,
   needsReview, isRecurring, isHighlighted,
-  onCategoryChange,
+  onCategoryChange, onRecategorize, onSaveNote,
 }: TransactionRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [retagOpen, setRetagOpen] = useState(false)
@@ -165,7 +170,12 @@ export function TransactionRow({
             </div>
             <div>
               <span className="text-foreground-muted">Category</span>
-              {onCategoryChange ? (
+              {onRecategorize ? (
+                <div className="flex items-center gap-1.5 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                  <CategoryBadge category={category} />
+                  <CategoryPicker value={category} onSelect={onRecategorize} />
+                </div>
+              ) : onCategoryChange ? (
                 <div>
                   <button
                     ref={categoryBtnRef}
@@ -285,15 +295,35 @@ export function TransactionRow({
               </div>
             </div>
           )}
-          {notes && (
+          {onSaveNote ? (
+            <div onClick={(e) => e.stopPropagation()}>
+              <span className="text-foreground-muted">Notes</span>
+              <NoteEditor note={notes ?? null} onSave={onSaveNote} />
+            </div>
+          ) : notes ? (
             <div>
               <span className="text-foreground-muted">Notes</span>
               <p className="text-foreground">{notes}</p>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
+  )
+}
+
+function NoteEditor({ note, onSave }: { note: string | null; onSave: (note: string) => void }) {
+  const [val, setVal] = useState(note ?? "")
+  useEffect(() => { setVal(note ?? "") }, [note])
+  return (
+    <textarea
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => { if (val.trim() !== (note ?? "")) onSave(val.trim()) }}
+      rows={2}
+      placeholder="Add a note..."
+      className="mt-1 w-full bg-background border border-card-border rounded-lg px-2 py-1.5 text-xs text-foreground placeholder-foreground-muted focus:border-primary focus:outline-none resize-none"
+    />
   )
 }
 

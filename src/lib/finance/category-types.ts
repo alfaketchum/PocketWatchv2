@@ -23,6 +23,7 @@ export const CATEGORIES = {
   "Crypto": ["Exchange", "DeFi", "NFT"],
   "Subscriptions": ["Streaming", "Software", "Membership", "Service"],
   "Taxes": ["Federal", "State", "Local", "Property Tax"],
+  "ATM/Cash": ["Withdrawal", "Cash Back", "Deposit"],
   "Uncategorized": [],
 } as const
 

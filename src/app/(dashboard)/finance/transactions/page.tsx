@@ -7,7 +7,9 @@ import {
   useFinanceTransactions, useFinanceAccounts,
   useAutoCategorize, useFinanceDeepInsights,
   useUpdateTransactionCategory, useReviewCount,
+  useBulkCategorize, useUpdateTransaction,
 } from "@/hooks/use-finance"
+import { ConfirmDialog } from "@/components/finance/confirm-dialog"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { FinanceEmpty } from "@/components/finance/finance-empty"
 import { FinanceTableSkeleton } from "@/components/finance/finance-loading"
@@ -70,6 +72,19 @@ export default function FinanceTransactionsPage() {
   const { data: deep } = useFinanceDeepInsights()
   const autoCategorize = useAutoCategorize()
   const updateCategory = useUpdateTransactionCategory()
+  const bulkCategorize = useBulkCategorize()
+  const updateTx = useUpdateTransaction()
+  const [recatPending, setRecatPending] = useState<{ category: string; merchant: string; ids: string[] } | null>(null)
+
+  // Re-categorize one transaction; offer to apply to same-merchant recurring ones.
+  const handleRecategorize = (tx: { id: string; merchantName: string | null; name: string }, category: string) => {
+    updateCategory.mutate({ transactionId: tx.id, category })
+    const key = (tx.merchantName ?? tx.name).trim().toLowerCase()
+    const siblings = (data?.transactions ?? []).filter(
+      (t) => t.id !== tx.id && (t.merchantName ?? t.name).trim().toLowerCase() === key && (t.category ?? "Uncategorized") !== category,
+    )
+    if (siblings.length > 0) setRecatPending({ category, merchant: tx.merchantName ?? tx.name, ids: siblings.map((s) => s.id) })
+  }
   const total = data?.pagination.total ?? 0
   const totalPages = data?.pagination.totalPages ?? 1
   const from = total > 0 ? (page - 1) * 50 + 1 : 0
@@ -274,13 +289,8 @@ export default function FinanceTransactionsPage() {
               counterparties={tx.counterparties}
               needsReview={tx.needsReview}
               isRecurring={tx.isRecurring}
-              onCategoryChange={(newCategory, createRule) =>
-                updateCategory.mutate({
-                  transactionId: tx.id,
-                  category: newCategory,
-                  createRule,
-                })
-              }
+              onRecategorize={(cat) => handleRecategorize(tx, cat)}
+              onSaveNote={(note) => updateTx.mutate({ transactionId: tx.id, notes: note })}
             />
               </div>
             </div>
@@ -325,6 +335,16 @@ export default function FinanceTransactionsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!recatPending}
+        onClose={() => setRecatPending(null)}
+        onConfirm={() => { if (recatPending) bulkCategorize.mutate({ ids: recatPending.ids, category: recatPending.category }); setRecatPending(null) }}
+        title="Re-categorize recurring transactions?"
+        description={`"${recatPending?.merchant ?? ""}" appears on ${recatPending?.ids.length ?? 0} other transaction${recatPending?.ids.length === 1 ? "" : "s"} on this page. Move ${recatPending?.ids.length === 1 ? "it" : "them all"} to "${recatPending?.category ?? ""}" too?`}
+        confirmLabel={`Update ${recatPending?.ids.length ?? 0}`}
+        isLoading={bulkCategorize.isPending}
+      />
     </div>
   )
 }

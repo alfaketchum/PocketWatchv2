@@ -123,6 +123,12 @@ export const FINANCE_CATEGORIES: Record<string, CategoryMeta> = {
     dotClass: "bg-red-500", borderClass: "border-red-500",
     hex: "#ef4444",
   },
+  "ATM/Cash": {
+    label: "ATM/Cash", icon: "local_atm", color: "amber",
+    bgClass: "bg-amber-500/10", textClass: "text-amber-500",
+    dotClass: "bg-amber-500", borderClass: "border-amber-500",
+    hex: "#f59e0b",
+  },
   "Transfer": {
     label: "Transfer", icon: "swap_horiz", color: "sky",
     bgClass: "bg-sky-600/10", textClass: "text-sky-600",
@@ -226,7 +232,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
       "Housing", "Food & Dining", "Transportation", "Bills & Utilities",
       "Entertainment", "Shopping", "Health & Fitness", "Personal Care",
       "Education", "Travel", "Subscriptions", "Business Expenses",
-      "Insurance", "Gifts & Donations", "Taxes", "Fees & Charges",
+      "Insurance", "Gifts & Donations", "Taxes", "Fees & Charges", "ATM/Cash",
     ],
   },
   { label: "Investments", icon: "trending_up", categories: ["Investment", "Crypto"] },
