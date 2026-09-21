@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
 import { formatCurrency, cn } from "@/lib/utils"
 import { FadeIn } from "@/components/motion/fade-in"
@@ -10,7 +11,12 @@ import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { FinanceHeroCard } from "@/components/finance/finance-hero-card"
 import { NumberPop } from "@/components/ui/number-pop"
 import { NetWorthBreakdown } from "@/components/net-worth/net-worth-breakdown"
+import { NetWorthAccountsBreakdown } from "@/components/net-worth/net-worth-accounts-breakdown"
 import dynamic from "next/dynamic"
+
+type Timeframe = "W" | "M" | "Y"
+const TF_DAYS: Record<Timeframe, number> = { W: 7, M: 30, Y: 365 }
+const TF_LABEL: Record<Timeframe, string> = { W: "7 days", M: "30 days", Y: "365 days" }
 const NetWorthHistoryChart = dynamic(
   () => import("@/components/net-worth/net-worth-history-chart").then((m) => m.NetWorthHistoryChart),
   { ssr: false, loading: () => <div className="h-[260px] animate-shimmer rounded-xl" /> }
@@ -19,14 +25,18 @@ const NetWorthHistoryChart = dynamic(
 export default function NetWorthPage() {
   const { data, isLoading, isError } = useCombinedNetWorth()
   const { isHidden, togglePrivacy } = usePrivacyMode()
+  const [timeframe, setTimeframe] = useState<Timeframe>("M")
 
   const totalNetWorth = data?.totalNetWorth ?? 0
   const fiat = data?.fiat ?? { cash: 0, investments: 0, debt: 0, netWorth: 0 }
   const crypto = data?.crypto ?? { value: 0, snapshotAt: null }
   const history = data?.history ?? []
 
-  // Period change from history
-  const firstTotal = history.length > 0 ? history[0].total : 0
+  // Period change over the selected timeframe: baseline = earliest point within
+  // the window (history is ascending; falls back to the oldest point available).
+  const cutoff = Date.now() - TF_DAYS[timeframe] * 86_400_000
+  const baseline = history.find((h) => new Date(h.date).getTime() >= cutoff) ?? history[0]
+  const firstTotal = baseline ? baseline.total : 0
   const delta = totalNetWorth - firstTotal
   const deltaPct = firstTotal !== 0 ? (delta / firstTotal) * 100 : 0
 
@@ -64,6 +74,24 @@ export default function NetWorthPage() {
             { label: "Debt", value: formatCurrency(-fiat.debt), color: fiat.debt > 0 ? "error" : undefined, node: <NumberPop value={-fiat.debt} format={(n) => formatCurrency(n)} /> },
           ]}
         >
+          {/* Timeframe toggle */}
+          <div className="flex justify-end mb-2">
+            <div className="inline-flex items-center bg-background-secondary border border-card-border rounded-lg p-0.5">
+              {(["W", "M", "Y"] as Timeframe[]).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={cn(
+                    "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors",
+                    timeframe === tf ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
+                  )}
+                  title={`Change over ${TF_LABEL[tf]}`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
+          </div>
           {/* Chart */}
           {isLoading ? (
             <div className="h-[260px] animate-shimmer rounded-lg" />
@@ -94,6 +122,21 @@ export default function NetWorthPage() {
             isHidden={isHidden}
           />
         )}
+      </FadeIn>
+
+      {/* Accounts — collapsible groups (Assets / Liabilities) */}
+      <FadeIn delay={0.15}>
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-foreground-muted">
+              Accounts
+            </p>
+            <a href="/finance/accounts" className="text-xs font-medium text-primary hover:text-primary-hover transition-colors">
+              + Connect account
+            </a>
+          </div>
+          <NetWorthAccountsBreakdown isHidden={isHidden} />
+        </div>
       </FadeIn>
 
       {/* Source cards */}

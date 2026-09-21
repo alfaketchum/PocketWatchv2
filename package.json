@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "db:backup": "pg_dump pocketwatch > backups/pocketwatch-$(date +%Y%m%d-%H%M%S).sql && echo 'Backup saved to backups/'",
-    "db:prepare": "npm run db:backup 2>/dev/null; prisma generate && (prisma migrate deploy || prisma db push)",
-    "dev": "npm run db:prepare && pkill -f 'next dev' 2>/dev/null; rm -rf .next && NODE_OPTIONS='--max-old-space-size=4096' next dev --hostname 0.0.0.0 --port 3500",
-    "build": "if [ -n \"$DATABASE_MIGRATE_URL\" ]; then prisma db push --accept-data-loss --url \"$DATABASE_MIGRATE_URL\"; fi && prisma generate && next build",
+    "db:prepare": "node scripts/db-prepare.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
     "postinstall": "prisma generate",
-    "start": "npm run db:prepare && next start",
+    "start": "node scripts/db-prepare.mjs && next start",
     "lint": "eslint",
     "test": "npm run test:unit",
     "test:unit": "npx tsx --test test/**/*.test.ts"

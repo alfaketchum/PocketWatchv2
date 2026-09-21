@@ -5,7 +5,10 @@ import { mapFinanceError } from "@/lib/finance/error-map"
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod/v4"
 
-export async function GET() {
+const AVG_MONTH_DAYS = 30.4375
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+
+export async function GET(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return apiError("F5001", "Authentication required", 401)
 
@@ -15,18 +18,40 @@ export async function GET() {
       orderBy: { category: "asc" },
     })
 
-    // Get current month spending per category
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    // Optional lookback window (?startDate&endDate, inclusive). Absent → the
+    // default current-calendar-month behaviour (raw monthly targets, scale 1).
+    const sp = request.nextUrl.searchParams
+    const startParam = isoDateSchema.safeParse(sp.get("startDate"))
+    const endParam = isoDateSchema.safeParse(sp.get("endDate"))
+    const hasRange = startParam.success && endParam.success
 
-    // FIX Bug 10: Exclude Transfer/Income/Investment from budget spending
-    // and use lt (exclusive) for month end to avoid timezone boundary issues
+    const now = new Date()
+    let windowStart: Date
+    let windowEndExclusive: Date
+    let scale = 1
+
+    if (hasRange) {
+      windowStart = new Date(`${startParam.data}T00:00:00`)
+      const endInclusive = new Date(`${endParam.data}T00:00:00`)
+      windowEndExclusive = new Date(endInclusive)
+      windowEndExclusive.setDate(windowEndExclusive.getDate() + 1)
+      const windowDays = Math.max(
+        1,
+        Math.round((windowEndExclusive.getTime() - windowStart.getTime()) / 86_400_000),
+      )
+      // Pro-rate the monthly target to the window length (Personal Capital-style).
+      scale = windowDays / AVG_MONTH_DAYS
+    } else {
+      windowStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      windowEndExclusive = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    }
+
+    // Exclude Transfer/Income/Investment from budget spending; lt (exclusive) end.
     const spending = await db.financeTransaction.groupBy({
       by: ["category"],
       where: {
         userId: user.id,
-        date: { gte: monthStart, lt: new Date(now.getFullYear(), now.getMonth() + 1, 1) },
+        date: { gte: windowStart, lt: windowEndExclusive },
         amount: { gt: 0 },
         isExcluded: false,
         isDuplicate: false,
@@ -39,15 +64,18 @@ export async function GET() {
       spending.map((s) => [s.category, s._sum.amount ?? 0])
     )
 
-    const result = budgets.map((b) => ({
-      ...b,
-      spent: spendingMap.get(b.category) ?? 0,
-      remaining: b.monthlyLimit - (spendingMap.get(b.category) ?? 0),
-      percentUsed:
-        b.monthlyLimit > 0
-          ? ((spendingMap.get(b.category) ?? 0) / b.monthlyLimit) * 100
-          : 0,
-    }))
+    const result = budgets.map((b) => {
+      const spent = spendingMap.get(b.category) ?? 0
+      const periodLimit = hasRange ? b.monthlyLimit * scale : b.monthlyLimit
+      return {
+        ...b,
+        monthlyLimit: periodLimit,
+        baseMonthlyLimit: b.monthlyLimit,
+        spent,
+        remaining: periodLimit - spent,
+        percentUsed: periodLimit > 0 ? (spent / periodLimit) * 100 : 0,
+      }
+    })
 
     return NextResponse.json(result)
   } catch (err) {

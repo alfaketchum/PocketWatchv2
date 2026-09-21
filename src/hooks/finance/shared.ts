@@ -61,7 +61,8 @@ export const financeKeys = {
   accounts: () => [...financeKeys.all, "accounts"] as const,
   transactions: (filters: TxFilters) =>
     [...financeKeys.all, "transactions", filters] as const,
-  budgets: () => [...financeKeys.all, "budgets"] as const,
+  budgets: (rangeKey?: string) =>
+    rangeKey ? ([...financeKeys.all, "budgets", rangeKey] as const) : ([...financeKeys.all, "budgets"] as const),
   subscriptions: () => [...financeKeys.all, "subscriptions"] as const,
   cards: () => [...financeKeys.all, "cards"] as const,
   cardRecommendations: () => [...financeKeys.all, "card-recs"] as const,

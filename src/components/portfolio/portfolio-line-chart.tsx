@@ -35,11 +35,11 @@ interface PortfolioLineChartProps {
 // line, fading to transparent at the baseline) for the premium fintech look.
 const COLOR_MAP = {
   neutral: {
-    line: "#0A84FF",
-    areaTop: "rgba(10,132,255,0.32)",
-    areaBottom: "rgba(10,132,255,0)",
-    crosshair: "rgba(10,132,255,0.4)",
-    crosshairHz: "rgba(10,132,255,0.15)",
+    line: "#8886ff",
+    areaTop: "rgba(136,134,255,0.32)",
+    areaBottom: "rgba(136,134,255,0)",
+    crosshair: "rgba(136,134,255,0.4)",
+    crosshairHz: "rgba(136,134,255,0.15)",
   },
   positive: {
     line: "#4ade80",
@@ -110,7 +110,7 @@ function renderPriceLabels(chart: IChartApi, series: ISeriesApi<"Area">, data: C
       position: absolute;
       right: 12px;
       top: ${coord + (chartRect.top - containerRect.top) - 7}px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'IBM Plex Mono', monospace;
       font-size: 11px;
       font-weight: 500;
       color: ${theme.priceLabelColor};
@@ -189,7 +189,7 @@ export function PortfolioLineChart({
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: theme.textColor,
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: 10,
       },
       grid: {

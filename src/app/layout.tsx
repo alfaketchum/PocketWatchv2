@@ -1,19 +1,20 @@
 import type { Metadata, Viewport } from "next"
-import { DM_Sans, JetBrains_Mono } from "next/font/google"
+import { Instrument_Sans, IBM_Plex_Mono } from "next/font/google"
 import "./globals.css"
 import { QueryProvider } from "@/components/providers/query-provider"
 import { ErrorBoundary, StaleChunkReloader } from "@/components/error-boundary"
 import { SkipToContent } from "@/components/skip-to-content"
 import { ClientShell } from "@/components/layout/client-shell"
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const instrumentSans = Instrument_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
 })
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-mono",
+  weight: ["400", "500", "600", "700"],
   subsets: ["latin"],
   display: "swap",
 })
@@ -76,12 +77,12 @@ export default function RootLayout({
     <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         {/* Prevent flash — match default theme background */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||((!t)&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.background='#0C0C0E';}else{document.documentElement.style.background='#fff';}}catch(e){}})()` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||((!t)&&matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.setAttribute('data-theme','dark');document.documentElement.style.background='#0f0f14';}else{document.documentElement.style.background='#f5f5fa';}}catch(e){}})()` }} />
         {/* Material Symbols are self-hosted in globals.css (see the @font-face
             blocks) — no render-blocking external Google Fonts stylesheet needed. */}
       </head>
       <body
-        className={`${dmSans.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${instrumentSans.variable} ${ibmPlexMono.variable} antialiased`}
         suppressHydrationWarning
       >
         <SkipToContent />

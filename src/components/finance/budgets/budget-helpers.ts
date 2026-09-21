@@ -217,3 +217,45 @@ export function buildInsights(
 function formatCurrencyShort(amount: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(amount)
 }
+
+// ─── Lookback / date-range presets ──────────────────────────────
+
+export interface BudgetRange {
+  key: string
+  label: string
+  /** ISO YYYY-MM-DD; omitted for the default "this month" (server uses its own month logic). */
+  startDate?: string
+  endDate?: string
+  /** True for the default calendar-month view (full pace UI, editable). */
+  isThisMonth: boolean
+}
+
+export const BUDGET_LOOKBACK_PRESETS = [
+  { key: "this-month", label: "This Month" },
+  { key: "2w", label: "2W" },
+  { key: "1m", label: "1M" },
+  { key: "3m", label: "3M" },
+  { key: "6m", label: "6M" },
+] as const
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+/** Rolling windows ending today; "this-month" carries no dates so the API keeps
+ *  its native calendar-month behaviour (full monthly targets, pace UI). */
+export function getBudgetLookbackRange(key: string): BudgetRange {
+  const now = new Date()
+  if (key === "this-month") return { key, label: "This Month", isThisMonth: true }
+
+  const start = new Date(now)
+  switch (key) {
+    case "2w": start.setDate(start.getDate() - 13); break
+    case "1m": start.setMonth(start.getMonth() - 1); break
+    case "3m": start.setMonth(start.getMonth() - 3); break
+    case "6m": start.setMonth(start.getMonth() - 6); break
+    default: return { key: "this-month", label: "This Month", isThisMonth: true }
+  }
+  const label = BUDGET_LOOKBACK_PRESETS.find((p) => p.key === key)?.label ?? "Custom"
+  return { key, label, startDate: isoDate(start), endDate: isoDate(now), isThisMonth: false }
+}

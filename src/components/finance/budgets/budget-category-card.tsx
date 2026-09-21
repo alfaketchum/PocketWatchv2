@@ -19,9 +19,12 @@ interface BudgetCategoryCardProps {
   onDelete: (id: string) => void
   onToggleRollover: (id: string, rollover: boolean) => void
   showSixMonthAvg: boolean
+  /** Lookback windows show pro-rated targets — editing is disabled to avoid
+   *  saving a scaled number as the monthly limit. */
+  readOnly?: boolean
 }
 
-export function BudgetCategoryCard({ budget, transactions, isEditing, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleRollover, showSixMonthAvg }: BudgetCategoryCardProps) {
+export function BudgetCategoryCard({ budget, transactions, isEditing, onStartEdit, onSaveEdit, onCancelEdit, onDelete, onToggleRollover, showSixMonthAvg, readOnly }: BudgetCategoryCardProps) {
   const meta = getCategoryMeta(budget.category)
   const isOver = budget.percentUsed > 100
   const isWarn = budget.percentUsed >= 80 && !isOver
@@ -122,7 +125,7 @@ export function BudgetCategoryCard({ budget, transactions, isEditing, onStartEdi
             </div>
 
             <div className="flex items-center gap-1">
-              {isEditing ? (
+              {readOnly ? null : isEditing ? (
                 <>
                   {budget.sixMonthAvg !== null && <QuickChip label={`Avg ${formatCurrency(budget.sixMonthAvg, "USD", 0)}`} onClick={() => setEditValue(String(Math.round(budget.sixMonthAvg!)))} />}
                   <QuickChip label="+10%" onClick={() => setEditValue(String(Math.round(budget.monthlyLimit * 1.1)))} />

@@ -27,17 +27,17 @@ const CSS_VARS: Record<keyof Omit<ChartColors, "palette">, string> = {
 }
 
 const FALLBACK: ChartColors = {
-  primary: "#007AFF",
-  success: "#34C759",
-  error: "#FF3B30",
-  warning: "#FF9500",
-  foreground: "#1D1D1F",
-  foregroundMuted: "#8E8E93",
-  card: "#FFFFFF",
-  border: "#E5E5EA",
+  primary: "#5b5bd6",
+  success: "#1f9d57",
+  error: "#e0484d",
+  warning: "#b5791a",
+  foreground: "#1a1a27",
+  foregroundMuted: "#6b6b7d",
+  card: "#ffffff",
+  border: "#e7e7ef",
   palette: [
-    "#007AFF", "#FF9500", "#34C759", "#AF52DE",
-    "#FF2D55", "#5AC8FA", "#30D158", "#BF5AF2",
+    "#5b5bd6", "#b5791a", "#1f9d57", "#8886ff",
+    "#e0484d", "#4a4ac9", "#e0a54a", "#45c07a",
   ],
 }
 

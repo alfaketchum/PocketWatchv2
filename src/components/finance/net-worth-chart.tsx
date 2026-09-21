@@ -129,7 +129,7 @@ export function NetWorthChart({ data, range, height = 300, color }: NetWorthChar
   const lineColor = useMemo(() => {
     if (color) return color
     if (points.length >= 2 && points[points.length - 1].v < points[0].v) return "#ef4444"
-    return "#0A84FF" // brand Apple-blue (was off-brand indigo)
+    return "#8886ff" // Mercury Hybrid indigo accent
   }, [color, points])
 
   // ─── Layout ───

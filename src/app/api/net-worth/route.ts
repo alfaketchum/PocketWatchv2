@@ -101,18 +101,18 @@ export async function GET() {
     // ─── Combined ───
     const totalNetWorth = fiatNetWorth + cryptoValue
 
-    // ─── Historical snapshots (last 90 days for sparkline) ───
-    const ninetyDaysAgo = new Date()
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+    // ─── Historical snapshots (last 365 days: powers the sparkline + W/M/Y delta) ───
+    const historyStart = new Date()
+    historyStart.setDate(historyStart.getDate() - 365)
 
     const [financeSnapshots, portfolioSnapshots] = await Promise.all([
       db.financeSnapshot.findMany({
-        where: { userId: user.id, date: { gte: ninetyDaysAgo } },
+        where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
         select: { date: true, netWorth: true },
       }),
       db.portfolioSnapshot.findMany({
-        where: { userId: user.id, createdAt: { gte: ninetyDaysAgo } },
+        where: { userId: user.id, createdAt: { gte: historyStart } },
         orderBy: { createdAt: "asc" },
         select: { createdAt: true, totalValue: true },
       }),

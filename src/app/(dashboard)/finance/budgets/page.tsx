@@ -18,9 +18,10 @@ import { BudgetCreateModal } from "@/components/finance/budgets/budget-create-mo
 import { BudgetSubscriptionsImpact } from "@/components/finance/budgets/budget-subscriptions-impact"
 import { BudgetInlineInsights } from "@/components/finance/budgets/budget-inline-insights"
 import { BudgetDataDriven } from "@/components/finance/budgets/budget-data-driven"
+import { BudgetLookbackSelector } from "@/components/finance/budgets/budget-lookback-selector"
 import { BorderBeam } from "@/components/ui/border-beam"
-import { computeBudgetSummary, computePaceMetrics, buildCategoryData, buildInsights } from "@/components/finance/budgets/budget-helpers"
-import type { BudgetInsight } from "@/components/finance/budgets/budget-helpers"
+import { computeBudgetSummary, computePaceMetrics, buildCategoryData, buildInsights, getBudgetLookbackRange } from "@/components/finance/budgets/budget-helpers"
+import type { BudgetInsight, BudgetRange } from "@/components/finance/budgets/budget-helpers"
 
 // Recharts pace chart — load lazily (budget-data-driven already does the same).
 const BudgetPaceChart = dynamic(
@@ -36,7 +37,9 @@ import { FadeIn } from "@/components/motion/fade-in"
 type BudgetTab = "my-budget" | "data-driven"
 
 export default function FinanceBudgetsPage() {
-  const { data: budgets, isLoading, isError } = useFinanceBudgets()
+  const [range, setRange] = useState<BudgetRange>(() => getBudgetLookbackRange("this-month"))
+  const budgetRange = range.isThisMonth ? undefined : { startDate: range.startDate!, endDate: range.endDate! }
+  const { data: budgets, isLoading, isError } = useFinanceBudgets(budgetRange)
   const { data: deep } = useFinanceDeepInsights()
   const { data: suggestions } = useBudgetSuggestions()
   const { data: subsData } = useFinanceSubscriptions()
@@ -44,7 +47,11 @@ export default function FinanceBudgetsPage() {
 
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
-  const { data: txData } = useFinanceTransactions({ limit: 200, startDate: monthStart })
+  const { data: txData } = useFinanceTransactions({
+    limit: 200,
+    startDate: range.startDate ?? monthStart,
+    endDate: range.endDate,
+  })
 
   const createBudget = useCreateBudget()
   const updateBudget = useUpdateBudget()
@@ -75,10 +82,20 @@ export default function FinanceBudgetsPage() {
     })
   }
 
+  const isThisMonth = range.isThisMonth
   const summary = computeBudgetSummary(budgets)
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const dayOfMonth = now.getDate()
-  const pace = computePaceMetrics(summary.totalSpent, summary.totalBudgeted, dayOfMonth, daysInMonth)
+  // For a lookback window the period is complete (ends today), so pace = actuals.
+  const windowDays = isThisMonth
+    ? dayOfMonth
+    : Math.max(1, Math.round((new Date(`${range.endDate}T00:00:00`).getTime() - new Date(`${range.startDate}T00:00:00`).getTime()) / 86_400_000) + 1)
+  const pace = computePaceMetrics(
+    summary.totalSpent,
+    summary.totalBudgeted,
+    isThisMonth ? dayOfMonth : windowDays,
+    isThisMonth ? daysInMonth : windowDays,
+  )
 
   const categoryData = useMemo(() => buildCategoryData(budgets, trendsData, subsData), [budgets, trendsData, subsData])
   const segments = useMemo(() => (budgets ?? []).map((b) => ({ category: b.category, spent: b.spent, monthlyLimit: b.monthlyLimit })), [budgets])
@@ -149,7 +166,7 @@ export default function FinanceBudgetsPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Budgets / {currentMonth}</h1>
+          <h1 className="text-xl font-semibold text-foreground">Budgets / {isThisMonth ? currentMonth : range.label}</h1>
           {activeTab === "my-budget" && summary.budgetCount > 0 && (
             <p className={cn("text-xs font-medium mt-0.5", isOverBudget ? "text-error" : "text-success")}>
               {isOverBudget ? `Over Budget · ${summary.overBudgetCount} of ${summary.budgetCount} categories` : "On Track"}
@@ -207,21 +224,32 @@ export default function FinanceBudgetsPage() {
       ) : (
         /* ── My Budget with data ── */
         <>
+          <BudgetLookbackSelector value={range} onChange={setRange} />
+          {!isThisMonth && (
+            <p className="text-xs text-foreground-muted -mt-1">
+              Showing {range.label === "Custom" ? "custom range" : range.label} · budget targets pro-rated to the period. Editing is available in the This Month view.
+            </p>
+          )}
+
           <FadeIn>
             <div className="flex flex-col md:flex-row md:items-stretch gap-4">
-              <div className="md:w-[280px] flex-shrink-0">
+              <div className={cn("flex-shrink-0", isThisMonth ? "md:w-[280px]" : "w-full")}>
                 <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
               </div>
-              <div className="flex-1 min-w-0">
-                <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
-              </div>
+              {isThisMonth && (
+                <div className="flex-1 min-w-0">
+                  <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
+                </div>
+              )}
             </div>
           </FadeIn>
 
-          <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
+          {isThisMonth && (
+            <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
+          )}
 
           <FadeIn delay={0.1}>
-            <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} />
+            <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
           </FadeIn>
 
           <FadeIn delay={0.15}>

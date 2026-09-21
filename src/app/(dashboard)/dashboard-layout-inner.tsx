@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { usePortfolioSettings } from "@/hooks/portfolio/use-services"
 import { useAutoLock } from "@/hooks/use-auto-lock"
 import { useChat } from "@/hooks/use-chat"
+import { useSidebarCollapsed } from "@/hooks/use-sidebar-collapsed"
 import dynamic from "next/dynamic"
 const Sidebar = dynamic(() => import("@/components/layout/sidebar").then((m) => m.Sidebar), { ssr: false })
 import { Header } from "@/components/layout/header"
@@ -24,6 +25,7 @@ export function DashboardLayoutInner({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { collapsed: sidebarCollapsed, toggle: toggleSidebarCollapsed } = useSidebarCollapsed()
   const { data: portfolioSettings } = usePortfolioSettings()
   useAutoLock(portfolioSettings?.settings?.autoLockMinutes ?? 5)
   const { isOpen: chatOpen } = useChat()
@@ -65,21 +67,27 @@ export function DashboardLayoutInner({
     <div className="min-h-screen page-bg">
       <GlobalSyncPoller />
       <FinanceSyncPoller />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebarCollapsed}
+      />
       <TabletRailSidebar onOpenSidebar={() => setSidebarOpen(true)} />
 
       {/* Main content area */}
       <div
         data-app-main
         className={cn(
-          "md:pl-14 lg:pl-64 transition-[padding] duration-300",
+          "md:pl-14 transition-[padding] duration-300",
+          sidebarCollapsed ? "lg:pl-14" : "lg:pl-64",
           chatOpen && "lg:pr-[400px]",
         )}
       >
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main
           id="main-content"
-          className="px-4 py-4 md:py-6 md:px-4 max-w-[1400px] mx-auto overflow-x-hidden pb-[72px] md:pb-0 safe-area-landscape"
+          className="px-4 py-4 md:py-6 md:px-4 max-w-[1700px] mx-auto overflow-x-hidden pb-[72px] md:pb-0 safe-area-landscape"
         >
           <PageErrorBoundary>
             {children}

@@ -61,44 +61,51 @@
    ======================================== */
 
 :root {
-  /* Backgrounds — warm-paper undertone (OKLCH, hue ~75, very low chroma) */
-  --background: oklch(0.981 0.0035 75);          /* ~#FAFAF9 (was #FAFAFA) */
-  --background-secondary: oklch(0.947 0.005 75); /* ~#F1F0EE (was #F0F0F2) */
-  --foreground: oklch(0.146 0.006 70);           /* matches #0A0A0C lightness, warm */
-  --foreground-muted: oklch(0.411 0.006 70);     /* matches #4A4A4F lightness — WCAG AA */
-  --foreground-secondary: oklch(0.502 0.006 70); /* matches #636369 lightness — WCAG AA */
+  /* Mercury Hybrid — LIGHT (primary). Cool-tinted neutrals toward indigo;
+     one indigo accent; borders over shadows. See .picasso.md. */
+  --background: #f5f5fa;                          /* cool near-white page */
+  --background-secondary: #eeeef4;               /* sunken / secondary surface */
+  --foreground: #1a1a27;                          /* primary text (cool) */
+  --foreground-muted: #52525f;                    /* labels / muted — higher contrast */
+  --foreground-secondary: #6a6a78;                /* secondary body text */
 
-  /* Primary — Apple Blue (unchanged appearance, expressed as oklch) */
-  --primary: oklch(0.602 0.215 256);             /* = #007AFF */
-  --primary-hover: oklch(0.531 0.207 257);       /* = #0066D6 */
-  --primary-muted: rgba(0, 122, 255, 0.08);
-  --primary-subtle: rgba(0, 122, 255, 0.04);
+  /* Primary — the single indigo/periwinkle accent */
+  --primary: #5b5bd6;
+  --primary-hover: #4a4ac9;
+  --primary-muted: rgba(91, 91, 214, 0.10);
+  --primary-subtle: rgba(91, 91, 214, 0.05);
 
-  /* Surface layers — warm-paper, still bright + clean */
-  --card: oklch(0.998 0.0015 75);                /* ~#FFFFFE (was #FFFFFF) */
-  --card-elevated: oklch(0.947 0.005 75);        /* ~#F1F0EE (was #F0F0F2) */
-  --card-border: oklch(0.852 0.005 75);          /* ~#D2D1CD (was #D1D1D6) */
-  --card-border-hover: oklch(0.745 0.006 75);    /* ~#B1AFAA (was #B0B0B5) */
+  /* Surface layers — panel white, cool-tinted borders */
+  --card: #ffffff;
+  --card-elevated: #f0f0f6;
+  --card-border: #e7e7ef;
+  --card-border-hover: #d3d3e0;
 
-  /* Semantic (unchanged appearance, expressed as oklch) */
-  --success: oklch(0.727 0.181 149);             /* = #34C759 green */
-  --success-muted: rgba(52, 199, 89, 0.10);
-  --warning: oklch(0.762 0.161 64);              /* = #FF9500 orange */
-  --warning-muted: rgba(255, 149, 0, 0.10);
-  --error: oklch(0.594 0.221 27);                /* = #E5342E red */
-  --error-muted: rgba(229, 52, 46, 0.10);
-  --info: oklch(0.602 0.215 256);                /* = #007AFF blue */
-  --info-muted: rgba(0, 122, 255, 0.10);
+  /* Semantic — green/red reserved for signed values; warn amber; info = accent */
+  --success: #1f9d57;
+  --success-muted: rgba(31, 157, 87, 0.10);
+  --warning: #b5791a;
+  --warning-muted: rgba(181, 121, 26, 0.10);
+  --error: #e0484d;
+  --error-muted: rgba(224, 72, 77, 0.10);
+  --info: #5b5bd6;
+  --info-muted: rgba(91, 91, 214, 0.10);
 
   /* Readable semantic TEXT on the muted tints — light theme needs darker than
      the bright fill color so badge/label text clears WCAG AA on the 10% tint. */
-  --success-text: oklch(0.520 0.140 149);
-  --warning-text: oklch(0.545 0.130 64);
-  --error-text: oklch(0.520 0.200 27);
+  --success-text: #188049;
+  --warning-text: #8f6413;
+  --error-text: #c53b40;
+
+  /* Mercury extras — used by data-grid / segmented / rail recipes */
+  --row-hover: #f4f4fa;
+  --accent-head: #7c7c8e;
+  --accent-dim: #c6c6ef;
+  --seg-on-bg: #ececfb;
 
   /* Glass */
   --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border: rgba(30, 30, 60, 0.08);
 
   /* Spacing scale */
   --space-xs: 4px;
@@ -119,13 +126,13 @@
   --transition-base: 0.25s;
   --transition-slow: 0.35s;
 
-  /* Shadows — soft, layered */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(0, 0, 0, 0.06);
+  /* Shadows — a whisper only; borders + surface lift carry depth (Mercury) */
+  --shadow-sm: 0 1px 2px rgba(30, 30, 60, 0.07);
+  --shadow-md: 0 6px 22px rgba(30, 30, 60, 0.08);
+  --shadow-lg: 0 14px 40px rgba(30, 30, 60, 0.10);
 
   /* Fonts */
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* ========================================
@@ -133,48 +140,53 @@
    ======================================== */
 
 [data-theme="dark"] {
-  /* Warm-tinted dark surfaces — cozy near-black with amber undertone (hue ~70),
-     layered ramp: background < secondary/card < card-elevated for depth.
-     Lightness preserved per token so all existing contrast holds. */
-  --background: oklch(0.155 0.005 70);            /* preserves #0C0C0E near-black depth, warm */
-  --background-secondary: oklch(0.227 0.006 70); /* matches #1C1C1E depth, warm */
-  --foreground: oklch(0.965 0.003 75);           /* ~#F6F5F4 (was #F5F5F7) */
-  --foreground-muted: oklch(0.660 0.007 70);     /* lifted to clear WCAG AA on card-elevated */
-  --foreground-secondary: oklch(0.738 0.006 70); /* ~#AFADA9 (was #AEAEB2) */
+  /* Mercury Hybrid — DARK. The exact same system on a cool near-black; a pure
+     token swap. Cool-tinted neutrals (no warm undertone), single indigo accent. */
+  --background: #0f0f14;                          /* cool near-black page */
+  --background-secondary: #0c0c11;               /* sunken / secondary surface */
+  --foreground: #ecebf3;                          /* primary text — cool near-white */
+  --foreground-muted: #b4b4c4;                    /* labels / muted — higher contrast */
+  --foreground-secondary: #cccdd8;                /* secondary body text */
 
-  /* Primary — Apple Blue dark (corrected oklch to actually render #0A84FF) */
-  --primary: oklch(0.640 0.1985 257.4);          /* = #0A84FF */
-  --primary-hover: oklch(0.726 0.155 257);       /* = #409CFF */
-  --primary-muted: rgba(10, 132, 255, 0.12);
-  --primary-subtle: rgba(10, 132, 255, 0.06);
+  /* Primary — indigo/periwinkle, lifted for dark */
+  --primary: #8886ff;
+  --primary-hover: #a3a1ff;
+  --primary-muted: rgba(136, 134, 255, 0.14);
+  --primary-subtle: rgba(136, 134, 255, 0.07);
 
-  /* Layered warm surface ramp (each step lighter + warmer) */
-  --card: oklch(0.227 0.006 70);                 /* matches #1C1C1E depth, warm (ramp: bg<card<elevated) */
-  --card-elevated: oklch(0.301 0.007 70);        /* ~#2D2C29 (was #2C2C2E) */
-  --card-border: oklch(0.351 0.007 70);          /* ~#393734 (was #38383A) */
-  --card-border-hover: oklch(0.408 0.007 70);    /* ~#494744 (was #48484A) */
+  /* Layered cool surface ramp (bg < card < elevated) */
+  --card: #17171f;
+  --card-elevated: #20202c;
+  --card-border: #272733;
+  --card-border-hover: #33333f;
 
-  /* Semantic (unchanged appearance, expressed as oklch) */
-  --success: oklch(0.768 0.187 150);             /* = #30D158 green */
-  --success-muted: rgba(48, 209, 88, 0.12);
-  --warning: oklch(0.785 0.158 67);              /* = #FF9F0A orange */
-  --warning-muted: rgba(255, 159, 10, 0.12);
-  --error: oklch(0.637 0.223 28);                /* = #FF453A red */
-  --error-muted: rgba(255, 69, 58, 0.12);
-  --info: oklch(0.640 0.1985 257.4);             /* = #0A84FF blue */
-  --info-muted: rgba(10, 132, 255, 0.12);
+  /* Semantic — green/red reserved for signed values; warn amber; info = accent */
+  --success: #45c07a;
+  --success-muted: rgba(69, 192, 122, 0.14);
+  --warning: #e0a54a;
+  --warning-muted: rgba(224, 165, 74, 0.14);
+  --error: #f0585e;
+  --error-muted: rgba(240, 88, 94, 0.14);
+  --info: #8886ff;
+  --info-muted: rgba(136, 134, 255, 0.14);
 
   /* On dark tints the bright semantic colors already read fine. */
   --success-text: var(--success);
   --warning-text: var(--warning);
   --error-text: var(--error);
 
-  --glass-bg: rgba(0, 0, 0, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  /* Mercury extras */
+  --row-hover: #1f1f2b;
+  --accent-head: #8a8a9e;
+  --accent-dim: #4a4980;
+  --seg-on-bg: #262649;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(15, 15, 20, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.07);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
@@ -201,8 +213,12 @@
   --color-info-muted: var(--info-muted);
   --color-glass-bg: var(--glass-bg);
   --color-glass-border: var(--glass-border);
-  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --color-row-hover: var(--row-hover);
+  --color-accent-head: var(--accent-head);
+  --color-accent-dim: var(--accent-dim);
+  --color-seg-on-bg: var(--seg-on-bg);
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -270,7 +286,7 @@ select:focus-visible,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'DM Sans', var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+  font-family: 'Instrument Sans', var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   font-weight: 400;
   font-size: 15px;
   line-height: 1.5;
@@ -312,14 +328,14 @@ p:not([class*="tabular"]):not([class*="font-data"]):not([class*="text-xs"]):not(
 .card {
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
 .card-interactive {
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   /* Picasso: transform/color only — never `transition: all`. */
   transition:
@@ -346,7 +362,7 @@ p:not([class*="tabular"]):not([class*="font-data"]):not([class*="text-xs"]):not(
 .glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -363,7 +379,7 @@ p:not([class*="tabular"]):not([class*="font-data"]):not([class*="text-xs"]):not(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: 14px;
   border: none;
@@ -398,7 +414,7 @@ p:not([class*="tabular"]):not([class*="font-data"]):not([class*="text-xs"]):not(
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: 14px;
   border: 1px solid var(--card-border);
@@ -507,7 +523,7 @@ textarea,
 select {
   background: var(--background);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--foreground);
   font-size: 15px;
   padding: 8px 12px;
@@ -534,7 +550,7 @@ input[type="date"],
 input[type="datetime-local"] {
   background: var(--background);
   border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--foreground);
   font-size: 15px;
   padding: 8px 12px;
@@ -1309,6 +1325,13 @@ html {
   background-size: 20px 20px;
 }
 
+/* Dark mode: drop the dot grid (Mercury — no textured/gradient backgrounds),
+   use a clean solid page background. */
+[data-theme="dark"] .page-bg {
+  background-color: var(--background);
+  background-image: none;
+}
+
 /* ========================================
    STAT VALUE — Large financial figures
    ======================================== */
@@ -1484,14 +1507,14 @@ html {
 .budget-slider::-webkit-slider-thumb:hover {
   width: 24px;
   height: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 4px var(--slider-glow, rgba(0,122,255,0.15));
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 4px var(--slider-glow, rgba(91,91,214,0.15));
 }
 
 .budget-slider::-webkit-slider-thumb:active {
   cursor: grabbing;
   width: 26px;
   height: 26px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.18), 0 0 0 6px var(--slider-glow, rgba(0,122,255,0.12));
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18), 0 0 0 6px var(--slider-glow, rgba(91,91,214,0.12));
 }
 
 .budget-slider::-moz-range-thumb {

@@ -17,9 +17,11 @@ interface BudgetCategoryListProps {
   onToggleRollover: (id: string, rollover: boolean) => void
   onDeleteBudget: (id: string) => void
   onAddBudget: () => void
+  /** Lookback windows show pro-rated targets — hide editing/adding. */
+  readOnly?: boolean
 }
 
-export function BudgetCategoryList({ categories, txByCategory, onEditBudget, onToggleRollover, onDeleteBudget, onAddBudget }: BudgetCategoryListProps) {
+export function BudgetCategoryList({ categories, txByCategory, onEditBudget, onToggleRollover, onDeleteBudget, onAddBudget, readOnly }: BudgetCategoryListProps) {
   const [viewMode, setViewMode] = useState<"this" | "avg">("this")
   const [sortBy, setSortBy] = useState<SortMode>("status")
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -56,16 +58,19 @@ export function BudgetCategoryList({ categories, txByCategory, onEditBudget, onT
               onDelete={onDeleteBudget}
               onToggleRollover={onToggleRollover}
               showSixMonthAvg={viewMode === "avg"}
+              readOnly={readOnly}
             />
           </StaggerItem>
         ))}
       </StaggerChildren>
 
       <div className="flex items-center justify-between pt-1">
-        <button onClick={onAddBudget} className="text-xs text-primary font-medium hover:text-primary-hover transition-colors flex items-center gap-1">
-          <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span>
-          Add category budget
-        </button>
+        {readOnly ? <span /> : (
+          <button onClick={onAddBudget} className="text-xs text-primary font-medium hover:text-primary-hover transition-colors flex items-center gap-1">
+            <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span>
+            Add category budget
+          </button>
+        )}
         <Link href="/finance/budgets/workshop" className="text-xs text-foreground-muted hover:text-foreground transition-colors flex items-center gap-1">
           Edit All <span className="material-symbols-rounded" style={{ fontSize: 12 }}>arrow_forward</span>
         </Link>

@@ -11,12 +11,22 @@ interface BudgetWithSpending {
   id: string
   userId: string
   category: string
+  /** For a lookback window this is the pro-rated period target; for the default
+   *  month view it's the raw monthly target. */
   monthlyLimit: number
+  /** The raw stored monthly target (unscaled) — present on lookback responses. */
+  baseMonthlyLimit?: number
   rollover: boolean
   isActive: boolean
   spent: number
   remaining: number
   percentUsed: number
+}
+
+/** Optional lookback window for budget spending (ISO YYYY-MM-DD). */
+export interface BudgetRangeParam {
+  startDate: string
+  endDate: string
 }
 
 interface BudgetSuggestion {
@@ -59,10 +69,12 @@ interface BudgetAIData {
 
 // ─── Budget Hooks ───────────────────────────────────────────────
 
-export function useFinanceBudgets() {
+export function useFinanceBudgets(range?: BudgetRangeParam) {
+  const qs = range ? `?startDate=${range.startDate}&endDate=${range.endDate}` : ""
+  const rangeKey = range ? `${range.startDate}_${range.endDate}` : undefined
   return useQuery({
-    queryKey: financeKeys.budgets(),
-    queryFn: () => financeFetch<BudgetWithSpending[]>("/budgets"),
+    queryKey: financeKeys.budgets(rangeKey),
+    queryFn: () => financeFetch<BudgetWithSpending[]>(`/budgets${qs}`),
   })
 }
 
