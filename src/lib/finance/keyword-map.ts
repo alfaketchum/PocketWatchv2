@@ -23,7 +23,8 @@ const KEYWORD_MAP: Array<{ keywords: string[]; result: CategoryResult }> = [
   { keywords: ["electric", "power", "energy"], result: { category: "Bills & Utilities", subcategory: "Electric" } },
   { keywords: ["water utility", "water dept"], result: { category: "Bills & Utilities", subcategory: "Water" } },
   { keywords: ["rent", "lease", "apartment"], result: { category: "Housing", subcategory: "Rent" } },
-  { keywords: ["atm", "withdrawal"], result: { category: "Transfer", subcategory: "Bank Transfer" } },
+  // ATM/cash withdrawals are a cash expense, not a bank transfer.
+  { keywords: ["atm", "withdrawal"], result: { category: "ATM/Cash", subcategory: "Withdrawal" } },
   { keywords: ["interest charge", "finance charge"], result: { category: "Fees & Charges", subcategory: "Interest" } },
   { keywords: ["direct deposit", "payroll", "salary", "wages"], result: { category: "Income", subcategory: "Salary" } },
   { keywords: ["payment to", "credit card", "card ending in", "bill pay", "autopay"], result: { category: "Transfer", subcategory: "Bank Transfer" } },

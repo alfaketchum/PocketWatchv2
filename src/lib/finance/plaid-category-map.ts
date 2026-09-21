@@ -10,7 +10,8 @@ export const PLAID_CATEGORY_MAP: Record<string, CategoryResult> = {
   "INCOME_WAGES": { category: "Income", subcategory: "Salary" },
   "INCOME_OTHER_INCOME": { category: "Income", subcategory: null },
   "TRANSFER_IN_DEPOSIT": { category: "Transfer", subcategory: "Bank Transfer" },
-  "TRANSFER_OUT_WITHDRAWAL": { category: "Transfer", subcategory: "Bank Transfer" },
+  // Plaid TRANSFER_OUT_WITHDRAWAL = cash/ATM/teller withdrawals — a cash expense.
+  "TRANSFER_OUT_WITHDRAWAL": { category: "ATM/Cash", subcategory: "Withdrawal" },
   "TRANSFER_IN_ACCOUNT_TRANSFER": { category: "Transfer", subcategory: "Bank Transfer" },
   "TRANSFER_OUT_ACCOUNT_TRANSFER": { category: "Transfer", subcategory: "Bank Transfer" },
   "FOOD_AND_DRINK_GROCERIES": { category: "Food & Dining", subcategory: "Groceries" },

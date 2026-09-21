@@ -119,8 +119,12 @@ const TRANSFER_PLAID_PREFIXES = [
  * Detect transfers by name patterns and Plaid category.
  */
 export function detectTransferByName(tx: TransactionContext): HardRuleResult | null {
+  // ATM/cash withdrawals report primary TRANSFER_OUT but are a cash expense,
+  // not an inter-account transfer — let the cascade map them to ATM/Cash.
+  const isCashWithdrawal = tx.plaidCategory?.includes("TRANSFER_OUT_WITHDRAWAL") ?? false
+
   // 1. Plaid category
-  if (tx.plaidCategoryPrimary) {
+  if (tx.plaidCategoryPrimary && !isCashWithdrawal) {
     if (TRANSFER_PLAID_PREFIXES.some((p) => tx.plaidCategoryPrimary!.startsWith(p))) {
       return { ...TRANSFER_RESULT, source: "hard_rule", ruleName: "transfer" }
     }
