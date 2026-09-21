@@ -165,9 +165,9 @@ export function PatternReviewCard({ transaction: tx, onAccept, onChange, onSkip,
       {showPicker && (
         <div className="border-t border-card-border/50 px-6 py-4">
           <CategoryPicker
-            selected={null}
-            onSelect={(cat, sub) => {
-              onChange(cat, sub ?? undefined, nickname || undefined)
+            value={null}
+            onSelect={(cat) => {
+              onChange(cat, undefined, nickname || undefined)
               setShowPicker(false)
             }}
           />
