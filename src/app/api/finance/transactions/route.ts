@@ -44,8 +44,14 @@ export async function GET(req: NextRequest) {
 
     if (startDate) where.date = { ...((where.date as object) ?? {}), gte: new Date(startDate) }
     if (endDate) where.date = { ...((where.date as object) ?? {}), lte: new Date(endDate) }
-    if (category) where.category = category
-    if (accountId) where.accountId = accountId
+    if (category) {
+      const cats = category.split(",").map((c) => c.trim()).filter(Boolean)
+      if (cats.length) where.category = cats.length > 1 ? { in: cats } : cats[0]
+    }
+    if (accountId) {
+      const ids = accountId.split(",").map((a) => a.trim()).filter(Boolean)
+      if (ids.length) where.accountId = ids.length > 1 ? { in: ids } : ids[0]
+    }
     if (search) {
       where.OR = [
         { merchantName: { contains: search, mode: "insensitive" } },

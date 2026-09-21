@@ -29,8 +29,10 @@ export default function FinanceTransactionsPage() {
   const highlightId = searchParams.get("highlight") ?? ""
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState(initialSearch)
-  const [category, setCategory] = useState(searchParams.get("category") ?? "")
-  const [accountId, setAccountId] = useState(searchParams.get("account") ?? "")
+  const [categorySet, setCategorySet] = useState<Set<string>>(() => { const c = searchParams.get("category"); return new Set(c ? [c] : []) })
+  const [accountSet, setAccountSet] = useState<Set<string>>(() => { const a = searchParams.get("account"); return new Set(a ? [a] : []) })
+  const toggleCategory = (c: string) => { setCategorySet((prev) => { const n = new Set(prev); if (n.has(c)) n.delete(c); else n.add(c); return n }); setPage(1) }
+  const toggleAccount = (id: string) => { setAccountSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }); setPage(1) }
   // Optional ?month=YYYY-MM scopes to that calendar month (drill-through from the
   // dashboard spending donut, so the filtered totals match the month clicked).
   const monthParam = /^\d{4}-\d{2}$/.test(searchParams.get("month") ?? "") ? searchParams.get("month")! : ""
@@ -39,7 +41,7 @@ export default function FinanceTransactionsPage() {
     : ""
   // A ?highlight target may be any age, so default to the all-time range so the
   // linked transaction is actually in the result set (and can be scrolled to).
-  const [dateRange, setDateRange] = useState(monthParam ? "custom" : (highlightId || category || initialSearch ? "all" : "this-month"))
+  const [dateRange, setDateRange] = useState(monthParam ? "custom" : (highlightId || searchParams.get("category") || initialSearch ? "all" : "this-month"))
   const [txType, setTxType] = useState("")
   const [customStart, setCustomStart] = useState(monthParam ? `${monthParam}-01` : "")
   const [customEnd, setCustomEnd] = useState(monthEnd)
@@ -48,12 +50,12 @@ export default function FinanceTransactionsPage() {
   // Clear selections when page/filters change — track previous data identity
   const prevDataRef = useRef<string>("")
   useEffect(() => {
-    const key = `${page}-${dateRange}-${category}-${accountId}-${txType}-${search}`
+    const key = `${page}-${dateRange}-${[...categorySet].sort().join("|")}-${[...accountSet].sort().join("|")}-${txType}-${search}`
     if (prevDataRef.current && prevDataRef.current !== key) {
       setSelectedIds(new Set())
     }
     prevDataRef.current = key
-  }, [page, dateRange, category, accountId, txType, search])
+  }, [page, dateRange, categorySet, accountSet, txType, search])
 
   const dates = dateRange === "custom"
     ? { start: customStart || undefined, end: customEnd || undefined }
@@ -62,8 +64,8 @@ export default function FinanceTransactionsPage() {
     page,
     limit: 50,
     search: search || undefined,
-    category: category || undefined,
-    accountId: accountId || undefined,
+    category: categorySet.size ? [...categorySet].join(",") : undefined,
+    accountId: accountSet.size ? [...accountSet].join(",") : undefined,
     startDate: dates.start,
     endDate: dates.end,
     txType: txType || undefined,
@@ -95,7 +97,7 @@ export default function FinanceTransactionsPage() {
   // Scroll to (and page-walk toward) a ?highlight deep-link target.
   useHighlightScroll(highlightId, data, page, setPage)
   const reviewCount = reviewData?.count ?? 0
-  const hasFilters = search || category || accountId || txType || dateRange !== "this-month"
+  const hasFilters = search || categorySet.size || accountSet.size || txType || dateRange !== "this-month"
   const uncategorizedCount = deep?.uncategorizedCount ?? 0
   return (
     <div className="space-y-6">
@@ -203,9 +205,9 @@ export default function FinanceTransactionsPage() {
             ))}
           </div>
 
-          {/* Grouped category + account chips */}
-          <TransactionCategoryFilter value={category} onChange={(c) => { setCategory(c); setPage(1) }} />
-          <TransactionAccountFilter institutions={institutions ?? []} value={accountId} onChange={(id) => { setAccountId(id); setPage(1) }} />
+          {/* Grouped multi-select category + account chips */}
+          <TransactionCategoryFilter selected={[...categorySet]} onToggle={toggleCategory} onClear={() => { setCategorySet(new Set()); setPage(1) }} />
+          <TransactionAccountFilter institutions={institutions ?? []} selected={[...accountSet]} onToggle={toggleAccount} onClear={() => { setAccountSet(new Set()); setPage(1) }} />
 
           {/* Custom date range — pop-out calendar */}
           <div className="flex items-center gap-1.5">
