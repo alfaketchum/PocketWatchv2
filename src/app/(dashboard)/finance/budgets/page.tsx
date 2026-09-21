@@ -19,6 +19,7 @@ import { BudgetSubscriptionsImpact } from "@/components/finance/budgets/budget-s
 import { BudgetInlineInsights } from "@/components/finance/budgets/budget-inline-insights"
 import { BudgetDataDriven } from "@/components/finance/budgets/budget-data-driven"
 import { BudgetLookbackSelector } from "@/components/finance/budgets/budget-lookback-selector"
+import { BudgetOverview } from "@/components/finance/budgets/budget-overview"
 import { BorderBeam } from "@/components/ui/border-beam"
 import { computeBudgetSummary, computePaceMetrics, buildCategoryData, buildInsights, getBudgetLookbackRange } from "@/components/finance/budgets/budget-helpers"
 import type { BudgetInsight, BudgetRange } from "@/components/finance/budgets/budget-helpers"
@@ -48,7 +49,7 @@ export default function FinanceBudgetsPage() {
   const now = new Date()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
   const { data: txData } = useFinanceTransactions({
-    limit: 200,
+    limit: 500,
     startDate: range.startDate ?? monthStart,
     endDate: range.endDate,
   })
@@ -248,53 +249,66 @@ export default function FinanceBudgetsPage() {
             </p>
           )}
 
+          {/* Spending overview — click a category to decompose the ring into
+              that category's transactions (Personal Capital style). */}
           <FadeIn>
-            <div className="flex flex-col md:flex-row md:items-stretch gap-4">
-              <div className={cn("flex-shrink-0 flex flex-col", showPace ? "md:w-[280px]" : "w-full")}>
-                <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
-                {/* Toggle the secondary panels — sits under the spending ring */}
-                <button
-                  onClick={toggleDetails}
-                  className="mt-3 w-full flex items-center justify-between px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
-                  aria-pressed={showDetails}
-                >
-                  <span className="text-xs font-medium text-foreground-muted">
-                    {showDetails ? "Hide extra panels" : "Show extra panels"}
-                  </span>
-                  <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", showDetails ? "bg-primary" : "bg-card-border")}>
-                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", showDetails ? "translate-x-[18px]" : "translate-x-0.5")} />
-                  </span>
-                </button>
-              </div>
-              {showPace && (
-                <div className="flex-1 min-w-0">
-                  <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
-                </div>
-              )}
-            </div>
+            <BudgetOverview
+              transactions={txData?.transactions ?? []}
+              totalBudgeted={summary.totalBudgeted}
+              periodLabel={isThisMonth ? currentMonth : range.label}
+            />
           </FadeIn>
 
-          {showPace && (
-            <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
-          )}
-
-          <FadeIn delay={0.1}>
-            <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
-          </FadeIn>
+          {/* Toggle the budget-management panels (ring, pace, category edit, etc.) */}
+          <button
+            onClick={toggleDetails}
+            className="inline-flex items-center gap-4 px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
+            aria-pressed={showDetails}
+          >
+            <span className="text-xs font-medium text-foreground-muted">
+              {showDetails ? "Hide budget panels" : "Show budget panels"}
+            </span>
+            <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", showDetails ? "bg-primary" : "bg-card-border")}>
+              <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", showDetails ? "translate-x-[18px]" : "translate-x-0.5")} />
+            </span>
+          </button>
 
           {showDetails && (
-            <FadeIn delay={0.15}>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
-                <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
-              </div>
-            </FadeIn>
-          )}
+            <>
+              <FadeIn>
+                <div className="flex flex-col md:flex-row md:items-stretch gap-4">
+                  <div className={cn("flex-shrink-0", showPace ? "md:w-[280px]" : "w-full")}>
+                    <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
+                  </div>
+                  {showPace && (
+                    <div className="flex-1 min-w-0">
+                      <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
+                    </div>
+                  )}
+                </div>
+              </FadeIn>
 
-          {showDetails && untrackedCategories.length > 0 && (
-            <FadeIn delay={0.2}>
-              <BudgetUntrackedSection untrackedCategories={untrackedCategories} txByCategory={txByCategory} onAddBudget={(cat, limit) => createBudget.mutate({ category: cat, monthlyLimit: limit })} onBudgetAll={() => { for (const c of untrackedCategories) createBudget.mutate({ category: c.category, monthlyLimit: c.suggested }) }} />
-            </FadeIn>
+              {showPace && (
+                <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
+              )}
+
+              <FadeIn delay={0.1}>
+                <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
+              </FadeIn>
+
+              <FadeIn delay={0.15}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
+                  <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
+                </div>
+              </FadeIn>
+
+              {untrackedCategories.length > 0 && (
+                <FadeIn delay={0.2}>
+                  <BudgetUntrackedSection untrackedCategories={untrackedCategories} txByCategory={txByCategory} onAddBudget={(cat, limit) => createBudget.mutate({ category: cat, monthlyLimit: limit })} onBudgetAll={() => { for (const c of untrackedCategories) createBudget.mutate({ category: c.category, monthlyLimit: c.suggested }) }} />
+                </FadeIn>
+              )}
+            </>
           )}
         </>
       )}

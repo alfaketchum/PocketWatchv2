@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { DatePicker } from "@/components/ui/date-picker"
 import {
   BUDGET_LOOKBACK_PRESETS,
   getBudgetLookbackRange,
@@ -12,20 +13,21 @@ interface BudgetLookbackSelectorProps {
   onChange: (range: BudgetRange) => void
 }
 
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 /**
- * Lookback / date-range control for the budgets view: preset chips
- * (This Month · 2W · 1M · 3M · 6M) plus a custom From/To date range.
- * Pro-rated budget targets are applied downstream for non-month windows.
+ * Lookback / date-range control: preset chips (This Month · 2W · 1M · 3M · 6M)
+ * plus a custom From/To range using the pop-out calendar picker.
  */
 export function BudgetLookbackSelector({ value, onChange }: BudgetLookbackSelectorProps) {
-  const isCustom = value.key === "custom"
+  const todayIso = iso(new Date())
 
-  const setCustom = (start: string | undefined, end: string | undefined) => {
-    const startDate = start || value.startDate
-    const endDate = end || value.endDate
-    if (!startDate || !endDate) return
-    onChange({ key: "custom", label: "Custom", startDate, endDate, isThisMonth: false })
-  }
+  const setStart = (start: string) =>
+    onChange({ key: "custom", label: "Custom", startDate: start, endDate: value.endDate ?? todayIso, isThisMonth: false })
+  const setEnd = (end: string) =>
+    onChange({ key: "custom", label: "Custom", startDate: value.startDate ?? end, endDate: end, isThisMonth: false })
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -38,10 +40,8 @@ export function BudgetLookbackSelector({ value, onChange }: BudgetLookbackSelect
               key={p.key}
               onClick={() => onChange(getBudgetLookbackRange(p.key))}
               className={cn(
-                "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors tabular-nums",
-                active
-                  ? "bg-primary text-white shadow-sm"
-                  : "text-foreground-muted hover:text-foreground",
+                "text-[11px] font-semibold px-2.5 py-1.5 rounded-md transition-colors tabular-nums",
+                active ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
               )}
             >
               {p.label}
@@ -50,31 +50,15 @@ export function BudgetLookbackSelector({ value, onChange }: BudgetLookbackSelect
         })}
       </div>
 
-      {/* Custom From / To */}
-      <div
-        className={cn(
-          "flex items-center gap-1.5 text-xs",
-          isCustom ? "text-foreground" : "text-foreground-muted",
-        )}
-      >
-        <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">date_range</span>
-        <input
-          type="date"
-          value={value.startDate ?? ""}
-          max={value.endDate}
-          onChange={(e) => setCustom(e.target.value, undefined)}
-          className="bg-background border border-card-border rounded-md px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
-          aria-label="From date"
-        />
-        <span className="text-foreground-muted">to</span>
-        <input
-          type="date"
-          value={value.endDate ?? ""}
-          min={value.startDate}
-          onChange={(e) => setCustom(undefined, e.target.value)}
-          className="bg-background border border-card-border rounded-md px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none"
-          aria-label="To date"
-        />
+      {/* Custom From / To — pop-out calendar */}
+      <div className="flex items-center gap-1.5">
+        <div className="w-[150px]">
+          <DatePicker value={value.startDate ?? ""} onChange={setStart} placeholder="From" className="!min-h-0 !py-1.5 text-xs" />
+        </div>
+        <span className="text-xs text-foreground-muted">to</span>
+        <div className="w-[150px]">
+          <DatePicker value={value.endDate ?? ""} min={value.startDate} onChange={setEnd} placeholder="To" className="!min-h-0 !py-1.5 text-xs" />
+        </div>
       </div>
     </div>
   )

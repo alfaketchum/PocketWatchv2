@@ -206,3 +206,37 @@ export function getBudgetableCategories(): string[] {
     (c) => c !== "Uncategorized" && c !== "Transfer" && c !== "Income"
   )
 }
+
+// ─── Category groups (for the grouped re-categorize picker) ──────────
+// Income / Expenses / Investments / Transfers / Other, each holding the
+// concrete categories as its sub-items.
+
+export interface CategoryGroup {
+  label: string
+  icon: string
+  categories: string[]
+}
+
+export const CATEGORY_GROUPS: CategoryGroup[] = [
+  { label: "Income", icon: "payments", categories: ["Income"] },
+  {
+    label: "Expenses",
+    icon: "shopping_cart",
+    categories: [
+      "Housing", "Food & Dining", "Transportation", "Bills & Utilities",
+      "Entertainment", "Shopping", "Health & Fitness", "Personal Care",
+      "Education", "Travel", "Subscriptions", "Business Expenses",
+      "Insurance", "Gifts & Donations", "Taxes", "Fees & Charges",
+    ],
+  },
+  { label: "Investments", icon: "trending_up", categories: ["Investment", "Crypto"] },
+  { label: "Transfers", icon: "swap_horiz", categories: ["Transfer"] },
+  { label: "Other", icon: "more_horiz", categories: ["Uncategorized"] },
+]
+
+/** The group label a category belongs to (e.g. "Food & Dining" → "Expenses"). */
+export function getCategoryGroup(category: string | null | undefined): string {
+  if (!category) return "Other"
+  const g = CATEGORY_GROUPS.find((grp) => grp.categories.includes(category))
+  return g?.label ?? "Expenses"
+}
