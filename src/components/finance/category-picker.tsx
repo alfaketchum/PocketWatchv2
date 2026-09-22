@@ -6,7 +6,7 @@ import { CATEGORY_GROUPS, getCategoryMeta } from "@/lib/finance/categories"
 import { CATEGORIES } from "@/lib/finance/category-types"
 import { usePopoverAlign } from "@/hooks/finance/use-popover-align"
 
-const PANEL_WIDTH = 340 // w-[340px]
+const PANEL_WIDTH = 600 // w-[600px] — wide + short (2-col grid)
 
 interface CategoryPickerProps {
   value: string | null
@@ -30,11 +30,15 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
   // Flip to right-alignment when a left-opening panel would run off the page.
   const overflowsRight = usePopoverAlign(ref, open, PANEL_WIDTH)
   const alignRight = align === "right" || overflowsRight
+  // Open upward when the trigger is in the lower half of the viewport so the
+  // tall panel stays on screen instead of running off the bottom.
+  const [openUp, setOpenUp] = useState(false)
 
   const close = () => { setOpen(false); setQ(""); setPickedCat(null); setCustomSub("") }
 
   useEffect(() => {
     if (!open) return
+    if (ref.current) setOpenUp(ref.current.getBoundingClientRect().bottom > window.innerHeight * 0.5)
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close() }
     document.addEventListener("mousedown", h)
     return () => document.removeEventListener("mousedown", h)
@@ -70,7 +74,7 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
       </button>
 
       {open && (
-        <div className={cn("absolute top-full mt-1 z-50 w-[340px] max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-xl shadow-xl p-3 animate-in fade-in slide-in-from-top-1 duration-150", alignRight ? "right-0" : "left-0")}>
+        <div className={cn("absolute z-50 w-[600px] max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-xl shadow-xl p-3 animate-in fade-in duration-150", openUp ? "bottom-full mb-1" : "top-full mt-1", alignRight ? "right-0" : "left-0")}>
           {!pickedCat ? (
             <>
               <input
@@ -80,7 +84,7 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
                 placeholder="Search categories..."
                 className="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-foreground-muted mb-2.5 focus:border-primary focus:outline-none"
               />
-              <div className="max-h-[380px] overflow-y-auto scroll-touch">
+              <div className="max-h-[420px] overflow-y-auto scroll-touch">
                 {groups.length === 0 ? (
                   <p className="text-xs text-foreground-muted text-center py-3">No matches</p>
                 ) : groups.map((g) => (
@@ -89,22 +93,24 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
                       <span className="material-symbols-rounded text-foreground-muted/70" style={{ fontSize: 13 }} aria-hidden="true">{g.icon}</span>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">{g.label}</span>
                     </div>
-                    {g.categories.map((cat) => {
-                      const cm = getCategoryMeta(cat)
-                      const sel = cat === value
-                      const hasSubs = (SUBCATEGORIES[cat] ?? []).length > 0
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => chooseCategory(cat)}
-                          className={cn("w-full flex items-center gap-2 pl-4 pr-2 py-2 rounded-md text-left transition-colors", sel ? "bg-primary-muted" : "hover:bg-background-secondary")}
-                        >
-                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cm.hex }} />
-                          <span className={cn("text-sm truncate flex-1", sel ? "text-primary font-medium" : "text-foreground")}>{cat}</span>
-                          {hasSubs && <span className="material-symbols-rounded text-foreground-muted/50 flex-shrink-0" style={{ fontSize: 14 }} aria-hidden="true">chevron_right</span>}
-                        </button>
-                      )
-                    })}
+                    <div className="grid grid-cols-2 gap-1">
+                      {g.categories.map((cat) => {
+                        const cm = getCategoryMeta(cat)
+                        const sel = cat === value
+                        const hasSubs = (SUBCATEGORIES[cat] ?? []).length > 0
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => chooseCategory(cat)}
+                            className={cn("flex items-center gap-2 px-2 py-2 rounded-md text-left transition-colors border", sel ? "bg-primary-muted border-primary/30" : "border-card-border hover:bg-background-secondary")}
+                          >
+                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cm.hex }} />
+                            <span className={cn("text-sm truncate flex-1", sel ? "text-primary font-medium" : "text-foreground")}>{cat}</span>
+                            {hasSubs && <span className="material-symbols-rounded text-foreground-muted/50 flex-shrink-0" style={{ fontSize: 14 }} aria-hidden="true">chevron_right</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -119,19 +125,21 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
                 <span className="truncate">{pickedCat}</span>
               </button>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted px-1.5 pb-1">Subcategory</p>
-              <div className="max-h-[340px] overflow-y-auto scroll-touch">
-                {subs.map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => chooseSub(sub)}
-                    className="w-full px-3 py-2 rounded-md text-left text-sm text-foreground hover:bg-background-secondary transition-colors"
-                  >
-                    {sub}
-                  </button>
-                ))}
+              <div className="max-h-[360px] overflow-y-auto overflow-x-hidden scroll-touch">
+                <div className="grid grid-cols-2 gap-1">
+                  {subs.map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => chooseSub(sub)}
+                      className="px-3 py-2 rounded-md text-left text-sm text-foreground border border-card-border hover:bg-background-secondary transition-colors truncate"
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={() => chooseSub(null)}
-                  className="w-full px-3 py-2 rounded-md text-left text-sm text-foreground-muted italic hover:bg-background-secondary transition-colors"
+                  className="w-full mt-1 px-3 py-2 rounded-md text-left text-sm text-foreground-muted italic hover:bg-background-secondary transition-colors"
                 >
                   No subcategory
                 </button>
