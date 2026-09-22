@@ -55,6 +55,18 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
     return { detected: 0, newlyAdded: 0, updated: 0, priceChanges: [] }
   }
 
+  // Resolve each merchant's enriched category from its transactions so billType
+  // is classified from OUR category (e.g. "Software"), not a raw Plaid category
+  // like FOOD_AND_DRINK that would mis-file a SaaS subscription as a bill.
+  const merchantCategory = new Map<string, string>()
+  for (const t of transactions) {
+    const key = (t.merchantName ?? t.name).trim().toLowerCase()
+    if (!key || !t.category || t.category === "Uncategorized") continue
+    if (!merchantCategory.has(key)) merchantCategory.set(key, t.category)
+  }
+  const resolveCategory = (name: string, fallback: string | null): string | null =>
+    merchantCategory.get(name.trim().toLowerCase()) ?? fallback
+
   const existing = await db.financeSubscription.findMany({
     where: { userId },
   })
@@ -163,13 +175,14 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
     // means it's likely already cancelled, so it shouldn't clutter the queue.
     if (new Date(sub.lastChargeDate) < threeMonthsAgo) continue
 
+    const detectedCat = resolveCategory(sub.merchantName, sub.category)
     await db.financeSubscription.create({
       data: {
         userId,
         merchantName: sub.merchantName,
         amount: sub.amount,
         frequency: sub.frequency,
-        category: sub.category,
+        category: detectedCat,
         accountId: sub.accountId,
         lastChargeDate: new Date(sub.lastChargeDate),
         nextChargeDate: new Date(sub.nextChargeDate),
@@ -214,6 +227,7 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
       : stream.frequency === "ANNUALLY" ? "yearly"
       : "monthly"
     const nextDate = stream.lastDate ? computeNextChargeDate(stream.lastDate, freq) : undefined
+    const streamCat = resolveCategory(name, stream.category)
 
     await db.financeSubscription.create({
       data: {
@@ -221,7 +235,7 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
         merchantName: name,
         amount,
         frequency: freq,
-        category: stream.category,
+        category: streamCat,
         accountId: stream.accountId,
         lastChargeDate: stream.lastDate,
         nextChargeDate: nextDate,
