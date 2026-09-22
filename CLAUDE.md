@@ -3,10 +3,10 @@
 ## Identity & Git
 
 - **Product name**: PocketWatch
-- **Dev repo (origin)**: `cryptoxinu/PocketWatcher` (private) — default push target
-- **Production repo**: `viperrcrypto/PocketWatch` (public)
+- **Dev repo (origin)**: `alfaketchum/PocketWatchv2` — default push target
+- **Production repo**: none currently
 - **Branch**: `main` is default
-- **Remotes**: `origin` → PocketWatcher (private dev), `production` → PocketWatch (public)
+- **Remotes**: `origin` → `alfaketchum/PocketWatchv2` (no `production` remote at present)
 
 ## HARD RULES (never break these)
 
