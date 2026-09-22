@@ -94,7 +94,7 @@ export default function NetWorthPage() {
           {isLoading ? (
             <div className="h-[260px] animate-shimmer rounded-lg" />
           ) : (
-            <NetWorthHistoryChart data={history} height={260} />
+            <NetWorthHistoryChart data={history} breakdown={data?.breakdownHistory} height={260} />
           )}
         </FinanceHeroCard>
       </FadeIn>
