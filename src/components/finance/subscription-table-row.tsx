@@ -210,9 +210,10 @@ function RowActions({
       {status !== "cancelled" && status !== "dismissed" && (
         <button
           onClick={() => onDismiss?.(id)}
-          className={cn(btn, "text-foreground-muted hover:text-error hover:bg-error/10")}
-          title="Not a subscription">
+          className={cn(btn, "flex items-center gap-1 border border-card-border/50 text-foreground-muted hover:text-error hover:bg-error/10 hover:border-error/20")}
+          title="Not a subscription — dismiss it">
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>block</span>
+          Not a sub
         </button>
       )}
     </div>

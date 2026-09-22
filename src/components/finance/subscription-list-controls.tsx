@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils"
 
-export type SubTab = "suggested" | "active" | "dismissed"
+export type SubTab = "suggested" | "active" | "inactive"
 export type SubSort = "flat" | "frequency" | "cost" | "date"
 export type SubView = "table" | "card"
 
@@ -30,7 +30,7 @@ export function SubscriptionListControls({
   const tabs: Array<{ key: SubTab; label: string }> = [
     { key: "suggested", label: "Suggested" },
     { key: "active", label: "Active" },
-    { key: "dismissed", label: "Dismissed" },
+    { key: "inactive", label: "Inactive" },
   ]
 
   return (

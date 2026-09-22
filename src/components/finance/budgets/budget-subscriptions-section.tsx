@@ -65,14 +65,19 @@ export function BudgetSubscriptionsSection() {
   // "Active" tab = live subscriptions only. Cancelled/dismissed drop out so acting
   // on an item (cancel or "not a sub") removes it from the list immediately.
   const activeSubs = subs.filter((s) => !["suggested", "dismissed", "cancelled"].includes(s.status))
+  // "Inactive" tab = things set aside: cancelled (was real, may return → Reactivate)
+  // and dismissed (never a sub → Restore). The default query returns cancelled;
+  // dismissed comes from its own fetch.
+  const cancelledSubs = subs.filter((s) => s.status === "cancelled")
   const dismissedSubs = dismissedData?.subscriptions ?? []
+  const inactiveSubs = [...cancelledSubs, ...dismissedSubs]
   const flaggedSubs = subs.filter((s) => !s.isWanted && s.status === "active")
   const pausedSubs = subs.filter((s) => s.status === "paused")
   const potentialSavings = flaggedSubs.reduce((sum, s) => sum + s.amount, 0)
     + pausedSubs.reduce((sum, s) => sum + s.amount, 0)
 
   const filteredSubs = tab === "suggested" ? suggestedSubs
-    : tab === "dismissed" ? dismissedSubs
+    : tab === "inactive" ? inactiveSubs
     : activeSubs
 
   const sortedSubs = useMemo(() => {
@@ -199,7 +204,7 @@ export function BudgetSubscriptionsSection() {
         {(subs.length > 0 || dismissedSubs.length > 0) && (
           <SubscriptionListControls
             tab={tab}
-            counts={{ suggested: suggestedSubs.length, active: activeSubs.length, dismissed: dismissedSubs.length }}
+            counts={{ suggested: suggestedSubs.length, active: activeSubs.length, inactive: inactiveSubs.length }}
             onTabChange={handleTabChange}
             sortBy={sortBy}
             onSortChange={handleSortChange}
@@ -234,9 +239,9 @@ export function BudgetSubscriptionsSection() {
         ) : !isLoading ? (
           <FinanceEmpty
             icon="autorenew"
-            title={tab === "suggested" ? "No suggestions" : tab === "dismissed" ? "Nothing dismissed" : "No subscriptions yet"}
-            description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "dismissed" ? "Dismissed subscriptions show up here." : "Confirm a suggestion or mark a transaction as a subscription."}
-            action={tab !== "dismissed" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
+            title={tab === "suggested" ? "No suggestions" : tab === "inactive" ? "Nothing inactive" : "No subscriptions yet"}
+            description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "inactive" ? "Cancelled and dismissed subscriptions show up here — reactivate or restore them anytime." : "Confirm a suggestion or mark a transaction as a subscription."}
+            action={tab !== "inactive" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
           />
         ) : null}
       </div>
