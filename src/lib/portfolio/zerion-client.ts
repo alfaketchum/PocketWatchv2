@@ -352,39 +352,37 @@ export async function fetchMultiWalletPositions(
   const wallets: ZerionWalletData[] = []
   const failed: string[] = []
 
-  // Process wallets in batches of 3 — fast enough for responsiveness
-  // while staying under Zerion's rate limits with brief delays between batches.
-  const BATCH_SIZE = 3
-  for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
-    const batch = addresses.slice(i, i + BATCH_SIZE)
-    const results = await Promise.allSettled(
-      batch.map(async (address) => {
-        const positions = await fetchWalletPositions(apiKey, address)
-        return {
-          address,
-          totalValue: positions.reduce((sum, p) => sum + p.value, 0),
-          positions,
-        }
+  // Pace the per-wallet requests. The governor gates this whole multi-wallet
+  // fetch as ONE operation, so the individual Zerion calls inside must self-pace
+  // or a burst of them 429s the tail wallets (→ balance_partial). Fetch one
+  // wallet at a time, spacing requests from a Zerion requests-per-minute budget
+  // so the batch stays under the limit at ANY wallet count — 1–2 wallets skip
+  // pacing (no burst risk), more wallets spread out proportionally. After a 429,
+  // wait a longer cooldown so the remaining wallets don't cascade. Only when
+  // EVERY wallet fails do we throw (below), letting the caller fall back to
+  // another provider — a single failure just drops that one wallet.
+  const RPM_BUDGET = Number(process.env.ZERION_RPM_BUDGET) || 60 // ~1 req/s default
+  const safeGapMs = Math.ceil(60_000 / Math.max(1, RPM_BUDGET))
+  const INTER_WALLET_MS = addresses.length <= 2 ? 0 : safeGapMs
+  const RATE_LIMIT_COOLDOWN_MS = Number(process.env.ZERION_RATE_COOLDOWN_MS) || 3_000
+  for (let i = 0; i < addresses.length; i++) {
+    const address = addresses[i]
+    let hit429 = false
+    try {
+      const positions = await fetchWalletPositions(apiKey, address)
+      wallets.push({
+        address,
+        totalValue: positions.reduce((sum, p) => sum + p.value, 0),
+        positions,
       })
-    )
-
-    for (let j = 0; j < results.length; j++) {
-      const result = results[j]
-      if (result.status === "fulfilled") {
-        wallets.push(result.value)
-      } else {
-        failed.push(batch[j])
-        console.warn(`[zerion] Wallet ${batch[j].slice(0, 10)}… failed: ${result.reason?.message}`)
-        // Bail immediately on 429 — let multi-balance-fetcher try next provider
-        if (result.reason?.status === 429 || result.reason instanceof ZerionRateLimitError) {
-          throw result.reason
-        }
-      }
+    } catch (reason) {
+      failed.push(address)
+      const e = reason as { message?: string; status?: number }
+      hit429 = e?.status === 429 || reason instanceof ZerionRateLimitError
+      console.warn(`[zerion] Wallet ${address.slice(0, 10)}… failed: ${e?.message}`)
     }
-
-    // Minimal delay between batches — governor handles rate limiting
-    if (i + BATCH_SIZE < addresses.length) {
-      await new Promise((r) => setTimeout(r, 50))
+    if (i < addresses.length - 1) {
+      await new Promise((r) => setTimeout(r, hit429 ? RATE_LIMIT_COOLDOWN_MS : INTER_WALLET_MS))
     }
   }
 
