@@ -31,7 +31,12 @@ function makeQueryClient() {
         staleTime: 5 * 60 * 1000,
         gcTime: 30 * 60 * 1000,
         refetchOnWindowFocus: false,
-        refetchOnMount: false,
+        // Refetch stale data when a component mounts. staleTime (5m) + the
+        // per-layout prefetching still avoid redundant fetches within the
+        // window; without this, navigating back to a page shows whatever was
+        // cached (often empty/partial from an early load) and never refreshes
+        // until a hard refresh rebuilds the cache.
+        refetchOnMount: true,
         retry: (failureCount, error) => {
           // Don't retry auth errors
           if (error instanceof Error && error.message.toLowerCase().includes("authentication required")) {
