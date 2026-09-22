@@ -13,7 +13,7 @@ export const CATEGORIES = {
   "Education": ["Tuition", "Books", "Courses", "Student Loan"],
   "Travel": ["Flights", "Hotels", "Rental Car", "Vacation"],
   "Bills & Utilities": ["Electric", "Water", "Gas", "Internet", "Trash"],
-  "Phone & Data": ["Phone", "Data"],
+  "Phone & Data": ["Phone", "Data", "eSIM"],
   "Fees & Charges": ["Bank Fee", "ATM Fee", "Late Fee", "Interest", "Statement Credit", "Refund"],
   "Business Expenses": ["Office Supplies", "Software", "Marketing", "Travel", "Meals"],
   "Income": ["Salary", "Freelance", "Interest", "Dividends", "Refund", "Reimbursement"],
