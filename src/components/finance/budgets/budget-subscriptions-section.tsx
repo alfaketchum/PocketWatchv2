@@ -229,6 +229,7 @@ export function BudgetSubscriptionsSection() {
                 onUpdateStatus={cardHandlers.onUpdateStatus}
                 onRequestCancel={cardHandlers.onRequestCancel}
                 onSetReminder={cardHandlers.onSetReminder}
+                onUpdateFrequency={cardHandlers.onUpdateFrequency}
                 onDismiss={cardHandlers.onDismiss}
               />
             ) : (

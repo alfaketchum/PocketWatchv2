@@ -4,7 +4,7 @@
  */
 
 import { stringSimilarity } from "./normalize"
-import { computeFrequencyFromDates } from "./subscriptions"
+import { computeFrequencyFromDates, isExcludedMerchant } from "./subscriptions"
 
 export interface UnifiedSubscription {
   id: string
@@ -186,6 +186,9 @@ export function mergeSubscriptions(
   for (const ps of outflows) {
     if (matchedPlaidIds.has(ps.streamId)) continue
     const rawName = (ps.merchantName && ps.merchantName.trim()) || ps.description
+    // Skip provider streams that aren't subscriptions (P2P, card/bank payments,
+    // rideshare, groceries, …) — same exclusion detection applies.
+    if (isExcludedMerchant(rawName)) continue
     // Filter out gibberish (Plaid tokens, base64 strings)
     const isGibberish = rawName.length > 20 && !/\s/.test(rawName)
     const name = isGibberish ? (ps.category ?? "Unknown Subscription") : rawName

@@ -9,6 +9,7 @@ import type { SubscriptionItem } from "@/hooks/finance/use-subscriptions"
 import {
   FREQUENCY_LABELS,
   FREQUENCY_COLORS,
+  FREQUENCY_OPTIONS,
   DETECTION_LABELS,
   STATUS_STYLES,
 } from "@/components/finance/subscription-display"
@@ -17,6 +18,7 @@ export interface SubscriptionRowHandlers {
   onUpdateStatus?: (id: string, status: string) => void
   onRequestCancel?: (sub: { id: string; merchantName: string; amount: number; frequency: string }) => void
   onSetReminder?: (id: string, date: string | null) => void
+  onUpdateFrequency?: (id: string, frequency: string) => void
   onDismiss?: (id: string) => void
 }
 
@@ -27,9 +29,12 @@ export function SubscriptionTableRow({
   onUpdateStatus,
   onRequestCancel,
   onSetReminder,
+  onUpdateFrequency,
   onDismiss,
 }: { sub: SubscriptionItem } & SubscriptionRowHandlers) {
   const [expanded, setExpanded] = useState(false)
+  const [editingFreq, setEditingFreq] = useState(false)
+  const [pendingFreq, setPendingFreq] = useState(sub.frequency)
   const displayName = sub.nickname || sub.merchantName
   const urgency = sub.nextChargeDate ? getBillingUrgency(sub.nextChargeDate, sub.frequency) : null
   const detection = sub.detectionMethod ? DETECTION_LABELS[sub.detectionMethod] : null
@@ -76,14 +81,55 @@ export function SubscriptionTableRow({
           )}
         </td>
 
-        {/* Frequency */}
+        {/* Frequency — suggested value with pencil to edit + confirm/cancel */}
         <td className="py-2.5 px-2">
-          <span className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium",
-            FREQUENCY_COLORS[sub.frequency] ?? "bg-background-secondary text-foreground-muted",
-          )}>
-            {FREQUENCY_LABELS[sub.frequency] ?? sub.frequency}
-          </span>
+          {editingFreq ? (
+            <div className="flex items-center gap-1">
+              <select
+                value={pendingFreq}
+                onChange={(e) => setPendingFreq(e.target.value)}
+                autoFocus
+                className="appearance-none cursor-pointer px-1.5 py-0.5 rounded text-[10px] font-medium bg-background-secondary text-foreground border border-card-border outline-none focus:ring-1 focus:ring-primary"
+              >
+                {FREQUENCY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  if (pendingFreq !== sub.frequency) onUpdateFrequency?.(sub.id, pendingFreq)
+                  setEditingFreq(false)
+                }}
+                title="Confirm change"
+                className="text-success hover:bg-success/10 rounded p-0.5 transition-colors"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>check</span>
+              </button>
+              <button
+                onClick={() => { setPendingFreq(sub.frequency); setEditingFreq(false) }}
+                title="Cancel"
+                className="text-foreground-muted hover:bg-background-secondary rounded p-0.5 transition-colors"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>close</span>
+              </button>
+            </div>
+          ) : (
+            <div className="group/freq inline-flex items-center gap-1">
+              <span className={cn(
+                "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium",
+                FREQUENCY_COLORS[sub.frequency] ?? "bg-background-secondary text-foreground-muted",
+              )}>
+                {FREQUENCY_LABELS[sub.frequency] ?? sub.frequency}
+              </span>
+              <button
+                onClick={() => { setPendingFreq(sub.frequency); setEditingFreq(true) }}
+                title="Edit frequency"
+                className="opacity-0 group-hover/freq:opacity-100 transition-opacity text-foreground-muted hover:text-primary"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 13 }}>edit</span>
+              </button>
+            </div>
+          )}
         </td>
 
         {/* Next charge */}

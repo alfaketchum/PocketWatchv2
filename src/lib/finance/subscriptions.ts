@@ -68,12 +68,31 @@ const EXCLUDED_CATEGORIES = new Set([
   "Insurance", "Healthcare", "Medical",
 ])
 
-// Merchant name patterns that indicate CC payments (not subscriptions)
+// Merchant name patterns that indicate CC/bank payments & fees (not subscriptions)
 const CC_PAYMENT_PATTERNS = [
   /credit\s*card\s*(payment)?$/i,
   /^(chase|amex|citi|discover|capital one|wells fargo|bank of america)\s+credit/i,
   /autopay/i,
+  /cr\s?card\s?pmt/i,      // e.g. "CAPITAL ONE CRCARDPMT"
+  /card\s?pmt/i,
+  /crcard/i,
+  /interest charge/i,      // e.g. "PURCHASE INTEREST CHARGE"
+  /crcardpmt/i,
 ]
+
+/**
+ * True when a merchant name should never be treated as a subscription — it
+ * matches the excluded-merchant list (rideshare, P2P, groceries, etc.) or a
+ * card/bank payment pattern. Shared by detection and the provider-stream merge
+ * so both surfaces filter the same noise. Subscription overrides (Prime, etc.)
+ * are respected.
+ */
+export function isExcludedMerchant(name: string): boolean {
+  const upper = name.toUpperCase()
+  const isOverride = SUBSCRIPTION_OVERRIDES.some((o) => upper.includes(o))
+  if (!isOverride && [...EXCLUDED_MERCHANTS].some((m) => upper.includes(m))) return true
+  return CC_PAYMENT_PATTERNS.some((p) => p.test(name))
+}
 
 interface TransactionInput {
   id: string
@@ -234,10 +253,7 @@ export function detectSubscriptions(
     const cleaned = cleanMerchantName(tx.merchantName || tx.rawName)
     if (!cleaned) continue
 
-    const upperCleaned = cleaned.toUpperCase()
-    const isOverride = SUBSCRIPTION_OVERRIDES.some((o) => upperCleaned.includes(o))
-    if (!isOverride && [...EXCLUDED_MERCHANTS].some((m) => upperCleaned.includes(m))) continue
-    if (CC_PAYMENT_PATTERNS.some((p) => p.test(cleaned))) continue
+    if (isExcludedMerchant(cleaned)) continue
 
     let groupKey: string | null = null
     for (const key of groups.keys()) {
