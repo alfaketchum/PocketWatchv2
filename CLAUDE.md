@@ -144,36 +144,11 @@ src/
 
 ## Key Patterns
 
-### Data Loading & Rendering (avoid "stale/blank until hard refresh")
-These rules prevent the class of bug where a component renders blank or stale on
-soft (client-side) navigation but is correct after a hard refresh. All three were
-verified by reproducing the bug live (a lock → unlock cycle) — the login
-navigation method (`router.push` vs full load) was NOT the cause; the cache
-policy below was.
-
-- **React Query default is `refetchOnMount: true`** (see `query-provider.tsx`).
-  Do not set it to `false` globally — that makes remounted pages show whatever
-  was cached (often empty/partial from an early load) and never refresh. Rely on
-  `staleTime` + per-layout prefetching to avoid redundant fetches, not on
-  disabling mount refetch.
-- **Persistent layout components never remount**, so `refetchOnMount` can't keep
-  them fresh. Anything mounted once in the dashboard layout (sidebar widgets,
-  header, etc.) that reads query data must refetch on navigation:
-  ```typescript
-  const pathname = usePathname()
-  const { data, refetch } = useSomeQuery()
-  useEffect(() => { if (data === undefined) refetch() }, [pathname, data, refetch])
-  ```
-  See `sidebar-net-worth.tsx` and `sidebar.tsx` (review-count badge).
-- **Don't return `null` for a whole section purely because data is loading.**
-  Render the component's structure (skeleton/placeholder) so the layout is stable
-  and components don't pop in/out. Reserve `return null` for genuinely-empty
-  states, not the transient loading state.
-- **The service worker (`public/sw.js`) is production-only.** It caches JS/CSS
-  cache-first, which in dev pins Next's stable-named chunks to stale content — a
-  new tab/window then shows old code until a hard refresh. `client-shell.tsx`
-  only registers it when `NODE_ENV === "production"` and unregisters + clears
-  `pw-*` caches otherwise; keep that gate.
+### Data Loading (avoid "stale/blank until hard refresh")
+- Keep React Query's `refetchOnMount: true` (`query-provider.tsx`); `false` makes remounts show stale/empty cache. Limit refetches with `staleTime` + layout prefetch, not by disabling mount refetch.
+- Persistent layout widgets never remount, so refetch them on nav: `useEffect(() => { if (!data) refetch() }, [pathname, data, refetch])` — see `sidebar-net-worth.tsx`, `sidebar.tsx`.
+- Don't `return null` for a whole section while loading — render a skeleton; reserve `null` for genuinely-empty states.
+- Service worker (`public/sw.js`) is production-only: `client-shell.tsx` registers it (else unregisters + clears `pw-*` caches) only when `NODE_ENV === "production"`. In dev it pins stale chunks — keep the gate.
 
 ### Hook Pattern
 ```typescript
