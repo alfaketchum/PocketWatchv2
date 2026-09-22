@@ -2,14 +2,19 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useFinanceSubscriptions, useUpdateSubscription, useDetectSubscriptions, useUpcomingBills } from "@/hooks/use-finance"
-import { formatCurrency, cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { FinanceStatCard } from "@/components/finance/stat-card"
 import { FinanceEmpty } from "@/components/finance/finance-empty"
 import { FinanceCardSkeleton } from "@/components/finance/finance-loading"
-import { SubscriptionCard } from "@/components/finance/subscription-card"
 import { CancelGuidanceDrawer } from "@/components/finance/cancel-guidance-drawer"
 import { SubscriptionPagination } from "@/components/finance/subscription-pagination"
 import { BillsImmediateActions } from "@/components/finance/bills-immediate-actions"
+import { SubscriptionCardGrid } from "@/components/finance/subscription-card-grid"
+import { SubscriptionTableView } from "@/components/finance/subscription-table-view"
+import {
+  SubscriptionListControls,
+  type SubTab, type SubSort, type SubView,
+} from "@/components/finance/subscription-list-controls"
 
 interface CancelTarget {
   id: string
@@ -19,11 +24,8 @@ interface CancelTarget {
 }
 
 const PAGE_SIZE = 10
+const VIEW_KEY = "pw-sub-view"
 const FREQUENCY_ORDER = ["weekly", "biweekly", "monthly", "quarterly", "semi_annual", "yearly"] as const
-const FREQUENCY_GROUP_LABELS: Record<string, string> = {
-  weekly: "Weekly", biweekly: "Biweekly", monthly: "Monthly",
-  quarterly: "Quarterly", semi_annual: "Semi-Annual", yearly: "Yearly",
-}
 
 export function BudgetSubscriptionsSection() {
   const { data, isLoading, isError } = useFinanceSubscriptions()
@@ -32,10 +34,18 @@ export function BudgetSubscriptionsSection() {
   const detectSubs = useDetectSubscriptions()
   const { data: billsData } = useUpcomingBills()
   const [showBanner, setShowBanner] = useState(false)
-  const [tab, setTab] = useState<"suggested" | "active" | "dismissed">("active")
-  const [sortBy, setSortBy] = useState<"flat" | "frequency" | "cost" | "date">("flat")
+  const [tab, setTab] = useState<SubTab>("active")
+  const [sortBy, setSortBy] = useState<SubSort>("flat")
+  const [view, setView] = useState<SubView>("table")
   const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null)
   const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY)
+      if (saved === "table" || saved === "card") setView(saved)
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     if (detectSubs.isSuccess) {
@@ -45,11 +55,16 @@ export function BudgetSubscriptionsSection() {
     }
   }, [detectSubs.isSuccess])
 
+  function handleViewChange(v: SubView) {
+    setView(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* ignore */ }
+  }
+
   const subs = data?.subscriptions ?? []
   const suggestedSubs = subs.filter((s) => s.status === "suggested")
-  // "Active" tab = everything confirmed/kept (active/paused/cancelled/flagged),
-  // i.e. not a pending suggestion.
-  const activeSubs = subs.filter((s) => s.status !== "suggested")
+  // "Active" tab = live subscriptions only. Cancelled/dismissed drop out so acting
+  // on an item (cancel or "not a sub") removes it from the list immediately.
+  const activeSubs = subs.filter((s) => !["suggested", "dismissed", "cancelled"].includes(s.status))
   const dismissedSubs = dismissedData?.subscriptions ?? []
   const flaggedSubs = subs.filter((s) => !s.isWanted && s.status === "active")
   const pausedSubs = subs.filter((s) => s.status === "paused")
@@ -61,14 +76,7 @@ export function BudgetSubscriptionsSection() {
     : activeSubs
 
   const sortedSubs = useMemo(() => {
-    if (sortBy === "frequency") {
-      return FREQUENCY_ORDER.flatMap((freq) =>
-        filteredSubs.filter((s) => s.frequency === freq).map((s) => ({ ...s, _freq: freq }))
-      )
-    }
-    if (sortBy === "cost") {
-      return [...filteredSubs].sort((a, b) => b.amount - a.amount)
-    }
+    if (sortBy === "cost") return [...filteredSubs].sort((a, b) => b.amount - a.amount)
     if (sortBy === "date") {
       return [...filteredSubs].sort((a, b) => {
         if (!a.nextChargeDate && !b.nextChargeDate) return 0
@@ -76,6 +84,9 @@ export function BudgetSubscriptionsSection() {
         if (!b.nextChargeDate) return -1
         return new Date(a.nextChargeDate).getTime() - new Date(b.nextChargeDate).getTime()
       })
+    }
+    if (sortBy === "frequency") {
+      return FREQUENCY_ORDER.flatMap((freq) => filteredSubs.filter((s) => s.frequency === freq))
     }
     return filteredSubs
   }, [filteredSubs, sortBy])
@@ -91,57 +102,30 @@ export function BudgetSubscriptionsSection() {
     if (sortBy !== "frequency") return null
     const groups: Record<string, typeof paginatedItems> = {}
     for (const item of paginatedItems) {
-      const freq = (item as typeof paginatedItems[number] & { _freq: string })._freq
-      if (!groups[freq]) groups[freq] = []
-      groups[freq].push(item)
+      (groups[item.frequency] ??= []).push(item)
     }
     return groups
   }, [paginatedItems, sortBy])
 
-  const GROUP_OPTIONS = [
-    { key: "suggested", label: "Suggested", count: suggestedSubs.length },
-    { key: "active", label: "Active", count: activeSubs.length },
-    { key: "dismissed", label: "Dismissed", count: dismissedSubs.length },
-  ] as const
-
-  function handleFilterChange(key: typeof tab) {
+  function handleTabChange(key: SubTab) {
     setTab(key)
     setPage(1)
   }
 
-  function renderSubCard(sub: (typeof subs)[number]) {
-    return (
-      <SubscriptionCard
-        key={sub.id}
-        id={sub.id}
-        merchantName={sub.merchantName}
-        nickname={sub.nickname}
-        amount={sub.amount}
-        frequency={sub.frequency}
-        status={sub.status}
-        isWanted={sub.isWanted}
-        nextChargeDate={sub.nextChargeDate}
-        category={sub.category}
-        logoUrl={sub.logoUrl}
-        detectionMethod={sub.detectionMethod}
-        averageAmount={sub.averageAmount}
-        accountName={sub.accountName}
-        accountMask={sub.accountMask}
-        accountType={sub.accountType}
-        institutionName={sub.institutionName}
-        recentTransactions={sub.recentTransactions}
-        linkedTransaction={sub.linkedTransaction}
-        cancelReminderDate={sub.cancelReminderDate}
-        onUpdateStatus={(id, status) => updateSub.mutate({ subscriptionId: id, status })}
-        onToggleWanted={(id, isWanted) => updateSub.mutate({ subscriptionId: id, isWanted })}
-        onRequestCancel={setCancelTarget}
-        onUpdateNickname={(id, nickname) => updateSub.mutate({ subscriptionId: id, nickname })}
-        onUpdateFrequency={(id, frequency) => updateSub.mutate({ subscriptionId: id, frequency })}
-        onUpdateCategory={(id, category) => updateSub.mutate({ subscriptionId: id, category })}
-        onSetReminder={(id, date) => updateSub.mutate({ subscriptionId: id, cancelReminderDate: date })}
-        onDismiss={(id) => updateSub.mutate({ subscriptionId: id, status: "dismissed" })}
-      />
-    )
+  function handleSortChange(key: SubSort) {
+    setSortBy(key)
+    setPage(1)
+  }
+
+  const cardHandlers = {
+    onUpdateStatus: (id: string, status: string) => updateSub.mutate({ subscriptionId: id, status }),
+    onToggleWanted: (id: string, isWanted: boolean) => updateSub.mutate({ subscriptionId: id, isWanted }),
+    onRequestCancel: setCancelTarget,
+    onUpdateNickname: (id: string, nickname: string | null) => updateSub.mutate({ subscriptionId: id, nickname }),
+    onUpdateFrequency: (id: string, frequency: string) => updateSub.mutate({ subscriptionId: id, frequency }),
+    onUpdateCategory: (id: string, category: string | null) => updateSub.mutate({ subscriptionId: id, category }),
+    onSetReminder: (id: string, date: string | null) => updateSub.mutate({ subscriptionId: id, cancelReminderDate: date }),
+    onDismiss: (id: string) => updateSub.mutate({ subscriptionId: id, status: "dismissed" }),
   }
 
   if (isError) {
@@ -212,98 +196,49 @@ export function BudgetSubscriptionsSection() {
 
       {/* Subscriptions */}
       <div className="space-y-4">
-          {/* Group Filter */}
-          {(subs.length > 0 || dismissedSubs.length > 0) && (
-            <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg w-fit">
-              {GROUP_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => handleFilterChange(opt.key as typeof tab)}
-                  className={cn(
-                    "px-3 py-1 text-[10px] font-medium rounded-md transition-colors duration-150",
-                    tab === opt.key
-                      ? "bg-primary text-white shadow-sm"
-                      : "bg-transparent text-foreground-muted hover:text-foreground"
-                  )}
-                >
-                  {opt.label}
-                  {opt.count > 0 && (
-                    <span className={cn("ml-1 tabular-nums", tab === opt.key ? "text-white/70" : "text-foreground-muted/50")}>
-                      {opt.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+        {(subs.length > 0 || dismissedSubs.length > 0) && (
+          <SubscriptionListControls
+            tab={tab}
+            counts={{ suggested: suggestedSubs.length, active: activeSubs.length, dismissed: dismissedSubs.length }}
+            onTabChange={handleTabChange}
+            sortBy={sortBy}
+            onSortChange={handleSortChange}
+            view={view}
+            onViewChange={handleViewChange}
+            showSort={filteredSubs.length > 0}
+          />
+        )}
 
-          {/* Sort options */}
-          {filteredSubs.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-foreground-muted">Group by:</span>
-              {([
-                { key: "flat", label: "None" },
-                { key: "frequency", label: "Frequency" },
-                { key: "cost", label: "Cost" },
-                { key: "date", label: "Date" },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => { setSortBy(opt.key); setPage(1) }}
-                  className={cn(
-                    "px-2.5 py-1 text-[10px] font-medium rounded-lg border transition-colors",
-                    sortBy === opt.key
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-card-border text-foreground-muted hover:text-foreground"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!isLoading && filteredSubs.length > 0 ? (
-            <>
-              {paginatedGroups ? (
-                <div className="space-y-4">
-                  {FREQUENCY_ORDER.map((freq) => {
-                    const items = paginatedGroups[freq]
-                    if (!items || items.length === 0) return null
-                    return (
-                      <div key={freq}>
-                        <h4 className="text-xs font-semibold text-foreground-muted uppercase tracking-wider mb-2">
-                          {FREQUENCY_GROUP_LABELS[freq] ?? freq}
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {items.map(renderSubCard)}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {paginatedItems.map(renderSubCard)}
-                </div>
-              )}
-              <SubscriptionPagination
-                page={page}
-                totalPages={totalPages}
-                total={totalItems}
-                pageSize={PAGE_SIZE}
-                onPageChange={setPage}
+        {!isLoading && filteredSubs.length > 0 ? (
+          <>
+            {view === "table" ? (
+              <SubscriptionTableView
+                items={paginatedItems}
+                groups={paginatedGroups}
+                onUpdateStatus={cardHandlers.onUpdateStatus}
+                onRequestCancel={cardHandlers.onRequestCancel}
+                onSetReminder={cardHandlers.onSetReminder}
+                onDismiss={cardHandlers.onDismiss}
               />
-            </>
-          ) : !isLoading ? (
-            <FinanceEmpty
-              icon="autorenew"
-              title={tab === "suggested" ? "No suggestions" : tab === "dismissed" ? "Nothing dismissed" : "No subscriptions yet"}
-              description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "dismissed" ? "Dismissed subscriptions show up here." : "Confirm a suggestion or mark a transaction as a subscription."}
-              action={tab !== "dismissed" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
+            ) : (
+              <SubscriptionCardGrid items={paginatedItems} groups={paginatedGroups} {...cardHandlers} />
+            )}
+            <SubscriptionPagination
+              page={page}
+              totalPages={totalPages}
+              total={totalItems}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
             />
-          ) : null}
+          </>
+        ) : !isLoading ? (
+          <FinanceEmpty
+            icon="autorenew"
+            title={tab === "suggested" ? "No suggestions" : tab === "dismissed" ? "Nothing dismissed" : "No subscriptions yet"}
+            description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "dismissed" ? "Dismissed subscriptions show up here." : "Confirm a suggestion or mark a transaction as a subscription."}
+            action={tab !== "dismissed" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
+          />
+        ) : null}
       </div>
 
       {/* Recurring Income */}

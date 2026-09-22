@@ -7,6 +7,7 @@ import { getBillingUrgency } from "@/components/finance/subscription-card-helper
 import { SubscriptionCardActions } from "@/components/finance/subscription-card-actions"
 import { SubscriptionCardTransactions } from "@/components/finance/subscription-card-transactions"
 import { SubscriptionLinkedProof } from "@/components/finance/subscription-linked-proof"
+import { FREQUENCY_LABELS, FREQUENCY_COLORS, DETECTION_LABELS, FREQUENCY_OPTIONS } from "@/components/finance/subscription-display"
 
 interface RecentTransaction {
   amount: number
@@ -55,39 +56,6 @@ interface SubscriptionCardProps {
   onSetReminder?: (id: string, date: string | null) => void
   onDismiss?: (id: string) => void
 }
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  weekly: "Weekly",
-  biweekly: "Biweekly",
-  monthly: "Monthly",
-  quarterly: "Quarterly",
-  semi_annual: "Semi-Annual",
-  yearly: "Yearly",
-}
-
-const FREQUENCY_COLORS: Record<string, string> = {
-  weekly: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400",
-  biweekly: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400",
-  monthly: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400",
-  quarterly: "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400",
-  semi_annual: "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400",
-  yearly: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
-}
-
-const DETECTION_LABELS: Record<string, { text: string; color: string }> = {
-  verified: { text: "Verified", color: "text-success" },
-  auto: { text: "Auto-detected", color: "text-foreground-muted" },
-  manual: { text: "Marked by you", color: "text-primary" },
-}
-
-const FREQUENCY_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "weekly", label: "Weekly" },
-  { value: "biweekly", label: "Biweekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "quarterly", label: "Quarterly" },
-  { value: "semi_annual", label: "Semi-Annual" },
-  { value: "yearly", label: "Yearly" },
-]
 
 export function SubscriptionCard({
   id, merchantName, nickname, amount, frequency, status, isWanted, nextChargeDate,

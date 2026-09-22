@@ -7,6 +7,7 @@ import { db } from "@/lib/db"
 import { detectSubscriptions, EXCLUDED_MERCHANTS, computeNextChargeDate, type Frequency } from "../subscriptions"
 import { stringSimilarity } from "../normalize"
 import { isGibberishName } from "../bill-helpers"
+import { duplicateIdsToDelete } from "../subscription-dedupe"
 
 // Spend categories that are purchases, not subscriptions — a few repeat visits to
 // a restaurant/store shouldn't be flagged as a recurring subscription.
@@ -222,6 +223,22 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
       },
     })
     newCount++
+  }
+
+  // Self-heal: concurrent detect runs (multiple sync flows + the manual button)
+  // can each create the same subscription before the other commits. Collapse any
+  // resulting duplicates so they never accumulate, keeping the best row per
+  // merchant+amount+frequency.
+  const finalSubs = await db.financeSubscription.findMany({
+    where: { userId },
+    select: {
+      id: true, merchantName: true, amount: true, frequency: true, status: true,
+      lastTransactionId: true, nickname: true, notes: true, createdAt: true,
+    },
+  })
+  const dupeIds = duplicateIdsToDelete(finalSubs)
+  if (dupeIds.length > 0) {
+    await db.financeSubscription.deleteMany({ where: { id: { in: dupeIds } } })
   }
 
   return { detected: detected.length, newlyAdded: newCount, updated: updatedCount, priceChanges }

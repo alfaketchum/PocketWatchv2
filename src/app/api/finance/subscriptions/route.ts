@@ -6,6 +6,9 @@ import { mergeSubscriptions, normalizeFrequency, type UnifiedSubscription, type 
 import { classifyBillType, enrichMerchantName } from "@/lib/finance/bill-type-classifier"
 import { backfillBillTypes } from "@/lib/finance/backfill-bill-types"
 import { syncSubscriptionTag } from "@/lib/finance/subscription-tag"
+import { stringSimilarity } from "@/lib/finance/normalize"
+import { chargesForSubscription } from "@/lib/finance/subscription-charges"
+import { dedupeUnified } from "@/lib/finance/subscription-dedupe"
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod/v4"
 
@@ -93,10 +96,13 @@ export async function GET(req: NextRequest) {
     )
     const dismissedNames = new Set(dismissedSubs.map((d) => d.merchantName.toLowerCase()))
     const filteredPlaidStreams = plaidStreams.filter((ps) => {
-      const name = (ps.merchantName ?? ps.description).toLowerCase()
-      // Match by name+account (precise) or just name (fallback)
+      const rawName = ps.merchantName ?? ps.description
+      const name = rawName.toLowerCase()
+      // Match by name+account (precise), exact name, or fuzzy name so a dismissed
+      // merchant's provider stream can't resurface as a fresh "active" suggestion.
       const key = `${name}|${ps.accountId ?? ""}`
-      return !dismissedKeys.has(key) && !dismissedNames.has(name)
+      if (dismissedKeys.has(key) || dismissedNames.has(name)) return false
+      return !dismissedSubs.some((d) => stringSimilarity(d.merchantName, rawName) > 0.8)
     })
 
     // Merge detected + provider streams into unified list
@@ -147,7 +153,9 @@ export async function GET(req: NextRequest) {
               isExcluded: false,
             },
             orderBy: { date: "desc" },
-            take: 5 * merchantNames.length,
+            // Fetch a deep-enough window per merchant so we can filter each
+            // subscription down to the charges that match its recurring amount.
+            take: Math.min(1000, 40 * merchantNames.length),
             select: {
               merchantName: true,
               name: true,
@@ -201,12 +209,14 @@ export async function GET(req: NextRequest) {
       }])
     )
 
-    // Group recent transactions by merchant, take top 5 per merchant
+    // Group recent transactions by merchant (most-recent first, capped so a
+    // noisy merchant can't blow up memory). Per-subscription amount filtering
+    // happens below during enrichment.
     const txByMerchant = new Map<string, Array<{ amount: number; date: string; name: string }>>()
     for (const tx of recentTxs) {
       const key = tx.merchantName ?? ""
       const list = txByMerchant.get(key) ?? []
-      if (list.length < 5) {
+      if (list.length < 40) {
         list.push({
           amount: tx.amount,
           date: tx.date.toISOString().split("T")[0],
@@ -258,15 +268,19 @@ export async function GET(req: NextRequest) {
         accountMask: acct?.accountMask ?? null,
         accountType: acct?.accountType ?? null,
         institutionName: acct?.institutionName ?? null,
-        recentTransactions: txByMerchant.get(s.merchantName) ?? [],
+        recentTransactions: chargesForSubscription(txByMerchant.get(s.merchantName) ?? [], s.amount),
         linkedTransaction: s.lastTransactionId ? linkedTxMap.get(s.lastTransactionId) ?? null : null,
       }
     })
 
     // Filter by status after merge (for provider-only items that always have status "active")
-    const filtered = status
+    const statusFiltered = status
       ? enriched.filter((s) => s.status === status)
       : enriched
+
+    // Collapse any duplicate subscriptions (same merchant+amount+frequency) so the
+    // UI and totals never double-count a row a concurrent detect run created twice.
+    const filtered = dedupeUnified(statusFiltered)
 
     const monthlyTotal = filtered
       .filter((s) => s.status === "active")
