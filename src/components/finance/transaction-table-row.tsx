@@ -13,6 +13,7 @@ export interface TransactionTableRowProps {
   name: string
   amount: number
   category: string | null
+  subcategory?: string | null
   notes?: string | null
   isPending: boolean
   accountName: string
@@ -34,7 +35,7 @@ export interface TransactionTableRowProps {
  * Amount) with a leading select checkbox for bulk actions.
  */
 export function TransactionTableRow({
-  id, date, merchantName, name, amount, category, notes, isPending,
+  id, date, merchantName, name, amount, category, subcategory, notes, isPending,
   accountName, accountMask, logoUrl, website, needsReview, isRecurring,
   isHighlighted, selected, onToggleSelect, onRecategorize, onSaveNote,
 }: TransactionTableRowProps) {
@@ -104,6 +105,7 @@ export function TransactionTableRow({
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.hex }} />
             {category ?? "Uncategorized"}
           </span>
+          {subcategory && <span className="text-[11px] text-foreground-muted">· {subcategory}</span>}
           {onRecategorize && <CategoryPicker value={category} onSelect={onRecategorize} />}
         </div>
       </td>

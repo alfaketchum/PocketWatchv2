@@ -9,6 +9,7 @@ interface TableTx {
   name: string
   amount: number
   category: string | null
+  subcategory: string | null
   notes?: string | null
   isPending: boolean
   account: { name: string; mask: string | null }
@@ -81,6 +82,7 @@ export function TransactionsTableView({
               name={tx.name}
               amount={tx.amount}
               category={tx.category}
+              subcategory={tx.subcategory}
               notes={tx.notes}
               isPending={tx.isPending}
               accountName={tx.account.name}

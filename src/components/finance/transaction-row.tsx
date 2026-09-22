@@ -117,6 +117,7 @@ export function TransactionRow({
           </p>
           <div className="flex items-center gap-2 mt-0.5">
             <CategoryBadge category={category} />
+            {subcategory && <span className="text-xs text-foreground-muted">· {subcategory}</span>}
             {isRecurring && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400">
                 <span className="material-symbols-rounded" style={{ fontSize: 10 }}>autorenew</span>
