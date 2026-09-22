@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     endDate: z.string().date().optional(),
     category: z.string().max(100).optional(),
     accountId: z.string().max(100).optional(),
+    tag: z.string().max(50).optional(),
     search: z.string().max(200).optional(),
     minAmount: z.coerce.number().finite().optional(),
     maxAmount: z.coerce.number().finite().optional(),
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     return apiError("F4003", qp.error.issues[0]?.message ?? "Invalid query parameters", 400)
   }
 
-  const { page, limit, startDate, endDate, category, accountId, search, minAmount, maxAmount, sort, order, includeExcluded, txType } = qp.data
+  const { page, limit, startDate, endDate, category, accountId, tag, search, minAmount, maxAmount, sort, order, includeExcluded, txType } = qp.data
 
   try {
     const where: Prisma.FinanceTransactionWhereInput = {
@@ -67,6 +68,7 @@ export async function GET(req: NextRequest) {
       const ids = accountId.split(",").map((a) => a.trim()).filter(Boolean)
       if (ids.length) where.accountId = ids.length > 1 ? { in: ids } : ids[0]
     }
+    if (tag) where.tags = { has: tag }
     if (search) {
       where.OR = [
         { merchantName: { contains: search, mode: "insensitive" } },

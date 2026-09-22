@@ -12,6 +12,7 @@ export interface TxFilters {
   endDate?: string
   category?: string
   accountId?: string
+  tag?: string
   search?: string
   minAmount?: string
   maxAmount?: string

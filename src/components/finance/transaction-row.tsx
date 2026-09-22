@@ -7,6 +7,7 @@ import { CategoryBadge } from "./category-badge"
 import { AmountDisplay } from "./amount-display"
 import { MerchantIcon } from "./merchant-icon"
 import { CategoryPicker } from "./category-picker"
+import { TagEditor } from "./tag-editor"
 import { FINANCE_CATEGORIES, getCategoryMeta } from "@/lib/finance/categories"
 
 interface TransactionRowProps {
@@ -18,6 +19,7 @@ interface TransactionRowProps {
   category: string | null
   subcategory?: string | null
   notes?: string | null
+  tags?: string[]
   isPending: boolean
   accountName: string
   accountMask: string | null
@@ -36,14 +38,16 @@ interface TransactionRowProps {
   onRecategorize?: (category: string, subcategory?: string | null) => void
   /** Editable per-transaction note (opt-in). */
   onSaveNote?: (note: string) => void
+  /** Editable tags (opt-in). */
+  onSaveTags?: (tags: string[]) => void
 }
 
 export function TransactionRow({
   id, date, merchantName, name, amount, category, subcategory,
-  notes, isPending, accountName, accountMask, className,
+  notes, tags, isPending, accountName, accountMask, className,
   paymentChannel, authorizedDate, logoUrl, website, location, counterparties,
   needsReview, isRecurring, isHighlighted,
-  onCategoryChange, onRecategorize, onSaveNote,
+  onCategoryChange, onRecategorize, onSaveNote, onSaveTags,
 }: TransactionRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [retagOpen, setRetagOpen] = useState(false)
@@ -118,6 +122,11 @@ export function TransactionRow({
           <div className="flex items-center gap-2 mt-0.5">
             <CategoryBadge category={category} />
             {subcategory && <span className="inline-flex items-center rounded-full bg-background-secondary text-foreground-muted text-[10px] font-medium px-2 py-0.5">{subcategory}</span>}
+            {tags?.map((t) => (
+              <span key={t} className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
+                <span className="material-symbols-rounded" style={{ fontSize: 10 }} aria-hidden="true">sell</span>{t}
+              </span>
+            ))}
             {isRecurring && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400">
                 <span className="material-symbols-rounded" style={{ fontSize: 10 }}>autorenew</span>
@@ -294,6 +303,12 @@ export function TransactionRow({
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+          {onSaveTags && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <span className="text-foreground-muted">Tags</span>
+              <div className="mt-1"><TagEditor tags={tags ?? []} onSave={onSaveTags} /></div>
             </div>
           )}
           {onSaveNote ? (

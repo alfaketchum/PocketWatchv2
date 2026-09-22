@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -21,6 +21,7 @@ import { DATE_PRESETS, getDateRange } from "@/components/finance/transactions-he
 import { useHighlightScroll } from "@/hooks/finance/use-highlight-scroll"
 import { TransactionCategoryFilter } from "@/components/finance/transaction-category-filter"
 import { TransactionAccountFilter } from "@/components/finance/transaction-account-filter"
+import { TransactionTagFilter } from "@/components/finance/transaction-tag-filter"
 import { TransactionsTableView } from "@/components/finance/transactions-table-view"
 import { DatePicker } from "@/components/ui/date-picker"
 
@@ -32,6 +33,7 @@ export default function FinanceTransactionsPage() {
   const [search, setSearch] = useState(initialSearch)
   const [categorySet, setCategorySet] = useState<Set<string>>(() => { const c = searchParams.get("category"); return new Set(c ? [c] : []) })
   const [accountSet, setAccountSet] = useState<Set<string>>(() => { const a = searchParams.get("account"); return new Set(a ? [a] : []) })
+  const [tag, setTag] = useState(searchParams.get("tag") ?? "")
   const toggleCategory = (c: string) => { setCategorySet((prev) => { const n = new Set(prev); if (n.has(c)) n.delete(c); else n.add(c); return n }); setPage(1) }
   const toggleAccount = (id: string) => { setAccountSet((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n }); setPage(1) }
   // Optional ?month=YYYY-MM scopes to that calendar month (drill-through from the
@@ -58,12 +60,12 @@ export default function FinanceTransactionsPage() {
   // Clear selections when page/filters change — track previous data identity
   const prevDataRef = useRef<string>("")
   useEffect(() => {
-    const key = `${page}-${dateRange}-${[...categorySet].sort().join("|")}-${[...accountSet].sort().join("|")}-${txType}-${search}`
+    const key = `${page}-${dateRange}-${[...categorySet].sort().join("|")}-${[...accountSet].sort().join("|")}-${tag}-${txType}-${search}`
     if (prevDataRef.current && prevDataRef.current !== key) {
       setSelectedIds(new Set())
     }
     prevDataRef.current = key
-  }, [page, dateRange, categorySet, accountSet, txType, search])
+  }, [page, dateRange, categorySet, accountSet, tag, txType, search])
 
   const dates = dateRange === "custom"
     ? { start: customStart || undefined, end: customEnd || undefined }
@@ -74,6 +76,7 @@ export default function FinanceTransactionsPage() {
     search: search || undefined,
     category: categorySet.size ? [...categorySet].join(",") : undefined,
     accountId: accountSet.size ? [...accountSet].join(",") : undefined,
+    tag: tag || undefined,
     startDate: dates.start,
     endDate: dates.end,
     txType: txType || undefined,
@@ -105,7 +108,8 @@ export default function FinanceTransactionsPage() {
   // Scroll to (and page-walk toward) a ?highlight deep-link target.
   useHighlightScroll(highlightId, data, page, setPage)
   const reviewCount = reviewData?.count ?? 0
-  const hasFilters = search || categorySet.size || accountSet.size || txType || dateRange !== "this-month"
+  const hasFilters = search || categorySet.size || accountSet.size || tag || txType || dateRange !== "this-month"
+  const availableTags = useMemo(() => [...new Set((data?.transactions ?? []).flatMap((t) => t.tags ?? []))], [data])
   const uncategorizedCount = deep?.uncategorizedCount ?? 0
   return (
     <div className="space-y-6">
@@ -238,6 +242,7 @@ export default function FinanceTransactionsPage() {
           {/* Grouped multi-select category + account chips */}
           <TransactionCategoryFilter selected={[...categorySet]} onToggle={toggleCategory} onClear={() => { setCategorySet(new Set()); setPage(1) }} />
           <TransactionAccountFilter institutions={institutions ?? []} selected={[...accountSet]} onToggle={toggleAccount} onClear={() => { setAccountSet(new Set()); setPage(1) }} />
+          <TransactionTagFilter value={tag} onChange={(t) => { setTag(t); setPage(1) }} available={availableTags} />
 
           {/* Custom date range — pop-out calendar */}
           <div className="flex items-center gap-1.5">
@@ -320,6 +325,7 @@ export default function FinanceTransactionsPage() {
               category={tx.category}
               subcategory={tx.subcategory}
               notes={tx.notes}
+              tags={tx.tags}
               isPending={tx.isPending}
               accountName={tx.account.name}
               accountMask={tx.account.mask}
@@ -333,6 +339,7 @@ export default function FinanceTransactionsPage() {
               isRecurring={tx.isRecurring}
               onRecategorize={(cat, sub) => handleRecategorize(tx, cat, sub)}
               onSaveNote={(note) => updateTx.mutate({ transactionId: tx.id, notes: note })}
+              onSaveTags={(tags) => updateTx.mutate({ transactionId: tx.id, tags })}
             />
               </div>
             </div>
