@@ -35,48 +35,29 @@ export function SubscriptionListControls({
   ]
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* Tabs */}
-      <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg w-fit">
-        {tabs.map((opt) => (
-          <button
-            key={opt.key}
-            type="button"
-            onClick={() => onTabChange(opt.key)}
-            className={cn(
-              "px-3 py-1 text-[10px] font-medium rounded-md transition-colors duration-150",
-              tab === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
-            )}
-          >
-            {opt.label}
-            {counts[opt.key] > 0 && (
-              <span className={cn("ml-1 tabular-nums", tab === opt.key ? "text-white/70" : "text-foreground-muted/50")}>
-                {counts[opt.key]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-3">
-        {/* Group by */}
-        {showSort && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-foreground-muted">Group by:</span>
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => onSortChange(opt.key)}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium rounded-lg border transition-colors",
-                  sortBy === opt.key ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="space-y-3">
+      {/* Row 1: tabs (bigger chips) + view toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1 bg-background-secondary border border-card-border p-1 rounded-xl w-fit">
+          {tabs.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => onTabChange(opt.key)}
+              className={cn(
+                "px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150",
+                tab === opt.key ? "bg-primary text-white shadow-sm" : "bg-transparent text-foreground-muted hover:text-foreground",
+              )}
+            >
+              {opt.label}
+              {counts[opt.key] > 0 && (
+                <span className={cn("ml-1.5 text-xs tabular-nums", tab === opt.key ? "text-white/70" : "text-foreground-muted/50")}>
+                  {counts[opt.key]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
         {/* View toggle */}
         <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg">
@@ -98,6 +79,25 @@ export function SubscriptionListControls({
           ))}
         </div>
       </div>
+
+      {/* Row 2: Group by, left-aligned */}
+      {showSort && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-foreground-muted">Group by:</span>
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => onSortChange(opt.key)}
+              className={cn(
+                "px-2 py-1 text-[10px] font-medium rounded-lg border transition-colors",
+                sortBy === opt.key ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

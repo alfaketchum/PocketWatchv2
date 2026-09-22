@@ -13,7 +13,6 @@ import { ConfirmDialog } from "@/components/finance/confirm-dialog"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { FinanceEmpty } from "@/components/finance/finance-empty"
 import { FinanceTableSkeleton } from "@/components/finance/finance-loading"
-import { TransactionRow } from "@/components/finance/transaction-row"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { BulkActionBar } from "@/components/finance/bulk-action-bar"
@@ -23,6 +22,8 @@ import { TransactionCategoryFilter } from "@/components/finance/transaction-cate
 import { TransactionAccountFilter } from "@/components/finance/transaction-account-filter"
 import { TransactionTagFilter } from "@/components/finance/transaction-tag-filter"
 import { TransactionsTableView } from "@/components/finance/transactions-table-view"
+import { TransactionsListView } from "@/components/finance/transactions-list-view"
+import { type SortDir } from "@/components/finance/sortable-th"
 import { DatePicker } from "@/components/ui/date-picker"
 
 export default function FinanceTransactionsPage() {
@@ -49,6 +50,14 @@ export default function FinanceTransactionsPage() {
   const [customStart, setCustomStart] = useState(monthParam ? `${monthParam}-01` : "")
   const [customEnd, setCustomEnd] = useState(monthEnd)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [sortField, setSortField] = useState<"date" | "amount">("date")
+  const [sortDir, setSortDir] = useState<SortDir>("desc")
+  const handleSort = (field: string) => {
+    const f = field as "date" | "amount"
+    if (f === sortField) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else { setSortField(f); setSortDir("desc") }
+    setPage(1)
+  }
   // Layout toggle: "list" is the rich expandable rows, "table" is the compact
   // budget-style table (persisted per-browser).
   const [view, setView] = useState<"list" | "table">("list")
@@ -80,6 +89,8 @@ export default function FinanceTransactionsPage() {
     startDate: dates.start,
     endDate: dates.end,
     txType: txType || undefined,
+    sort: sortField,
+    order: sortDir,
   })
   const { data: institutions } = useFinanceAccounts()
   const { data: deep } = useFinanceDeepInsights()
@@ -278,76 +289,24 @@ export default function FinanceTransactionsPage() {
           onRecategorize={(tx, cat, sub) => handleRecategorize(tx, cat, sub)}
           onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
           onSaveTags={(txId, tags) => updateTx.mutate({ transactionId: txId, tags })}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={handleSort}
         />
         ) : (
-        <div className="bg-card border border-card-border rounded-xl overflow-hidden">
-          {/* Elevated Header */}
-          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 border-b border-card-border bg-card-elevated text-[10px] text-foreground-muted font-semibold uppercase tracking-widest">
-            <input
-              type="checkbox"
-              className="w-4 h-4 rounded accent-primary flex-shrink-0"
-              checked={data.transactions.length > 0 && data.transactions.every((tx) => selectedIds.has(tx.id))}
-              onChange={(e) => {
-                const next = new Set(selectedIds)
-                if (e.target.checked) data.transactions.forEach((tx) => next.add(tx.id))
-                else data.transactions.forEach((tx) => next.delete(tx.id))
-                setSelectedIds(next)
-              }}
-              title="Select all on this page"
-            />
-            <div className="w-10 sm:w-16">Date</div>
-            <div className="flex-1">Description</div>
-            <div className="w-28 hidden md:block">Category</div>
-            <div className="w-24 text-right">Amount</div>
-            <div className="w-5" />
-          </div>
-
-          {data.transactions.map((tx) => (
-            <div key={tx.id} className="flex items-center">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded accent-primary flex-shrink-0 ml-3 sm:ml-4"
-                checked={selectedIds.has(tx.id)}
-                onChange={(e) => {
-                  const next = new Set(selectedIds)
-                  if (e.target.checked) next.add(tx.id)
-                  else next.delete(tx.id)
-                  setSelectedIds(next)
-                }}
-              />
-              <div className="flex-1 min-w-0">
-            <TransactionRow
-              key={tx.id}
-              id={tx.id}
-              isHighlighted={tx.id === highlightId}
-              date={tx.date}
-              merchantName={tx.merchantName}
-              name={tx.name}
-              amount={tx.amount}
-              category={tx.category}
-              subcategory={tx.subcategory}
-              notes={tx.notes}
-              tags={tx.tags}
-              isPending={tx.isPending}
-              accountName={tx.account.name}
-              accountMask={tx.account.mask}
-              paymentChannel={tx.paymentChannel}
-              authorizedDate={tx.authorizedDate}
-              logoUrl={tx.logoUrl}
-              website={tx.website}
-              location={tx.location}
-              counterparties={tx.counterparties}
-              needsReview={tx.needsReview}
-              isRecurring={tx.isRecurring}
-              onRecategorize={(cat, sub) => handleRecategorize(tx, cat, sub)}
-              onSaveNote={(note) => updateTx.mutate({ transactionId: tx.id, notes: note })}
-              onSaveTags={(tags) => updateTx.mutate({ transactionId: tx.id, tags })}
-              onMarkSubscription={(unmark) => markSub.mutate({ transactionId: tx.id, unmark })}
-            />
-              </div>
-            </div>
-          ))}
-        </div>
+        <TransactionsListView
+          transactions={data.transactions}
+          highlightId={highlightId}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          onRecategorize={(tx, cat, sub) => handleRecategorize(tx, cat, sub)}
+          onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
+          onSaveTags={(txId, tags) => updateTx.mutate({ transactionId: txId, tags })}
+          onMarkSubscription={(txId, unmark) => markSub.mutate({ transactionId: txId, unmark })}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={handleSort}
+        />
         )}
         </>
       ) : (

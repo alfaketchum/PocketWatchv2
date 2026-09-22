@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useFinanceSubscriptions, useUpdateSubscription, useDetectSubscriptions, useUpcomingBills } from "@/hooks/use-finance"
+import { useSubscriptionList } from "@/hooks/finance/use-subscription-list"
 import { formatCurrency } from "@/lib/utils"
 import { FinanceStatCard } from "@/components/finance/stat-card"
 import { FinanceEmpty } from "@/components/finance/finance-empty"
@@ -15,6 +16,7 @@ import {
   SubscriptionListControls,
   type SubTab, type SubSort, type SubView,
 } from "@/components/finance/subscription-list-controls"
+import { type SortDir } from "@/components/finance/sortable-th"
 
 interface CancelTarget {
   id: string
@@ -25,7 +27,6 @@ interface CancelTarget {
 
 const PAGE_SIZE = 25
 const VIEW_KEY = "pw-sub-view"
-const FREQUENCY_ORDER = ["weekly", "biweekly", "monthly", "quarterly", "semi_annual", "yearly"] as const
 
 const EMPTY_COPY: Record<SubTab, { title: string; description: string }> = {
   suggested: { title: "No suggestions", description: "Run 'Detect New' to scan your transactions for recurring charges to confirm." },
@@ -43,6 +44,8 @@ export function BudgetSubscriptionsSection() {
   const [showBanner, setShowBanner] = useState(false)
   const [tab, setTab] = useState<SubTab>("active")
   const [sortBy, setSortBy] = useState<SubSort>("flat")
+  const [sortField, setSortField] = useState<"amount" | "nextCharge" | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>("desc")
   const [view, setView] = useState<SubView>("table")
   const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null)
   const [page, setPage] = useState(1)
@@ -86,37 +89,9 @@ export function BudgetSubscriptionsSection() {
     : tab === "dismissed" ? dismissedSubs
     : activeSubs
 
-  const sortedSubs = useMemo(() => {
-    if (sortBy === "cost") return [...filteredSubs].sort((a, b) => b.amount - a.amount)
-    if (sortBy === "date") {
-      return [...filteredSubs].sort((a, b) => {
-        if (!a.nextChargeDate && !b.nextChargeDate) return 0
-        if (!a.nextChargeDate) return 1
-        if (!b.nextChargeDate) return -1
-        return new Date(a.nextChargeDate).getTime() - new Date(b.nextChargeDate).getTime()
-      })
-    }
-    if (sortBy === "frequency") {
-      return FREQUENCY_ORDER.flatMap((freq) => filteredSubs.filter((s) => s.frequency === freq))
-    }
-    return filteredSubs
-  }, [filteredSubs, sortBy])
-
-  const { paginatedItems, totalPages, totalItems } = useMemo(() => {
-    const total = sortedSubs.length
-    const pages = Math.ceil(total / PAGE_SIZE)
-    const slice = sortedSubs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-    return { paginatedItems: slice, totalPages: pages, totalItems: total }
-  }, [sortedSubs, page])
-
-  const paginatedGroups = useMemo(() => {
-    if (sortBy !== "frequency") return null
-    const groups: Record<string, typeof paginatedItems> = {}
-    for (const item of paginatedItems) {
-      (groups[item.frequency] ??= []).push(item)
-    }
-    return groups
-  }, [paginatedItems, sortBy])
+  const { paginatedItems, paginatedGroups, totalPages, totalItems } = useSubscriptionList({
+    subs: filteredSubs, sortBy, sortField, sortDir, page, pageSize: PAGE_SIZE,
+  })
 
   function handleTabChange(key: SubTab) {
     setTab(key)
@@ -125,6 +100,15 @@ export function BudgetSubscriptionsSection() {
 
   function handleSortChange(key: SubSort) {
     setSortBy(key)
+    setSortField(null) // group-by control overrides column-header sort
+    setPage(1)
+  }
+
+  function handleHeaderSort(field: string) {
+    const f = field as "amount" | "nextCharge"
+    if (f === sortField) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else { setSortField(f); setSortDir("desc") }
+    setSortBy("flat") // flat list so grouping doesn't fight the column sort
     setPage(1)
   }
 
@@ -226,6 +210,9 @@ export function BudgetSubscriptionsSection() {
               <SubscriptionTableView
                 items={paginatedItems}
                 groups={paginatedGroups}
+                sortField={sortField ?? ""}
+                sortDir={sortDir}
+                onSort={handleHeaderSort}
                 onUpdateStatus={cardHandlers.onUpdateStatus}
                 onRequestCancel={cardHandlers.onRequestCancel}
                 onSetReminder={cardHandlers.onSetReminder}

@@ -1,6 +1,7 @@
 "use client"
 
 import { TransactionTableRow } from "./transaction-table-row"
+import { SortableTh, type SortDir } from "./sortable-th"
 
 interface TableTx {
   id: string
@@ -28,6 +29,9 @@ interface TransactionsTableViewProps {
   onRecategorize: (tx: TableTx, category: string, subcategory?: string | null) => void
   onSaveNote: (txId: string, note: string) => void
   onSaveTags: (txId: string, tags: string[]) => void
+  sortField: string
+  sortDir: SortDir
+  onSort: (field: string) => void
 }
 
 /**
@@ -37,6 +41,7 @@ interface TransactionsTableViewProps {
  */
 export function TransactionsTableView({
   transactions, highlightId, selectedIds, setSelectedIds, onRecategorize, onSaveNote, onSaveTags,
+  sortField, sortDir, onSort,
 }: TransactionsTableViewProps) {
   const allSelected = transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id))
 
@@ -66,13 +71,13 @@ export function TransactionsTableView({
                 title="Select all on this page"
               />
             </th>
-            <th className="text-left font-semibold px-3 py-2.5">Date</th>
+            <SortableTh label="Date" field="date" activeField={sortField} dir={sortDir} onSort={onSort} className="px-3 py-2.5" />
             <th className="text-left font-semibold px-3 py-2.5">Account</th>
             <th className="text-left font-semibold px-3 py-2.5">Description</th>
             <th className="text-left font-semibold px-3 py-2.5">Category</th>
             <th className="text-left font-semibold px-3 py-2.5">Tag</th>
             <th className="text-center font-semibold px-3 py-2.5">Note</th>
-            <th className="text-right font-semibold px-4 py-2.5">Amount</th>
+            <SortableTh label="Amount" field="amount" activeField={sortField} dir={sortDir} onSort={onSort} align="right" className="px-4 py-2.5" />
           </tr>
         </thead>
         <tbody>

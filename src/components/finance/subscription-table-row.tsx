@@ -124,7 +124,7 @@ export function SubscriptionTableRow({
               <button
                 onClick={() => { setPendingFreq(sub.frequency); setEditingFreq(true) }}
                 title="Edit frequency"
-                className="opacity-0 group-hover/freq:opacity-100 transition-opacity text-foreground-muted hover:text-primary"
+                className="text-foreground-muted hover:text-primary transition-colors"
               >
                 <span className="material-symbols-rounded" style={{ fontSize: 13 }}>edit</span>
               </button>

@@ -7,6 +7,7 @@ import { CategoryPicker } from "@/components/finance/category-picker"
 import { NoteCell } from "@/components/finance/note-cell"
 import { TagCell } from "@/components/finance/tag-cell"
 import { TransactionRow } from "@/components/finance/transaction-row"
+import { SortableTh, type SortDir } from "@/components/finance/sortable-th"
 
 export interface BudgetTxRow {
   id: string
@@ -56,6 +57,14 @@ interface BudgetTransactionsTableProps {
 export function BudgetTransactionsTable({ transactions, activeCategory, onClearCategory, activeDay, onClearDay, onRecategorize, onSaveNote, onSaveTags, onMarkSubscription }: BudgetTransactionsTableProps) {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
+  const [sortField, setSortField] = useState<"date" | "amount">("date")
+  const [sortDir, setSortDir] = useState<SortDir>("desc")
+  const handleSort = (field: string) => {
+    const f = field as "date" | "amount"
+    if (f === sortField) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    else { setSortField(f); setSortDir("desc") }
+    setPage(0)
+  }
   // List (rich rows) vs. table (compact) — defaults to list, persisted per-browser.
   const [view, setView] = useState<"list" | "table">("list")
   useEffect(() => {
@@ -69,8 +78,14 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
       if (!q) return true
       return (t.merchantName ?? t.name).toLowerCase().includes(q) || (t.category ?? "").toLowerCase().includes(q)
     })
-    return rows.sort((a, b) => b.date.localeCompare(a.date))
-  }, [transactions, search])
+    const factor = sortDir === "asc" ? 1 : -1
+    return rows.sort((a, b) => {
+      const cmp = sortField === "amount"
+        ? Math.abs(a.amount) - Math.abs(b.amount)
+        : a.date.localeCompare(b.date)
+      return cmp * factor
+    })
+  }, [transactions, search, sortField, sortDir])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   useEffect(() => { setPage(0) }, [search, activeCategory, activeDay])
@@ -174,13 +189,13 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
-              <th className="text-left font-semibold px-4 py-2">Date</th>
+              <SortableTh label="Date" field="date" activeField={sortField} dir={sortDir} onSort={handleSort} className="px-4 py-2" />
               <th className="text-left font-semibold px-4 py-2">Account</th>
               <th className="text-left font-semibold px-4 py-2">Description</th>
               <th className="text-left font-semibold px-4 py-2">Category</th>
               <th className="text-left font-semibold px-4 py-2">Tag</th>
               <th className="text-center font-semibold px-4 py-2">Note</th>
-              <th className="text-right font-semibold px-4 py-2">Amount</th>
+              <SortableTh label="Amount" field="amount" activeField={sortField} dir={sortDir} onSort={handleSort} align="right" className="px-4 py-2" />
             </tr>
           </thead>
           <tbody>

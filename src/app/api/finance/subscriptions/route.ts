@@ -6,7 +6,7 @@ import { mergeSubscriptions, normalizeFrequency, type UnifiedSubscription, type 
 import { classifyBillType, enrichMerchantName } from "@/lib/finance/bill-type-classifier"
 import { backfillBillTypes } from "@/lib/finance/backfill-bill-types"
 import { syncSubscriptionTag } from "@/lib/finance/subscription-tag"
-import { stringSimilarity } from "@/lib/finance/normalize"
+import { filterProviderStreams } from "@/lib/finance/subscription-stream-filter"
 import { chargesForSubscription } from "@/lib/finance/subscription-charges"
 import { dedupeUnified } from "@/lib/finance/subscription-dedupe"
 import { NextResponse, type NextRequest } from "next/server"
@@ -55,7 +55,12 @@ export async function GET(req: NextRequest) {
       await Promise.all(nameFixUpdates).catch(() => { /* best-effort */ })
     }
 
-    const [subscriptions, dismissedSubs, plaidStreams] = await Promise.all([
+    // Streams for merchants the user has dismissed OR cancelled must not resurface
+    // as fresh "active" virtual subs. Skip whichever status we're currently
+    // viewing (those subs come from the main fetch, not from streams).
+    const suppressStatuses = ["dismissed", "cancelled"].filter((s) => s !== status)
+
+    const [subscriptions, suppressedSubs, plaidStreams] = await Promise.all([
       db.financeSubscription.findMany({
         where: {
           userId: user.id,
@@ -63,13 +68,10 @@ export async function GET(req: NextRequest) {
         },
         orderBy: { amount: "desc" },
       }),
-      // Also fetch dismissed subs so merge can match their Plaid streams and exclude them
-      status !== "dismissed"
-        ? db.financeSubscription.findMany({
-            where: { userId: user.id, status: "dismissed" },
-            select: { merchantName: true, amount: true, accountId: true },
-          })
-        : Promise.resolve([]),
+      db.financeSubscription.findMany({
+        where: { userId: user.id, status: { in: suppressStatuses } },
+        select: { merchantName: true, amount: true, accountId: true },
+      }),
       db.financeRecurringStream.findMany({
         where: { userId: user.id },
       }),
@@ -90,28 +92,9 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Filter out Plaid streams whose merchant was dismissed by the user
-    const dismissedKeys = new Set(
-      dismissedSubs.map((d) => `${d.merchantName.toLowerCase()}|${d.accountId ?? ""}`)
-    )
-    const dismissedNames = new Set(dismissedSubs.map((d) => d.merchantName.toLowerCase()))
-    const filteredPlaidStreams = plaidStreams.filter((ps) => {
-      // Use the description when merchantName is blank — many streams store the
-      // real name only there (?? misses empty strings, which let a dismissed
-      // stream resurface as a fresh "active" sub).
-      const rawName = (ps.merchantName && ps.merchantName.trim()) || ps.description
-      const name = rawName.toLowerCase()
-      const key = `${name}|${ps.accountId ?? ""}`
-      if (dismissedKeys.has(key) || dismissedNames.has(name)) return false
-      // Fuzzy/amount match too, mirroring how merge pairs streams to detected subs.
-      const plaidAmt = ps.lastAmount ?? ps.averageAmount ?? 0
-      return !dismissedSubs.some((d) => {
-        const sim = stringSimilarity(d.merchantName, rawName)
-        if (sim >= 0.8) return true
-        if (sim < 0.6 || plaidAmt === 0) return false
-        return Math.abs(d.amount - plaidAmt) / Math.max(d.amount, plaidAmt) <= 0.3
-      })
-    })
+    // Drop provider streams for merchants the user dismissed or cancelled so they
+    // can't resurface as fresh "active" virtual subs (see subscription-stream-filter).
+    const filteredPlaidStreams = filterProviderStreams(plaidStreams, suppressedSubs)
 
     // Merge detected + provider streams into unified list
     const unified = mergeSubscriptions(
