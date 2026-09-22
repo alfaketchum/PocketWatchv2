@@ -364,8 +364,18 @@ export async function fetchMultiWalletPositions(
   const RPM_BUDGET = Number(process.env.ZERION_RPM_BUDGET) || 60 // ~1 req/s default
   const safeGapMs = Math.ceil(60_000 / Math.max(1, RPM_BUDGET))
   const INTER_WALLET_MS = addresses.length <= 2 ? 0 : safeGapMs
-  const RATE_LIMIT_COOLDOWN_MS = Number(process.env.ZERION_RATE_COOLDOWN_MS) || 3_000
+  const RATE_LIMIT_COOLDOWN_MS = Number(process.env.ZERION_RATE_COOLDOWN_MS) || 1_500
+  // Hard wall-clock budget: never let a slow/throttled provider hang the caller
+  // (the wallet page fetches this live). When the budget is spent we return
+  // whatever succeeded so far instead of continuing to grind.
+  const DEADLINE_MS = Number(process.env.ZERION_FETCH_BUDGET_MS) || 30_000
+  const startedAt = Date.now()
   for (let i = 0; i < addresses.length; i++) {
+    if (Date.now() - startedAt > DEADLINE_MS) {
+      for (let k = i; k < addresses.length; k++) failed.push(addresses[k])
+      console.warn(`[zerion] time budget ${DEADLINE_MS}ms exhausted at ${i}/${addresses.length} — returning partial`)
+      break
+    }
     const address = addresses[i]
     let hit429 = false
     try {
