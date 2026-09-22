@@ -6,6 +6,14 @@
 
 import { randomUUID } from "node:crypto"
 import { db } from "@/lib/db"
+import {
+  getProviderDailyLimit,
+  getProviderDailyUsage,
+  getProviderDailyHeadroom,
+  getProviderDailyBudget,
+  invalidateProviderUsageCache,
+  nextUtcMidnight,
+} from "./provider-daily-budget"
 
 // Re-export everything from types for backward compatibility
 export {
@@ -92,6 +100,24 @@ export async function acquirePermit(
     }
   }
 
+  // Daily request cap: once today's usage reaches the provider's quota (minus a
+  // safety headroom), deny new permits until the next UTC-day reset so we never
+  // grind into a server-side daily-limit 429. Uncapped providers skip the query.
+  const dailyLimit = getProviderDailyLimit(provider)
+  if (dailyLimit != null) {
+    const used = await getProviderDailyUsage(provider)
+    const capWithHeadroom = Math.max(0, dailyLimit - getProviderDailyHeadroom(provider, dailyLimit))
+    if (used >= capWithHeadroom) {
+      const resetAt = nextUtcMidnight(now)
+      console.log(`[governor] DAILY CAP ${provider} used=${used}/${dailyLimit} — deny until ${resetAt.toISOString()}`)
+      return {
+        acquired: false, provider, operationKey, userId, gateId: gate.id,
+        leaseOwner: owner, leaseUntil, nextAllowedAt: resetAt,
+        minIntervalMs, denyReason: "daily_cap",
+      }
+    }
+  }
+
   const updated = await db.providerCallGate.updateMany({
     where: {
       id: gate.id,
@@ -148,19 +174,29 @@ export async function recordProviderResult(permit: ProviderPermit, result: Provi
     })
 
     const minuteBucket = getMinuteBucket(now)
-    const successCount = statusCode && statusCode >= 200 && statusCode < 300 ? 1 : 0
-    const rateLimitedCount = statusCode === 429 ? 1 : 0
-    const errorCount = successCount === 0 ? 1 : 0
+    // A batched operation reports how many HTTP calls it actually made via
+    // callWeight (default 1), so multi-wallet fetches are counted per wallet.
+    const callWeight = Math.max(1, Math.floor(result.callWeight ?? 1))
+    const rateLimitedCount = Math.min(
+      callWeight,
+      result.rateLimitedCount ?? (statusCode === 429 ? 1 : 0),
+    )
+    const isSuccess = statusCode !== null && statusCode >= 200 && statusCode < 300
+    const successCount = isSuccess ? Math.max(0, callWeight - rateLimitedCount) : 0
+    const errorCount = callWeight - successCount
 
     await tx.providerUsageMinute.upsert({
       where: { provider_minuteBucket: { provider: permit.provider, minuteBucket } },
-      create: { provider: permit.provider, minuteBucket, callCount: 1, successCount, rateLimitedCount, errorCount },
+      create: { provider: permit.provider, minuteBucket, callCount: callWeight, successCount, rateLimitedCount, errorCount },
       update: {
-        callCount: { increment: 1 }, successCount: { increment: successCount },
+        callCount: { increment: callWeight }, successCount: { increment: successCount },
         rateLimitedCount: { increment: rateLimitedCount }, errorCount: { increment: errorCount },
       },
     })
   })
+
+  // Freshly recorded calls must be visible to the next daily-budget check.
+  invalidateProviderUsageCache(permit.provider)
 }
 
 export async function withProviderPermit<T>(
@@ -179,6 +215,39 @@ export async function withProviderPermit<T>(
   try {
     const value = await work()
     await recordProviderResult(permit, { statusCode: 200 })
+    return value
+  } catch (error) {
+    await recordProviderResult(permit, { statusCode: statusFromUnknown(error), errorCode: errorCodeFromUnknown(error) })
+    throw error
+  }
+}
+
+/**
+ * Like withProviderPermit, but for a batched operation that fans out to several
+ * HTTP calls under a single permit (e.g. multi-wallet positions: one call per
+ * wallet). `work` returns the value plus how many calls it made and how many
+ * were rate-limited, so daily usage is tracked per-request rather than per-op.
+ */
+export async function withProviderPermitCounted<T>(
+  userId: string,
+  provider: ProviderName,
+  operationKey: string,
+  opts: AcquirePermitOptions | undefined,
+  work: () => Promise<{ value: T; calls: number; rateLimited?: number }>,
+  serviceKeyId?: string
+): Promise<T> {
+  const permit = await acquirePermit(userId, provider, operationKey, opts, serviceKeyId)
+  if (!permit.acquired) {
+    throw new ProviderThrottleError(provider, operationKey, permit.denyReason ?? "throttled", permit.nextAllowedAt)
+  }
+
+  try {
+    const { value, calls, rateLimited } = await work()
+    await recordProviderResult(permit, {
+      statusCode: 200,
+      callWeight: Math.max(1, calls),
+      rateLimitedCount: rateLimited ?? 0,
+    })
     return value
   } catch (error) {
     await recordProviderResult(permit, { statusCode: statusFromUnknown(error), errorCode: errorCodeFromUnknown(error) })
@@ -263,12 +332,20 @@ export async function getProviderBudgetState(
   operationCount: number
   activeLeases: number
   nextAllowedAt: string | null
+  dailyLimit: number | null
+  dailyUsed: number
+  dailyRemaining: number | null
+  dailyCapReached: boolean
+  dailyResetAt: string
 }> {
   const now = new Date()
-  const gates = await db.providerCallGate.findMany({
-    where: { userId, provider, NOT: { operationKey: "_global" } },
-    select: { leaseUntil: true, nextAllowedAt: true },
-  })
+  const [gates, daily] = await Promise.all([
+    db.providerCallGate.findMany({
+      where: { userId, provider, NOT: { operationKey: "_global" } },
+      select: { leaseUntil: true, nextAllowedAt: true },
+    }),
+    getProviderDailyBudget(provider),
+  ])
 
   const activeLeases = gates.filter((gate) => gate.leaseUntil && gate.leaseUntil.getTime() > now.getTime()).length
   const future = gates
@@ -281,5 +358,10 @@ export async function getProviderBudgetState(
     operationCount: gates.length,
     activeLeases,
     nextAllowedAt: future[0]?.toISOString() ?? null,
+    dailyLimit: daily.limit,
+    dailyUsed: daily.used,
+    dailyRemaining: daily.remaining,
+    dailyCapReached: daily.reached,
+    dailyResetAt: daily.resetAt,
   }
 }

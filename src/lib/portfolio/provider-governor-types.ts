@@ -3,7 +3,7 @@
  */
 
 export type ProviderName = "zerion" | "alchemy" | "ccxt" | "defillama" | "helius" | "etherscan" | "moralis" | "movement"
-export type PermitDenyReason = "leased" | "throttled"
+export type PermitDenyReason = "leased" | "throttled" | "daily_cap"
 
 export interface AcquirePermitOptions {
   minIntervalMs?: number
@@ -26,6 +26,15 @@ export interface ProviderPermit {
 export interface ProviderCallResult {
   statusCode?: number | null
   errorCode?: string | null
+  /**
+   * Number of underlying HTTP requests this result represents. A batched
+   * operation (e.g. multi-wallet positions under one permit) makes one call per
+   * wallet, so it must report the real count for accurate daily-usage tracking.
+   * Defaults to 1.
+   */
+  callWeight?: number
+  /** How many of those requests were rate-limited (429). Defaults to statusCode===429 ? 1 : 0. */
+  rateLimitedCount?: number
 }
 
 export const DEFAULT_LEASE_MS = 30_000

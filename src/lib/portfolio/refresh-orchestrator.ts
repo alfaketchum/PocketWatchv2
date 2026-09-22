@@ -5,6 +5,7 @@ import { fetchAllExchangeBalances } from "@/lib/portfolio/exchange-client"
 import { getCachedMultiProviderPositions } from "@/lib/portfolio/multi-balance-cache"
 import { buildStakingResponse } from "@/app/api/portfolio/staking/route"
 import { withProviderPermit, isProviderThrottleError } from "@/lib/portfolio/provider-governor"
+import { getRefreshBudgetIntervalMs } from "@/lib/portfolio/provider-daily-budget"
 
 type RefreshJobStatus = "queued" | "running" | "completed" | "failed"
 
@@ -14,6 +15,17 @@ const STALE_JOB_TIMEOUT_MS = 10 * 60_000 // 10 minutes — any "running" job old
 function parseRefreshTtlMs(): number {
   const parsed = Number.parseInt(process.env.PORTFOLIO_REFRESH_TTL_MS ?? "", 10)
   return Number.isFinite(parsed) && parsed > 1_000 ? parsed : DEFAULT_REFRESH_TTL_MS
+}
+
+/**
+ * Effective refresh interval: the larger of the base TTL and the wallet-count
+ * budget interval, so a Zerion-backed refresh of N wallets doesn't repeat often
+ * enough to blow the daily quota. Scales automatically with wallet count.
+ */
+async function getEffectiveRefreshTtlMs(userId: string): Promise<number> {
+  const baseTtl = parseRefreshTtlMs()
+  const walletCount = await db.trackedWallet.count({ where: { userId } })
+  return Math.max(baseTtl, getRefreshBudgetIntervalMs(walletCount))
 }
 
 function walletFingerprint(addresses: string[]): string {
@@ -84,7 +96,7 @@ export async function getRefreshMeta(userId: string, asOfHint?: Date | null): Pr
 
   const asOf = normalizeDate(latestSnapshotAt)
   const now = Date.now()
-  const ttlMs = parseRefreshTtlMs()
+  const ttlMs = await getEffectiveRefreshTtlMs(userId)
   const freshnessMs = asOf ? Math.max(0, now - asOf.getTime()) : null
   const stale = freshnessMs === null ? true : freshnessMs > ttlMs
   const nextEligible = asOf ? new Date(asOf.getTime() + ttlMs) : null
@@ -105,17 +117,17 @@ export async function getRefreshMeta(userId: string, asOfHint?: Date | null): Pr
 
 export async function queuePortfolioRefresh(
   userId: string,
-  opts?: { force?: boolean; reason?: string }
+  opts?: { force?: boolean; reason?: string; pacing?: "budget" | "off" }
 ): Promise<QueueRefreshResult> {
   const force = opts?.force ?? false
-  const ttlMs = parseRefreshTtlMs()
   const now = new Date()
-  const [latestSnapshotAt, activeJob] = await Promise.all([
+  const [latestSnapshotAt, activeJob, ttlMs] = await Promise.all([
     getLatestLiveSnapshotAt(userId),
     db.portfolioRefreshJob.findFirst({
       where: { userId, status: { in: ["queued", "running"] } },
       orderBy: { updatedAt: "desc" },
     }),
+    getEffectiveRefreshTtlMs(userId),
   ])
 
   if (activeJob) {
@@ -126,6 +138,23 @@ export async function queuePortfolioRefresh(
       reason: "already_running",
       nextEligibleRefreshAt: latestSnapshotAt ? new Date(latestSnapshotAt.getTime() + ttlMs).toISOString() : null,
       jobId: activeJob.id,
+    }
+  }
+
+  // Budget pacing (opt-in): scheduled refreshes skip while the last snapshot is
+  // still within the wallet-count-aware interval, so Zerion's daily quota lasts
+  // the whole day. Manual/forced refreshes don't pass pacing and always run.
+  if (!force && opts?.pacing === "budget" && latestSnapshotAt) {
+    const withinInterval = now.getTime() - latestSnapshotAt.getTime() <= ttlMs
+    if (withinInterval) {
+      return {
+        accepted: true,
+        queued: false,
+        skipped: true,
+        reason: "fresh_within_ttl",
+        nextEligibleRefreshAt: new Date(latestSnapshotAt.getTime() + ttlMs).toISOString(),
+        jobId: null,
+      }
     }
   }
 

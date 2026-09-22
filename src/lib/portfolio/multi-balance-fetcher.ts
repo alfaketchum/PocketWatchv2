@@ -11,7 +11,7 @@
 
 import { createHash } from "node:crypto"
 import { getServiceKey } from "./service-keys"
-import { withProviderPermit, isProviderThrottleError } from "./provider-governor"
+import { withProviderPermit, withProviderPermitCounted, isProviderThrottleError } from "./provider-governor"
 import { fetchMultiWalletPositions, type MultiWalletResult, type ZerionWalletData } from "./zerion-client"
 import { fetchMultiHeliusBalances } from "./helius-balance-client"
 import { fetchMultiAlchemyBalances } from "./alchemy-balance-client"
@@ -71,9 +71,14 @@ async function fetchEvmBalances(
   let zerionResult: MultiWalletResult | null = null
   if (zerionKey) {
     try {
-      zerionResult = await withProviderPermit(
+      zerionResult = await withProviderPermitCounted(
         userId, "zerion", `evm-positions:${walletFingerprint(addresses)}`, undefined,
-        () => fetchMultiWalletPositions(zerionKey, addresses),
+        async () => {
+          const r = await fetchMultiWalletPositions(zerionKey, addresses)
+          // One Zerion HTTP request per attempted wallet — count them all so the
+          // daily budget reflects the real fan-out, not one call per batch.
+          return { value: r, calls: r.requestCount ?? addresses.length, rateLimited: r.rateLimitedCount ?? 0 }
+        },
       )
       if (zerionResult.failedCount === 0) return zerionResult
     } catch (err) {

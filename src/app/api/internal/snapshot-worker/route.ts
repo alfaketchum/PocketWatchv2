@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       try {
         const queueResult = await queuePortfolioRefresh(user.id, {
           reason: "scheduled_snapshot",
+          pacing: "budget",
         })
 
         if (!queueResult.jobId) {

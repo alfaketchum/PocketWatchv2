@@ -290,6 +290,10 @@ export async function fetchMultiWalletChart(
 export interface MultiWalletResult {
   wallets: ZerionWalletData[]
   failedCount: number
+  /** Actual Zerion HTTP requests issued (one per attempted wallet). Zerion-only. */
+  requestCount?: number
+  /** How many of those requests were rate-limited (429). Zerion-only. */
+  rateLimitedCount?: number
 }
 
 // ─── Transaction history ───────────────────────────────────────────────────
@@ -351,6 +355,8 @@ export async function fetchMultiWalletPositions(
 ): Promise<MultiWalletResult> {
   const wallets: ZerionWalletData[] = []
   const failed: string[] = []
+  let requestCount = 0
+  let rateLimitedCount = 0
 
   // Pace the per-wallet requests. The governor gates this whole multi-wallet
   // fetch as ONE operation, so the individual Zerion calls inside must self-pace
@@ -378,6 +384,7 @@ export async function fetchMultiWalletPositions(
     }
     const address = addresses[i]
     let hit429 = false
+    requestCount++ // one Zerion request per attempted wallet
     try {
       const positions = await fetchWalletPositions(apiKey, address)
       wallets.push({
@@ -389,6 +396,7 @@ export async function fetchMultiWalletPositions(
       failed.push(address)
       const e = reason as { message?: string; status?: number }
       hit429 = e?.status === 429 || reason instanceof ZerionRateLimitError
+      if (hit429) rateLimitedCount++
       console.warn(`[zerion] Wallet ${address.slice(0, 10)}… failed: ${e?.message}`)
     }
     if (i < addresses.length - 1) {
@@ -405,5 +413,5 @@ export async function fetchMultiWalletPositions(
     throw new Error(`All ${addresses.length} wallet fetches failed`)
   }
 
-  return { wallets, failedCount: failed.length }
+  return { wallets, failedCount: failed.length, requestCount, rateLimitedCount }
 }
