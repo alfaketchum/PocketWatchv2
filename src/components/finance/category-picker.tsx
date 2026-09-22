@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { CATEGORY_GROUPS, getCategoryMeta } from "@/lib/finance/categories"
 import { CATEGORIES } from "@/lib/finance/category-types"
-import { usePopoverAlign } from "@/hooks/finance/use-popover-align"
 
-const PANEL_WIDTH = 600 // w-[600px] — wide + short (2-col grid)
+const PANEL_WIDTH = 600
+const MARGIN = 8
 
 interface CategoryPickerProps {
   value: string | null
@@ -17,32 +18,60 @@ interface CategoryPickerProps {
 
 const SUBCATEGORIES = CATEGORIES as Record<string, readonly string[]>
 
+interface PanelPos { left: number; top: number | null; bottom: number | null; width: number; maxH: number }
+
 /**
- * Two-step inline picker: pick a category (grouped, searchable), then pick or
- * type a subcategory. Categories with no defined subcategories select at once.
+ * Two-step inline picker (category → subcategory). Rendered in a portal with
+ * fixed positioning so it never gets clipped by an `overflow-hidden` table/card,
+ * and it flips above the trigger + caps its height to the available space.
  */
 export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPickerProps) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState("")
   const [pickedCat, setPickedCat] = useState<string | null>(null)
   const [customSub, setCustomSub] = useState("")
-  const ref = useRef<HTMLDivElement>(null)
-  // Flip to right-alignment when a left-opening panel would run off the page.
-  const overflowsRight = usePopoverAlign(ref, open, PANEL_WIDTH)
-  const alignRight = align === "right" || overflowsRight
-  // Open upward when the trigger is in the lower half of the viewport so the
-  // tall panel stays on screen instead of running off the bottom.
-  const [openUp, setOpenUp] = useState(false)
+  const [pos, setPos] = useState<PanelPos | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const close = () => { setOpen(false); setQ(""); setPickedCat(null); setCustomSub("") }
 
+  const computePos = () => {
+    const btn = btnRef.current
+    if (!btn) return
+    const r = btn.getBoundingClientRect()
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const width = Math.min(PANEL_WIDTH, vw - MARGIN * 2)
+    let left = align === "right" ? r.right - width : r.left
+    left = Math.max(MARGIN, Math.min(left, vw - width - MARGIN))
+    const spaceBelow = vh - r.bottom - MARGIN
+    const spaceAbove = r.top - MARGIN
+    const openUp = spaceBelow < 320 && spaceAbove > spaceBelow
+    setPos(openUp
+      ? { left, top: null, bottom: vh - r.top + 4, width, maxH: spaceAbove - 4 }
+      : { left, top: r.bottom + 4, bottom: null, width, maxH: spaceBelow - 4 })
+  }
+
+  useLayoutEffect(() => { if (open) computePos() }, [open, pickedCat]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!open) return
-    if (ref.current) setOpenUp(ref.current.getBoundingClientRect().bottom > window.innerHeight * 0.5)
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close() }
-    document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
-  }, [open])
+    const onDown = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return
+      if (panelRef.current?.contains(e.target as Node)) return
+      close()
+    }
+    const reflow = () => computePos()
+    document.addEventListener("mousedown", onDown)
+    window.addEventListener("resize", reflow)
+    window.addEventListener("scroll", reflow, true)
+    return () => {
+      document.removeEventListener("mousedown", onDown)
+      window.removeEventListener("resize", reflow)
+      window.removeEventListener("scroll", reflow, true)
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo(() => {
     const query = q.trim().toLowerCase()
@@ -60,8 +89,9 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
   const chooseSub = (sub: string | null) => { if (pickedCat) onSelect(pickedCat, sub); close() }
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div className="relative inline-block">
       <button
+        ref={btnRef}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
         className={cn(
           "inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors",
@@ -73,8 +103,19 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
         <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">edit</span>
       </button>
 
-      {open && (
-        <div className={cn("absolute z-50 w-[600px] max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-xl shadow-xl p-3 animate-in fade-in duration-150", openUp ? "bottom-full mb-1" : "top-full mt-1", alignRight ? "right-0" : "left-0")}>
+      {open && pos && createPortal(
+        <div
+          ref={panelRef}
+          style={{
+            position: "fixed",
+            left: pos.left,
+            top: pos.top ?? undefined,
+            bottom: pos.bottom ?? undefined,
+            width: pos.width,
+            maxHeight: pos.maxH,
+          }}
+          className="z-[9999] flex flex-col bg-card border border-card-border rounded-xl shadow-xl p-3 animate-in fade-in duration-150"
+        >
           {!pickedCat ? (
             <>
               <input
@@ -82,13 +123,13 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search categories..."
-                className="w-full bg-background border border-card-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-foreground-muted mb-2.5 focus:border-primary focus:outline-none"
+                className="w-full flex-shrink-0 bg-background border border-card-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-foreground-muted mb-2.5 focus:border-primary focus:outline-none"
               />
-              <div className="max-h-[420px] overflow-y-auto scroll-touch">
+              <div className="flex-1 min-h-0 overflow-y-auto scroll-touch">
                 {groups.length === 0 ? (
-                  <p className="text-xs text-foreground-muted text-center py-3">No matches</p>
+                  <p className="text-sm text-foreground-muted text-center py-3">No matches</p>
                 ) : groups.map((g) => (
-                  <div key={g.label} className="mb-1">
+                  <div key={g.label} className="mb-2">
                     <div className="flex items-center gap-1.5 px-1.5 py-1">
                       <span className="material-symbols-rounded text-foreground-muted/70" style={{ fontSize: 13 }} aria-hidden="true">{g.icon}</span>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">{g.label}</span>
@@ -119,13 +160,13 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
             <>
               <button
                 onClick={() => { setPickedCat(null); setCustomSub("") }}
-                className="w-full flex items-center gap-1 px-1.5 py-1 mb-1 text-xs font-medium text-foreground hover:text-primary transition-colors"
+                className="w-full flex-shrink-0 flex items-center gap-1 px-1.5 py-1 mb-1 text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 <span className="material-symbols-rounded flex-shrink-0" style={{ fontSize: 15 }} aria-hidden="true">chevron_left</span>
                 <span className="truncate">{pickedCat}</span>
               </button>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted px-1.5 pb-1">Subcategory</p>
-              <div className="max-h-[360px] overflow-y-auto overflow-x-hidden scroll-touch">
+              <p className="flex-shrink-0 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted px-1.5 pb-1">Subcategory</p>
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-touch">
                 <div className="grid grid-cols-2 gap-1">
                   {subs.map((sub) => (
                     <button
@@ -146,7 +187,7 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
               </div>
               <form
                 onSubmit={(e) => { e.preventDefault(); const v = customSub.trim(); if (v) chooseSub(v) }}
-                className="mt-2 flex items-center gap-1.5"
+                className="flex-shrink-0 mt-2 flex items-center gap-1.5"
               >
                 <input
                   value={customSub}
@@ -164,7 +205,8 @@ export function CategoryPicker({ value, onSelect, align = "left" }: CategoryPick
               </form>
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
