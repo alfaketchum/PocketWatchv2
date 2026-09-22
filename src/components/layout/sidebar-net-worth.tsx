@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useFinanceAccounts } from "@/hooks/use-finance"
+import { usePrivacyMode } from "@/hooks/use-privacy-mode"
+import { BlurredValue } from "@/components/portfolio/blurred-value"
 import {
   GROUP_META, ASSET_ORDER, LIABILITY_ORDER, buildAccountGroups, sumGroups,
   type GroupKey,
@@ -23,7 +26,9 @@ const SECTIONS: Array<{ id: string; label: string; order: GroupKey[] }> = [
  * collapsible with persisted open state. Hidden on the desktop icon-rail.
  */
 export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
-  const { data: institutions } = useFinanceAccounts()
+  const pathname = usePathname()
+  const { data: institutions, refetch } = useFinanceAccounts()
+  const { isHidden } = usePrivacyMode()
   const [open, setOpen] = useState<Set<string>>(() => new Set(DEFAULT_OPEN))
 
   useEffect(() => {
@@ -32,6 +37,15 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
       if (v) setOpen(new Set(JSON.parse(v) as string[]))
     } catch { /* ignore */ }
   }, [])
+
+  // This sidebar is mounted once in the persistent dashboard layout, and the
+  // global query config uses refetchOnMount:false — so if the initial accounts
+  // fetch is missed or fails (e.g. a cookie race right after login) it would
+  // stay empty until a hard refresh. Recover by refetching on navigation while
+  // there's no data (a populated list, even empty [], stops this).
+  useEffect(() => {
+    if (institutions === undefined) refetch()
+  }, [pathname, institutions, refetch])
 
   const toggle = (id: string) => setOpen((prev) => {
     const next = new Set(prev)
@@ -60,7 +74,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
             >
               <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", sOpen && "rotate-90")} style={{ fontSize: 14 }} aria-hidden="true">chevron_right</span>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">{sec.label}</span>
-              <span className="ml-auto text-[11px] font-semibold tabular-nums text-foreground">{formatCurrency(sumGroups(groups, visibleGroups))}</span>
+              <span className="ml-auto text-[11px] font-semibold tabular-nums text-foreground"><BlurredValue isHidden={isHidden}>{formatCurrency(sumGroups(groups, visibleGroups))}</BlurredValue></span>
             </button>
 
             {sOpen && visibleGroups.map((k) => {
@@ -77,7 +91,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                   >
                     <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 15 }} aria-hidden="true">{GROUP_META[k].icon}</span>
                     <span className="text-[11px] font-medium text-foreground truncate">{GROUP_META[k].label}</span>
-                    <span className="ml-auto text-[11px] tabular-nums text-foreground-muted">{formatCurrency(groupTotal)}</span>
+                    <span className="ml-auto text-[11px] tabular-nums text-foreground-muted"><BlurredValue isHidden={isHidden}>{formatCurrency(groupTotal)}</BlurredValue></span>
                     <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", gOpen && "rotate-180")} style={{ fontSize: 13 }} aria-hidden="true">expand_more</span>
                   </button>
 
@@ -90,7 +104,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                       {r.needsReconnect ? (
                         <Link href="/finance/accounts" className="text-[10px] font-medium text-primary hover:text-primary-hover flex-shrink-0">Reconnect</Link>
                       ) : (
-                        <span className="text-[11px] tabular-nums text-foreground-muted flex-shrink-0">{formatCurrency(r.balance)}</span>
+                        <span className="text-[11px] tabular-nums text-foreground-muted flex-shrink-0"><BlurredValue isHidden={isHidden}>{formatCurrency(r.balance)}</BlurredValue></span>
                       )}
                     </div>
                   ))}
