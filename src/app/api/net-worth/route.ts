@@ -223,7 +223,7 @@ export async function GET() {
       })
     }
 
-    // Per-account change over W / M / Y windows (from per-account snapshots).
+    // Per-account change over D / W / M / 3M windows (from per-account snapshots).
     const byAccount = new Map<string, Array<{ t: number; balance: number }>>()
     for (const s of accountSnaps) {
       const arr = byAccount.get(s.accountId) ?? []
@@ -236,13 +236,14 @@ export async function GET() {
       const base = arr.find((p) => p.t >= cutoff) ?? arr[0]
       return arr[arr.length - 1].balance - base.balance
     }
-    const accountChanges: Record<string, { W: number; M: number; Y: number }> = {}
+    const accountChanges: Record<string, { D: number; W: number; M: number; "3M": number }> = {}
     for (const [accountId, arr] of byAccount) {
       if (arr.length === 0) continue
       accountChanges[accountId] = {
+        D: changeFor(arr, 1),
         W: changeFor(arr, 7),
         M: changeFor(arr, 30),
-        Y: changeFor(arr, 365),
+        "3M": changeFor(arr, 90),
       }
     }
 

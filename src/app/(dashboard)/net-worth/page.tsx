@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
+import { useNetWorthTimeframe, daysForTf } from "@/hooks/use-net-worth-timeframe"
 import { formatCurrency, cn } from "@/lib/utils"
 import { FadeIn } from "@/components/motion/fade-in"
 import { StaggerChildren, StaggerItem } from "@/components/motion/stagger-children"
@@ -12,11 +12,9 @@ import { FinanceHeroCard } from "@/components/finance/finance-hero-card"
 import { NumberPop } from "@/components/ui/number-pop"
 import { NetWorthBreakdown } from "@/components/net-worth/net-worth-breakdown"
 import { NetWorthAccountsBreakdown } from "@/components/net-worth/net-worth-accounts-breakdown"
+import { NetWorthTimeframeToggle } from "@/components/net-worth/net-worth-timeframe-toggle"
 import dynamic from "next/dynamic"
 
-type Timeframe = "W" | "M" | "Y"
-const TF_DAYS: Record<Timeframe, number> = { W: 7, M: 30, Y: 365 }
-const TF_LABEL: Record<Timeframe, string> = { W: "7 days", M: "30 days", Y: "365 days" }
 const NetWorthHistoryChart = dynamic(
   () => import("@/components/net-worth/net-worth-history-chart").then((m) => m.NetWorthHistoryChart),
   { ssr: false, loading: () => <div className="h-[260px] animate-shimmer rounded-xl" /> }
@@ -25,7 +23,7 @@ const NetWorthHistoryChart = dynamic(
 export default function NetWorthPage() {
   const { data, isLoading, isError } = useCombinedNetWorth()
   const { isHidden, togglePrivacy } = usePrivacyMode()
-  const [timeframe, setTimeframe] = useState<Timeframe>("M")
+  const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe()
 
   const totalNetWorth = data?.totalNetWorth ?? 0
   const fiat = data?.fiat ?? { cash: 0, savings: 0, investments: 0, debt: 0, netWorth: 0 }
@@ -34,7 +32,7 @@ export default function NetWorthPage() {
 
   // Period change over the selected timeframe: baseline = earliest point within
   // the window (history is ascending; falls back to the oldest point available).
-  const cutoff = Date.now() - TF_DAYS[timeframe] * 86_400_000
+  const cutoff = Date.now() - daysForTf(timeframe) * 86_400_000
   const baseline = history.find((h) => new Date(h.date).getTime() >= cutoff) ?? history[0]
   const firstTotal = baseline ? baseline.total : 0
   const delta = totalNetWorth - firstTotal
@@ -90,21 +88,7 @@ export default function NetWorthPage() {
         >
           {/* Timeframe toggle */}
           <div className="flex justify-end mb-2">
-            <div className="inline-flex items-center bg-background-secondary border border-card-border rounded-lg p-0.5">
-              {(["W", "M", "Y"] as Timeframe[]).map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
-                  className={cn(
-                    "text-[11px] font-semibold px-2.5 py-1 rounded-md transition-colors",
-                    timeframe === tf ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
-                  )}
-                  title={`Change over ${TF_LABEL[tf]}`}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
+            <NetWorthTimeframeToggle value={timeframe} onSelect={setTimeframe} />
           </div>
           {/* Chart */}
           {isLoading ? (

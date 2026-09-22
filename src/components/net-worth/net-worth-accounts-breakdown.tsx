@@ -10,10 +10,11 @@ import {
   GROUP_META, ASSET_ORDER, LIABILITY_ORDER, agoLabel, buildAccountGroups, sumGroups,
   type GroupKey, type AccountRow,
 } from "./account-groups"
+import type { NetWorthTf } from "@/hooks/use-net-worth-timeframe"
 
 type GroupChanges = Partial<Record<GroupKey, number>>
-type Timeframe = "W" | "M" | "Y"
-type AccountChanges = Record<string, Record<Timeframe, number>>
+type Timeframe = NetWorthTf
+type AccountChanges = Record<string, Partial<Record<Timeframe, number>>>
 
 /** Colored signed change: gain green / drainage red. For liabilities the sign
  *  flips (less debt = gain). */
