@@ -69,7 +69,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
   const updateCat = useUpdateTransactionCategory()
   const bulkCat = useBulkCategorize()
   const updateTx = useUpdateTransaction()
-  const [pending, setPending] = useState<{ category: string; merchant: string; ids: string[] } | null>(null)
+  const [pending, setPending] = useState<{ category: string; subcategory: string | null; merchant: string; ids: string[] } | null>(null)
 
   // Re-categorize one transaction; if the same merchant recurs, offer to update them all.
   const handleRecategorize = (tx: BudgetTxRow, category: string, subcategory?: string | null) => {
@@ -78,7 +78,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
     const siblings = transactions.filter(
       (t) => t.id !== tx.id && (t.merchantName ?? t.name).trim().toLowerCase() === key && (t.category ?? "Uncategorized") !== category,
     )
-    if (siblings.length > 0) setPending({ category, merchant: tx.merchantName ?? tx.name, ids: siblings.map((s) => s.id) })
+    if (siblings.length > 0) setPending({ category, subcategory: subcategory ?? null, merchant: tx.merchantName ?? tx.name, ids: siblings.map((s) => s.id) })
   }
 
   const handleSaveNote = (txId: string, note: string) => updateTx.mutate({ transactionId: txId, notes: note })
@@ -166,7 +166,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
       <ConfirmDialog
         open={!!pending}
         onClose={() => setPending(null)}
-        onConfirm={() => { if (pending) bulkCat.mutate({ ids: pending.ids, category: pending.category }); setPending(null) }}
+        onConfirm={() => { if (pending) bulkCat.mutate({ ids: pending.ids, category: pending.category, subcategory: pending.subcategory ?? undefined }); setPending(null) }}
         title="Re-categorize recurring transactions?"
         description={`"${pending?.merchant ?? ""}" appears on ${pending?.ids.length ?? 0} other transaction${pending?.ids.length === 1 ? "" : "s"} in this period. Move ${pending?.ids.length === 1 ? "it" : "them all"} to "${pending?.category ?? ""}" too?`}
         confirmLabel={`Update ${pending?.ids.length ?? 0}`}

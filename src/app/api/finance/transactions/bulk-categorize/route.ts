@@ -14,6 +14,7 @@ import { z } from "zod/v4"
 const schema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(200),
   category: z.string().min(1),
+  subcategory: z.string().optional(),
   createRule: z.boolean().optional(),
 })
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     return apiError("BK002", parsed.error.issues[0]?.message ?? "Invalid request", 400)
   }
 
-  const { ids, category, createRule } = parsed.data
+  const { ids, category, subcategory, createRule } = parsed.data
 
   // Allow custom categories (user-created) in addition to built-in ones
   const customCats = await db.financeCustomCategory.findMany({
@@ -50,6 +51,9 @@ export async function POST(req: NextRequest) {
       },
       data: {
         category,
+        // Only touch subcategory when the caller provides one (recategorize
+        // flow); category-only bulk actions leave existing subcategories alone.
+        ...(subcategory !== undefined && { subcategory }),
         needsReview: false,
         reviewSkippedAt: null,
         // Mark as user-set so a later Plaid "modified" sync won't re-categorize it.

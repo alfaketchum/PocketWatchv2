@@ -159,7 +159,7 @@ export function useUpdateTransactionCategory() {
 export function useBulkCategorize() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { ids: string[]; category: string; createRule?: boolean }) =>
+    mutationFn: (data: { ids: string[]; category: string; subcategory?: string; createRule?: boolean }) =>
       financeFetch<{ updated: number }>(
         "/transactions/bulk-categorize",
         { method: "POST", body: JSON.stringify(data) }
