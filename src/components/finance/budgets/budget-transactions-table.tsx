@@ -197,6 +197,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.hex }} />
                         {t.category ?? "Uncategorized"}
                       </span>
+                      {t.subcategory && <span className="inline-flex items-center rounded-full bg-background-secondary text-foreground-muted text-[10px] font-medium px-2 py-0.5">{t.subcategory}</span>}
                       {onRecategorize && <CategoryPicker value={t.category} onSelect={(cat, sub) => onRecategorize(t, cat, sub)} />}
                     </div>
                   </td>
