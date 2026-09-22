@@ -201,7 +201,12 @@ export async function GET() {
     let lastFiat = 0
     let lastWallet = 0
     let lastExchange = 0
-    let lastBd: FinanceBreakdown = { cash: 0, savings: 0, investment: 0, credit: 0, loan: 0 }
+    // Seed finance groups with the current live values so they appear across the
+    // whole history (finance snapshots have little back-history vs the year of
+    // crypto chart data); real per-day snapshot values override where present.
+    let lastBd: FinanceBreakdown = {
+      cash: fiatCash, savings: fiatSavings, investment: fiatInvestments, credit: 0, loan: fiatDebt,
+    }
     const history: Array<{ date: string; fiat: number; crypto: number; total: number }> = []
     const breakdownHistory: Array<{ date: string } & GroupBreakdown> = []
 
