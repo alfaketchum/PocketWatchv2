@@ -24,6 +24,7 @@ export const ENCRYPTED_FIELDS: Record<string, Record<string, FieldType>> = {
   },
   FinanceAccount: { officialName: "string" },
   FinanceSubscription: { nickname: "string" },
+  DiscoveredAccount: { accountEmail: "string", evidence: "json" },
   FinanceSnapshot: { breakdown: "json" },
   TrackedWallet: { label: "string" },
   BalanceSnapshot: { positions: "json" },

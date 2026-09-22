@@ -133,6 +133,15 @@ function buildJobs(): readonly JobConfig[] {
       method: "POST",
       headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
     },
+    {
+      // Daily at 04:30 — refresh the login/account directory from Gmail.
+      name: "accounts-scan",
+      schedule: "55 30 4 * * *",
+      endpoint: "/api/internal/accounts-scan-worker",
+      method: "POST",
+      headers: bearerHeader(process.env.ACCOUNTS_SCAN_SECRET),
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
   ] as const
 }
 
@@ -178,6 +187,7 @@ const REQUIRED_SECRETS: Record<string, string> = {
   SNAPSHOT_WORKER_SECRET: "snapshot-worker, classify-transactions, backup-worker",
   TRAVEL_PRICE_CHECK_SECRET: "travel-price-check",
   FINANCE_DIGEST_SECRET: "finance-digest",
+  ACCOUNTS_SCAN_SECRET: "accounts-scan",
 }
 
 export function startScheduler(): () => void {

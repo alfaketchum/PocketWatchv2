@@ -67,6 +67,7 @@ model User {
   savedRoutes                   SavedRoute[]
   pkceFlows                     PkceFlow[]
   trips                         Trip[]
+  discoveredAccounts            DiscoveredAccount[]
   calendarTokenVersion          Int?                           @default(1)
 
 }
@@ -837,6 +838,44 @@ model FinanceSubscription {
 
   @@index([userId])
   @@index([userId, status])
+}
+
+// Email-discovered login/account directory: which email address the user signed
+// up for each online service with. Populated by scanning connected Gmail
+// account(s) for account-signal emails (welcome/verify/password-reset/security).
+// Only DERIVED data is stored — never full email bodies (see src/lib/email/).
+model DiscoveredAccount {
+  id               String    @id @default(cuid())
+  userId           String
+  // Service identity — PLAINTEXT so it can be grouped/filtered/sorted in SQL.
+  serviceName      String    // display name, e.g. "Netflix"
+  serviceDomain    String    // registrable domain, e.g. "netflix.com" (group key)
+  category         String?   // "streaming" | "finance" | "shopping" | "social" | ...
+  // The email the user signed up WITH — SENSITIVE (encrypted at rest).
+  accountEmail     String
+  // HMAC(lowercased email) — deterministic, so it can be uniquely indexed and
+  // filtered on (the encrypted accountEmail column cannot; random-IV ciphertext).
+  accountEmailHash String
+  // Provenance / evidence (NO full bodies).
+  sourceService    String    // FinanceCredential service the signal came from ("gmail_oauth:<email>")
+  signalTypes      String[]  @default([]) // welcome | verify | password_reset | security_alert | receipt
+  evidence         Json?     // { subject, from, snippet } — SENSITIVE (encrypted)
+  sourceRefs       String[]  @default([]) // Gmail message ids fed this record — dedupe (mirrors Trip.sourceRefs)
+  confidence       Float     @default(0)
+  extractedBy      String    @default("heuristic") // "heuristic" | "llm"
+  firstSeenAt      DateTime?
+  lastSeenAt       DateTime?
+  // User curation.
+  status           String    @default("active") // active | dismissed
+  userEdited       Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, serviceDomain, accountEmailHash])
+  @@index([userId, status])
+  @@index([userId, category])
+  @@index([userId, serviceDomain])
 }
 
 model FinanceCategoryRule {

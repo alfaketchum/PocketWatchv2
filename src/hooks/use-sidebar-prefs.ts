@@ -54,9 +54,14 @@ export const AI_NAV_ITEMS: NavItem[] = [
   { id: "ai-chat", label: "PocketLLM", href: "/chat", icon: "smart_toy" },
 ]
 
+export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
+  { id: "accounts-directory", label: "Directory", href: "/accounts", icon: "alternate_email" },
+]
+
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
+  accounts:  { label: "Accounts",      items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
   ai:        { label: "Assistant",     items: AI_NAV_ITEMS },
@@ -64,10 +69,11 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
 
 function buildDefaultPrefs(): SidebarPrefs {
   return {
-    categoryOrder: ["netWorth", "finance", "portfolio", "travel", "ai"],
+    categoryOrder: ["netWorth", "finance", "accounts", "portfolio", "travel", "ai"],
     categories: {
       netWorth:  { order: NET_WORTH_NAV_ITEMS.map((i) => i.id), hidden: [] },
       finance:   { order: FINANCE_NAV_ITEMS.map((i) => i.id),   hidden: [] },
+      accounts:  { order: ACCOUNTS_NAV_ITEMS.map((i) => i.id),  hidden: [] },
       portfolio: { order: PORTFOLIO_NAV_ITEMS.map((i) => i.id), hidden: [] },
       travel:    { order: TRAVEL_NAV_ITEMS.map((i) => i.id),    hidden: [] },
       ai:        { order: AI_NAV_ITEMS.map((i) => i.id),        hidden: [] },
@@ -117,6 +123,17 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     const cardsIdx = financeCat.order.indexOf("fin-cards")
     if (cardsIdx >= 0) financeCat.order.splice(cardsIdx + 1, 0, "fin-subscriptions")
     else financeCat.order.push("fin-subscriptions")
+    savePrefs(prefs)
+  }
+  // Inject accounts category if missing (email-discovered login directory).
+  if (!prefs.categoryOrder.includes("accounts")) {
+    const finIdx = prefs.categoryOrder.indexOf("finance")
+    const insertAt = finIdx >= 0 ? finIdx + 1 : prefs.categoryOrder.length
+    prefs.categoryOrder.splice(insertAt, 0, "accounts")
+    prefs.categories.accounts = {
+      order: ACCOUNTS_NAV_ITEMS.map((i) => i.id),
+      hidden: [],
+    }
     savePrefs(prefs)
   }
   // Inject ai category if missing (PocketLLM is back in the sidebar — opens the

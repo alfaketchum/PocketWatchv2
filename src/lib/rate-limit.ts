@@ -158,6 +158,15 @@ export const financeRateLimiters = {
 }
 
 /**
+ * Account directory rate limiters.
+ * The Gmail scan is provider-bound and can be slow, so keep it infrequent.
+ */
+export const accountsRateLimiters = {
+  /** Gmail account scan: 3 requests per 5 minutes */
+  scan: createRateLimiter({ limit: 3, windowSeconds: 300 }),
+}
+
+/**
  * Deal flow specific rate limiters.
  * Stricter limits for sensitive deal operations.
  */
