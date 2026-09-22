@@ -1,24 +1,22 @@
 /**
- * Multi-provider balance fetcher orchestrator.
+ * Balance fetcher orchestrator.
  *
- * Splits wallets by chain type, dispatches to the right provider,
- * and implements waterfall fallback on rate-limit (429).
+ * Splits wallets by chain type and dispatches to the right provider.
  *
- * EVM:    Zerion → Alchemy → Moralis
+ * EVM:    Zerion only (complete data incl. DeFi; no worse-data fallback)
  * Solana: Helius → Alchemy
  * BTC:    skipped (no dedicated provider wired yet)
  */
 
 import { createHash } from "node:crypto"
 import { getServiceKey } from "./service-keys"
-import { withProviderPermit, withProviderPermitCounted, isProviderThrottleError } from "./provider-governor"
+import { withProviderPermit, withProviderPermitCounted } from "./provider-governor"
 import { fetchMultiWalletPositions, type MultiWalletResult, type ZerionWalletData } from "./zerion-client"
 import { fetchMultiHeliusBalances } from "./helius-balance-client"
 import { fetchMultiAlchemyBalances } from "./alchemy-balance-client"
-import { fetchMultiMoralisBalances } from "./moralis-balance-client"
 import { fetchMultiMovementBalances } from "./movement-balance-client"
 
-// Chains treated as EVM — Zerion/Alchemy/Moralis can fetch these.
+// Chains treated as EVM — fetched from Zerion.
 // Includes both DB format (uppercase short codes) and Zerion format (lowercase full names).
 const EVM_CHAINS = new Set([
   // DB format (TrackedWallet.chains)
@@ -46,17 +44,15 @@ function walletFingerprint(addresses: string[]): string {
   return createHash("sha256").update(sorted).digest("hex").slice(0, 16)
 }
 
-/** Check if an error is a 429 rate-limit (from any provider). */
-function is429(err: unknown): boolean {
-  if (isProviderThrottleError(err)) return true
-  if (err && typeof err === "object" && (err as Record<string, unknown>).status === 429) return true
-  if (err instanceof Error && err.message.includes("429")) return true
-  return false
-}
-
 /**
- * Fetch EVM balances with waterfall fallback: Zerion → Alchemy → Moralis.
- * Only attempts providers that have API keys configured.
+ * Fetch EVM balances from Zerion — the single source of truth for EVM.
+ *
+ * Zerion returns complete data including DeFi positions (staked/locked/rewards),
+ * which the fallback providers (Alchemy/Moralis) do not. Falling back to them
+ * produced fresh-but-wrong totals ("reading the Alchemy pull"), so the balance
+ * path was simplified back to the original Zerion-only design: when Zerion is
+ * rate-limited this throws, and the caller serves the last good snapshot
+ * (correct-but-stale) instead of degrading to a provider that drops DeFi value.
  */
 async function fetchEvmBalances(
   userId: string,
@@ -65,80 +61,21 @@ async function fetchEvmBalances(
   if (wallets.length === 0) return { wallets: [], failedCount: 0 }
 
   const addresses = wallets.map((w) => w.address)
-
-  // ─── Try Zerion (primary) ───
   const zerionKey = await getServiceKey(userId, "zerion")
-  let zerionResult: MultiWalletResult | null = null
-  if (zerionKey) {
-    try {
-      zerionResult = await withProviderPermitCounted(
-        userId, "zerion", `evm-positions:${walletFingerprint(addresses)}`, undefined,
-        async () => {
-          const r = await fetchMultiWalletPositions(zerionKey, addresses)
-          // One Zerion HTTP request per attempted wallet — count them all so the
-          // daily budget reflects the real fan-out, not one call per batch.
-          return { value: r, calls: r.requestCount ?? addresses.length, rateLimited: r.rateLimitedCount ?? 0 }
-        },
-      )
-      if (zerionResult.failedCount === 0) return zerionResult
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err)
-      console.warn(`[multi-fetch] Zerion failed for EVM (${reason}) — trying Alchemy fallback`)
-    }
+  if (!zerionKey) {
+    console.warn(`[multi-fetch] No Zerion key — cannot fetch ${wallets.length} EVM wallet(s)`)
+    return { wallets: [], failedCount: wallets.length }
   }
 
-  // ─── Alchemy: backfill the wallets Zerion dropped, or a full fallback ───
-  const alchemyKey = await getServiceKey(userId, "alchemy")
-  if (alchemyKey) {
-    if (zerionResult) {
-      // Zerion returned partial — fetch ONLY the wallets it missed via Alchemy.
-      const got = new Set(zerionResult.wallets.map((w) => w.address.toLowerCase()))
-      const missing = wallets.filter((w) => !got.has(w.address.toLowerCase()))
-      try {
-        const backfill = await withProviderPermit(
-          userId, "alchemy", `evm-backfill`, undefined,
-          () => fetchMultiAlchemyBalances(alchemyKey, missing),
-        )
-        console.log(`[multi-fetch] Alchemy backfilled ${backfill.wallets.length}/${missing.length} wallet(s) Zerion missed`)
-        return { wallets: [...zerionResult.wallets, ...backfill.wallets], failedCount: backfill.failedCount }
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : String(err)
-        console.warn(`[multi-fetch] Alchemy backfill failed (${reason}) — keeping Zerion partial`)
-        return zerionResult
-      }
-    }
-    // Zerion unavailable or threw entirely — full Alchemy fetch.
-    try {
-      return await withProviderPermit(
-        userId, "alchemy", `evm-balances`, undefined,
-        () => fetchMultiAlchemyBalances(alchemyKey, wallets),
-      )
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err)
-      console.warn(`[multi-fetch] Alchemy failed for EVM (${reason}) — trying Moralis fallback`)
-    }
-  }
-
-  // No Alchemy (or it failed) but Zerion gave a partial — use that rather than nothing.
-  if (zerionResult) return zerionResult
-
-  // ─── Try Moralis (fallback) ───
-  const moralisKey = await getServiceKey(userId, "moralis")
-  if (moralisKey) {
-    try {
-      return await withProviderPermit(
-        userId, "moralis", `evm-balances`, undefined,
-        () => fetchMultiMoralisBalances(moralisKey, wallets),
-      )
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err)
-      console.warn(`[multi-fetch] Moralis failed for EVM (${reason}) — all EVM providers exhausted`)
-    }
-  }
-
-  // All providers exhausted or missing — return empty with failedCount
-  console.warn(`[multi-fetch] No EVM provider available for ${wallets.length} wallets`)
-  return { wallets: [], failedCount: wallets.length }
+  return withProviderPermitCounted(
+    userId, "zerion", `evm-positions:${walletFingerprint(addresses)}`, undefined,
+    async () => {
+      const r = await fetchMultiWalletPositions(zerionKey, addresses)
+      // One Zerion HTTP request per attempted wallet — count them so the daily
+      // budget reflects the real fan-out, not one call per batch.
+      return { value: r, calls: r.requestCount ?? addresses.length, rateLimited: r.rateLimitedCount ?? 0 }
+    },
+  )
 }
 
 /**
