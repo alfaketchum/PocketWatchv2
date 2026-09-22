@@ -23,7 +23,7 @@ const PERK_PATTERNS: Array<{ keywords: string[]; merchants: string[]; categories
   { keywords: ["saks"], merchants: ["saks"], categories: [] },
   { keywords: ["walmart"], merchants: ["walmart", "wal-mart"], categories: [] },
   { keywords: ["instacart"], merchants: ["instacart"], categories: [] },
-  { keywords: ["equinox", "gym", "fitness"], merchants: ["equinox", "planet fitness", "peloton"], categories: ["Health & Fitness"] },
+  { keywords: ["equinox", "gym", "fitness"], merchants: ["equinox", "planet fitness", "peloton"], categories: ["Fitness"] },
   { keywords: ["cell phone", "wireless"], merchants: ["t-mobile", "verizon", "at&t"], categories: ["Bills & Utilities"] },
 ]
 

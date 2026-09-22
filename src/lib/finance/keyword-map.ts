@@ -6,8 +6,8 @@ import type { CategoryResult } from "./category-types"
 
 const KEYWORD_MAP: Array<{ keywords: string[]; result: CategoryResult }> = [
   { keywords: ["restaurant", "grill", "kitchen", "bistro", "cafe", "diner", "eatery", "sushi", "pizza", "thai", "chinese", "mexican", "italian", "indian"], result: { category: "Food & Dining", subcategory: "Restaurants" } },
-  { keywords: ["pharmacy", "rx", "drug"], result: { category: "Health & Fitness", subcategory: "Pharmacy" } },
-  { keywords: ["gym", "fitness", "yoga"], result: { category: "Health & Fitness", subcategory: "Gym" } },
+  { keywords: ["pharmacy", "rx", "drug"], result: { category: "Healthcare", subcategory: "Pharmacy" } },
+  { keywords: ["gym", "fitness", "yoga"], result: { category: "Fitness", subcategory: "Gym" } },
   { keywords: ["parking", "park meter"], result: { category: "Transportation", subcategory: "Parking" } },
   { keywords: ["gas station", "fuel", "petrol"], result: { category: "Transportation", subcategory: "Gas" } },
   { keywords: ["grocery", "market", "supermarket", "food store"], result: { category: "Food & Dining", subcategory: "Groceries" } },
@@ -38,8 +38,8 @@ const KEYWORD_MAP: Array<{ keywords: string[]; result: CategoryResult }> = [
   { keywords: ["wire transfer", "ach transfer", "ach payment", "ach deposit", "external transfer"], result: { category: "Transfer", subcategory: "Bank Transfer" } },
   { keywords: ["tsa", "precheck", "global entry", "nexus"], result: { category: "Travel", subcategory: null } },
   { keywords: ["subscription", "recurring", "membership"], result: { category: "Bills & Utilities", subcategory: null } },
-  { keywords: ["psychiatr", "therapist", "therapy", "counseling", "mental health", "psycholog"], result: { category: "Health & Fitness", subcategory: "Mental Health" } },
-  { keywords: ["benefit", "benefits", "hsa", "fsa"], result: { category: "Health & Fitness", subcategory: null } },
+  { keywords: ["psychiatr", "therapist", "therapy", "counseling", "mental health", "psycholog"], result: { category: "Healthcare", subcategory: "Mental Health" } },
+  { keywords: ["benefit", "benefits", "hsa", "fsa"], result: { category: "Healthcare", subcategory: null } },
   // FIX Bug 18: Removed duplicate insurance entry — already handled by line 18 above
   { keywords: ["chase credit crd", "epay"], result: { category: "Transfer", subcategory: "Bank Transfer" } },
   { keywords: ["management", "property mgmt", "ny management", "managemen"], result: { category: "Housing", subcategory: "Rent" } },
