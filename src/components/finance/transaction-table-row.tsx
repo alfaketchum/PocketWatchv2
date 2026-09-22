@@ -105,7 +105,7 @@ export function TransactionTableRow({
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.hex }} />
             {category ?? "Uncategorized"}
           </span>
-          {subcategory && <span className="text-[11px] text-foreground-muted">· {subcategory}</span>}
+          {subcategory && <span className="inline-flex items-center rounded-full bg-background-secondary text-foreground-muted text-[10px] font-medium px-2 py-0.5">{subcategory}</span>}
           {onRecategorize && <CategoryPicker value={category} onSelect={onRecategorize} />}
         </div>
       </td>
