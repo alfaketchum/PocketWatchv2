@@ -58,13 +58,18 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
 
   const groups = buildAccountGroups(institutions)
 
-  // Surface the crypto portfolio as a "Digital Assets" row under Investments so
-  // the sidebar reflects total net worth, not just finance accounts.
-  const cryptoValue = netWorth?.crypto?.value ?? 0
-  if (cryptoValue > 0) {
-    groups.investment = [
-      ...groups.investment,
-      { id: "digital-assets", name: "Digital Assets", mask: null, type: "crypto", balance: cryptoValue, synced: null, needsReconnect: false },
+  // Surface the crypto portfolio as its own Stablecoins / Digital Assets asset
+  // groups so the sidebar reflects total net worth, not just finance accounts.
+  const stablecoins = netWorth?.crypto?.stablecoins ?? 0
+  const digitalAssets = netWorth?.crypto?.digitalAssets ?? 0
+  if (stablecoins > 0) {
+    groups.stablecoin = [
+      { id: "stablecoins", name: "Wallets", mask: null, type: "crypto", balance: stablecoins, synced: null, needsReconnect: false },
+    ]
+  }
+  if (digitalAssets > 0) {
+    groups.digital = [
+      { id: "digital-assets", name: "Wallets", mask: null, type: "crypto", balance: digitalAssets, synced: null, needsReconnect: false },
     ]
   }
 
@@ -108,19 +113,27 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                     <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", gOpen && "rotate-180")} style={{ fontSize: 13 }} aria-hidden="true">expand_more</span>
                   </button>
 
-                  {gOpen && rows.map((r) => (
-                    <div key={r.id} className="flex items-center gap-2 pl-12 pr-2 py-1">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-foreground truncate leading-tight">{r.name}</p>
-                        {r.mask && <p className="text-[9px] text-foreground-muted leading-tight">••{r.mask}</p>}
-                      </div>
-                      {r.needsReconnect ? (
-                        <Link href="/finance/accounts" className="text-[10px] font-medium text-primary hover:text-primary-hover flex-shrink-0">Reconnect</Link>
-                      ) : (
-                        <span className="text-[11px] tabular-nums text-foreground-muted flex-shrink-0"><BlurredValue isHidden={isHidden}>{formatCurrency(r.balance)}</BlurredValue></span>
-                      )}
-                    </div>
-                  ))}
+                  {gOpen && rows.map((r) => {
+                    const inner = (
+                      <>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-foreground truncate leading-tight">{r.name}</p>
+                          {r.mask && <p className="text-[9px] text-foreground-muted leading-tight">••{r.mask}</p>}
+                        </div>
+                        {r.needsReconnect ? (
+                          <Link href="/finance/accounts" className="text-[10px] font-medium text-primary hover:text-primary-hover flex-shrink-0">Reconnect</Link>
+                        ) : (
+                          <span className="text-[11px] tabular-nums text-foreground-muted flex-shrink-0"><BlurredValue isHidden={isHidden}>{formatCurrency(r.balance)}</BlurredValue></span>
+                        )}
+                      </>
+                    )
+                    // Crypto rows link through to the portfolio; finance rows are static.
+                    return r.type === "crypto" ? (
+                      <Link key={r.id} href="/portfolio" className="flex items-center gap-2 pl-12 pr-2 py-1 rounded-md hover:bg-background-secondary transition-colors">{inner}</Link>
+                    ) : (
+                      <div key={r.id} className="flex items-center gap-2 pl-12 pr-2 py-1">{inner}</div>
+                    )
+                  })}
                 </div>
               )
             })}

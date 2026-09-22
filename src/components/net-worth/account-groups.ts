@@ -3,22 +3,34 @@
  * Groups finance accounts into Personal-Capital-style buckets.
  */
 
-export type GroupKey = "cash" | "investment" | "credit" | "loan" | "other"
+export type GroupKey =
+  | "cash" | "savings" | "investment" | "stablecoin" | "digital" | "credit" | "loan" | "other"
 
 export const GROUP_META: Record<GroupKey, { label: string; icon: string; kind: "asset" | "liability" }> = {
-  cash:       { label: "Cash",         icon: "account_balance",        kind: "asset" },
-  investment: { label: "Investments",  icon: "trending_up",            kind: "asset" },
-  other:      { label: "Other",        icon: "account_balance_wallet", kind: "asset" },
-  credit:     { label: "Credit Cards", icon: "credit_card",            kind: "liability" },
-  loan:       { label: "Loans",        icon: "request_quote",          kind: "liability" },
+  cash:       { label: "Cash",          icon: "account_balance",        kind: "asset" },
+  savings:    { label: "Savings",       icon: "savings",                kind: "asset" },
+  investment: { label: "Investments",   icon: "trending_up",            kind: "asset" },
+  stablecoin: { label: "Stablecoins",   icon: "paid",                   kind: "asset" },
+  digital:    { label: "Digital Assets", icon: "currency_bitcoin",      kind: "asset" },
+  other:      { label: "Other",         icon: "account_balance_wallet", kind: "asset" },
+  credit:     { label: "Credit Cards",  icon: "credit_card",            kind: "liability" },
+  loan:       { label: "Loans",         icon: "request_quote",          kind: "liability" },
 }
 
-export const ASSET_ORDER: GroupKey[] = ["cash", "investment", "other"]
+export const ASSET_ORDER: GroupKey[] = ["cash", "savings", "investment", "stablecoin", "digital", "other"]
 export const LIABILITY_ORDER: GroupKey[] = ["credit", "loan"]
 
-export function groupOf(type: string): GroupKey {
+/**
+ * Bucket a finance account by type/subtype. Savings splits out from Cash (via
+ * subtype for generic "depository" accounts). Stablecoin/digital groups are
+ * crypto-derived and injected separately, not produced here.
+ */
+export function groupOf(type: string, subtype?: string | null): GroupKey {
+  const sub = (subtype ?? "").toLowerCase()
   switch (type) {
-    case "checking": case "savings": case "depository": case "cash": return "cash"
+    case "savings": return "savings"
+    case "checking": case "cash": return "cash"
+    case "depository": return sub === "savings" ? "savings" : "cash"
     case "investment": case "brokerage": return "investment"
     case "credit": case "business_credit": return "credit"
     case "loan": case "mortgage": return "loan"
@@ -56,22 +68,27 @@ interface InstitutionLike {
     name: string
     officialName: string | null
     type: string
+    subtype?: string | null
     mask: string | null
     currentBalance: number | null
     isHidden: boolean
   }>
 }
 
+function emptyGroups(): Record<GroupKey, AccountRow[]> {
+  return { cash: [], savings: [], investment: [], stablecoin: [], digital: [], other: [], credit: [], loan: [] }
+}
+
 /** Group all visible accounts across institutions into the bucket map. */
 export function buildAccountGroups(
   institutions: InstitutionLike[] | undefined,
 ): Record<GroupKey, AccountRow[]> {
-  const groups: Record<GroupKey, AccountRow[]> = { cash: [], investment: [], other: [], credit: [], loan: [] }
+  const groups = emptyGroups()
   for (const inst of institutions ?? []) {
     const needsReconnect = inst.status === "error" && inst.provider !== "manual"
     for (const a of inst.accounts) {
       if (a.isHidden) continue
-      groups[groupOf(a.type)].push({
+      groups[groupOf(a.type, a.subtype)].push({
         id: a.id,
         name: a.officialName || a.name,
         mask: a.mask,

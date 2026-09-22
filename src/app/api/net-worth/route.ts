@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
+import { isStableLikeSymbol, normalizeSymbolForPricing } from "@/lib/portfolio/price-symbol-utils"
 
 /**
  * GET /api/net-worth
@@ -34,6 +35,7 @@ export async function GET() {
     })
 
     let fiatCash = 0
+    let fiatSavings = 0
     let fiatInvestments = 0
     let fiatDebt = 0
 
@@ -44,8 +46,11 @@ export async function GET() {
       if (acct.institution.provider === "simplefin" && acct.linkedExternalId) continue
 
       const bal = acct.currentBalance ?? 0
+      const sub = (acct.subtype ?? "").toLowerCase()
 
-      if (acct.type === "depository" || acct.type === "checking" || acct.type === "savings") {
+      if (acct.type === "savings" || (acct.type === "depository" && sub === "savings")) {
+        fiatSavings += bal
+      } else if (acct.type === "depository" || acct.type === "checking" || acct.type === "cash") {
         fiatCash += bal
       } else if (acct.type === "investment" || acct.type === "brokerage") {
         fiatInvestments += bal
@@ -54,7 +59,7 @@ export async function GET() {
       }
     }
 
-    const fiatNetWorth = fiatCash + fiatInvestments - fiatDebt
+    const fiatNetWorth = fiatCash + fiatSavings + fiatInvestments - fiatDebt
 
     // ─── Portfolio: LIVE cached value (same source as the /portfolio page) ───
     // Previously this read the latest `live_refresh` snapshot, but that snapshot
@@ -64,9 +69,17 @@ export async function GET() {
     // instead (already includes exchange balances), and keep the best snapshot
     // only as a floor so a cold/partial cache can't understate net worth.
     let liveCrypto = 0
+    let liveStable = 0
     try {
       const live = await buildBalancesForUser(user.id)
-      if (!live.error) liveCrypto = live.totalValue
+      if (!live.error) {
+        liveCrypto = live.totalValue
+        // Classify stablecoin value so net worth can split Stablecoins vs Digital Assets.
+        for (const p of live.positions) {
+          const norm = normalizeSymbolForPricing(p.symbol)
+          if (norm && isStableLikeSymbol(norm)) liveStable += p.value
+        }
+      }
     } catch (err) {
       console.warn("[net-worth] live portfolio read failed, falling back to snapshot:", err)
     }
@@ -97,6 +110,13 @@ export async function GET() {
 
     // Prefer the live value; never show less than the last good snapshot.
     const cryptoValue = Math.max(liveCrypto, snapshotCrypto)
+
+    // Split crypto into stablecoins vs digital assets. Use the live stablecoin
+    // ratio; when the snapshot floor is higher (live cold/partial) apply that same
+    // ratio so the two always sum to cryptoValue.
+    const stableRatio = liveCrypto > 0 ? liveStable / liveCrypto : 0
+    const cryptoStablecoins = cryptoValue * stableRatio
+    const cryptoDigitalAssets = cryptoValue - cryptoStablecoins
 
     // ─── Combined ───
     const totalNetWorth = fiatNetWorth + cryptoValue
@@ -218,12 +238,15 @@ export async function GET() {
       totalNetWorth,
       fiat: {
         cash: fiatCash,
+        savings: fiatSavings,
         investments: fiatInvestments,
         debt: fiatDebt,
         netWorth: fiatNetWorth,
       },
       crypto: {
         value: cryptoValue,
+        stablecoins: cryptoStablecoins,
+        digitalAssets: cryptoDigitalAssets,
         // Live portfolio total (current); null = not a stale snapshot timestamp.
         snapshotAt: null,
       },

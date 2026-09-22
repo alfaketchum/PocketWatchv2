@@ -5,81 +5,85 @@ import { formatCurrency, cn } from "@/lib/utils"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { StaggerReveal } from "@/components/ui/stagger-reveal"
 
-interface BreakdownItem {
-  label: string
-  value: number
-  icon: string
-  color: string
-  href: string
-}
-
 interface NetWorthBreakdownProps {
   fiatCash: number
+  fiatSavings: number
   fiatInvestments: number
   fiatDebt: number
-  cryptoValue: number
+  stablecoins: number
+  digitalAssets: number
   totalNetWorth: number
   isHidden: boolean
 }
 
+// Asset taxonomy (order matters). Each carries its icon + a bar/text color.
+const ASSET_SEGMENTS = [
+  { key: "cash",       label: "Cash",          icon: "account_balance",  bar: "bg-emerald-500", text: "text-emerald-500", href: "/finance/accounts" },
+  { key: "savings",    label: "Savings",       icon: "savings",          bar: "bg-teal-500",    text: "text-teal-500",    href: "/finance/accounts" },
+  { key: "investment", label: "Investments",   icon: "trending_up",      bar: "bg-violet-500",  text: "text-violet-500",  href: "/finance/investments" },
+  { key: "stablecoin", label: "Stablecoins",   icon: "paid",             bar: "bg-sky-500",     text: "text-sky-500",     href: "/portfolio" },
+  { key: "digital",    label: "Digital Assets", icon: "currency_bitcoin", bar: "bg-amber-500",  text: "text-amber-500",   href: "/portfolio" },
+] as const
+
 export function NetWorthBreakdown({
   fiatCash,
+  fiatSavings,
   fiatInvestments,
   fiatDebt,
-  cryptoValue,
+  stablecoins,
+  digitalAssets,
   totalNetWorth,
   isHidden,
 }: NetWorthBreakdownProps) {
-  const items: BreakdownItem[] = [
-    { label: "Cash", value: fiatCash, icon: "account_balance", color: "text-emerald-500", href: "/finance/accounts" },
-    { label: "Investments", value: fiatInvestments, icon: "show_chart", color: "text-violet-500", href: "/finance/investments" },
-    { label: "Digital Assets", value: cryptoValue, icon: "currency_bitcoin", color: "text-amber-500", href: "/portfolio" },
-    { label: "Debt", value: -fiatDebt, icon: "credit_card", color: "text-red-500", href: "/finance/cards" },
-  ]
+  const valueOf: Record<string, number> = {
+    cash: fiatCash,
+    savings: fiatSavings,
+    investment: fiatInvestments,
+    stablecoin: stablecoins,
+    digital: digitalAssets,
+  }
 
-  const positiveTotal = fiatCash + fiatInvestments + cryptoValue
+  const assets = ASSET_SEGMENTS.map((s) => ({ ...s, value: valueOf[s.key] })).filter((s) => s.value > 0)
+  const positiveTotal = assets.reduce((sum, s) => sum + s.value, 0)
+
+  const rows = [
+    ...assets,
+    ...(fiatDebt > 0
+      ? [{ key: "debt", label: "Debt", icon: "credit_card", bar: "bg-red-500", text: "text-red-500", href: "/finance/cards", value: -fiatDebt }]
+      : []),
+  ]
 
   return (
     <div className="space-y-4">
       {/* Allocation bar */}
       {positiveTotal > 0 && (
         <div className="flex h-2.5 rounded-full overflow-hidden bg-background-secondary">
-          {fiatCash > 0 && (
+          {assets.map((s) => (
             <div
-              className="bg-emerald-500 transition-[width] duration-500"
-              style={{ width: `${(fiatCash / positiveTotal) * 100}%` }}
+              key={s.key}
+              className={cn(s.bar, "transition-[width] duration-500")}
+              style={{ width: `${(s.value / positiveTotal) * 100}%` }}
+              title={`${s.label} · ${formatCurrency(s.value)}`}
             />
-          )}
-          {fiatInvestments > 0 && (
-            <div
-              className="bg-violet-500 transition-[width] duration-500"
-              style={{ width: `${(fiatInvestments / positiveTotal) * 100}%` }}
-            />
-          )}
-          {cryptoValue > 0 && (
-            <div
-              className="bg-amber-500 transition-[width] duration-500"
-              style={{ width: `${(cryptoValue / positiveTotal) * 100}%` }}
-            />
-          )}
+          ))}
         </div>
       )}
 
       {/* Item rows */}
       <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {items.map((item) => {
+        {rows.map((item) => {
           const pct = totalNetWorth !== 0
             ? ((Math.abs(item.value) / Math.abs(totalNetWorth)) * 100).toFixed(1)
             : "0.0"
 
           return (
             <Link
-              key={item.label}
+              key={item.key}
               href={item.href}
               className="flex items-center gap-3 bg-card rounded-xl px-4 py-3.5 card-hover-lift transition-colors"
               style={{ boxShadow: "var(--shadow-sm)" }}
             >
-              <span className={cn("material-symbols-rounded flex-shrink-0", item.color)} style={{ fontSize: 20 }}>
+              <span className={cn("material-symbols-rounded flex-shrink-0", item.text)} style={{ fontSize: 20 }}>
                 {item.icon}
               </span>
               <div className="flex-1 min-w-0">

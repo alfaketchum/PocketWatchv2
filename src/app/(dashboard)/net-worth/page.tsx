@@ -28,8 +28,8 @@ export default function NetWorthPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>("M")
 
   const totalNetWorth = data?.totalNetWorth ?? 0
-  const fiat = data?.fiat ?? { cash: 0, investments: 0, debt: 0, netWorth: 0 }
-  const crypto = data?.crypto ?? { value: 0, snapshotAt: null }
+  const fiat = data?.fiat ?? { cash: 0, savings: 0, investments: 0, debt: 0, netWorth: 0 }
+  const crypto = data?.crypto ?? { value: 0, stablecoins: 0, digitalAssets: 0, snapshotAt: null }
   const history = data?.history ?? []
 
   // Period change over the selected timeframe: baseline = earliest point within
@@ -126,9 +126,11 @@ export default function NetWorthPage() {
         ) : (
           <NetWorthBreakdown
             fiatCash={fiat.cash}
+            fiatSavings={fiat.savings}
             fiatInvestments={fiat.investments}
             fiatDebt={fiat.debt}
-            cryptoValue={crypto.value}
+            stablecoins={crypto.stablecoins}
+            digitalAssets={crypto.digitalAssets}
             totalNetWorth={totalNetWorth}
             isHidden={isHidden}
           />

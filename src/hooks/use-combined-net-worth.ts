@@ -6,12 +6,15 @@ export interface CombinedNetWorthData {
   totalNetWorth: number
   fiat: {
     cash: number
+    savings: number
     investments: number
     debt: number
     netWorth: number
   }
   crypto: {
     value: number
+    stablecoins: number
+    digitalAssets: number
     snapshotAt: string | null
   }
   history: Array<{
