@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { motion, AnimatePresence, useReducedMotion } from "motion/react"
 import { cn } from "@/lib/utils"
@@ -29,7 +29,11 @@ interface SidebarProps {
 export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { data: reviewCountData } = useReviewCount()
+  const { data: reviewCountData, refetch: refetchReviewCount } = useReviewCount()
+  // The sidebar is mounted once in the persistent dashboard layout, so its
+  // badge query never remounts to pick up changes — refetch on navigation so
+  // the count stays current instead of going stale until a hard refresh.
+  useEffect(() => { refetchReviewCount() }, [pathname, refetchReviewCount])
   const financeBadges = reviewCountData?.count ? { "fin-transactions": reviewCountData.count } : undefined
   const reduce = useReducedMotion()
   const {
