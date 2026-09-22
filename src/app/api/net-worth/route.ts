@@ -169,21 +169,28 @@ export async function GET() {
       exchangeByDay.set(snap.createdAt.toISOString().slice(0, 10), snap.totalValue)
     }
 
-    // Per-day finance category breakdown (Cash / Investments / Credit / Loans).
-    type GroupBreakdown = { cash: number; investment: number; credit: number; loan: number }
-    const bdByDay = new Map<string, GroupBreakdown>()
+    // Per-day finance category breakdown (Cash = checking, Savings, Investments,
+    // Credit, Loans). Savings splits out from Cash to match the new taxonomy.
+    type FinanceBreakdown = { cash: number; savings: number; investment: number; credit: number; loan: number }
+    const bdByDay = new Map<string, FinanceBreakdown>()
     for (const snap of financeSnapshots) {
       const key = snap.date.toISOString().slice(0, 10)
       try {
         const b = JSON.parse(snap.breakdown) as Record<string, number>
         bdByDay.set(key, {
-          cash: (b.checking ?? 0) + (b.savings ?? 0),
+          cash: (b.checking ?? 0) + (b.depository ?? 0) + (b.cash ?? 0),
+          savings: b.savings ?? 0,
           investment: b.investment ?? 0,
           credit: b.credit ?? 0,
           loan: (b.loan ?? 0) + (b.mortgage ?? 0),
         })
       } catch { /* skip malformed breakdown */ }
     }
+
+    // Full taxonomy per day (crypto split by the current stablecoin ratio — an
+    // approximation for pre-tracking history; snapshots now carry the real split
+    // going forward so this can be refined later).
+    type GroupBreakdown = FinanceBreakdown & { stablecoin: number; digital: number }
 
     // Forward-fill each series across the union of days; crypto = wallet + exchange.
     const todayKey = new Date().toISOString().slice(0, 10)
@@ -194,7 +201,7 @@ export async function GET() {
     let lastFiat = 0
     let lastWallet = 0
     let lastExchange = 0
-    let lastBd: GroupBreakdown = { cash: 0, investment: 0, credit: 0, loan: 0 }
+    let lastBd: FinanceBreakdown = { cash: 0, savings: 0, investment: 0, credit: 0, loan: 0 }
     const history: Array<{ date: string; fiat: number; crypto: number; total: number }> = []
     const breakdownHistory: Array<{ date: string } & GroupBreakdown> = []
 
@@ -208,7 +215,12 @@ export async function GET() {
       // so the chart's last point matches the headline number.
       const crypto = day === todayKey ? cryptoValue : lastWallet + lastExchange
       history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
-      breakdownHistory.push({ date: day, ...lastBd })
+      breakdownHistory.push({
+        date: day,
+        ...lastBd,
+        stablecoin: crypto * stableRatio,
+        digital: crypto * (1 - stableRatio),
+      })
     }
 
     // Per-account change over W / M / Y windows (from per-account snapshots).

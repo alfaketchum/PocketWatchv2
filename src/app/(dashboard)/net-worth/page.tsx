@@ -46,7 +46,10 @@ export default function NetWorthPage() {
   const bdLast = bh[bh.length - 1]
   const groupChanges = bdBase && bdLast ? {
     cash: bdLast.cash - bdBase.cash,
+    savings: bdLast.savings - bdBase.savings,
     investment: bdLast.investment - bdBase.investment,
+    stablecoin: bdLast.stablecoin - bdBase.stablecoin,
+    digital: bdLast.digital - bdBase.digital,
     credit: bdLast.credit - bdBase.credit,
     loan: bdLast.loan - bdBase.loan,
   } : undefined

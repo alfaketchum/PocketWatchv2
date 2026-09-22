@@ -14,12 +14,25 @@ import {
 } from "@/components/net-worth/account-groups"
 
 const OPEN_KEY = "pw-sidebar-networth-open"
-const DEFAULT_OPEN = ["assets", "liabilities", "cash", "investment", "other", "credit", "loan"]
+const TF_KEY = "pw-sidebar-networth-tf"
+const DEFAULT_OPEN = ["assets", "liabilities", "cash", "savings", "investment", "stablecoin", "digital", "other", "credit", "loan"]
 
 const SECTIONS: Array<{ id: string; label: string; order: GroupKey[] }> = [
   { id: "assets", label: "Assets", order: ASSET_ORDER },
   { id: "liabilities", label: "Liabilities", order: LIABILITY_ORDER },
 ]
+
+// Persistent change-lookback window for the sidebar net-worth header + per-group deltas.
+const TIMEFRAMES: Array<{ key: string; label: string; days: number }> = [
+  { key: "D", label: "D", days: 1 },
+  { key: "W", label: "W", days: 7 },
+  { key: "M", label: "M", days: 30 },
+  { key: "3M", label: "3M", days: 90 },
+]
+
+function changeColor(v: number): string {
+  return v > 0 ? "text-emerald-500" : v < 0 ? "text-red-500" : "text-foreground-muted"
+}
 
 /**
  * Vertical Net Worth breakdown nested under the existing "Net Worth" sidebar
@@ -32,13 +45,21 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   const { data: netWorth } = useCombinedNetWorth()
   const { isHidden } = usePrivacyMode()
   const [open, setOpen] = useState<Set<string>>(() => new Set(DEFAULT_OPEN))
+  const [tf, setTf] = useState<string>("M")
 
   useEffect(() => {
     try {
       const v = localStorage.getItem(OPEN_KEY)
       if (v) setOpen(new Set(JSON.parse(v) as string[]))
+      const t = localStorage.getItem(TF_KEY)
+      if (t) setTf(t)
     } catch { /* ignore */ }
   }, [])
+
+  const selectTf = (k: string) => {
+    setTf(k)
+    try { localStorage.setItem(TF_KEY, k) } catch { /* ignore */ }
+  }
 
   // This sidebar is mounted once in the persistent dashboard layout, and the
   // global query config uses refetchOnMount:false — so if the initial accounts
@@ -76,8 +97,62 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   const anyAccounts = [...ASSET_ORDER, ...LIABILITY_ORDER].some((k) => groups[k].length > 0)
   if (!anyAccounts) return null
 
+  // Change over the selected lookback: total (from history) + per group (from
+  // the per-day breakdown). Baseline = earliest point within the window.
+  const days = TIMEFRAMES.find((t) => t.key === tf)?.days ?? 30
+  const cutoffMs = Date.now() - days * 86_400_000
+  const hist = netWorth?.history ?? []
+  const totalNow = netWorth?.totalNetWorth ?? 0
+  const totalBase = (hist.find((h) => new Date(h.date).getTime() >= cutoffMs) ?? hist[0])?.total ?? 0
+  const totalChange = totalNow - totalBase
+  const totalPct = totalBase !== 0 ? (totalChange / totalBase) * 100 : 0
+
+  const bh = netWorth?.breakdownHistory ?? []
+  const bdBase = bh.find((h) => new Date(h.date).getTime() >= cutoffMs) ?? bh[0]
+  const bdLast = bh[bh.length - 1]
+  const groupChange = (k: GroupKey): number | null => {
+    if (!bdBase || !bdLast) return null
+    const last = (bdLast as unknown as Record<string, number>)[k]
+    const base = (bdBase as unknown as Record<string, number>)[k]
+    return last === undefined || base === undefined ? null : last - base
+  }
+
   return (
     <div className={cn("mt-0.5 space-y-0.5", collapsed && "lg:hidden")} suppressHydrationWarning>
+      {/* Net worth header: total, change over the lookback, and the D/W/M/3M toggle */}
+      {netWorth && (
+        <div className="px-4 pt-1 pb-2.5">
+          <div className="text-base font-semibold tabular-nums text-foreground">
+            <BlurredValue isHidden={isHidden}>{formatCurrency(totalNow)}</BlurredValue>
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className={cn("text-[11px] font-medium tabular-nums flex items-center gap-0.5", changeColor(totalChange))}>
+              <span className="material-symbols-rounded" style={{ fontSize: 13 }} aria-hidden="true">
+                {totalChange > 0 ? "arrow_upward" : totalChange < 0 ? "arrow_downward" : "remove"}
+              </span>
+              {totalPct >= 0 ? "+" : ""}{totalPct.toFixed(1)}%
+              <span className="text-foreground-muted mx-0.5">·</span>
+              <BlurredValue isHidden={isHidden}>{formatCurrency(Math.abs(totalChange))}</BlurredValue>
+            </span>
+            <div className="inline-flex items-center bg-background-secondary border border-card-border rounded-md p-0.5">
+              {TIMEFRAMES.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => selectTf(t.key)}
+                  className={cn(
+                    "text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors",
+                    tf === t.key ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
+                  )}
+                  title={`Change over ${t.label}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {SECTIONS.map((sec) => {
         const visibleGroups = sec.order.filter((k) => groups[k].length > 0)
         if (visibleGroups.length === 0) return null
@@ -99,9 +174,10 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
               const rows = groups[k]
               const groupTotal = rows.reduce((s, r) => s + r.balance, 0)
               const gOpen = open.has(k)
+              const gc = groupChange(k)
               return (
                 <div key={k}>
-                  {/* Group: Cash / Investments / Credit / Loans */}
+                  {/* Group: Cash / Savings / Investments / Stablecoins / Digital Assets / … */}
                   <button
                     onClick={() => toggle(k)}
                     className="w-full flex items-center gap-2 pl-7 pr-2 py-1.5 rounded-md hover:bg-background-secondary transition-colors"
@@ -109,7 +185,14 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                   >
                     <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 15 }} aria-hidden="true">{GROUP_META[k].icon}</span>
                     <span className="text-[11px] font-medium text-foreground truncate">{GROUP_META[k].label}</span>
-                    <span className="ml-auto text-[11px] tabular-nums text-foreground-muted"><BlurredValue isHidden={isHidden}>{formatCurrency(groupTotal)}</BlurredValue></span>
+                    <div className="ml-auto flex flex-col items-end leading-tight">
+                      <span className="text-[11px] tabular-nums text-foreground-muted"><BlurredValue isHidden={isHidden}>{formatCurrency(groupTotal)}</BlurredValue></span>
+                      {gc !== null && gc !== 0 && (
+                        <span className={cn("text-[9px] tabular-nums", changeColor(gc))}>
+                          {gc > 0 ? "+" : "−"}<BlurredValue isHidden={isHidden}>{formatCurrency(Math.abs(gc))}</BlurredValue>
+                        </span>
+                      )}
+                    </div>
                     <span className={cn("material-symbols-rounded text-foreground-muted transition-transform flex-shrink-0", gOpen && "rotate-180")} style={{ fontSize: 13 }} aria-hidden="true">expand_more</span>
                   </button>
 

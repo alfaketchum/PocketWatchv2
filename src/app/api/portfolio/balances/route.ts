@@ -8,6 +8,7 @@ import { fetchAllExchangeBalances } from "@/lib/portfolio/exchange-client"
 import { getRefreshMeta, queuePortfolioRefresh, runPortfolioRefreshJob } from "@/lib/portfolio/refresh-orchestrator"
 import { normalizeWalletAddress } from "@/lib/portfolio/utils"
 import { getHiddenTokenSymbols } from "@/lib/portfolio/hidden-tokens"
+import { sumStablecoinValue } from "@/lib/portfolio/price-symbol-utils"
 
 export const maxDuration = 60
 
@@ -245,6 +246,9 @@ async function buildBalancesResponse(userId: string): Promise<object> {
           walletFingerprint,
           onchainTotalValue: onChainTotal,
           exchangeTotalValue: exchangeTotal,
+          // Persist the stablecoin split so net-worth history can track Stablecoins
+          // vs Digital Assets accurately over time (not just approximate the ratio).
+          stablecoinValue: sumStablecoinValue(allPositions as Array<{ symbol: string; value: number }>),
         }),
       },
     }).catch((err) => console.warn("[balances] Failed to save portfolio snapshot:", err))

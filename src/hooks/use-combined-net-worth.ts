@@ -23,11 +23,14 @@ export interface CombinedNetWorthData {
     crypto: number
     total: number
   }>
-  /** Per-day Cash/Investments/Credit/Loans totals (from snapshot breakdown). */
+  /** Per-day totals for each asset/liability group (powers per-group change). */
   breakdownHistory?: Array<{
     date: string
     cash: number
+    savings: number
     investment: number
+    stablecoin: number
+    digital: number
     credit: number
     loan: number
   }>
