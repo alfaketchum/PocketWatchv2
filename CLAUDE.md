@@ -144,6 +144,32 @@ src/
 
 ## Key Patterns
 
+### Data Loading & Rendering (avoid "stale/blank until hard refresh")
+These rules prevent the class of bug where a component renders blank or stale on
+soft (client-side) navigation but is correct after a hard refresh. All three were
+verified by reproducing the bug live (a lock → unlock cycle) — the login
+navigation method (`router.push` vs full load) was NOT the cause; the cache
+policy below was.
+
+- **React Query default is `refetchOnMount: true`** (see `query-provider.tsx`).
+  Do not set it to `false` globally — that makes remounted pages show whatever
+  was cached (often empty/partial from an early load) and never refresh. Rely on
+  `staleTime` + per-layout prefetching to avoid redundant fetches, not on
+  disabling mount refetch.
+- **Persistent layout components never remount**, so `refetchOnMount` can't keep
+  them fresh. Anything mounted once in the dashboard layout (sidebar widgets,
+  header, etc.) that reads query data must refetch on navigation:
+  ```typescript
+  const pathname = usePathname()
+  const { data, refetch } = useSomeQuery()
+  useEffect(() => { if (data === undefined) refetch() }, [pathname, data, refetch])
+  ```
+  See `sidebar-net-worth.tsx` and `sidebar.tsx` (review-count badge).
+- **Don't return `null` for a whole section purely because data is loading.**
+  Render the component's structure (skeleton/placeholder) so the layout is stable
+  and components don't pop in/out. Reserve `return null` for genuinely-empty
+  states, not the transient loading state.
+
 ### Hook Pattern
 ```typescript
 // hooks/portfolio/shared.ts — query key factory
