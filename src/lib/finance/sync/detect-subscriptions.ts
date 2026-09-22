@@ -159,6 +159,10 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
     // categories (restaurants/groceries/shopping repeating ≠ a subscription).
     if (isGibberishName(sub.merchantName) || isNonSubscriptionCategory(sub.category) || isFoodMerchant(sub.merchantName)) continue
 
+    // Don't suggest a pattern that already went quiet — no charge in 3+ months
+    // means it's likely already cancelled, so it shouldn't clutter the queue.
+    if (new Date(sub.lastChargeDate) < threeMonthsAgo) continue
+
     await db.financeSubscription.create({
       data: {
         userId,
@@ -201,6 +205,9 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
     const amount = stream.lastAmount ?? stream.averageAmount ?? 0
     if (amount <= 0) continue
 
+    // Don't suggest a stream that already went quiet (no charge in 3+ months).
+    if (stream.lastDate && stream.lastDate < threeMonthsAgo) continue
+
     const freq: Frequency = stream.frequency === "WEEKLY" ? "weekly"
       : stream.frequency === "BIWEEKLY" ? "biweekly"
       : stream.frequency === "SEMI_MONTHLY" ? "monthly" // FIX Bug 20: was "biweekly", closer to monthly
@@ -240,6 +247,13 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
   if (dupeIds.length > 0) {
     await db.financeSubscription.deleteMany({ where: { id: { in: dupeIds } } })
   }
+
+  // Drop stale suggestions the user never actioned whose charges have stopped
+  // (no charge in 3+ months). Only auto-detected guesses are swept — anything
+  // the user confirmed, cancelled, or dismissed is left untouched.
+  await db.financeSubscription.deleteMany({
+    where: { userId, status: "suggested", lastChargeDate: { lt: threeMonthsAgo } },
+  })
 
   return { detected: detected.length, newlyAdded: newCount, updated: updatedCount, priceChanges }
 }

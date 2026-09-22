@@ -96,13 +96,21 @@ export async function GET(req: NextRequest) {
     )
     const dismissedNames = new Set(dismissedSubs.map((d) => d.merchantName.toLowerCase()))
     const filteredPlaidStreams = plaidStreams.filter((ps) => {
-      const rawName = ps.merchantName ?? ps.description
+      // Use the description when merchantName is blank — many streams store the
+      // real name only there (?? misses empty strings, which let a dismissed
+      // stream resurface as a fresh "active" sub).
+      const rawName = (ps.merchantName && ps.merchantName.trim()) || ps.description
       const name = rawName.toLowerCase()
-      // Match by name+account (precise), exact name, or fuzzy name so a dismissed
-      // merchant's provider stream can't resurface as a fresh "active" suggestion.
       const key = `${name}|${ps.accountId ?? ""}`
       if (dismissedKeys.has(key) || dismissedNames.has(name)) return false
-      return !dismissedSubs.some((d) => stringSimilarity(d.merchantName, rawName) > 0.8)
+      // Fuzzy/amount match too, mirroring how merge pairs streams to detected subs.
+      const plaidAmt = ps.lastAmount ?? ps.averageAmount ?? 0
+      return !dismissedSubs.some((d) => {
+        const sim = stringSimilarity(d.merchantName, rawName)
+        if (sim >= 0.8) return true
+        if (sim < 0.6 || plaidAmt === 0) return false
+        return Math.abs(d.amount - plaidAmt) / Math.max(d.amount, plaidAmt) <= 0.3
+      })
     })
 
     // Merge detected + provider streams into unified list

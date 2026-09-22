@@ -27,6 +27,13 @@ const PAGE_SIZE = 25
 const VIEW_KEY = "pw-sub-view"
 const FREQUENCY_ORDER = ["weekly", "biweekly", "monthly", "quarterly", "semi_annual", "yearly"] as const
 
+const EMPTY_COPY: Record<SubTab, { title: string; description: string }> = {
+  suggested: { title: "No suggestions", description: "Run 'Detect New' to scan your transactions for recurring charges to confirm." },
+  active: { title: "No subscriptions yet", description: "Confirm a suggestion or mark a transaction as a subscription." },
+  cancelled: { title: "Nothing cancelled", description: "Subscriptions you cancel land here — reactivate them anytime." },
+  dismissed: { title: "Nothing dismissed", description: "Items you mark 'not a sub' land here — restore them anytime." },
+}
+
 export function BudgetSubscriptionsSection() {
   const { data, isLoading, isError } = useFinanceSubscriptions()
   const { data: dismissedData } = useFinanceSubscriptions("dismissed")
@@ -65,19 +72,18 @@ export function BudgetSubscriptionsSection() {
   // "Active" tab = live subscriptions only. Cancelled/dismissed drop out so acting
   // on an item (cancel or "not a sub") removes it from the list immediately.
   const activeSubs = subs.filter((s) => !["suggested", "dismissed", "cancelled"].includes(s.status))
-  // "Inactive" tab = things set aside: cancelled (was real, may return → Reactivate)
-  // and dismissed (never a sub → Restore). The default query returns cancelled;
-  // dismissed comes from its own fetch.
+  // Cancelled (was real, may return → Reactivate) comes from the default query;
+  // Dismissed (never a sub → Restore) has its own fetch.
   const cancelledSubs = subs.filter((s) => s.status === "cancelled")
   const dismissedSubs = dismissedData?.subscriptions ?? []
-  const inactiveSubs = [...cancelledSubs, ...dismissedSubs]
   const flaggedSubs = subs.filter((s) => !s.isWanted && s.status === "active")
   const pausedSubs = subs.filter((s) => s.status === "paused")
   const potentialSavings = flaggedSubs.reduce((sum, s) => sum + s.amount, 0)
     + pausedSubs.reduce((sum, s) => sum + s.amount, 0)
 
   const filteredSubs = tab === "suggested" ? suggestedSubs
-    : tab === "inactive" ? inactiveSubs
+    : tab === "cancelled" ? cancelledSubs
+    : tab === "dismissed" ? dismissedSubs
     : activeSubs
 
   const sortedSubs = useMemo(() => {
@@ -204,7 +210,7 @@ export function BudgetSubscriptionsSection() {
         {(subs.length > 0 || dismissedSubs.length > 0) && (
           <SubscriptionListControls
             tab={tab}
-            counts={{ suggested: suggestedSubs.length, active: activeSubs.length, inactive: inactiveSubs.length }}
+            counts={{ suggested: suggestedSubs.length, active: activeSubs.length, cancelled: cancelledSubs.length, dismissed: dismissedSubs.length }}
             onTabChange={handleTabChange}
             sortBy={sortBy}
             onSortChange={handleSortChange}
@@ -239,9 +245,9 @@ export function BudgetSubscriptionsSection() {
         ) : !isLoading ? (
           <FinanceEmpty
             icon="autorenew"
-            title={tab === "suggested" ? "No suggestions" : tab === "inactive" ? "Nothing inactive" : "No subscriptions yet"}
-            description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "inactive" ? "Cancelled and dismissed subscriptions show up here — reactivate or restore them anytime." : "Confirm a suggestion or mark a transaction as a subscription."}
-            action={tab !== "inactive" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
+            title={EMPTY_COPY[tab].title}
+            description={EMPTY_COPY[tab].description}
+            action={tab === "suggested" || tab === "active" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
           />
         ) : null}
       </div>
