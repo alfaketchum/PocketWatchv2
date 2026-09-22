@@ -40,6 +40,21 @@ export function ClientShell() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return
 
+    // The service worker is a production-only optimization (offline app shell +
+    // push notifications). In development it caches JS/CSS cache-first, which
+    // pins Next's stable-named dev chunks to stale content — a newly opened tab
+    // or window then shows old code until a hard refresh. So skip registration
+    // in dev, and clean up any SW/caches a prior production build left behind.
+    if (process.env.NODE_ENV !== "production") {
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()))
+      if ("caches" in window) {
+        caches.keys().then((keys) =>
+          keys.filter((k) => k.startsWith("pw-")).forEach((k) => caches.delete(k))
+        )
+      }
+      return
+    }
+
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {

@@ -169,6 +169,11 @@ policy below was.
   Render the component's structure (skeleton/placeholder) so the layout is stable
   and components don't pop in/out. Reserve `return null` for genuinely-empty
   states, not the transient loading state.
+- **The service worker (`public/sw.js`) is production-only.** It caches JS/CSS
+  cache-first, which in dev pins Next's stable-named chunks to stale content — a
+  new tab/window then shows old code until a hard refresh. `client-shell.tsx`
+  only registers it when `NODE_ENV === "production"` and unregisters + clears
+  `pw-*` caches otherwise; keep that gate.
 
 ### Hook Pattern
 ```typescript
