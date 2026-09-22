@@ -28,11 +28,15 @@ interface BillsCalendarProps {
   className?: string
   onSelectBill?: (bill: BillItem) => void
   onMonthChange?: (year: number, month: number) => void
+  /** Short fixed-height rows instead of square cells — for wide/dashboard panels
+   *  where aspect-square would make the grid very tall. */
+  compact?: boolean
 }
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-export function BillsCalendar({ bills = [], className, onSelectBill, onMonthChange }: BillsCalendarProps) {
+export function BillsCalendar({ bills = [], className, onSelectBill, onMonthChange, compact = false }: BillsCalendarProps) {
+  const cellSize = compact ? "h-12 sm:h-14" : "aspect-square"
   const now = new Date()
   const [viewMonth, setViewMonth] = useState(now.getMonth())
   const [viewYear, setViewYear] = useState(now.getFullYear())
@@ -122,7 +126,7 @@ export function BillsCalendar({ bills = [], className, onSelectBill, onMonthChan
         {cells.map((cell, i) => {
           if (cell.isTrailing) {
             return (
-              <div key={i} className="bg-card/30 aspect-square p-1 flex items-start">
+              <div key={i} className={cn("bg-card/30 p-1 flex items-start", cellSize)}>
                 <span className="text-[10px] text-foreground-muted/50 font-medium">{cell.day}</span>
               </div>
             )
@@ -139,7 +143,8 @@ export function BillsCalendar({ bills = [], className, onSelectBill, onMonthChan
               type="button"
               onClick={() => hasBills ? setSelectedDay(isSelected ? null : cell.day) : setSelectedDay(null)}
               className={cn(
-                "aspect-square p-1 flex flex-col items-center transition-colors relative",
+                "p-1 flex flex-col items-center transition-colors relative",
+                cellSize,
                 "bg-card/50 hover:bg-card/80",
                 isToday && "ring-1.5 ring-inset ring-primary/50 bg-primary-subtle",
                 isSelected && hasBills && "ring-2 ring-inset ring-primary bg-primary-muted",

@@ -7,8 +7,9 @@ import Link from "next/link"
 import {
   useFinanceAccounts, useFinanceDeepInsights,
   useNetWorth,
-  useFetchFullHistory, useSyncAll,
+  useFetchFullHistory, useSyncAll, useUpcomingBills,
 } from "@/hooks/use-finance"
+import { BillsCalendar } from "@/components/finance/bills-calendar"
 import { formatCurrency, formatRelativeTime, cn } from "@/lib/utils"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
@@ -39,11 +40,13 @@ const RANGE_MAP: Record<string, "1w" | "1m" | "3m" | "6m" | "1y" | "all"> = {
 export default function FinanceDashboardPage() {
   const [nwRange, setNwRange] = useState<string>("1W")
   const [includeInvestments, setIncludeInvestments] = useState(true)
+  const [calMonth, setCalMonth] = useState<string | undefined>(undefined)
   const { isHidden, togglePrivacy } = usePrivacyMode()
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useFinanceAccounts()
   const { data: deep } = useFinanceDeepInsights()
   const { data: netWorthData, isLoading: nwLoading } = useNetWorth(RANGE_MAP[nwRange] ?? "1y", includeInvestments)
+  const { data: billsData } = useUpcomingBills(calMonth)
 
   // autoCategorize removed — replaced by review flow
   const fetchHistory = useFetchFullHistory()
@@ -325,6 +328,21 @@ export default function FinanceDashboardPage() {
       <FadeIn delay={0.25} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <SpendingMonthCard />
         <MonthlyBillsCard isHidden={isHidden} />
+      </FadeIn>
+
+      {/* Bills Calendar */}
+      <FadeIn delay={0.28} className="mb-8">
+        <div className="bg-card rounded-xl p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 16 }}>calendar_month</span>
+            <span className="text-[10px] font-medium uppercase tracking-widest text-foreground-muted">Bills Calendar</span>
+          </div>
+          <BillsCalendar
+            compact
+            bills={billsData?.bills ?? []}
+            onMonthChange={(y, m) => setCalMonth(`${y}-${String(m + 1).padStart(2, "0")}`)}
+          />
+        </div>
       </FadeIn>
 
       {/* Cash Flow + AI Insights */}
