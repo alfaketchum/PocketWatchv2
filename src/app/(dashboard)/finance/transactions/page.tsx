@@ -386,6 +386,7 @@ export default function FinanceTransactionsPage() {
         title="Re-categorize recurring transactions?"
         description={`"${recatPending?.merchant ?? ""}" appears on ${recatPending?.ids.length ?? 0} other transaction${recatPending?.ids.length === 1 ? "" : "s"} on this page. Move ${recatPending?.ids.length === 1 ? "it" : "them all"} to "${recatPending?.category ?? ""}" too?`}
         confirmLabel={`Update ${recatPending?.ids.length ?? 0}`}
+        cancelLabel="No, just this one"
         isLoading={bulkCategorize.isPending}
       />
     </div>

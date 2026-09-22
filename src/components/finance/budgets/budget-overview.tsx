@@ -170,6 +170,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
         title="Re-categorize recurring transactions?"
         description={`"${pending?.merchant ?? ""}" appears on ${pending?.ids.length ?? 0} other transaction${pending?.ids.length === 1 ? "" : "s"} in this period. Move ${pending?.ids.length === 1 ? "it" : "them all"} to "${pending?.category ?? ""}" too?`}
         confirmLabel={`Update ${pending?.ids.length ?? 0}`}
+        cancelLabel="No, just this one"
         isLoading={bulkCat.isPending}
       />
     </div>
