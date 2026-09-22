@@ -1,6 +1,7 @@
 import { db } from "@/lib/db"
+import { SUBSCRIPTION_TAG } from "@/lib/finance/tags"
 
-export const SUBSCRIPTION_TAG = "subscription"
+export { SUBSCRIPTION_TAG }
 
 /**
  * Add or remove the "subscription" tag across a merchant's transactions (past +

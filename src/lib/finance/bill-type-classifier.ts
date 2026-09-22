@@ -58,7 +58,7 @@ const MEMBERSHIP_PATTERNS = [
 
 /** Categories that indicate subscriptions */
 const SUBSCRIPTION_CATEGORIES = new Set([
-  "Entertainment", "Business Expenses",
+  "Entertainment", "Software",
 ])
 
 export interface ClassifyInput {

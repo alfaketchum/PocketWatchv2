@@ -87,11 +87,11 @@ export const FINANCE_CATEGORIES: Record<string, CategoryMeta> = {
     dotClass: "bg-sky-600", borderClass: "border-sky-600",
     hex: "#0284c7",
   },
-  "Business Expenses": {
-    label: "Business Expenses", icon: "business_center", color: "zinc",
-    bgClass: "bg-zinc-700/10", textClass: "text-zinc-700",
-    dotClass: "bg-zinc-700", borderClass: "border-zinc-700",
-    hex: "#3f3f46",
+  "Software": {
+    label: "Software", icon: "code", color: "slate",
+    bgClass: "bg-slate-600/10", textClass: "text-slate-600",
+    dotClass: "bg-slate-600", borderClass: "border-slate-600",
+    hex: "#475569",
   },
   "Investment": {
     label: "Investment", icon: "trending_up", color: "emerald",
@@ -237,7 +237,7 @@ export const CATEGORY_GROUPS: CategoryGroup[] = [
     categories: [
       "Housing", "Food & Dining", "Transportation", "Bills & Utilities",
       "Phone & Data", "Entertainment", "Shopping", "Healthcare", "Fitness",
-      "Personal Care", "Education", "Travel", "Business Expenses",
+      "Personal Care", "Education", "Travel", "Software",
       "Insurance", "Gifts & Donations", "Taxes", "Fees & Charges", "ATM/Cash",
     ],
   },

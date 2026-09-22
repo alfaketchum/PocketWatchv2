@@ -7,7 +7,7 @@ import { CategoryBadge } from "./category-badge"
 import { AmountDisplay } from "./amount-display"
 import { MerchantIcon } from "./merchant-icon"
 import { CategoryPicker } from "./category-picker"
-import { TagEditor } from "./tag-editor"
+import { TagCell } from "./tag-cell"
 import { FINANCE_CATEGORIES, getCategoryMeta } from "@/lib/finance/categories"
 
 interface TransactionRowProps {
@@ -325,7 +325,7 @@ export function TransactionRow({
           {onSaveTags && (
             <div onClick={(e) => e.stopPropagation()}>
               <span className="text-foreground-muted">Tags</span>
-              <div className="mt-1"><TagEditor tags={tags ?? []} onSave={onSaveTags} /></div>
+              <div className="mt-1"><TagCell tags={tags ?? []} onSave={onSaveTags} /></div>
             </div>
           )}
           {onSaveNote ? (

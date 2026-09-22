@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
+import { getTagMeta } from "@/lib/finance/tags"
 import { CategoryPicker } from "@/components/finance/category-picker"
 import { NoteCell } from "@/components/finance/note-cell"
 import { TagCell } from "@/components/finance/tag-cell"
@@ -231,7 +232,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
                       <TagCell tags={t.tags} onSave={(tags) => onSaveTags(t.id, tags)} />
                     ) : t.tags.length ? (
                       <span className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
-                        <span className="material-symbols-rounded" style={{ fontSize: 10 }}>sell</span>{t.tags[0]}{t.tags.length > 1 ? ` +${t.tags.length - 1}` : ""}
+                        <span className="material-symbols-rounded" style={{ fontSize: 10 }}>{getTagMeta(t.tags[0]).icon}</span>{getTagMeta(t.tags[0]).label}{t.tags.length > 1 ? ` +${t.tags.length - 1}` : ""}
                       </span>
                     ) : null}
                   </td>

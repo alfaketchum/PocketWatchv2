@@ -2,6 +2,7 @@
 
 import { cn, formatCurrency } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
+import { getTagMeta, SUBSCRIPTION_TAG } from "@/lib/finance/tags"
 import { MerchantIcon } from "./merchant-icon"
 import { CategoryPicker } from "./category-picker"
 import { NoteCell } from "./note-cell"
@@ -30,6 +31,8 @@ export interface TransactionTableRowProps {
   onRecategorize?: (category: string, subcategory?: string | null) => void
   onSaveNote?: (note: string) => void
   onSaveTags?: (tags: string[]) => void
+  /** Toggle subscription marking (opt-in). Receives whether to unmark. */
+  onMarkSubscription?: (unmark: boolean) => void
 }
 
 /**
@@ -40,9 +43,10 @@ export interface TransactionTableRowProps {
 export function TransactionTableRow({
   id, date, merchantName, name, amount, category, subcategory, tags, notes, isPending,
   accountName, accountMask, logoUrl, website, needsReview, isRecurring,
-  isHighlighted, selected, onToggleSelect, onRecategorize, onSaveNote, onSaveTags,
+  isHighlighted, selected, onToggleSelect, onRecategorize, onSaveNote, onSaveTags, onMarkSubscription,
 }: TransactionTableRowProps) {
   const meta = getCategoryMeta(category)
+  const isSubscription = tags?.includes(SUBSCRIPTION_TAG) ?? false
   const out = amount > 0
   // Parse as local time to avoid a UTC off-by-one (Plaid dates are YYYY-MM-DD).
   const parsed = date.includes("T") ? new Date(date) : new Date(date + "T00:00:00")
@@ -97,6 +101,20 @@ export function TransactionTableRow({
               </div>
             )}
           </div>
+          {onMarkSubscription && (
+            <button
+              onClick={() => onMarkSubscription(isSubscription)}
+              className={cn(
+                "ml-auto flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-md transition-colors",
+                isSubscription ? "text-primary bg-primary-muted" : "text-foreground-muted/60 hover:text-foreground hover:bg-background-secondary",
+              )}
+              title={isSubscription ? "Unmark subscription" : "Mark as subscription"}
+              aria-label={isSubscription ? "Unmark subscription" : "Mark as subscription"}
+              aria-pressed={isSubscription}
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">autorenew</span>
+            </button>
+          )}
         </div>
       </td>
       <td className="px-3 py-2.5 whitespace-nowrap align-middle">
@@ -117,7 +135,7 @@ export function TransactionTableRow({
           <TagCell tags={tags ?? []} onSave={onSaveTags} />
         ) : tags && tags.length ? (
           <span className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
-            <span className="material-symbols-rounded" style={{ fontSize: 10 }}>sell</span>{tags[0]}{tags.length > 1 ? ` +${tags.length - 1}` : ""}
+            <span className="material-symbols-rounded" style={{ fontSize: 10 }}>{getTagMeta(tags[0]).icon}</span>{getTagMeta(tags[0]).label}{tags.length > 1 ? ` +${tags.length - 1}` : ""}
           </span>
         ) : null}
       </td>
