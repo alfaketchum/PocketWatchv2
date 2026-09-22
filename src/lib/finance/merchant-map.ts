@@ -111,6 +111,12 @@ export const MERCHANT_MAP: Record<string, CategoryResult> = {
   "GOOGLE STORAGE": { category: "Business Expenses", subcategory: "Software" },
   "ICLOUD": { category: "Bills & Utilities", subcategory: "Internet" },
   "ADOBE": { category: "Business Expenses", subcategory: "Software" },
+  "SUBSTACK": { category: "Education", subcategory: "Substack" },
+  "SHRUBSTACK": { category: "Education", subcategory: "Substack" },
+  "CLOUDFLARE": { category: "Business Expenses", subcategory: "Software" },
+  "ANTHROPIC": { category: "Business Expenses", subcategory: "Software" },
+  "BITQUERY": { category: "Business Expenses", subcategory: "Software" },
+  "POSTIZ": { category: "Business Expenses", subcategory: "Software" },
   // Transfers
   "VENMO": { category: "Transfer", subcategory: "Venmo" },
   "ZELLE": { category: "Transfer", subcategory: "Zelle" },
