@@ -28,7 +28,7 @@ export const PLAID_CATEGORY_MAP: Record<string, CategoryResult> = {
   "RENT_AND_UTILITIES_GAS": { category: "Bills & Utilities", subcategory: "Gas" },
   "RENT_AND_UTILITIES_WATER": { category: "Bills & Utilities", subcategory: "Water" },
   "RENT_AND_UTILITIES_INTERNET_AND_CABLE": { category: "Bills & Utilities", subcategory: "Internet" },
-  "RENT_AND_UTILITIES_TELEPHONE": { category: "Bills & Utilities", subcategory: "Phone" },
+  "RENT_AND_UTILITIES_TELEPHONE": { category: "Phone & Data", subcategory: "Phone" },
   "GENERAL_MERCHANDISE_CLOTHING_AND_ACCESSORIES": { category: "Shopping", subcategory: "Clothing" },
   "GENERAL_MERCHANDISE_ELECTRONICS": { category: "Shopping", subcategory: "Electronics" },
   "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES": { category: "Shopping", subcategory: "Online Shopping" },
