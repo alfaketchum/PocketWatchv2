@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useFinanceAccounts } from "@/hooks/use-finance"
+import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import {
@@ -28,6 +29,7 @@ const SECTIONS: Array<{ id: string; label: string; order: GroupKey[] }> = [
 export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   const pathname = usePathname()
   const { data: institutions, refetch } = useFinanceAccounts()
+  const { data: netWorth } = useCombinedNetWorth()
   const { isHidden } = usePrivacyMode()
   const [open, setOpen] = useState<Set<string>>(() => new Set(DEFAULT_OPEN))
 
@@ -55,6 +57,17 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   })
 
   const groups = buildAccountGroups(institutions)
+
+  // Surface the crypto portfolio as a "Digital Assets" row under Investments so
+  // the sidebar reflects total net worth, not just finance accounts.
+  const cryptoValue = netWorth?.crypto?.value ?? 0
+  if (cryptoValue > 0) {
+    groups.investment = [
+      ...groups.investment,
+      { id: "digital-assets", name: "Digital Assets", mask: null, type: "crypto", balance: cryptoValue, synced: null, needsReconnect: false },
+    ]
+  }
+
   const anyAccounts = [...ASSET_ORDER, ...LIABILITY_ORDER].some((k) => groups[k].length > 0)
   if (!anyAccounts) return null
 

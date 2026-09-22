@@ -105,13 +105,23 @@ export async function GET() {
     const historyStart = new Date()
     historyStart.setDate(historyStart.getDate() - 365)
 
-    const [financeSnapshots, portfolioSnapshots, accountSnaps] = await Promise.all([
+    // Crypto history backbone comes from the Zerion-backed chart cache (full
+    // wallet value history), NOT portfolioSnapshot (which only holds values from
+    // when the app started recording). Exchange history blends in from its own
+    // snapshot table, so connecting an exchange (e.g. Bybit) extends it for free.
+    const historyStartSec = Math.floor(historyStart.getTime() / 1000)
+    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
         select: { date: true, netWorth: true, breakdown: true },
       }),
-      db.portfolioSnapshot.findMany({
+      db.chartCache.findMany({
+        where: { userId: user.id, timestamp: { gte: historyStartSec } },
+        orderBy: { timestamp: "asc" },
+        select: { timestamp: true, value: true },
+      }),
+      db.exchangeBalanceSnapshot.findMany({
         where: { userId: user.id, createdAt: { gte: historyStart } },
         orderBy: { createdAt: "asc" },
         select: { createdAt: true, totalValue: true },
@@ -123,25 +133,23 @@ export async function GET() {
       }),
     ])
 
-    // Build a combined daily time series (use null to distinguish "no data" from real zero)
-    const dayMap = new Map<string, { fiat: number | null; crypto: number | null }>()
-
+    // Independent daily series (last value wins per day; forward-filled below).
+    const financeByDay = new Map<string, number>()
     for (const snap of financeSnapshots) {
-      const key = snap.date.toISOString().slice(0, 10)
-      const entry = dayMap.get(key) ?? { fiat: null, crypto: null }
-      entry.fiat = snap.netWorth
-      dayMap.set(key, entry)
+      financeByDay.set(snap.date.toISOString().slice(0, 10), snap.netWorth)
+    }
+    // Wallet value per day from the Zerion chart backbone.
+    const walletByDay = new Map<string, number>()
+    for (const row of chartRows) {
+      walletByDay.set(new Date(row.timestamp * 1000).toISOString().slice(0, 10), row.value)
+    }
+    // Exchange value per day (extends automatically as exchanges are connected).
+    const exchangeByDay = new Map<string, number>()
+    for (const snap of exchangeSnaps) {
+      exchangeByDay.set(snap.createdAt.toISOString().slice(0, 10), snap.totalValue)
     }
 
-    for (const snap of portfolioSnapshots) {
-      const key = snap.createdAt.toISOString().slice(0, 10)
-      const entry = dayMap.get(key) ?? { fiat: null, crypto: null }
-      entry.crypto = snap.totalValue
-      dayMap.set(key, entry)
-    }
-
-    // Per-day category breakdown (from the snapshot's stored breakdown JSON),
-    // mapped to the Cash / Investments / Credit / Loans groups.
+    // Per-day finance category breakdown (Cash / Investments / Credit / Loans).
     type GroupBreakdown = { cash: number; investment: number; credit: number; loan: number }
     const bdByDay = new Map<string, GroupBreakdown>()
     for (const snap of financeSnapshots) {
@@ -157,26 +165,29 @@ export async function GET() {
       } catch { /* skip malformed breakdown */ }
     }
 
-    // Forward-fill gaps so each day has the latest known value
-    const sortedDays = [...dayMap.keys()].sort()
+    // Forward-fill each series across the union of days; crypto = wallet + exchange.
+    const todayKey = new Date().toISOString().slice(0, 10)
+    const allDays = new Set<string>([...financeByDay.keys(), ...walletByDay.keys(), ...exchangeByDay.keys()])
+    allDays.add(todayKey)
+    const sortedDays = [...allDays].sort()
+
     let lastFiat = 0
-    let lastCrypto = 0
+    let lastWallet = 0
+    let lastExchange = 0
     let lastBd: GroupBreakdown = { cash: 0, investment: 0, credit: 0, loan: 0 }
     const history: Array<{ date: string; fiat: number; crypto: number; total: number }> = []
     const breakdownHistory: Array<{ date: string } & GroupBreakdown> = []
 
     for (const day of sortedDays) {
-      const entry = dayMap.get(day)!
-      if (entry.fiat !== null) lastFiat = entry.fiat
-      if (entry.crypto !== null) lastCrypto = entry.crypto
+      if (financeByDay.has(day)) lastFiat = financeByDay.get(day)!
+      if (walletByDay.has(day)) lastWallet = walletByDay.get(day)!
+      if (exchangeByDay.has(day)) lastExchange = exchangeByDay.get(day)!
       const bd = bdByDay.get(day)
       if (bd) lastBd = bd
-      history.push({
-        date: day,
-        fiat: lastFiat,
-        crypto: lastCrypto,
-        total: lastFiat + lastCrypto,
-      })
+      // Today uses the live, complete crypto value (wallets + exchanges + staking)
+      // so the chart's last point matches the headline number.
+      const crypto = day === todayKey ? cryptoValue : lastWallet + lastExchange
+      history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
       breakdownHistory.push({ date: day, ...lastBd })
     }
 
