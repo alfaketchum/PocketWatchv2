@@ -11,7 +11,7 @@ export const CATEGORIES = {
   "Healthcare": ["Doctor", "Dentist", "Pharmacy", "Vision", "Mental Health"],
   "Fitness": ["Gym", "Classes", "Sports", "Equipment", "Supplements"],
   "Personal Care": ["Hair", "Spa", "Skincare", "Nails"],
-  "Education": ["Tuition", "Books", "Courses", "Student Loan"],
+  "Education": ["Tuition", "Books", "Courses", "Student Loan", "Substack", "Research"],
   "Travel": ["Flights", "Hotels", "Rental Car", "Vacation"],
   "Bills & Utilities": ["Electric", "Water", "Gas", "Internet", "Trash"],
   "Phone & Data": ["Phone", "Data", "eSIM"],
