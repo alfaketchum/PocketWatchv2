@@ -68,21 +68,41 @@ async function fetchEvmBalances(
 
   // ─── Try Zerion (primary) ───
   const zerionKey = await getServiceKey(userId, "zerion")
+  let zerionResult: MultiWalletResult | null = null
   if (zerionKey) {
     try {
-      return await withProviderPermit(
+      zerionResult = await withProviderPermit(
         userId, "zerion", `evm-positions:${walletFingerprint(addresses)}`, undefined,
         () => fetchMultiWalletPositions(zerionKey, addresses),
       )
+      if (zerionResult.failedCount === 0) return zerionResult
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err)
       console.warn(`[multi-fetch] Zerion failed for EVM (${reason}) — trying Alchemy fallback`)
     }
   }
 
-  // ─── Try Alchemy (fallback) ───
+  // ─── Alchemy: backfill the wallets Zerion dropped, or a full fallback ───
   const alchemyKey = await getServiceKey(userId, "alchemy")
   if (alchemyKey) {
+    if (zerionResult) {
+      // Zerion returned partial — fetch ONLY the wallets it missed via Alchemy.
+      const got = new Set(zerionResult.wallets.map((w) => w.address.toLowerCase()))
+      const missing = wallets.filter((w) => !got.has(w.address.toLowerCase()))
+      try {
+        const backfill = await withProviderPermit(
+          userId, "alchemy", `evm-backfill`, undefined,
+          () => fetchMultiAlchemyBalances(alchemyKey, missing),
+        )
+        console.log(`[multi-fetch] Alchemy backfilled ${backfill.wallets.length}/${missing.length} wallet(s) Zerion missed`)
+        return { wallets: [...zerionResult.wallets, ...backfill.wallets], failedCount: backfill.failedCount }
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err)
+        console.warn(`[multi-fetch] Alchemy backfill failed (${reason}) — keeping Zerion partial`)
+        return zerionResult
+      }
+    }
+    // Zerion unavailable or threw entirely — full Alchemy fetch.
     try {
       return await withProviderPermit(
         userId, "alchemy", `evm-balances`, undefined,
@@ -93,6 +113,9 @@ async function fetchEvmBalances(
       console.warn(`[multi-fetch] Alchemy failed for EVM (${reason}) — trying Moralis fallback`)
     }
   }
+
+  // No Alchemy (or it failed) but Zerion gave a partial — use that rather than nothing.
+  if (zerionResult) return zerionResult
 
   // ─── Try Moralis (fallback) ───
   const moralisKey = await getServiceKey(userId, "moralis")
