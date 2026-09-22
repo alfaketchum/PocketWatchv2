@@ -77,6 +77,7 @@ const FREQUENCY_COLORS: Record<string, string> = {
 const DETECTION_LABELS: Record<string, { text: string; color: string }> = {
   verified: { text: "Verified", color: "text-success" },
   auto: { text: "Auto-detected", color: "text-foreground-muted" },
+  manual: { text: "Marked by you", color: "text-primary" },
 }
 
 const FREQUENCY_OPTIONS: Array<{ value: string; label: string }> = [

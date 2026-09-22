@@ -44,6 +44,7 @@ interface DetectedSub {
   isWanted: boolean
   notes: string | null
   billType: string | null
+  detectionMethod?: string | null
 }
 
 interface PlaidStream {
@@ -135,7 +136,7 @@ export function mergeSubscriptions(
       result.push({
         id: sub.id,
         source: "merged",
-        detectionMethod: "verified",
+        detectionMethod: (sub.detectionMethod as "auto" | "verified" | "manual" | null) ?? "verified",
         merchantName: sub.merchantName,
         nickname: sub.nickname,
         amount: match.lastAmount ?? sub.amount,
@@ -159,7 +160,7 @@ export function mergeSubscriptions(
       result.push({
         id: sub.id,
         source: "detected",
-        detectionMethod: "auto",
+        detectionMethod: (sub.detectionMethod as "auto" | "verified" | "manual" | null) ?? "auto",
         merchantName: sub.merchantName,
         nickname: sub.nickname,
         amount: sub.amount,

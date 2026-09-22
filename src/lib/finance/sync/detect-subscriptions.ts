@@ -169,7 +169,8 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
         lastChargeDate: new Date(sub.lastChargeDate),
         nextChargeDate: new Date(sub.nextChargeDate),
         lastTransactionId: sub.lastTransactionId,
-        status: "active",
+        status: "suggested",
+        detectionMethod: "auto",
       },
     })
     newCount++
@@ -216,7 +217,8 @@ export async function detectAndSaveSubscriptions(userId: string): Promise<{
         accountId: stream.accountId,
         lastChargeDate: stream.lastDate,
         nextChargeDate: nextDate,
-        status: "active",
+        status: "suggested",
+        detectionMethod: "auto",
       },
     })
     newCount++

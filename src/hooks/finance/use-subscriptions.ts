@@ -77,10 +77,10 @@ interface CancelGuidanceResponse {
 
 // ─── Subscription Hooks ─────────────────────────────────────────
 
-export function useFinanceSubscriptions() {
+export function useFinanceSubscriptions(status?: string) {
   return useQuery({
-    queryKey: financeKeys.subscriptions(),
-    queryFn: () => financeFetch<SubscriptionResponse>("/subscriptions"),
+    queryKey: [...financeKeys.subscriptions(), status ?? "default"],
+    queryFn: () => financeFetch<SubscriptionResponse>(`/subscriptions${status ? `?status=${status}` : ""}`),
   })
 }
 

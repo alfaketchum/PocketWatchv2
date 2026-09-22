@@ -10,10 +10,10 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { invalidateCache } from "@/lib/cache"
+import { syncSubscriptionTag } from "@/lib/finance/subscription-tag"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod/v4"
 
-const SUB_TAG = "subscription"
 const schema = z.object({
   transactionId: z.string().min(1),
   unmark: z.boolean().optional(),
@@ -38,34 +38,14 @@ export async function POST(req: NextRequest) {
   if (!merchant) return apiError("SM004", "Transaction has no merchant", 400)
 
   try {
-    // Past + present same-merchant transactions (by effective merchant name).
-    const siblings = await db.financeTransaction.findMany({
-      where: {
-        userId: user.id,
-        OR: [
-          { merchantName: { equals: merchant, mode: "insensitive" } },
-          { AND: [{ merchantName: null }, { name: { equals: merchant, mode: "insensitive" } }] },
-        ],
-      },
-      select: { id: true, tags: true },
-    })
+    const count = await syncSubscriptionTag(user.id, merchant, !unmark)
 
     if (unmark) {
-      await Promise.all(
-        siblings.filter((s) => s.tags.includes(SUB_TAG)).map((s) =>
-          db.financeTransaction.update({ where: { id: s.id }, data: { tags: s.tags.filter((t) => t !== SUB_TAG) } }),
-        ),
-      )
       await db.financeSubscription.updateMany({
         where: { userId: user.id, merchantName: { equals: merchant, mode: "insensitive" } },
         data: { status: "dismissed" },
       })
     } else {
-      await Promise.all(
-        siblings.filter((s) => !s.tags.includes(SUB_TAG)).map((s) =>
-          db.financeTransaction.update({ where: { id: s.id }, data: { tags: [...s.tags, SUB_TAG] } }),
-        ),
-      )
       const existing = await db.financeSubscription.findFirst({
         where: { userId: user.id, merchantName: { equals: merchant, mode: "insensitive" } },
       })
@@ -98,7 +78,7 @@ export async function POST(req: NextRequest) {
     invalidateCache("trends")
     invalidateCache("budgets")
 
-    return NextResponse.json({ ok: true, merchant, count: siblings.length })
+    return NextResponse.json({ ok: true, merchant, count })
   } catch (err) {
     return apiError("SM005", "Failed to update subscription mark", 500, err)
   }

@@ -5,6 +5,7 @@ import { mapFinanceError } from "@/lib/finance/error-map"
 import { mergeSubscriptions, normalizeFrequency, type UnifiedSubscription, type TransactionDateMap } from "@/lib/finance/subscription-merge"
 import { classifyBillType, enrichMerchantName } from "@/lib/finance/bill-type-classifier"
 import { backfillBillTypes } from "@/lib/finance/backfill-bill-types"
+import { syncSubscriptionTag } from "@/lib/finance/subscription-tag"
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod/v4"
 
@@ -319,7 +320,7 @@ function formatAccountLabel(account: {
 
 const patchSchema = z.object({
   subscriptionId: z.string().min(1, "subscriptionId required"),
-  status: z.enum(["active", "paused", "cancelled", "flagged", "dismissed"]).optional(),
+  status: z.enum(["suggested", "active", "paused", "cancelled", "flagged", "dismissed"]).optional(),
   isWanted: z.boolean().optional(),
   notes: z.string().max(2000).optional(),
   nickname: z.string().max(100).nullable().optional(),
@@ -389,6 +390,12 @@ export async function PATCH(req: NextRequest) {
         }),
       },
     })
+
+    // Confirming a subscription tags its transactions; dismissing untags them —
+    // keeping the "subscription" tag in sync with the tracker (both directions).
+    if (status === "active" || status === "dismissed") {
+      await syncSubscriptionTag(user.id, updated.merchantName, status === "active")
+    }
 
     return NextResponse.json(updated)
   } catch (err) {

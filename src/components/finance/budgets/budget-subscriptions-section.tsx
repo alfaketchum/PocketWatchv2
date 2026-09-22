@@ -27,11 +27,12 @@ const FREQUENCY_GROUP_LABELS: Record<string, string> = {
 
 export function BudgetSubscriptionsSection() {
   const { data, isLoading, isError } = useFinanceSubscriptions()
+  const { data: dismissedData } = useFinanceSubscriptions("dismissed")
   const updateSub = useUpdateSubscription()
   const detectSubs = useDetectSubscriptions()
   const { data: billsData } = useUpcomingBills()
   const [showBanner, setShowBanner] = useState(false)
-  const [groupBy, setGroupBy] = useState<"all" | "active" | "paused" | "cancelled" | "flagged">("all")
+  const [tab, setTab] = useState<"suggested" | "active" | "dismissed">("active")
   const [sortBy, setSortBy] = useState<"flat" | "frequency" | "cost" | "date">("flat")
   const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null)
   const [page, setPage] = useState(1)
@@ -45,19 +46,19 @@ export function BudgetSubscriptionsSection() {
   }, [detectSubs.isSuccess])
 
   const subs = data?.subscriptions ?? []
-  const activeSubs = subs.filter((s) => s.status === "active")
-  const pausedSubs = subs.filter((s) => s.status === "paused")
-  const cancelledSubs = subs.filter((s) => s.status === "cancelled")
+  const suggestedSubs = subs.filter((s) => s.status === "suggested")
+  // "Active" tab = everything confirmed/kept (active/paused/cancelled/flagged),
+  // i.e. not a pending suggestion.
+  const activeSubs = subs.filter((s) => s.status !== "suggested")
+  const dismissedSubs = dismissedData?.subscriptions ?? []
   const flaggedSubs = subs.filter((s) => !s.isWanted && s.status === "active")
-  // Potential savings: flagged active subs + paused subs (things user might cut)
+  const pausedSubs = subs.filter((s) => s.status === "paused")
   const potentialSavings = flaggedSubs.reduce((sum, s) => sum + s.amount, 0)
     + pausedSubs.reduce((sum, s) => sum + s.amount, 0)
 
-  const filteredSubs = groupBy === "all" ? subs
-    : groupBy === "active" ? activeSubs
-    : groupBy === "paused" ? pausedSubs
-    : groupBy === "flagged" ? flaggedSubs
-    : cancelledSubs
+  const filteredSubs = tab === "suggested" ? suggestedSubs
+    : tab === "dismissed" ? dismissedSubs
+    : activeSubs
 
   const sortedSubs = useMemo(() => {
     if (sortBy === "frequency") {
@@ -98,15 +99,13 @@ export function BudgetSubscriptionsSection() {
   }, [paginatedItems, sortBy])
 
   const GROUP_OPTIONS = [
-    { key: "all", label: "All", count: subs.length },
+    { key: "suggested", label: "Suggested", count: suggestedSubs.length },
     { key: "active", label: "Active", count: activeSubs.length },
-    { key: "paused", label: "Paused", count: pausedSubs.length },
-    { key: "cancelled", label: "Cancelled", count: cancelledSubs.length },
-    { key: "flagged", label: "Flagged", count: flaggedSubs.length },
+    { key: "dismissed", label: "Dismissed", count: dismissedSubs.length },
   ] as const
 
-  function handleFilterChange(key: typeof groupBy) {
-    setGroupBy(key)
+  function handleFilterChange(key: typeof tab) {
+    setTab(key)
     setPage(1)
   }
 
@@ -214,23 +213,23 @@ export function BudgetSubscriptionsSection() {
       {/* Subscriptions */}
       <div className="space-y-4">
           {/* Group Filter */}
-          {subs.length > 0 && (
+          {(subs.length > 0 || dismissedSubs.length > 0) && (
             <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg w-fit">
               {GROUP_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => handleFilterChange(opt.key as typeof groupBy)}
+                  onClick={() => handleFilterChange(opt.key as typeof tab)}
                   className={cn(
                     "px-3 py-1 text-[10px] font-medium rounded-md transition-colors duration-150",
-                    groupBy === opt.key
+                    tab === opt.key
                       ? "bg-primary text-white shadow-sm"
                       : "bg-transparent text-foreground-muted hover:text-foreground"
                   )}
                 >
                   {opt.label}
                   {opt.count > 0 && (
-                    <span className={cn("ml-1 tabular-nums", groupBy === opt.key ? "text-white/70" : "text-foreground-muted/50")}>
+                    <span className={cn("ml-1 tabular-nums", tab === opt.key ? "text-white/70" : "text-foreground-muted/50")}>
                       {opt.count}
                     </span>
                   )}
@@ -300,9 +299,9 @@ export function BudgetSubscriptionsSection() {
           ) : !isLoading ? (
             <FinanceEmpty
               icon="autorenew"
-              title={groupBy === "all" ? "No subscriptions detected" : `No ${groupBy} subscriptions`}
-              description={groupBy === "all" ? "Click 'Detect New' to scan your transactions for recurring charges." : "No subscriptions match this filter."}
-              action={groupBy === "all" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
+              title={tab === "suggested" ? "No suggestions" : tab === "dismissed" ? "Nothing dismissed" : "No subscriptions yet"}
+              description={tab === "suggested" ? "Run 'Detect New' to scan your transactions for recurring charges to confirm." : tab === "dismissed" ? "Dismissed subscriptions show up here." : "Confirm a suggestion or mark a transaction as a subscription."}
+              action={tab !== "dismissed" ? { label: "Detect Subscriptions", onClick: () => detectSubs.mutate() } : undefined}
             />
           ) : null}
       </div>

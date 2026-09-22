@@ -106,7 +106,8 @@ interface ExistingSubscription {
 
 /**
  * Cluster sorted charges by amount similarity.
- * Consecutive amounts within ±15% of the cluster reference are grouped together.
+ * Consecutive amounts within ±5% of the cluster reference are grouped together
+ * (tight band so distinct price tiers of the same merchant stay separate).
  */
 function clusterByAmount<T extends { amount: number }>(items: T[]): T[][] {
   if (items.length === 0) return []
@@ -117,7 +118,7 @@ function clusterByAmount<T extends { amount: number }>(items: T[]): T[][] {
     const clusterRef = lastCluster[0].amount
     const inCluster = clusterRef === 0
       ? sorted[i].amount === 0
-      : Math.abs(sorted[i].amount - clusterRef) / clusterRef <= 0.25
+      : Math.abs(sorted[i].amount - clusterRef) / clusterRef <= 0.05
     if (inCluster) {
       lastCluster.push(sorted[i])
     } else {

@@ -90,6 +90,26 @@ export function SubscriptionCardActions({
           {status}
         </span>
 
+        {/* Confirm (suggested → active) */}
+        {status === "suggested" && (
+          <button
+            onClick={() => onUpdateStatus?.(id, "active")}
+            className="px-3 py-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors"
+          >
+            Confirm
+          </button>
+        )}
+
+        {/* Restore (dismissed → active) */}
+        {status === "dismissed" && (
+          <button
+            onClick={() => onUpdateStatus?.(id, "active")}
+            className="px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+          >
+            Restore
+          </button>
+        )}
+
         {/* Cancel (active or paused) */}
         {(status === "active" || status === "paused") && (
           <>
