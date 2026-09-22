@@ -86,6 +86,32 @@ export function detectCCPayment(tx: TransactionContext): HardRuleResult | null {
   return null
 }
 
+// ─── Payment Reversal Detection ────────────────────────────────
+
+const PAYMENT_REVERSAL_PATTERNS = [
+  "RETURNED PAYMENT",
+  "PAYMENT RETURNED",
+  "REVERSED PAYMENT",
+  "PAYMENT REVERSAL",
+  "REVERSAL OF PAYMENT",
+  "RETURNED PMT",
+]
+
+/**
+ * A returned/reversed card payment is the undo of a payment (it nets against the
+ * "Payment Thank You"), NOT a refund of a purchase and NOT a fee. Classify it as
+ * a Transfer so the pair cancels out and it never inflates spending. Explicit
+ * "...FEE" lines are excluded — a genuine returned-payment fee stays a fee.
+ */
+export function detectPaymentReversal(tx: TransactionContext): HardRuleResult | null {
+  const name = (tx.merchantName ?? tx.rawName).toUpperCase()
+  if (name.includes("FEE")) return null
+  if (PAYMENT_REVERSAL_PATTERNS.some((p) => name.includes(p))) {
+    return { ...TRANSFER_RESULT, source: "hard_rule", ruleName: "cc_payment" }
+  }
+  return null
+}
+
 // ─── Transfer Detection by Name ────────────────────────────────
 
 const TRANSFER_PATTERNS = [
@@ -157,5 +183,5 @@ export function applyHardRules(tx: TransactionContext): HardRuleResult | null {
   // match transfer patterns, wiping out income from analytics.
   if (tx.plaidCategoryPrimary?.startsWith("INCOME")) return null
 
-  return detectCCPayment(tx) ?? detectTransferByName(tx) ?? null
+  return detectCCPayment(tx) ?? detectPaymentReversal(tx) ?? detectTransferByName(tx) ?? null
 }

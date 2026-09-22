@@ -30,6 +30,11 @@ const KEYWORD_MAP: Array<{ keywords: string[]; result: CategoryResult }> = [
   { keywords: ["payment to", "credit card", "card ending in", "bill pay", "autopay"], result: { category: "Transfer", subcategory: "Bank Transfer" } },
   { keywords: ["brokerage", "invest", "trading"], result: { category: "Investment", subcategory: null } },
   { keywords: ["dividend", "interest earned"], result: { category: "Income", subcategory: "Dividends" } },
+  // A returned/reversed payment is the undo of a card payment (a Transfer that
+  // nets against "Payment Thank You"), NOT a refund. Must precede the "return"
+  // rule below, which would otherwise catch it. (Hard rules handle this first
+  // when the account type is known; this covers callers that don't pass it.)
+  { keywords: ["returned payment", "payment returned", "reversed payment", "payment reversal", "returned pmt"], result: { category: "Transfer", subcategory: "Bank Transfer" } },
   // FIX Bug 6: Refunds should be "Fees & Charges / Refund" not "Income" —
   // categorizing refunds as income inflates both income and spending totals
   { keywords: ["refund", "return", "credit memo", "reimbursement"], result: { category: "Fees & Charges", subcategory: "Refund" } },
