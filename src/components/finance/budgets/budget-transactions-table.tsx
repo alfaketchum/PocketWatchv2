@@ -42,7 +42,7 @@ interface BudgetTransactionsTableProps {
   activeDay?: string | null
   onClearDay?: () => void
   /** Re-categorize a transaction to a new category (opens the smart dialog upstream). */
-  onRecategorize?: (tx: BudgetTxRow, category: string) => void
+  onRecategorize?: (tx: BudgetTxRow, category: string, subcategory?: string | null) => void
   /** Save a per-transaction note. */
   onSaveNote?: (txId: string, note: string) => void
 }
@@ -154,7 +154,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
               authorizedDate={t.authorizedDate}
               needsReview={t.needsReview}
               isRecurring={t.isRecurring}
-              onRecategorize={onRecategorize ? (cat) => onRecategorize(t, cat) : undefined}
+              onRecategorize={onRecategorize ? (cat, sub) => onRecategorize(t, cat, sub) : undefined}
               onSaveNote={onSaveNote ? (note) => onSaveNote(t.id, note) : undefined}
             />
           ))}
@@ -197,7 +197,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.hex }} />
                         {t.category ?? "Uncategorized"}
                       </span>
-                      {onRecategorize && <CategoryPicker value={t.category} onSelect={(cat) => onRecategorize(t, cat)} />}
+                      {onRecategorize && <CategoryPicker value={t.category} onSelect={(cat, sub) => onRecategorize(t, cat, sub)} />}
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-center">

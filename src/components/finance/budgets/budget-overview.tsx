@@ -72,8 +72,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
   const [pending, setPending] = useState<{ category: string; merchant: string; ids: string[] } | null>(null)
 
   // Re-categorize one transaction; if the same merchant recurs, offer to update them all.
-  const handleRecategorize = (tx: BudgetTxRow, category: string) => {
-    updateCat.mutate({ transactionId: tx.id, category })
+  const handleRecategorize = (tx: BudgetTxRow, category: string, subcategory?: string | null) => {
+    updateCat.mutate({ transactionId: tx.id, category, subcategory: subcategory ?? undefined })
     const key = (tx.merchantName ?? tx.name).trim().toLowerCase()
     const siblings = transactions.filter(
       (t) => t.id !== tx.id && (t.merchantName ?? t.name).trim().toLowerCase() === key && (t.category ?? "Uncategorized") !== category,

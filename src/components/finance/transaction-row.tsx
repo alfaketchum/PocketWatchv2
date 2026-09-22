@@ -33,7 +33,7 @@ interface TransactionRowProps {
   isHighlighted?: boolean
   onCategoryChange?: (category: string, createRule: boolean) => void
   /** Grouped-picker re-categorize (opt-in; takes precedence over onCategoryChange). */
-  onRecategorize?: (category: string) => void
+  onRecategorize?: (category: string, subcategory?: string | null) => void
   /** Editable per-transaction note (opt-in). */
   onSaveNote?: (note: string) => void
 }

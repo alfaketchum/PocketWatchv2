@@ -24,7 +24,7 @@ interface TransactionsTableViewProps {
   highlightId: string
   selectedIds: Set<string>
   setSelectedIds: (ids: Set<string>) => void
-  onRecategorize: (tx: TableTx, category: string) => void
+  onRecategorize: (tx: TableTx, category: string, subcategory?: string | null) => void
   onSaveNote: (txId: string, note: string) => void
 }
 
@@ -94,7 +94,7 @@ export function TransactionsTableView({
               isHighlighted={tx.id === highlightId}
               selected={selectedIds.has(tx.id)}
               onToggleSelect={() => toggleOne(tx.id)}
-              onRecategorize={(cat) => onRecategorize(tx, cat)}
+              onRecategorize={(cat, sub) => onRecategorize(tx, cat, sub)}
               onSaveNote={(note) => onSaveNote(tx.id, note)}
             />
           ))}

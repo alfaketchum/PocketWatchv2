@@ -25,7 +25,7 @@ export interface TransactionTableRowProps {
   isHighlighted?: boolean
   selected: boolean
   onToggleSelect: () => void
-  onRecategorize?: (category: string) => void
+  onRecategorize?: (category: string, subcategory?: string | null) => void
   onSaveNote?: (note: string) => void
 }
 

@@ -87,8 +87,8 @@ export default function FinanceTransactionsPage() {
   const [recatPending, setRecatPending] = useState<{ category: string; merchant: string; ids: string[] } | null>(null)
 
   // Re-categorize one transaction; offer to apply to same-merchant recurring ones.
-  const handleRecategorize = (tx: { id: string; merchantName: string | null; name: string }, category: string) => {
-    updateCategory.mutate({ transactionId: tx.id, category })
+  const handleRecategorize = (tx: { id: string; merchantName: string | null; name: string }, category: string, subcategory?: string | null) => {
+    updateCategory.mutate({ transactionId: tx.id, category, subcategory: subcategory ?? undefined })
     const key = (tx.merchantName ?? tx.name).trim().toLowerCase()
     const siblings = (data?.transactions ?? []).filter(
       (t) => t.id !== tx.id && (t.merchantName ?? t.name).trim().toLowerCase() === key && (t.category ?? "Uncategorized") !== category,
@@ -269,7 +269,7 @@ export default function FinanceTransactionsPage() {
           highlightId={highlightId}
           selectedIds={selectedIds}
           setSelectedIds={setSelectedIds}
-          onRecategorize={(tx, cat) => handleRecategorize(tx, cat)}
+          onRecategorize={(tx, cat, sub) => handleRecategorize(tx, cat, sub)}
           onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
         />
         ) : (
@@ -331,7 +331,7 @@ export default function FinanceTransactionsPage() {
               counterparties={tx.counterparties}
               needsReview={tx.needsReview}
               isRecurring={tx.isRecurring}
-              onRecategorize={(cat) => handleRecategorize(tx, cat)}
+              onRecategorize={(cat, sub) => handleRecategorize(tx, cat, sub)}
               onSaveNote={(note) => updateTx.mutate({ transactionId: tx.id, notes: note })}
             />
               </div>
