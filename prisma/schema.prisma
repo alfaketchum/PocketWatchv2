@@ -828,6 +828,7 @@ model FinanceSubscription {
   isWanted          Boolean   @default(true)
   notes             String?
   billType          String?   // "subscription" | "cc_annual_fee" | "insurance" | "membership" | "bill"
+  detectionMethod   String?   @default("auto") // "auto" (AI-detected) | "manual" (user-marked)
   cancelReminderDate DateTime? // When to remind user to cancel before next charge
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

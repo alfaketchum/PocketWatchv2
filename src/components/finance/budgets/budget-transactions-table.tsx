@@ -5,6 +5,7 @@ import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
 import { CategoryPicker } from "@/components/finance/category-picker"
 import { NoteCell } from "@/components/finance/note-cell"
+import { TagCell } from "@/components/finance/tag-cell"
 import { TransactionRow } from "@/components/finance/transaction-row"
 
 export interface BudgetTxRow {
@@ -16,6 +17,7 @@ export interface BudgetTxRow {
   subcategory: string | null
   amount: number
   notes: string | null
+  tags: string[]
   isPending: boolean
   isRecurring: boolean
   needsReview: boolean
@@ -45,9 +47,13 @@ interface BudgetTransactionsTableProps {
   onRecategorize?: (tx: BudgetTxRow, category: string, subcategory?: string | null) => void
   /** Save a per-transaction note. */
   onSaveNote?: (txId: string, note: string) => void
+  /** Save tags for a transaction. */
+  onSaveTags?: (txId: string, tags: string[]) => void
+  /** Toggle subscription marking (receives whether to unmark). */
+  onMarkSubscription?: (txId: string, unmark: boolean) => void
 }
 
-export function BudgetTransactionsTable({ transactions, activeCategory, onClearCategory, activeDay, onClearDay, onRecategorize, onSaveNote }: BudgetTransactionsTableProps) {
+export function BudgetTransactionsTable({ transactions, activeCategory, onClearCategory, activeDay, onClearDay, onRecategorize, onSaveNote, onSaveTags, onMarkSubscription }: BudgetTransactionsTableProps) {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(0)
   // List (rich rows) vs. table (compact) — defaults to list, persisted per-browser.
@@ -143,6 +149,7 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
               category={t.category}
               subcategory={t.subcategory}
               notes={t.notes}
+              tags={t.tags}
               isPending={t.isPending}
               accountName={t.account.name}
               accountMask={t.account.mask}
@@ -156,6 +163,8 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
               isRecurring={t.isRecurring}
               onRecategorize={onRecategorize ? (cat, sub) => onRecategorize(t, cat, sub) : undefined}
               onSaveNote={onSaveNote ? (note) => onSaveNote(t.id, note) : undefined}
+              onSaveTags={onSaveTags ? (tags) => onSaveTags(t.id, tags) : undefined}
+              onMarkSubscription={onMarkSubscription ? (unmark) => onMarkSubscription(t.id, unmark) : undefined}
             />
           ))}
         </div>
@@ -169,13 +178,14 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
               <th className="text-left font-semibold px-4 py-2">Account</th>
               <th className="text-left font-semibold px-4 py-2">Description</th>
               <th className="text-left font-semibold px-4 py-2">Category</th>
+              <th className="text-left font-semibold px-4 py-2">Tag</th>
               <th className="text-center font-semibold px-4 py-2">Note</th>
               <th className="text-right font-semibold px-4 py-2">Amount</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-foreground-muted">No transactions.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-foreground-muted">No transactions.</td></tr>
             ) : rows.map((t) => {
               const meta = getCategoryMeta(t.category)
               const out = t.amount > 0
@@ -200,6 +210,15 @@ export function BudgetTransactionsTable({ transactions, activeCategory, onClearC
                       {t.subcategory && <span className="inline-flex items-center rounded-full bg-background-secondary text-foreground-muted text-[10px] font-medium px-2 py-0.5">{t.subcategory}</span>}
                       {onRecategorize && <CategoryPicker value={t.category} onSelect={(cat, sub) => onRecategorize(t, cat, sub)} />}
                     </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {onSaveTags ? (
+                      <TagCell tags={t.tags} onSave={(tags) => onSaveTags(t.id, tags)} />
+                    ) : t.tags.length ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
+                        <span className="material-symbols-rounded" style={{ fontSize: 10 }}>sell</span>{t.tags[0]}{t.tags.length > 1 ? ` +${t.tags.length - 1}` : ""}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2.5 text-center">
                     {onSaveNote ? (

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
-import { useUpdateTransactionCategory, useBulkCategorize, useUpdateTransaction } from "@/hooks/use-finance"
+import { useUpdateTransactionCategory, useBulkCategorize, useUpdateTransaction, useMarkSubscription } from "@/hooks/use-finance"
 import { ConfirmDialog } from "@/components/finance/confirm-dialog"
 import { BudgetSpendingDonut, type DonutSlice } from "./budget-spending-donut"
 import { BudgetDailyBars } from "./budget-daily-bars"
@@ -19,6 +19,7 @@ interface OverviewTx {
   subcategory: string | null
   isExcluded: boolean
   isPending: boolean
+  tags: string[]
   isRecurring: boolean
   needsReview: boolean
   notes: string | null
@@ -69,6 +70,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
   const updateCat = useUpdateTransactionCategory()
   const bulkCat = useBulkCategorize()
   const updateTx = useUpdateTransaction()
+  const markSub = useMarkSubscription()
   const [pending, setPending] = useState<{ category: string; subcategory: string | null; merchant: string; ids: string[] } | null>(null)
 
   // Re-categorize one transaction; if the same merchant recurs, offer to update them all.
@@ -82,6 +84,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
   }
 
   const handleSaveNote = (txId: string, note: string) => updateTx.mutate({ transactionId: txId, notes: note })
+  const handleSaveTags = (txId: string, tags: string[]) => updateTx.mutate({ transactionId: txId, tags })
+  const handleMarkSub = (txId: string, unmark: boolean) => markSub.mutate({ transactionId: txId, unmark })
 
   const { slices, catList, daily, totalSpend } = useMemo(() => {
     const spend = transactions.filter((t) => t.amount > 0 && !t.isExcluded && !EXCLUDE.has(t.category ?? ""))
@@ -113,7 +117,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
           isPending: t.isPending, isRecurring: t.isRecurring, needsReview: t.needsReview,
           logoUrl: t.logoUrl, website: t.website, paymentChannel: t.paymentChannel,
           authorizedDate: t.authorizedDate, location: t.location, counterparties: t.counterparties,
-          account: t.account,
+          tags: t.tags, account: t.account,
         })),
     [transactions, selected, selectedDay],
   )
@@ -161,6 +165,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
         onClearDay={() => setSelectedDay(null)}
         onRecategorize={handleRecategorize}
         onSaveNote={handleSaveNote}
+        onSaveTags={handleSaveTags}
+        onMarkSubscription={handleMarkSub}
       />
 
       <ConfirmDialog

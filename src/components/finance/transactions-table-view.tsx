@@ -27,6 +27,7 @@ interface TransactionsTableViewProps {
   setSelectedIds: (ids: Set<string>) => void
   onRecategorize: (tx: TableTx, category: string, subcategory?: string | null) => void
   onSaveNote: (txId: string, note: string) => void
+  onSaveTags: (txId: string, tags: string[]) => void
 }
 
 /**
@@ -35,7 +36,7 @@ interface TransactionsTableViewProps {
  * with a leading select checkbox wired to the same bulk-action state.
  */
 export function TransactionsTableView({
-  transactions, highlightId, selectedIds, setSelectedIds, onRecategorize, onSaveNote,
+  transactions, highlightId, selectedIds, setSelectedIds, onRecategorize, onSaveNote, onSaveTags,
 }: TransactionsTableViewProps) {
   const allSelected = transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id))
 
@@ -69,6 +70,7 @@ export function TransactionsTableView({
             <th className="text-left font-semibold px-3 py-2.5">Account</th>
             <th className="text-left font-semibold px-3 py-2.5">Description</th>
             <th className="text-left font-semibold px-3 py-2.5">Category</th>
+            <th className="text-left font-semibold px-3 py-2.5">Tag</th>
             <th className="text-center font-semibold px-3 py-2.5">Note</th>
             <th className="text-right font-semibold px-4 py-2.5">Amount</th>
           </tr>
@@ -98,6 +100,7 @@ export function TransactionsTableView({
               onToggleSelect={() => toggleOne(tx.id)}
               onRecategorize={(cat, sub) => onRecategorize(tx, cat, sub)}
               onSaveNote={(note) => onSaveNote(tx.id, note)}
+              onSaveTags={(tags) => onSaveTags(tx.id, tags)}
             />
           ))}
         </tbody>

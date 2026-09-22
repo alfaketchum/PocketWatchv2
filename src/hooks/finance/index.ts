@@ -53,6 +53,7 @@ export {
   useFinanceSubscriptions,
   useUpdateSubscription,
   useDetectSubscriptions,
+  useMarkSubscription,
   useCancelGuidance,
   useRecurringStreams,
 } from "./use-subscriptions"

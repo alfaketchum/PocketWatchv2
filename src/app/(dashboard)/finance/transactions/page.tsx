@@ -7,7 +7,7 @@ import {
   useFinanceTransactions, useFinanceAccounts,
   useAutoCategorize, useFinanceDeepInsights,
   useUpdateTransactionCategory, useReviewCount,
-  useBulkCategorize, useUpdateTransaction,
+  useBulkCategorize, useUpdateTransaction, useMarkSubscription,
 } from "@/hooks/use-finance"
 import { ConfirmDialog } from "@/components/finance/confirm-dialog"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
@@ -87,6 +87,7 @@ export default function FinanceTransactionsPage() {
   const updateCategory = useUpdateTransactionCategory()
   const bulkCategorize = useBulkCategorize()
   const updateTx = useUpdateTransaction()
+  const markSub = useMarkSubscription()
   const [recatPending, setRecatPending] = useState<{ category: string; subcategory: string | null; merchant: string; ids: string[] } | null>(null)
 
   // Re-categorize one transaction; offer to apply to same-merchant recurring ones.
@@ -276,6 +277,7 @@ export default function FinanceTransactionsPage() {
           setSelectedIds={setSelectedIds}
           onRecategorize={(tx, cat, sub) => handleRecategorize(tx, cat, sub)}
           onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
+          onSaveTags={(txId, tags) => updateTx.mutate({ transactionId: txId, tags })}
         />
         ) : (
         <div className="bg-card border border-card-border rounded-xl overflow-hidden">
@@ -340,6 +342,7 @@ export default function FinanceTransactionsPage() {
               onRecategorize={(cat, sub) => handleRecategorize(tx, cat, sub)}
               onSaveNote={(note) => updateTx.mutate({ transactionId: tx.id, notes: note })}
               onSaveTags={(tags) => updateTx.mutate({ transactionId: tx.id, tags })}
+              onMarkSubscription={(unmark) => markSub.mutate({ transactionId: tx.id, unmark })}
             />
               </div>
             </div>

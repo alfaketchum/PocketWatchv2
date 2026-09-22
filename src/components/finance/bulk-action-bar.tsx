@@ -4,7 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { FINANCE_CATEGORIES } from "@/lib/finance/categories"
 import { useBulkCategorize } from "@/hooks/finance/use-transactions"
-import { cn } from "@/lib/utils"
+import { useMarkSubscription } from "@/hooks/finance/use-subscriptions"
 
 const categoryKeys = Object.keys(FINANCE_CATEGORIES)
 
@@ -15,10 +15,25 @@ interface BulkActionBarProps {
 
 export function BulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
   const [category, setCategory] = useState("")
+  const [marking, setMarking] = useState(false)
   const bulkCategorize = useBulkCategorize()
+  const markSub = useMarkSubscription()
   const count = selectedIds.size
 
   if (count === 0) return null
+
+  const handleMarkSub = async () => {
+    setMarking(true)
+    try {
+      for (const id of selectedIds) await markSub.mutateAsync({ transactionId: id })
+      toast.success(`Marked ${count} as subscription${count !== 1 ? "s" : ""}`)
+      onClear()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setMarking(false)
+    }
+  }
 
   const handleApply = () => {
     if (!category) {
@@ -63,6 +78,15 @@ export function BulkActionBar({ selectedIds, onClear }: BulkActionBarProps) {
           className="px-4 py-1.5 text-xs font-semibold bg-white text-primary rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50"
         >
           {bulkCategorize.isPending ? "Updating..." : "Apply"}
+        </button>
+
+        <button
+          onClick={handleMarkSub}
+          disabled={marking}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white/20 border border-white/30 text-white rounded-lg hover:bg-white/30 transition-colors disabled:opacity-50 flex-shrink-0"
+        >
+          <span className="material-symbols-rounded" style={{ fontSize: 15 }}>autorenew</span>
+          {marking ? "Marking..." : "Mark subscription"}
         </button>
       </div>
 

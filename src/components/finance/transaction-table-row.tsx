@@ -5,6 +5,7 @@ import { getCategoryMeta } from "@/lib/finance/categories"
 import { MerchantIcon } from "./merchant-icon"
 import { CategoryPicker } from "./category-picker"
 import { NoteCell } from "./note-cell"
+import { TagCell } from "./tag-cell"
 
 export interface TransactionTableRowProps {
   id: string
@@ -28,6 +29,7 @@ export interface TransactionTableRowProps {
   onToggleSelect: () => void
   onRecategorize?: (category: string, subcategory?: string | null) => void
   onSaveNote?: (note: string) => void
+  onSaveTags?: (tags: string[]) => void
 }
 
 /**
@@ -38,7 +40,7 @@ export interface TransactionTableRowProps {
 export function TransactionTableRow({
   id, date, merchantName, name, amount, category, subcategory, tags, notes, isPending,
   accountName, accountMask, logoUrl, website, needsReview, isRecurring,
-  isHighlighted, selected, onToggleSelect, onRecategorize, onSaveNote,
+  isHighlighted, selected, onToggleSelect, onRecategorize, onSaveNote, onSaveTags,
 }: TransactionTableRowProps) {
   const meta = getCategoryMeta(category)
   const out = amount > 0
@@ -107,13 +109,17 @@ export function TransactionTableRow({
             {category ?? "Uncategorized"}
           </span>
           {subcategory && <span className="inline-flex items-center rounded-full bg-background-secondary text-foreground-muted text-[10px] font-medium px-2 py-0.5">{subcategory}</span>}
-          {tags?.map((t) => (
-            <span key={t} className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
-              <span className="material-symbols-rounded" style={{ fontSize: 10 }} aria-hidden="true">sell</span>{t}
-            </span>
-          ))}
           {onRecategorize && <CategoryPicker value={category} onSelect={onRecategorize} />}
         </div>
+      </td>
+      <td className="px-3 py-2.5 align-middle">
+        {onSaveTags ? (
+          <TagCell tags={tags ?? []} onSave={onSaveTags} />
+        ) : tags && tags.length ? (
+          <span className="inline-flex items-center gap-0.5 rounded-full border border-card-border text-foreground-muted text-[10px] font-medium px-1.5 py-0.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 10 }}>sell</span>{tags[0]}{tags.length > 1 ? ` +${tags.length - 1}` : ""}
+          </span>
+        ) : null}
       </td>
       <td className="px-3 py-2.5 text-center align-middle">
         {onSaveNote ? (

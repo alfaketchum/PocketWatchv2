@@ -40,6 +40,8 @@ interface TransactionRowProps {
   onSaveNote?: (note: string) => void
   /** Editable tags (opt-in). */
   onSaveTags?: (tags: string[]) => void
+  /** Toggle subscription marking (opt-in). Receives whether to unmark. */
+  onMarkSubscription?: (unmark: boolean) => void
 }
 
 export function TransactionRow({
@@ -47,8 +49,9 @@ export function TransactionRow({
   notes, tags, isPending, accountName, accountMask, className,
   paymentChannel, authorizedDate, logoUrl, website, location, counterparties,
   needsReview, isRecurring, isHighlighted,
-  onCategoryChange, onRecategorize, onSaveNote, onSaveTags,
+  onCategoryChange, onRecategorize, onSaveNote, onSaveTags, onMarkSubscription,
 }: TransactionRowProps) {
+  const isSubscription = tags?.includes("subscription") ?? false
   const [expanded, setExpanded] = useState(false)
   const [retagOpen, setRetagOpen] = useState(false)
   const [createRule, setCreateRule] = useState(true)
@@ -303,6 +306,20 @@ export function TransactionRow({
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+          {onMarkSubscription && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => onMarkSubscription(isSubscription)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                  isSubscription ? "border-primary/30 bg-primary-muted text-primary" : "border-card-border text-foreground hover:bg-background-secondary",
+                )}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">autorenew</span>
+                {isSubscription ? "Unmark subscription" : "Mark as subscription"}
+              </button>
             </div>
           )}
           {onSaveTags && (

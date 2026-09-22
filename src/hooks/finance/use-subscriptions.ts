@@ -119,6 +119,19 @@ export function useDetectSubscriptions() {
   })
 }
 
+/** Mark (or unmark) a transaction + its same-merchant history as a subscription. */
+export function useMarkSubscription() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { transactionId: string; unmark?: boolean }) =>
+      financeFetch<{ ok: boolean; merchant: string; count: number }>(
+        "/subscriptions/mark",
+        { method: "POST", body: JSON.stringify(data) }
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: financeKeys.all }),
+  })
+}
+
 export function useCancelGuidance() {
   return useMutation({
     mutationFn: (data: { merchantName: string; amount: number; frequency: string }) =>
