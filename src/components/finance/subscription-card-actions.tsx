@@ -121,9 +121,19 @@ export function SubscriptionCardActions({
                   onUpdateStatus?.(id, "cancelled")
                 }
               }}
-              className="px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+              title="How to cancel this — links & steps"
             >
-              Cancel
+              Cancel…
+            </button>
+
+            {/* Direct: already cancelled elsewhere, just file it under Inactive */}
+            <button
+              onClick={() => onUpdateStatus?.(id, "cancelled")}
+              className="px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+              title="Already cancelled elsewhere — file it under Inactive"
+            >
+              Mark cancelled
             </button>
 
             {/* Direct cancel link shortcut */}

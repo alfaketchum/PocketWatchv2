@@ -23,7 +23,7 @@ interface CancelTarget {
   frequency: string
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 const VIEW_KEY = "pw-sub-view"
 const FREQUENCY_ORDER = ["weekly", "biweekly", "monthly", "quarterly", "semi_annual", "yearly"] as const
 

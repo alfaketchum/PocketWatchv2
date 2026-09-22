@@ -189,8 +189,15 @@ function RowActions({
             onClick={() => onRequestCancel
               ? onRequestCancel({ id, merchantName, amount, frequency })
               : onUpdateStatus?.(id, "cancelled")}
-            className={cn(btn, "text-foreground-muted hover:text-error hover:bg-error/10")}>
-            Cancel
+            className={cn(btn, "text-foreground-muted hover:text-primary hover:bg-primary/10")}
+            title="How to cancel this — links & steps">
+            Cancel…
+          </button>
+          <button
+            onClick={() => onUpdateStatus?.(id, "cancelled")}
+            className={cn(btn, "text-foreground-muted hover:text-error hover:bg-error/10")}
+            title="Already cancelled elsewhere — file it under Inactive">
+            Mark cancelled
           </button>
           {!hasReminder && (
             <button
