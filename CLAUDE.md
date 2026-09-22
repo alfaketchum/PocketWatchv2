@@ -11,11 +11,11 @@
 ## HARD RULES (never break these)
 
 ### File Size Limits
-- **Pages**: MAX 400 lines. Extract sections into components.
-- **Components**: MAX 300 lines. Split into sub-components.
-- **Hooks**: MAX 300 lines per file. Group by feature domain (e.g. `use-finance-budgets.ts`, not one giant `use-finance.ts`).
-- **Library files**: MAX 400 lines. Split by concern.
-- **API routes**: MAX 200 lines. Extract shared logic to lib/.
+- **Pages**: MAX 600 lines. Extract sections into components.
+- **Components**: MAX 500 lines. Split into sub-components.
+- **Hooks**: MAX 500 lines per file. Group by feature domain (e.g. `use-finance-budgets.ts`, not one giant `use-finance.ts`).
+- **Library files**: MAX 600 lines. Split by concern.
+- **API routes**: MAX 300 lines. Extract shared logic to lib/.
 - If a file exceeds these limits, SPLIT IT before adding more code.
 - NEVER create a "god file" that holds all hooks/components for a module.
 - Before adding code to ANY file, check its line count. If adding your code would exceed the limit, split first.

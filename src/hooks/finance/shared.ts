@@ -103,6 +103,8 @@ export const financeKeys = {
   aiAudit: () => [...financeKeys.all, "ai-audit"] as const,
   spendingByMonth: (month?: string) =>
     [...financeKeys.all, "spending-by-month", month] as const,
+  spendingByCategory: (rangeKey: string) =>
+    [...financeKeys.all, "spending-by-category", rangeKey] as const,
   coverage: () => [...financeKeys.all, "coverage"] as const,
   bonusTrackers: () => [...financeKeys.all, "bonus-trackers"] as const,
   bonusSearch: (q: string) => [...financeKeys.all, "bonus-search", q] as const,

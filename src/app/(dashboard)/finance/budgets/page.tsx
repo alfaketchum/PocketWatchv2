@@ -29,6 +29,10 @@ const BudgetPaceChart = dynamic(
   () => import("@/components/finance/budgets/budget-pace-chart").then((m) => m.BudgetPaceChart),
   { ssr: false },
 )
+const BudgetPeriodComparison = dynamic(
+  () => import("@/components/finance/budgets/budget-period-comparison").then((m) => m.BudgetPeriodComparison),
+  { ssr: false },
+)
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { motion, useReducedMotion } from "motion/react"
@@ -63,6 +67,7 @@ export default function FinanceBudgetsPage() {
   const [activeTab, setActiveTab] = useState<BudgetTab>("data-driven")
   const [showModal, setShowModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [compare, setCompare] = useState(false)
 
   // Persisted toggle for the secondary analysis panels (pace, stats, subs,
   // insights, untracked). Core ring + category list always show.
@@ -247,6 +252,24 @@ export default function FinanceBudgetsPage() {
             <p className="text-xs text-foreground-muted -mt-1">
               Showing {range.label === "Custom" ? "custom range" : range.label} · budget targets pro-rated to the period. Editing is available in the This Month view.
             </p>
+          )}
+
+          {/* Period-over-period comparison toggle + panel */}
+          <button
+            onClick={() => setCompare((c) => !c)}
+            className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
+            aria-pressed={compare}
+          >
+            <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }} aria-hidden="true">compare_arrows</span>
+            <span className="text-xs font-medium text-foreground-muted">Compare to prior period</span>
+            <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", compare ? "bg-primary" : "bg-card-border")}>
+              <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", compare ? "translate-x-[18px]" : "translate-x-0.5")} />
+            </span>
+          </button>
+          {compare && (
+            <FadeIn>
+              <BudgetPeriodComparison range={range} />
+            </FadeIn>
           )}
 
           {/* Spending overview — click a category to decompose the ring into

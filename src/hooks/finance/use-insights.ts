@@ -272,3 +272,21 @@ export function useSpendingByMonth(month?: string) {
       ),
   })
 }
+
+export interface SpendingByCategoryData {
+  categories: Array<{ category: string; total: number }>
+  total: number
+}
+
+/** Per-category spend over an inclusive date range. Disabled until a range is given. */
+export function useSpendingByCategory(range?: { startDate: string; endDate: string }) {
+  const key = range ? `${range.startDate}_${range.endDate}` : "none"
+  return useQuery({
+    queryKey: financeKeys.spendingByCategory(key),
+    queryFn: () =>
+      financeFetch<SpendingByCategoryData>(
+        `/spending/by-category?startDate=${range!.startDate}&endDate=${range!.endDate}`
+      ),
+    enabled: !!range,
+  })
+}

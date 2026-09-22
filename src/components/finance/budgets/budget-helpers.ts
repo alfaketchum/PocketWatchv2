@@ -232,6 +232,7 @@ export interface BudgetRange {
 
 export const BUDGET_LOOKBACK_PRESETS = [
   { key: "this-month", label: "This Month" },
+  { key: "last-month", label: "Last Month" },
   { key: "2w", label: "2W" },
   { key: "1m", label: "1M" },
   { key: "3m", label: "3M" },
@@ -248,6 +249,12 @@ export function getBudgetLookbackRange(key: string): BudgetRange {
   const now = new Date()
   if (key === "this-month") return { key, label: "This Month", isThisMonth: true }
 
+  if (key === "last-month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const end = new Date(now.getFullYear(), now.getMonth(), 0) // last day of previous month
+    return { key, label: "Last Month", startDate: isoDate(start), endDate: isoDate(end), isThisMonth: false }
+  }
+
   const start = new Date(now)
   switch (key) {
     case "2w": start.setDate(start.getDate() - 13); break
@@ -258,4 +265,37 @@ export function getBudgetLookbackRange(key: string): BudgetRange {
   }
   const label = BUDGET_LOOKBACK_PRESETS.find((p) => p.key === key)?.label ?? "Custom"
   return { key, label, startDate: isoDate(start), endDate: isoDate(now), isThisMonth: false }
+}
+
+/** Concrete [start, end] for any range — "this month" resolves to 1st→today. */
+export function resolveRangeDates(range: BudgetRange): { startDate: string; endDate: string } {
+  if (!range.isThisMonth && range.startDate && range.endDate) {
+    return { startDate: range.startDate, endDate: range.endDate }
+  }
+  const now = new Date()
+  return { startDate: isoDate(new Date(now.getFullYear(), now.getMonth(), 1)), endDate: isoDate(now) }
+}
+
+/**
+ * The equal-length window immediately preceding the current selection. For the
+ * in-progress month, this is last month up to the same day (a fair month-to-date
+ * comparison) rather than a partial slice of two months.
+ */
+export function getPriorRange(range: BudgetRange): { startDate: string; endDate: string } {
+  const now = new Date()
+  if (range.isThisMonth) {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastDayPrev = new Date(now.getFullYear(), now.getMonth(), 0).getDate()
+    const end = new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), lastDayPrev))
+    return { startDate: isoDate(start), endDate: isoDate(end) }
+  }
+  const { startDate, endDate } = resolveRangeDates(range)
+  const cs = new Date(`${startDate}T00:00:00`)
+  const ce = new Date(`${endDate}T00:00:00`)
+  const days = Math.round((ce.getTime() - cs.getTime()) / 86_400_000) + 1
+  const priorEnd = new Date(cs)
+  priorEnd.setDate(priorEnd.getDate() - 1)
+  const priorStart = new Date(priorEnd)
+  priorStart.setDate(priorStart.getDate() - (days - 1))
+  return { startDate: isoDate(priorStart), endDate: isoDate(priorEnd) }
 }

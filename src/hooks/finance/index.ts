@@ -90,6 +90,7 @@ export {
   useAIInsights,
   useGenerateAIInsights,
   useSpendingByMonth,
+  useSpendingByCategory,
 } from "./use-insights"
 
 export type { AIInsightsData } from "./use-insights"
