@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import { decryptCredential } from "../crypto"
 import * as plaid from "../plaid-client"
 import { categorizeTransaction, cleanMerchantName } from "../categorize"
+import { CARD_PAYMENT_TAG } from "../tags"
 import { bestAccountName, mapPlaidType } from "../plaid-account-classify"
 import { isUnidentifiedCard } from "./auto-identify-cards"
 import { syncInvestments } from "../plaid-sync-products"
@@ -115,6 +116,7 @@ export async function syncPlaid(
             currency: txn.isoCurrencyCode ?? "USD",
             category: cat.category === "Uncategorized" ? null : cat.category,
             subcategory: cat.subcategory,
+            tags: cat.isCardPayment ? [CARD_PAYMENT_TAG] : [],
             isAutoApplied: ["hard_rule", "rule", "keyword", "merchant_map", "plaid"].includes(cat.source),
             needsReview: cat.needsReview,
             plaidCategory: txn.personalFinanceCategory?.detailed ?? null,
@@ -384,6 +386,7 @@ export async function fetchFullPlaidHistory(
               currency: tx.isoCurrencyCode ?? "USD",
               category: cat.category === "Uncategorized" ? null : cat.category,
               subcategory: cat.subcategory,
+              tags: cat.isCardPayment ? [CARD_PAYMENT_TAG] : [],
               plaidCategory: tx.personalFinanceCategory?.detailed ?? null,
               plaidCategoryPrimary: tx.personalFinanceCategory?.primary ?? null,
               isPending: tx.pending,

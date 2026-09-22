@@ -15,12 +15,21 @@ interface TagEditorProps {
  *  Shared by the budget and transactions views. */
 export function TagEditor({ tags, onSave }: TagEditorProps) {
   const [input, setInput] = useState("")
+  const [hint, setHint] = useState<string | null>(null)
 
   const toggle = (t: string) =>
     onSave(tags.includes(t) ? tags.filter((x) => x !== t) : [...tags, t])
   const add = () => {
     const t = input.trim().toLowerCase()
-    if (t && !tags.includes(t)) onSave([...tags, t])
+    if (!t) { setInput(""); return }
+    // Managed tags (e.g. subscription) are owned by a dedicated control — never
+    // settable as a free-text tag, or they'd drift out of sync with their record.
+    if (isManagedTag(t)) {
+      setHint(`“${MANAGED_TAGS[t].label}” is set with its own action, not as a tag.`)
+      setInput("")
+      return
+    }
+    if (!tags.includes(t)) onSave([...tags, t])
     setInput("")
   }
   const remove = (t: string) => onSave(tags.filter((x) => x !== t))
@@ -79,13 +88,15 @@ export function TagEditor({ tags, onSave }: TagEditorProps) {
         <form onSubmit={(e) => { e.preventDefault(); add() }}>
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => { setInput(e.target.value); if (hint) setHint(null) }}
             onBlur={add}
             placeholder="Add tag…"
             className="w-24 bg-background border border-card-border rounded-full px-2.5 py-0.5 text-[11px] text-foreground placeholder-foreground-muted focus:border-primary focus:outline-none"
           />
         </form>
       </div>
+
+      {hint && <p className="text-[10px] text-foreground-muted">{hint}</p>}
     </div>
   )
 }

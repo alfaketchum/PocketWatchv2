@@ -13,6 +13,7 @@ import {
 } from "../simplefin-client"
 import { resolveInstitutionLogo } from "../institution-logos"
 import { categorizeTransaction, cleanMerchantName } from "../categorize"
+import { CARD_PAYMENT_TAG } from "../tags"
 import { withRetry } from "../retry"
 import { detectTransfers } from "../transfer-detection"
 import type { SyncResult } from "./helpers"
@@ -276,6 +277,7 @@ export async function syncSimpleFIN(
             // FIX Bug 12: Store null instead of "Uncategorized" string
             category: cat.category === "Uncategorized" ? null : cat.category,
             subcategory: cat.subcategory,
+            tags: cat.isCardPayment ? [CARD_PAYMENT_TAG] : [],
             isAutoApplied: ["hard_rule", "rule", "keyword", "merchant_map"].includes(cat.source),
             needsReview: cat.needsReview,
             isPending: txn.isPending,

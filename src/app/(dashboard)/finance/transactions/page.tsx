@@ -289,7 +289,6 @@ export default function FinanceTransactionsPage() {
           onRecategorize={(tx, cat, sub) => handleRecategorize(tx, cat, sub)}
           onSaveNote={(txId, note) => updateTx.mutate({ transactionId: txId, notes: note })}
           onSaveTags={(txId, tags) => updateTx.mutate({ transactionId: txId, tags })}
-          onMarkSubscription={(txId, unmark) => markSub.mutate({ transactionId: txId, unmark })}
           sortField={sortField}
           sortDir={sortDir}
           onSort={handleSort}

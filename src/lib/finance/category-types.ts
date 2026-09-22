@@ -61,4 +61,6 @@ export interface EnrichedCategoryResult extends CategoryResult {
   confidence: number
   needsReview: boolean
   ruleId?: string
+  /** True when a hard-rule credit-card payment fired — used to auto-tag on sync. */
+  isCardPayment?: boolean
 }

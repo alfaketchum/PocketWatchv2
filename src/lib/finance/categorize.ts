@@ -90,7 +90,7 @@ export function categorizeTransaction(
     }
     const hardResult = applyHardRules(hardCtx)
     if (hardResult) {
-      return { ...hardResult, confidence: 1.0, needsReview: false }
+      return { ...hardResult, confidence: 1.0, needsReview: false, isCardPayment: hardResult.ruleName === "cc_payment" }
     }
   }
 

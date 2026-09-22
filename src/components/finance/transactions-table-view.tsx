@@ -29,7 +29,6 @@ interface TransactionsTableViewProps {
   onRecategorize: (tx: TableTx, category: string, subcategory?: string | null) => void
   onSaveNote: (txId: string, note: string) => void
   onSaveTags: (txId: string, tags: string[]) => void
-  onMarkSubscription: (txId: string, unmark: boolean) => void
   sortField: string
   sortDir: SortDir
   onSort: (field: string) => void
@@ -41,7 +40,7 @@ interface TransactionsTableViewProps {
  * with a leading select checkbox wired to the same bulk-action state.
  */
 export function TransactionsTableView({
-  transactions, highlightId, selectedIds, setSelectedIds, onRecategorize, onSaveNote, onSaveTags, onMarkSubscription,
+  transactions, highlightId, selectedIds, setSelectedIds, onRecategorize, onSaveNote, onSaveTags,
   sortField, sortDir, onSort,
 }: TransactionsTableViewProps) {
   const allSelected = transactions.length > 0 && transactions.every((t) => selectedIds.has(t.id))
@@ -107,7 +106,6 @@ export function TransactionsTableView({
               onRecategorize={(cat, sub) => onRecategorize(tx, cat, sub)}
               onSaveNote={(note) => onSaveNote(tx.id, note)}
               onSaveTags={(tags) => onSaveTags(tx.id, tags)}
-              onMarkSubscription={(unmark) => onMarkSubscription(tx.id, unmark)}
             />
           ))}
         </tbody>
