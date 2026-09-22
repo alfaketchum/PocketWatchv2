@@ -9,7 +9,6 @@ import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { FinanceHeroCard } from "@/components/finance/finance-hero-card"
-import { NumberPop } from "@/components/ui/number-pop"
 import { NetWorthBreakdown } from "@/components/net-worth/net-worth-breakdown"
 import { NetWorthAccountsBreakdown } from "@/components/net-worth/net-worth-accounts-breakdown"
 import { NetWorthTimeframeToggle } from "@/components/net-worth/net-worth-timeframe-toggle"
@@ -80,11 +79,6 @@ export default function NetWorthPage() {
             value: `${deltaPct >= 0 ? "+" : ""}${deltaPct.toFixed(1)}% (${formatCurrency(Math.abs(delta))})`,
             positive: delta >= 0,
           } : undefined}
-          footerStats={[
-            { label: "Finance", value: formatCurrency(fiat.netWorth), node: <NumberPop value={fiat.netWorth} format={(n) => formatCurrency(n)} /> },
-            { label: "Digital Assets", value: formatCurrency(crypto.value), color: crypto.value > 0 ? "success" : undefined, node: <NumberPop value={crypto.value} format={(n) => formatCurrency(n)} /> },
-            { label: "Debt", value: formatCurrency(-fiat.debt), color: fiat.debt > 0 ? "error" : undefined, node: <NumberPop value={-fiat.debt} format={(n) => formatCurrency(n)} /> },
-          ]}
         >
           {/* Timeframe toggle */}
           <div className="flex justify-end mb-2">
