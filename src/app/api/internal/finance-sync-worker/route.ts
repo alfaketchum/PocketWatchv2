@@ -56,11 +56,16 @@ export async function POST(request: NextRequest) {
   })
 
   const results: Array<{ userId: string; ok: boolean; synced?: number; error?: string }> = []
+  // Subscription detection is idempotent over transaction history, so re-running
+  // it for a user whose sync added nothing is pure waste. Only re-detect users
+  // who actually got new transactions this cycle.
+  const changedUsers = new Set<string>()
 
   for (const { userId } of users) {
     try {
       const syncResults = await syncAllInstitutions(userId)
       const totalAdded = syncResults.reduce((sum, r) => sum + r.transactionsAdded, 0)
+      if (totalAdded > 0) changedUsers.add(userId)
 
       // FIX Bug 4: Also sync liability/investment data (was only manual before)
       await syncAllPlaidData(userId).catch((err) => {
@@ -90,6 +95,7 @@ export async function POST(request: NextRequest) {
     try {
       if (job.jobType === "full_history") {
         await fetchFullPlaidHistory(job.userId, { jobId: job.id })
+        changedUsers.add(job.userId)
         retryResults.push({ jobId: job.id, status: "completed" })
       } else if (job.jobType === "product_sync") {
         await markJobRunning(job.id)
@@ -108,9 +114,13 @@ export async function POST(request: NextRequest) {
   const alertResults: Array<{ userId: string; alertsSent: number }> = []
   for (const { userId } of users) {
     try {
-      const subResult = await detectAndSaveSubscriptions(userId)
-      if (subResult.priceChanges.length > 0) {
-        await notifyPriceChanges(userId, subResult.priceChanges)
+      // Only re-detect subscriptions for users with new transactions this cycle;
+      // alerts below are time-based, so they still run for everyone.
+      if (changedUsers.has(userId)) {
+        const subResult = await detectAndSaveSubscriptions(userId)
+        if (subResult.priceChanges.length > 0) {
+          await notifyPriceChanges(userId, subResult.priceChanges)
+        }
       }
       const alertResult = await detectAndNotify(userId)
       alertResults.push({ userId, alertsSent: alertResult.alertsSent })

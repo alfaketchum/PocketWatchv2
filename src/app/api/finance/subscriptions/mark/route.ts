@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       if (existing) {
         await db.financeSubscription.update({
           where: { id: existing.id },
-          data: { status: "active", isWanted: true, detectionMethod: "manual", lastTransactionId: tx.id },
+          data: { status: "active", isWanted: true, detectionMethod: "manual", billType: "subscription", lastTransactionId: tx.id },
         })
       } else {
         await db.financeSubscription.create({
