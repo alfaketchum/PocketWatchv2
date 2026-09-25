@@ -195,10 +195,13 @@ export type ZerionChartPeriod = "hour" | "day" | "week" | "month" | "3months" | 
 export async function fetchWalletChart(
   apiKey: string,
   address: string,
-  period: ZerionChartPeriod = "max"
+  period: ZerionChartPeriod = "max",
+  /** Only count these assets (max 25) — e.g. stablecoin-only history */
+  fungibleIds?: string[],
 ): Promise<[number, number][]> {
+  const filter = fungibleIds?.length ? `&filter[fungible_ids]=${fungibleIds.map(encodeURIComponent).join(",")}` : ""
   const url =
-    `${ZERION_BASE}/wallets/${encodeURIComponent(address)}/charts/${period}?currency=usd`
+    `${ZERION_BASE}/wallets/${encodeURIComponent(address)}/charts/${period}?currency=usd${filter}`
 
   const { response: res } = await fetchWithRetry(url, makeHeaders(apiKey))
 
@@ -229,18 +232,19 @@ async function fetchWalletChartResilient(
   apiKey: string,
   address: string,
   period: ZerionChartPeriod,
+  fungibleIds?: string[],
 ): Promise<[number, number][]> {
   try {
-    return await fetchWalletChart(apiKey, address, period)
+    return await fetchWalletChart(apiKey, address, period, fungibleIds)
   } catch (err) {
     if (isNonRetryable(err)) throw err
     await new Promise((r) => setTimeout(r, CHART_RETRY_DELAY_MS))
     try {
-      return await fetchWalletChart(apiKey, address, period)
+      return await fetchWalletChart(apiKey, address, period, fungibleIds)
     } catch (retryErr) {
       if (period !== "max" || isNonRetryable(retryErr)) throw retryErr
       console.warn(`[zerion] "max" chart keeps failing for ${address.slice(0, 10)}… — using "year" (earlier history for this wallet omitted)`)
-      return fetchWalletChart(apiKey, address, "year")
+      return fetchWalletChart(apiKey, address, "year", fungibleIds)
     }
   }
 }
@@ -250,10 +254,14 @@ async function fetchWalletChartResilient(
  * ("max" is coarse — ~400 points over the wallet's life — and can disagree with
  * finer periods) and "max" only for what precedes it. 2 requests per wallet.
  */
-export async function fetchWalletHistory(apiKey: string, address: string): Promise<[number, number][]> {
-  const maxChart = await fetchWalletChartResilient(apiKey, address, "max")
+export async function fetchWalletHistory(
+  apiKey: string,
+  address: string,
+  fungibleIds?: string[],
+): Promise<[number, number][]> {
+  const maxChart = await fetchWalletChartResilient(apiKey, address, "max", fungibleIds)
   try {
-    const yearChart = await fetchWalletChartResilient(apiKey, address, "year")
+    const yearChart = await fetchWalletChartResilient(apiKey, address, "year", fungibleIds)
     if (yearChart.length === 0) return maxChart
     const yearStart = Math.min(...yearChart.map(([ts]) => ts))
     return [...maxChart.filter(([ts]) => ts < yearStart), ...yearChart]

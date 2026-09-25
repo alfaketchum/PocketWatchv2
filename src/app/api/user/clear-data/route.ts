@@ -23,6 +23,7 @@ export async function POST() {
   try {
     const results = await db.$transaction(async (tx) => {
       await tx.walletChartCache.deleteMany({ where: { userId: user.id } })
+      await tx.stablecoinChartCache.deleteMany({ where: { userId: user.id } })
       await tx.supplementalBalanceHistory.deleteMany({ where: { userId: user.id } })
       const [
         txCache, syncStates, chartCache, portfolioSnaps, projectedChart,

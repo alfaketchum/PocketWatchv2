@@ -360,6 +360,7 @@ export async function purgeSnapshotData(userId: string) {
   return db.$transaction(async (tx) => {
     // Stored per-wallet history goes too, so the re-sync fetches it fresh
     await tx.walletChartCache.deleteMany({ where: { userId } })
+    await tx.stablecoinChartCache.deleteMany({ where: { userId } })
     const [deletedSnapshots, deletedChartCache, deletedSyncState, resetJobs, _deletedProjected] = await Promise.all([
       tx.portfolioSnapshot.deleteMany({ where: { userId } }),
       tx.chartCache.deleteMany({ where: { userId } }),

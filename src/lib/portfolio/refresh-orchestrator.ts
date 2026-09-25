@@ -6,7 +6,7 @@ import { getCachedMultiProviderPositions } from "@/lib/portfolio/multi-balance-c
 import { buildStakingResponse } from "@/app/api/portfolio/staking/route"
 import { withProviderPermit, isProviderThrottleError } from "@/lib/portfolio/provider-governor"
 import { getRefreshBudgetIntervalMs } from "@/lib/portfolio/provider-daily-budget"
-import { sumStablecoinValue } from "@/lib/portfolio/price-symbol-utils"
+import { STABLECOIN_SET_VERSION, sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
 import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 type RefreshJobStatus = "queued" | "running" | "completed" | "failed"
@@ -312,7 +312,7 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
 
       // Persist the on-chain stablecoin split so net-worth history can track
       // Stablecoins vs Digital Assets accurately over time.
-      const stablecoinValue = sumStablecoinValue(
+      const stablecoinValue = sumNetWorthStablecoins(
         (walletData ?? []).flatMap((wallet) => wallet.positions.map((p) => ({ symbol: p.symbol, value: p.value })))
       )
 
@@ -335,6 +335,7 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
             onchainTotalValue: onchainTotal,
             exchangeTotalValue: exchangeTotal,
             stablecoinValue,
+            stablecoinSet: STABLECOIN_SET_VERSION,
             supplementalValue: sumSupplemental(supplemental),
             snapshotQuality,
             exchangePartial: !exchangeIncluded,

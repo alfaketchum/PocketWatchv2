@@ -27,6 +27,7 @@ model User {
   chartCaches                   ChartCache[]
   supplementalBalanceHistory    SupplementalBalanceHistory[]
   walletChartCaches             WalletChartCache[]
+  stablecoinChartCaches         StablecoinChartCache[]
   tokenPnls                     TokenPnl[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
@@ -298,12 +299,25 @@ model WalletChartCache {
   id        String @id @default(cuid())
   userId    String
   address   String // normalized (lowercase EVM, as-is Solana)
+  series    String @default("total") // "total" | "stablecoin" (USDC/USDT/USDe/USDG only)
   timestamp Int
   value     Float
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, address, timestamp])
+  @@unique([userId, address, series, timestamp])
   @@index([userId, address])
+}
+
+/// Summed stablecoin-only history (USDC/USDT/USDe/USDG) across wallets —
+/// powers the historical Stablecoins vs Digital Assets split in net worth.
+model StablecoinChartCache {
+  id        String @id @default(cuid())
+  userId    String
+  timestamp Int
+  value     Float
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, timestamp])
 }
 
 /// Daily value history for holdings the Zerion wallet chart doesn't cover

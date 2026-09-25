@@ -57,16 +57,6 @@ export function isStableLikeSymbol(normalized: string): boolean {
   return STABLE_SYMBOL_FRAGMENTS.some((fragment) => normalized.includes(fragment))
 }
 
-/** Sum the USD value of stablecoin positions (for the net-worth Stablecoins split). */
-export function sumStablecoinValue(positions: Array<{ symbol: string; value: number }>): number {
-  let total = 0
-  for (const p of positions) {
-    const norm = normalizeSymbolForPricing(p.symbol)
-    if (norm && isStableLikeSymbol(norm)) total += p.value
-  }
-  return total
-}
-
 export function isEthLikeSymbol(normalized: string): boolean {
   return ETH_LIKE_FRAGMENTS.some((fragment) => normalized.includes(fragment))
 }

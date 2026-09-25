@@ -3,9 +3,11 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
-import { isStableLikeSymbol, normalizeSymbolForPricing } from "@/lib/portfolio/price-symbol-utils"
+import { sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
 import { loadSupplementalSeries } from "@/lib/portfolio/supplemental-history"
 import { loadLiveSnapshotByDay } from "@/lib/portfolio/live-snapshot-days"
+import { loadStablecoinSplit } from "@/lib/portfolio/net-worth-stable-split"
+import { syncStablecoinCharts } from "@/lib/portfolio/wallet-chart-cache"
 
 /**
  * GET /api/net-worth
@@ -76,11 +78,8 @@ export async function GET(request: Request) {
       const live = await buildBalancesForUser(user.id)
       if (!live.error) {
         liveCrypto = live.totalValue
-        // Classify stablecoin value so net worth can split Stablecoins vs Digital Assets.
-        for (const p of live.positions) {
-          const norm = normalizeSymbolForPricing(p.symbol)
-          if (norm && isStableLikeSymbol(norm)) liveStable += p.value
-        }
+        // Split Stablecoins (USDC/USDT/USDe/USDG only) vs Digital Assets.
+        liveStable = sumNetWorthStablecoins(live.positions)
       }
     } catch (err) {
       console.warn("[net-worth] live portfolio read failed, falling back to snapshot:", err)
@@ -133,7 +132,8 @@ export async function GET(request: Request) {
     // when the app started recording). Exchange history blends in from its own
     // snapshot table, so connecting an exchange (e.g. Bybit) extends it for free.
     const historyStartSec = Math.floor(historyStart.getTime() / 1000)
-    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt, liveByDay] = await Promise.all([
+    void syncStablecoinCharts(user.id) // fetches stablecoin history once per wallet; no-op when current
+    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt, liveByDay, stableFor] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
@@ -157,6 +157,7 @@ export async function GET(request: Request) {
       // Hyperliquid + Lighter history, which the Zerion chart lacks
       loadSupplementalSeries(user.id),
       loadLiveSnapshotByDay(user.id, historyStart),
+      loadStablecoinSplit(user.id, historyStart),
     ])
 
     // Independent daily series (last value wins per day; forward-filled below).
@@ -193,9 +194,9 @@ export async function GET(request: Request) {
       } catch { /* skip malformed breakdown */ }
     }
 
-    // Full taxonomy per day (crypto split by the current stablecoin ratio — an
-    // approximation for pre-tracking history; snapshots now carry the real split
-    // going forward so this can be refined later).
+    // Full taxonomy per day. Crypto splits into stablecoins (USDC/USDT/USDe/USDG)
+    // vs digital assets from real per-day history; the live ratio is only a
+    // fallback until the stablecoin history has been fetched.
     type GroupBreakdown = FinanceBreakdown & { stablecoin: number; digital: number }
 
     // Forward-fill each series across the union of days; crypto = wallet + exchange.
@@ -236,12 +237,9 @@ export async function GET(request: Request) {
           : day > lastChartDay ? lastCrypto : lastWallet + lastExchange + venues
       lastCrypto = crypto
       history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
-      breakdownHistory.push({
-        date: day,
-        ...lastBd,
-        stablecoin: crypto * stableRatio,
-        digital: crypto * (1 - stableRatio),
-      })
+      const stablecoin = day === todayKey ? cryptoStablecoins
+        : stableFor ? stableFor(day, crypto, venues) : crypto * stableRatio
+      breakdownHistory.push({ date: day, ...lastBd, stablecoin, digital: crypto - stablecoin })
     }
 
     // Per-account change over each timeframe window (from per-account snapshots).
