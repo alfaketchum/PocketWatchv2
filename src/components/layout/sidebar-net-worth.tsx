@@ -16,7 +16,8 @@ import {
 } from "@/components/net-worth/account-groups"
 
 const OPEN_KEY = "pw-sidebar-networth-open"
-const DEFAULT_OPEN = ["assets", "liabilities", "cash", "savings", "investment", "stablecoin", "digital", "other", "credit", "loan"]
+// Sections open, account groups collapsed until the user expands them
+const DEFAULT_OPEN = ["assets", "liabilities"]
 
 const SECTIONS: Array<{ id: string; label: string; order: GroupKey[] }> = [
   { id: "assets", label: "Assets", order: ASSET_ORDER },
