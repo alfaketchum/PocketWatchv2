@@ -22,6 +22,7 @@ import { normalizeWalletAddress } from "./utils"
 import { buildWalletFingerprint, sanitizeZerionSeries, type ChartPoint } from "./snapshot-helpers"
 import { getServiceKey } from "./service-keys"
 import { NET_WORTH_STABLECOIN_FUNGIBLE_IDS } from "./stablecoins"
+import { getProviderDailyBudget } from "./provider-daily-budget"
 
 const MAX_ROWS = 200_000
 const INSERT_BATCH = 1_000
@@ -218,25 +219,45 @@ export interface AssetPair {
   fungibleId: string
 }
 
+/** Pairs fetched per background run (2 requests each) — spreads a big backfill over runs */
+const ASSET_PAIRS_PER_RUN = 60
+/** Leave this much of today's Zerion quota for balances; resume tomorrow otherwise */
+const ASSET_BUDGET_RESERVE = 800
+/** Pause between pairs so a backfill stays well under Zerion's short-term rate limit */
+const ASSET_PAIR_DELAY_MS = 3_000
+
 /**
  * Fetch history for (wallet, token) pairs that don't have it yet — 2 requests
- * per pair, once. Never throws: a failed pair is retried on a later load and its
- * value shows under Misc meanwhile.
+ * per pair, once. At most 60 pairs per run, 3s apart, and only while today's
+ * Zerion quota keeps an 800-request reserve. Never throws: unfetched pairs wait
+ * for a later run and their value shows under Misc meanwhile.
  */
-export async function ensureAssetSeries(userId: string, zerionKey: string | null, pairs: AssetPair[]): Promise<void> {
-  if (!zerionKey || pairs.length === 0) return
+export async function ensureAssetSeries(userId: string, zerionKey: string | null, pairs: AssetPair[]): Promise<number> {
+  if (!zerionKey || pairs.length === 0) return 0
   const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}` as Series))]
   const stored = await db.walletChartCache.groupBy({ by: ["address", "series"], where: { userId, series: { in: series } } })
   const have = new Set(stored.map((r) => `${r.address}|${r.series}`))
   const missing = pairs.filter((p) => !have.has(`${normalizeWalletAddress(p.address)}|asset:${p.fungibleId}`))
-  for (const pair of missing) {
+  let fetched = 0
+  for (const pair of missing.slice(0, ASSET_PAIRS_PER_RUN)) {
+    const budget = await getProviderDailyBudget("zerion")
+    if (budget.remaining !== null && budget.remaining < ASSET_BUDGET_RESERVE) {
+      console.info(`[asset-history] pausing — ${budget.remaining} Zerion requests left today; ${missing.length - fetched} pair(s) wait`)
+      break
+    }
+    if (fetched > 0) await new Promise((r) => setTimeout(r, ASSET_PAIR_DELAY_MS))
+    fetched++
     try {
       // Lease per (token, wallet) — a per-token key would throttle the same token's other wallets
       await fetchMissingWallets(userId, zerionKey, [pair.address], `asset:${pair.fungibleId}`, `${pair.fungibleId}:${pair.address}`)
     } catch (err) {
-      console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed: ${(err as Error).message}`)
+      const message = (err as Error).message
+      console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed: ${message}`)
+      // Rate-limited or out of quota: stop this run; the backfill resumes later
+      if (/rate limit|daily request cap|blocked \((throttled|daily_cap)\)/i.test(message)) break
     }
   }
+  return fetched
 }
 
 /**
@@ -251,12 +272,19 @@ export async function loadAssetHistory(userId: string, pairs: AssetPair[]): Prom
     orderBy: { timestamp: "asc" },
     take: MAX_ROWS,
   })
+  // Group once (pairs × rows filtering is too slow with a large backfill)
+  const rowsByKey = new Map<string, [number, number][]>()
+  for (const r of rows) {
+    const key = `${r.address}|${r.series}`
+    const list = rowsByKey.get(key)
+    if (list) list.push([r.timestamp, r.value])
+    else rowsByKey.set(key, [[r.timestamp, r.value]])
+  }
   const bySymbol = new Map<string, [number, number][][]>()
   let missing = 0
   for (const pair of pairs) {
-    const key = `${normalizeWalletAddress(pair.address)}|asset:${pair.fungibleId}`
-    const chart = rows.filter((r) => `${r.address}|${r.series}` === key).map((r): [number, number] => [r.timestamp, r.value])
-    if (chart.length === 0) { missing++; continue }
+    const chart = rowsByKey.get(`${normalizeWalletAddress(pair.address)}|asset:${pair.fungibleId}`)
+    if (!chart) { missing++; continue }
     bySymbol.set(pair.symbol, [...(bySymbol.get(pair.symbol) ?? []), chart])
   }
   return {

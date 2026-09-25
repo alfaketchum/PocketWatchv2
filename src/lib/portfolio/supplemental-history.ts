@@ -15,6 +15,10 @@ import { HYPERLIQUID_CHAIN } from "./hyperliquid-balance-client"
 import { LIGHTER_CHAIN } from "./lighter-balance-client"
 
 export const SUPPLEMENTAL_SOURCES = [HYPERLIQUID_CHAIN, LIGHTER_CHAIN] as const
+/** Dead tokens rebuilt from transaction history are stored as "token:<SYMBOL>" sources */
+export const TOKEN_SOURCE_PREFIX = "token:"
+export const isVenueSource = (source: string) => (SUPPLEMENTAL_SOURCES as readonly string[]).includes(source)
+export const isTokenSource = (source: string) => source.startsWith(TOKEN_SOURCE_PREFIX)
 export type SupplementalSource = (typeof SUPPLEMENTAL_SOURCES)[number]
 export type SupplementalValues = Record<SupplementalSource, number>
 
@@ -83,7 +87,7 @@ export async function recordSupplementalToday(userId: string, values: Supplement
 /** Replace a source's full daily history (used by the backfill). */
 export async function replaceSupplementalHistory(
   userId: string,
-  source: SupplementalSource,
+  source: SupplementalSource | string,
   daily: Map<number, number>,
 ): Promise<number> {
   const rows = [...daily.entries()].map(([dayMs, value]) => ({ userId, source, date: new Date(dayMs), value }))
@@ -94,27 +98,44 @@ export async function replaceSupplementalHistory(
   return rows.length
 }
 
+type SeriesLookup = (timestampSec: number) => number
+
 /**
- * Load the per-day supplemental series. Returns a lookup (unix seconds → USD):
- * each source is forward-filled from its latest row on or before that day and is
- * 0 before its first row.
+ * Per-source lookups (unix seconds → USD): each source is forward-filled from its
+ * latest row on or before that day and is 0 before its first row.
  */
-export async function loadSupplementalSeries(userId: string): Promise<(timestampSec: number) => number> {
+export async function loadSupplementalSeriesBySource(
+  userId: string,
+  include: (source: string) => boolean = () => true,
+): Promise<Map<string, SeriesLookup>> {
   const rows = await db.supplementalBalanceHistory.findMany({
     where: { userId },
     select: { source: true, date: true, value: true },
     orderBy: { date: "asc" },
     take: MAX_HISTORY_ROWS,
   })
-  const series = SUPPLEMENTAL_SOURCES
-    .map((source) => rows.filter((r) => r.source === source).map((r) => ({ t: r.date.getTime(), v: r.value })))
-    .filter((list) => list.length > 0)
-  if (series.length === 0) return () => 0
-
-  return (timestampSec: number) => {
-    const dayMs = utcDay(timestampSec * 1000).getTime()
-    return series.reduce((sum, list) => sum + valueOnOrBefore(list, dayMs), 0)
+  const bySource = new Map<string, Array<{ t: number; v: number }>>()
+  for (const r of rows) {
+    if (!include(r.source)) continue
+    bySource.set(r.source, [...(bySource.get(r.source) ?? []), { t: r.date.getTime(), v: r.value }])
   }
+  return new Map([...bySource].map(([source, list]) => [
+    source,
+    (timestampSec: number) => valueOnOrBefore(list, utcDay(timestampSec * 1000).getTime()),
+  ]))
+}
+
+/**
+ * Summed supplemental lookup. Defaults to every source (venues + rebuilt dead
+ * tokens) — everything the Zerion chart lacks.
+ */
+export async function loadSupplementalSeries(
+  userId: string,
+  include: (source: string) => boolean = () => true,
+): Promise<SeriesLookup> {
+  const lookups = [...(await loadSupplementalSeriesBySource(userId, include)).values()]
+  if (lookups.length === 0) return () => 0
+  return (timestampSec: number) => lookups.reduce((sum, f) => sum + f(timestampSec), 0)
 }
 
 function valueOnOrBefore(list: Array<{ t: number; v: number }>, t: number): number {

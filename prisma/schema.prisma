@@ -28,6 +28,8 @@ model User {
   supplementalBalanceHistory    SupplementalBalanceHistory[]
   walletChartCaches             WalletChartCache[]
   stablecoinChartCaches         StablecoinChartCache[]
+  assetCandidates               AssetCandidate[]
+  trackedAssetPairs             TrackedAssetPair[]
   tokenPnls                     TokenPnl[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
@@ -306,6 +308,39 @@ model WalletChartCache {
 
   @@unique([userId, address, series, timestamp])
   @@index([userId, address])
+}
+
+/// Token found in transaction history (an incoming transfer >= $1,000), with
+/// Zerion's verdict. Checked once; only "verified" tokens get history fetched.
+model AssetCandidate {
+  id         String   @id @default(cuid())
+  userId     String
+  chain      String // Zerion chain id (e.g. "ethereum", "solana")
+  contract   String // token address (lowercase EVM, as-is Solana)
+  symbol     String
+  fungibleId String?
+  status     String // "verified" | "rejected"
+  checkedAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chain, contract])
+}
+
+/// (wallet, token) pairs whose Zerion history is kept for the "By asset" chart:
+/// current holdings and verified past holdings. Kept after a token is sold, so
+/// its band doesn't disappear from history.
+model TrackedAssetPair {
+  id            String   @id @default(cuid())
+  userId        String
+  walletAddress String // normalized
+  fungibleId    String
+  symbol        String
+  source        String // "current" | "history"
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletAddress, fungibleId])
+  @@index([userId])
 }
 
 /// Summed stablecoin-only history (USDC/USDT/USDe/USDG) across wallets —

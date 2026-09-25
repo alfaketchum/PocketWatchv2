@@ -3,13 +3,15 @@
  * composition chart so both show the same totals.
  *
  * Per day: a live snapshot (minus its Hyperliquid/Lighter value) + the venue
- * series; else the stored Zerion history + exchange balance + venue series.
+ * series + rebuilt dead tokens; else the stored Zerion history + exchange
+ * balance + venues + dead tokens. `venues` is returned separately (Hyperliquid/
+ * Lighter only) for the stablecoin split and the venue band.
  * Past the end of the Zerion history with no snapshot, the last value carries
  * forward. Today uses the caller's live value.
  */
 
 import { db } from "@/lib/db"
-import { loadSupplementalSeries } from "./supplemental-history"
+import { isTokenSource, isVenueSource, loadSupplementalSeries } from "./supplemental-history"
 import { loadLiveSnapshotByDay } from "./live-snapshot-days"
 
 const MAX_ROWS = 20_000
@@ -26,7 +28,7 @@ export interface CryptoDaily {
 }
 
 export async function loadCryptoDaily(userId: string, since: Date, todayValue: number): Promise<CryptoDaily> {
-  const [chartRows, exchangeSnaps, supplementalAt, liveByDay] = await Promise.all([
+  const [chartRows, exchangeSnaps, venuesAt, tokensAt, liveByDay] = await Promise.all([
     db.chartCache.findMany({
       where: { userId, timestamp: { gte: Math.floor(since.getTime() / 1000) } },
       orderBy: { timestamp: "asc" },
@@ -39,7 +41,8 @@ export async function loadCryptoDaily(userId: string, since: Date, todayValue: n
       select: { createdAt: true, totalValue: true },
       take: MAX_ROWS,
     }),
-    loadSupplementalSeries(userId),
+    loadSupplementalSeries(userId, isVenueSource),
+    loadSupplementalSeries(userId, isTokenSource),
     loadLiveSnapshotByDay(userId, since),
   ])
 
@@ -55,11 +58,13 @@ export async function loadCryptoDaily(userId: string, since: Date, todayValue: n
   const cryptoFor = (day: string) => {
     lastWallet = walletByDay.get(day) ?? lastWallet
     lastExchange = exchangeByDay.get(day) ?? lastExchange
-    const venues = supplementalAt(Date.parse(day) / 1000)
+    const venues = venuesAt(Date.parse(day) / 1000)
+    // Dead tokens rebuilt from transactions — neither Zerion nor snapshots count them
+    const extra = venues + tokensAt(Date.parse(day) / 1000)
     const live = liveByDay.get(day)
     const crypto = day === todayKey ? todayValue
-      : live !== undefined ? live + venues
-        : day > lastChartDay ? lastCrypto : lastWallet + lastExchange + venues
+      : live !== undefined ? live + extra
+        : day > lastChartDay ? lastCrypto : lastWallet + lastExchange + extra
     lastCrypto = crypto
     return { crypto, venues }
   }

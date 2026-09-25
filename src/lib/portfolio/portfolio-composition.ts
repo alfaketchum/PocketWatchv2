@@ -1,23 +1,27 @@
 /**
  * Portfolio chart breakdowns: Stablecoins vs Digital Assets, or By asset
- * (each token worth ≥ $1,000 today gets a band; Hyperliquid/Lighter one band;
- * everything else is Misc). Totals match the net-worth crypto line (crypto-daily).
+ * (each token worth ≥ $1,000 on any day in the range gets a band; Hyperliquid/
+ * Lighter one band; everything else is Misc). Totals match the net-worth crypto
+ * line (crypto-daily).
  *
- * By-asset history is fetched once per (wallet, token) pair holding ≥ $100 of a
- * tracked token (2 Zerion requests each), in the background; until a pair's
- * history exists its value falls under Misc. Recent days use snapshot values.
+ * By-asset sources: Zerion history per tracked (wallet, token) pair — current
+ * holdings and past holdings found in transaction history — fetched once in the
+ * background (asset-history-job.ts); dead tokens Zerion can't price, rebuilt
+ * from transactions; and per-token snapshot values for recent days.
  */
 
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "./balances-read"
 import { getCachedMultiProviderPositions } from "./multi-balance-cache"
 import { getHiddenTokenSymbols } from "./hidden-tokens"
-import { getServiceKey } from "./service-keys"
 import { loadCryptoDaily, utcDayKey } from "./crypto-daily"
 import { loadStablecoinSplit } from "./net-worth-stable-split"
 import { STABLECOIN_FUNGIBLE_ID_BY_SYMBOL, sumNetWorthStablecoins } from "./stablecoins"
 import { ASSET_BAND_MIN_USD, assetKey, canonicalPositions, isRealPosition, sumBySymbol } from "./asset-values"
-import { ensureAssetSeries, loadAssetHistory, type AssetPair } from "./wallet-chart-cache"
+import { loadAssetHistory, type AssetPair } from "./wallet-chart-cache"
+import { loadTrackedPairs, runAssetHistoryJob } from "./asset-history-job"
+import { isTokenSource, loadSupplementalSeriesBySource } from "./supplemental-history"
+import { symbolFromTokenSource } from "./dead-token-history"
 import { parseMetadata } from "./snapshot-helpers"
 import { normalizeWalletAddress } from "./utils"
 import type { CompositionMode, CompositionResponse } from "@/types/composition"
@@ -67,7 +71,7 @@ async function stableComposition(userId: string, since: Date, daily: Daily, toda
   }
 }
 
-/** Tokens worth ≥ $1,000 today and the (wallet, token) pairs to fetch history for. */
+/** Today's per-token values and the current (wallet, token) pairs worth tracking. */
 async function trackedAssets(userId: string) {
   const wallets = await db.trackedWallet.findMany({ where: { userId }, select: { address: true, chains: true }, take: 500 })
   const [{ wallets: balances }, hidden, pnlRows] = await Promise.all([
@@ -97,7 +101,7 @@ async function trackedAssets(userId: string) {
       if (fungibleId) pairs.push({ address: w.address, symbol, fungibleId })
     }
   }
-  return { assets, pairs, today }
+  return { pairs, today }
 }
 
 async function snapshotAssetsByDay(userId: string, since: Date): Promise<Map<string, Record<string, number>>> {
@@ -126,26 +130,64 @@ function forwardFill(series: [number, number][]) {
   }
 }
 
+/** Bands shown at most (by peak value in range); the rest fold into Misc */
+const MAX_BANDS = 20
+
+/**
+ * By asset, with range-based bands: every token ever tracked (current holdings,
+ * past holdings with Zerion history, dead tokens rebuilt from transactions) is
+ * valued each day; a token gets a band if it was worth ≥ $1,000 on any day in
+ * the range, so a sold token's band doesn't disappear.
+ */
 async function assetComposition(userId: string, since: Date, daily: Daily): Promise<{ data: CompositionResponse; complete: boolean }> {
-  const { assets, pairs, today } = await trackedAssets(userId)
-  void getServiceKey(userId, "zerion").then((key) => ensureAssetSeries(userId, key, pairs))
-  const [{ bySymbol: history, missing }, snapshots] = await Promise.all([loadAssetHistory(userId, pairs), snapshotAssetsByDay(userId, since)])
-  const fills = new Map(assets.map((s) => [s, forwardFill(history.get(s) ?? [])]))
+  const { pairs: currentPairs, today } = await trackedAssets(userId)
+  void runAssetHistoryJob(userId, currentPairs)
+
+  const [storedPairs, deadBySource, snapshots] = await Promise.all([
+    loadTrackedPairs(userId),
+    loadSupplementalSeriesBySource(userId, isTokenSource),
+    snapshotAssetsByDay(userId, since),
+  ])
+  const pairKey = (p: AssetPair) => `${normalizeWalletAddress(p.address)}|${p.fungibleId}`
+  const pairs = [...new Map([...storedPairs, ...currentPairs].map((p) => [pairKey(p), p])).values()]
+  const { bySymbol: history, missing } = await loadAssetHistory(userId, pairs)
+
+  const dead = new Map<string, Array<(sec: number) => number>>()
+  for (const [source, lookup] of deadBySource) {
+    const symbol = symbolFromTokenSource(source)
+    dead.set(symbol, [...(dead.get(symbol) ?? []), lookup])
+  }
+  const symbols = [...new Set([...today.keys(), ...history.keys(), ...dead.keys()])]
+  const fills = new Map(symbols.map((s) => [s, forwardFill(history.get(s) ?? [])]))
   const todayKey = utcDayKey(Date.now())
 
-  const points = daily.days.map((day) => {
+  const rows = daily.days.map((day) => {
     const { crypto, venues } = daily.cryptoFor(day)
+    const dayMs = Date.parse(day)
     const snap = snapshots.get(day)
-    const values: Record<string, number> = {}
-    for (const s of assets) {
-      const hist = fills.get(s)!(Date.parse(day)) // always advance the cursor
-      values[s] = day === todayKey ? today.get(s) ?? 0 : snap ? snap[s] ?? 0 : hist
+    const values = new Map<string, number>()
+    for (const s of symbols) {
+      const hist = fills.get(s)!(dayMs) // always advance the cursor
+      const deadValue = (dead.get(s) ?? []).reduce((sum, f) => sum + f(dayMs / 1000), 0)
+      const zerionValue = day === todayKey ? today.get(s) ?? 0 : snap ? snap[s] ?? 0 : hist
+      values.set(s, zerionValue + deadValue)
     }
-    const tracked = assets.reduce((sum, s) => sum + values[s], 0)
-    return { t: Date.parse(day), values: { ...values, [VENUES.key]: venues, [MISC.key]: Math.max(0, crypto - venues - tracked) } }
+    return { t: dayMs, crypto, venues, values }
+  })
+
+  const peak = new Map(symbols.map((s) => [s, Math.max(0, ...rows.map((r) => r.values.get(s) ?? 0))]))
+  const bands = symbols
+    .filter((s) => peak.get(s)! >= ASSET_BAND_MIN_USD)
+    .sort((a, b) => peak.get(b)! - peak.get(a)!)
+    .slice(0, MAX_BANDS)
+
+  const points = rows.map(({ t, crypto, venues, values }) => {
+    const bandValues = Object.fromEntries(bands.map((s) => [s, values.get(s) ?? 0]))
+    const banded = bands.reduce((sum, s) => sum + bandValues[s], 0)
+    return { t, values: { ...bandValues, [VENUES.key]: venues, [MISC.key]: Math.max(0, crypto - venues - banded) } }
   })
   return {
-    data: { mode: "asset", layers: [...assets.map((s) => ({ key: s, label: s })), VENUES, MISC], points },
+    data: { mode: "asset", layers: [...bands.map((s) => ({ key: s, label: s })), VENUES, MISC], points },
     complete: missing === 0,
   }
 }

@@ -463,3 +463,42 @@ export async function fetchWalletTokenPnl(
   const json = await res.json()
   return (json.data?.attributes?.breakdown?.by_id ?? {}) as Record<string, ZerionTokenPnl>
 }
+
+// ─── Asset lookup ──────────────────────────────────────────────────────────
+
+/** Max chain:address implementations per fungibles lookup (Zerion limit). */
+export const ZERION_LOOKUP_MAX = 25
+
+export interface ZerionFungibleInfo {
+  id: string
+  symbol: string
+  /** Zerion-verified asset (scam tokens often still have a DEX price, so price alone isn't trusted) */
+  verified: boolean
+  /** Zerion has a price — its value is already in Zerion's wallet charts */
+  hasPrice: boolean
+  /** "chain:address" (lowercase address) for every implementation */
+  implementations: string[]
+}
+
+/** Look up Zerion assets by "chain:address" implementations (≤ 25 per call). */
+export async function lookupFungiblesByImplementation(apiKey: string, implementations: string[]): Promise<ZerionFungibleInfo[]> {
+  if (implementations.length === 0) return []
+  const list = implementations.slice(0, ZERION_LOOKUP_MAX).map(encodeURIComponent).join(",")
+  const url = `${ZERION_BASE}/fungibles/?filter[fungible_implementations]=${list}&page[size]=100`
+  const { response: res } = await fetchWithRetry(url, makeHeaders(apiKey))
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("Invalid Zerion API key")
+    if (res.status === 429) throw new ZerionRateLimitError("Zerion rate limit exceeded")
+    throw new Error(`Zerion fungibles API error: ${res.status}`)
+  }
+  const json = await res.json()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (json.data ?? []).map((f: any): ZerionFungibleInfo => ({
+    id: f.id,
+    symbol: f.attributes?.symbol ?? "?",
+    verified: f.attributes?.flags?.verified === true,
+    hasPrice: f.attributes?.market_data?.price != null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    implementations: (f.attributes?.implementations ?? []).map((i: any) => `${i.chain_id}:${String(i.address ?? "").toLowerCase()}`),
+  }))
+}
