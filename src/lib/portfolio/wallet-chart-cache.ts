@@ -23,6 +23,7 @@ import { buildWalletFingerprint, sanitizeZerionSeries, type ChartPoint } from ".
 import { getServiceKey } from "./service-keys"
 import { NET_WORTH_STABLECOIN_FUNGIBLE_IDS } from "./stablecoins"
 import { getProviderDailyBudget } from "./provider-daily-budget"
+import { isZerionKeyPaused } from "./zerion-request-meter"
 
 const MAX_ROWS = 200_000
 const INSERT_BATCH = 1_000
@@ -221,19 +222,19 @@ export interface AssetPair {
 
 /** Pairs fetched per background run (2 requests each) — spreads a big backfill over runs */
 const ASSET_PAIRS_PER_RUN = 60
-/** Leave this much of today's Zerion quota for balances; resume tomorrow otherwise */
-const ASSET_BUDGET_RESERVE = 800
+/** Leave this much of today's Zerion quota for balances (~10 per refresh); resume tomorrow otherwise */
+const ASSET_BUDGET_RESERVE = 500
 /** Pause between pairs so a backfill stays well under Zerion's short-term rate limit */
 const ASSET_PAIR_DELAY_MS = 3_000
 
 /**
  * Fetch history for (wallet, token) pairs that don't have it yet — 2 requests
  * per pair, once. At most 60 pairs per run, 3s apart, and only while today's
- * Zerion quota keeps an 800-request reserve. Never throws: unfetched pairs wait
+ * Zerion quota keeps a 500-request reserve. Never throws: unfetched pairs wait
  * for a later run and their value shows under Misc meanwhile.
  */
-export async function ensureAssetSeries(userId: string, zerionKey: string | null, pairs: AssetPair[]): Promise<number> {
-  if (!zerionKey || pairs.length === 0) return 0
+export async function ensureAssetSeries(userId: string, pairs: AssetPair[]): Promise<number> {
+  if (pairs.length === 0) return 0
   const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}` as Series))]
   const stored = await db.walletChartCache.groupBy({ by: ["address", "series"], where: { userId, series: { in: series } } })
   const have = new Set(stored.map((r) => `${r.address}|${r.series}`))
@@ -246,6 +247,12 @@ export async function ensureAssetSeries(userId: string, zerionKey: string | null
       break
     }
     if (fetched > 0) await new Promise((r) => setTimeout(r, ASSET_PAIR_DELAY_MS))
+    // Key per pair: round-robin across keys, skipping one cooling down after a 429
+    const zerionKey = await getServiceKey(userId, "zerion")
+    if (!zerionKey || isZerionKeyPaused(zerionKey)) {
+      console.info(`[asset-history] pausing — no Zerion key available right now; ${missing.length - fetched} pair(s) wait`)
+      break
+    }
     fetched++
     try {
       // Lease per (token, wallet) — a per-token key would throttle the same token's other wallets
@@ -253,8 +260,9 @@ export async function ensureAssetSeries(userId: string, zerionKey: string | null
     } catch (err) {
       const message = (err as Error).message
       console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed: ${message}`)
-      // Rate-limited or out of quota: stop this run; the backfill resumes later
-      if (/rate limit|daily request cap|blocked \((throttled|daily_cap)\)/i.test(message)) break
+      // Out of quota: stop this run. A single key's 429 just cools that key —
+      // the next pair picks the other key (the loop stops once none is available).
+      if (/daily request cap|blocked \(daily_cap\)/i.test(message)) break
     }
   }
   return fetched

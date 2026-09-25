@@ -12,14 +12,13 @@
 
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "./balances-read"
-import { getCachedMultiProviderPositions } from "./multi-balance-cache"
-import { getHiddenTokenSymbols } from "./hidden-tokens"
 import { loadCryptoDaily, utcDayKey } from "./crypto-daily"
 import { loadStablecoinSplit } from "./net-worth-stable-split"
-import { STABLECOIN_FUNGIBLE_ID_BY_SYMBOL, sumNetWorthStablecoins } from "./stablecoins"
-import { ASSET_BAND_MIN_USD, assetKey, canonicalPositions, isRealPosition, sumBySymbol } from "./asset-values"
+import { sumNetWorthStablecoins } from "./stablecoins"
+import { ASSET_BAND_MIN_USD } from "./asset-values"
 import { loadAssetHistory, type AssetPair } from "./wallet-chart-cache"
 import { loadTrackedPairs, runAssetHistoryJob } from "./asset-history-job"
+import { currentAssetHoldings } from "./asset-pairs"
 import { isTokenSource, loadSupplementalSeriesBySource } from "./supplemental-history"
 import { symbolFromTokenSource } from "./dead-token-history"
 import { parseMetadata } from "./snapshot-helpers"
@@ -27,7 +26,6 @@ import { normalizeWalletAddress } from "./utils"
 import type { CompositionMode, CompositionResponse } from "@/types/composition"
 
 
-const PAIR_MIN_USD = 100
 const MAX_SNAPSHOTS = 20_000
 const CACHE_TTL_MS = 5 * 60_000
 const VENUES = { key: "venues", label: "Hyperliquid & Lighter" }
@@ -71,39 +69,6 @@ async function stableComposition(userId: string, since: Date, daily: Daily, toda
   }
 }
 
-/** Today's per-token values and the current (wallet, token) pairs worth tracking. */
-async function trackedAssets(userId: string) {
-  const wallets = await db.trackedWallet.findMany({ where: { userId }, select: { address: true, chains: true }, take: 500 })
-  const [{ wallets: balances }, hidden, pnlRows] = await Promise.all([
-    getCachedMultiProviderPositions(userId, wallets),
-    getHiddenTokenSymbols(userId),
-    db.tokenPnl.findMany({ where: { userId }, select: { walletAddress: true, symbol: true, fungibleId: true }, take: 5_000 }),
-  ])
-  // Canonical ids are chosen across ALL wallets, then applied per wallet
-  const { idBySymbol } = canonicalPositions(balances.flatMap((w) => w.positions.filter((p) => !hidden.has(p.symbol))))
-  const visible = balances.map((w) => ({
-    ...w,
-    positions: w.positions.filter((p) => !hidden.has(p.symbol) && isRealPosition(p)
-      && (!p.fungibleId || idBySymbol.get(assetKey(p.symbol)) === p.fungibleId)),
-  }))
-  const today = sumBySymbol(visible.flatMap((w) => w.positions))
-  const assets = [...today].filter(([, v]) => v >= ASSET_BAND_MIN_USD).sort((a, b) => b[1] - a[1]).map(([symbol]) => symbol)
-  const tracked = new Set(assets)
-
-  const pairs: AssetPair[] = []
-  for (const w of visible) {
-    for (const [symbol, value] of sumBySymbol(w.positions)) {
-      if (!tracked.has(symbol) || value < PAIR_MIN_USD) continue
-      // Zerion id: the canonical (largest) id for the symbol, else known stablecoin id, else ROI data (Solana)
-      const fungibleId = idBySymbol.get(symbol)
-        ?? STABLECOIN_FUNGIBLE_ID_BY_SYMBOL[symbol]
-        ?? pnlRows.find((r) => r.walletAddress === normalizeWalletAddress(w.address) && assetKey(r.symbol) === symbol)?.fungibleId
-      if (fungibleId) pairs.push({ address: w.address, symbol, fungibleId })
-    }
-  }
-  return { pairs, today }
-}
-
 async function snapshotAssetsByDay(userId: string, since: Date): Promise<Map<string, Record<string, number>>> {
   const rows = await db.portfolioSnapshot.findMany({
     where: { userId, source: "live_refresh", createdAt: { gte: since } },
@@ -143,8 +108,8 @@ const MISC_DETAIL_MIN_USD = 100
  * the range, so a sold token's band doesn't disappear.
  */
 async function assetComposition(userId: string, since: Date, daily: Daily): Promise<{ data: CompositionResponse; complete: boolean }> {
-  const { pairs: currentPairs, today } = await trackedAssets(userId)
-  void runAssetHistoryJob(userId, currentPairs)
+  const { pairs: currentPairs, today } = await currentAssetHoldings(userId)
+  void runAssetHistoryJob(userId)
 
   const [storedPairs, deadBySource, snapshots] = await Promise.all([
     loadTrackedPairs(userId),

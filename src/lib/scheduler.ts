@@ -95,6 +95,15 @@ function buildJobs(): readonly JobConfig[] {
       headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
     },
     {
+      // By-asset chart: discovery + budget-capped history backfill (low priority)
+      name: "asset-history",
+      schedule: "10 */15 * * * *",
+      endpoint: "/api/internal/asset-history",
+      method: "POST",
+      headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
+    {
       name: "classify-transactions",
       schedule: "45 */10 * * * *",
       endpoint: "/api/internal/classify-transactions",
@@ -184,7 +193,7 @@ const REQUIRED_SECRETS: Record<string, string> = {
   FINANCE_SYNC_SECRET: "finance-sync",
   PORTFOLIO_REFRESH_CRON_SECRET: "portfolio-refresh",
   STAKING_CRON_SECRET: "staking-snapshot",
-  SNAPSHOT_WORKER_SECRET: "snapshot-worker, classify-transactions, backup-worker",
+  SNAPSHOT_WORKER_SECRET: "snapshot-worker, asset-history, classify-transactions, backup-worker",
   TRAVEL_PRICE_CHECK_SECRET: "travel-price-check",
   FINANCE_DIGEST_SECRET: "finance-digest",
   ACCOUNTS_SCAN_SECRET: "accounts-scan",
