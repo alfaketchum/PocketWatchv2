@@ -48,6 +48,8 @@ interface RefreshZerionParams {
   walletFingerprint: string
   staleReconstructedSnapshotIds: string[]
   futureRows: Array<{ timestamp: number }>
+  /** settings.chartCacheUpdatedAt — when the cache was last rebuilt (ISO). */
+  cacheUpdatedAt?: string
 }
 
 /**
@@ -73,15 +75,18 @@ export async function refreshZerionCache(params: RefreshZerionParams): Promise<C
   const {
     userId, zerionKey, addresses, nowSec,
     previousFingerprint, walletFingerprint,
-    staleReconstructedSnapshotIds, futureRows,
+    staleReconstructedSnapshotIds, futureRows, cacheUpdatedAt,
   } = params
   let { zerionPoints } = params
 
   if (!zerionKey || addresses.length === 0) return zerionPoints
 
-  const latestCachedTs = zerionPoints.length > 0
-    ? zerionPoints[zerionPoints.length - 1].timestamp
-    : 0
+  // Age from the last rebuild, not the newest point: the daily "year" chart's
+  // newest point is UTC midnight, which would make the cache look stale all day.
+  const updatedAtSec = cacheUpdatedAt ? Math.floor(Date.parse(cacheUpdatedAt) / 1000) : NaN
+  const latestCachedTs = Number.isFinite(updatedAtSec)
+    ? updatedAtSec
+    : zerionPoints.length > 0 ? zerionPoints[zerionPoints.length - 1].timestamp : 0
   const cacheAgeSec = latestCachedTs > 0 ? nowSec - latestCachedTs : Number.POSITIVE_INFINITY
   const cacheIsFresh = cacheAgeSec >= 0 && cacheAgeSec < CHART_CACHE_TTL_SEC
   const walletSetChanged = previousFingerprint !== walletFingerprint

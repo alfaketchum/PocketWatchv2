@@ -113,6 +113,7 @@ export async function GET(request: Request) {
       previousFingerprint, walletFingerprint,
       staleReconstructedSnapshotIds: staleIds,
       futureRows: cachedChartRows.filter((r) => r.timestamp > futureCutoff),
+      cacheUpdatedAt: typeof settingsObject.chartCacheUpdatedAt === "string" ? settingsObject.chartCacheUpdatedAt : undefined,
     })
 
     let rangeSpecific = await fetchRangeSpecificZerion({ range, zerionKey, addresses, userId: user.id, walletFingerprint, nowSec })
