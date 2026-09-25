@@ -9,8 +9,27 @@ import { getHiddenTokenSymbols } from "@/lib/portfolio/hidden-tokens"
 
 export const maxDuration = 60
 
-const cache = new Map<string, { data: object; timestamp: number }>()
+// On globalThis so invalidation from other routes (hidden-tokens, clear-data)
+// reaches the same cache this route serves from.
+const g = globalThis as unknown as { __pwBlockchainBalances?: Map<string, { data: object; timestamp: number; ttl: number }> }
+const cache = (g.__pwBlockchainBalances ??= new Map())
 const CACHE_TTL_MS = 5 * 60_000
+const PARTIAL_CACHE_TTL_MS = 30_000 // some wallets failed — retry soon
+
+function isPartial(data: object): boolean {
+  return (data as { isPartialFetch?: boolean }).isPartialFetch === true
+}
+
+/**
+ * Cache a built response and return what to serve. A partial fetch (e.g. EVM
+ * throttled, only Solana returned) never replaces a complete cached response.
+ */
+function cacheResult(cacheKey: string, result: object): object {
+  const previous = cache.get(cacheKey)
+  if (isPartial(result) && previous && !isPartial(previous.data)) return previous.data
+  cache.set(cacheKey, { data: result, timestamp: Date.now(), ttl: isPartial(result) ? PARTIAL_CACHE_TTL_MS : CACHE_TTL_MS })
+  return result
+}
 
 export function invalidateBlockchainBalancesCache(userId?: string): void {
   if (userId) {
@@ -34,7 +53,7 @@ async function buildBlockchainBalancesResponse(userId: string, chainFilter: stri
     return { per_account: {}, icons: {}, totals: { assets: {} } }
   }
 
-  const { wallets: walletData } = await getCachedMultiProviderPositions(
+  const { wallets: walletData, failedCount } = await getCachedMultiProviderPositions(
     userId,
     wallets.map((w) => ({ address: w.address, chains: w.chains })),
   )
@@ -89,7 +108,7 @@ async function buildBlockchainBalancesResponse(userId: string, chainFilter: stri
   // in dropdowns even if providers returned no positions for them
   const trackedAddresses = wallets.map((w) => w.address)
 
-  return { per_account: perAccount, icons, totals: { assets: totalsAssets }, trackedAddresses }
+  return { per_account: perAccount, icons, totals: { assets: totalsAssets }, trackedAddresses, isPartialFetch: failedCount > 0 }
 }
 
 /**
@@ -105,7 +124,7 @@ export async function GET(request: NextRequest) {
   const cacheKey = `${user.id}:${chainFilter ?? "all"}`
 
   const cached = cache.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS && !("error" in cached.data)) {
+  if (cached && Date.now() - cached.timestamp < cached.ttl && !("error" in cached.data)) {
     const refreshMeta = await getRefreshMeta(user.id)
     return NextResponse.json({ ...cached.data, meta: { fromCache: true, ...refreshMeta } })
   }
@@ -120,9 +139,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ...cached.data, meta: { fromCache: true, staleReason: "providers_empty", ...refreshMeta } })
     }
 
-    cache.set(cacheKey, { data: result, timestamp: Date.now() })
+    const served = cacheResult(cacheKey, result)
     const refreshMeta = await getRefreshMeta(user.id)
-    return NextResponse.json({ ...result, meta: { fromCache: false, ...refreshMeta } })
+    return NextResponse.json({ ...served, meta: { fromCache: served !== result, ...refreshMeta } })
   } catch (error) {
     // On error, serve stale cache if available
     if (cached) {
@@ -163,8 +182,7 @@ export async function POST(request: NextRequest) {
       result = cached.data
       fromCache = true
     } else {
-      result = await buildBlockchainBalancesResponse(user.id, chainFilter)
-      cache.set(cacheKey, { data: result, timestamp: Date.now() })
+      result = cacheResult(cacheKey, await buildBlockchainBalancesResponse(user.id, chainFilter))
     }
 
     const refreshMeta = await getRefreshMeta(user.id)

@@ -8,7 +8,10 @@ import { sumStablecoinValue } from "@/lib/portfolio/price-symbol-utils"
 import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 // Simple in-memory cache per user (survives between requests in same worker)
-export const cache = new Map<string, { data: object; timestamp: number; ttl: number }>()
+// On globalThis so invalidation from other routes (hidden-tokens, clear-data)
+// reaches the same cache the balances route serves from.
+const g = globalThis as unknown as { __pwBalancesResponse?: Map<string, { data: object; timestamp: number; ttl: number }> }
+export const cache = (g.__pwBalancesResponse ??= new Map())
 const CACHE_TTL_MS = 5 * 60_000 // 5 minutes
 const PARTIAL_CACHE_TTL_MS = 30_000 // partial fetch — retry soon
 const CACHE_MAX_SIZE = 100 // prevent unbounded memory growth in multi-tenant deployments

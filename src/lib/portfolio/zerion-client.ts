@@ -25,10 +25,7 @@ async function fetchWithRetry(
   let res: Response | undefined
   let hit429 = false
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    res = await meteredZerionFetch(url, {
-      headers,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    })
+    res = await meteredZerionFetch(url, { headers }, TIMEOUT_MS)
     if (res.status !== 429 || attempt === maxRetries) return { response: res, hit429 }
     hit429 = true
     const wait = RETRY_DELAYS[attempt] ?? 8000

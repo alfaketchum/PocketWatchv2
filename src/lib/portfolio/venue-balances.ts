@@ -34,8 +34,10 @@ const VENUES: Venue[] = [
   },
 ]
 
-// venue:address(lowercase) → last successful positions
-const lastGood = new Map<string, ZerionPosition[]>()
+// venue:address(lowercase) → last successful positions (on globalThis so every
+// route bundle shares one fallback store)
+const g = globalThis as unknown as { __pwVenueLastGood?: Map<string, ZerionPosition[]> }
+const lastGood = (g.__pwVenueLastGood ??= new Map())
 
 async function fetchVenue(venue: Venue, addresses: string[]): Promise<ZerionPosition[][]> {
   let fetcher: VenueFetcher | null = null

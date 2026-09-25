@@ -95,8 +95,7 @@ async function verifyZerionKey(apiKey: string): Promise<ServiceVerifyResult> {
         Authorization: `Basic ${auth}`,
         Accept: "application/json",
       },
-      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
-    })
+    }, VERIFY_TIMEOUT_MS)
     const text = await res.text().catch(() => "")
 
     if (res.ok) return ok("Zerion key verified")

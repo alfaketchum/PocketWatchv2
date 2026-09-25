@@ -34,30 +34,32 @@ export class ZerionDailyCapError extends Error {
   }
 }
 
-let active = 0
-let lastStartMs = 0
-const waiters: Array<() => void> = []
+// On globalThis: Next.js can load a separate copy of this module per route
+// bundle, and the concurrency limit only works if every route shares one gate.
+interface MeterState { active: number; lastStartMs: number; waiters: Array<() => void> }
+const g = globalThis as unknown as { __pwZerionMeter?: MeterState }
+const state = (g.__pwZerionMeter ??= { active: 0, lastStartMs: 0, waiters: [] })
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
 async function acquireSlot(): Promise<void> {
-  if (active >= MAX_CONCURRENCY) {
-    await new Promise<void>((resolve) => waiters.push(resolve))
+  if (state.active >= MAX_CONCURRENCY) {
+    await new Promise<void>((resolve) => state.waiters.push(resolve))
   }
-  active++
+  state.active++
   // Space request starts evenly; reserve our start time before sleeping so
   // concurrent acquirers queue behind us rather than sharing the same gap.
-  const startAt = Math.max(Date.now(), lastStartMs + MIN_GAP_MS)
-  lastStartMs = startAt
+  const startAt = Math.max(Date.now(), state.lastStartMs + MIN_GAP_MS)
+  state.lastStartMs = startAt
   const wait = startAt - Date.now()
   if (wait > 0) await sleep(wait)
 }
 
 function releaseSlot(): void {
-  active--
-  waiters.shift()?.()
+  state.active--
+  state.waiters.shift()?.()
 }
 
 async function recordRequest(status: number | null): Promise<void> {
@@ -77,14 +79,17 @@ async function recordRequest(status: number | null): Promise<void> {
   if (!rateLimited) bumpProviderUsageCache("zerion", 1)
 }
 
-/** Send one metered Zerion request. Every Zerion HTTP call must go through here. */
-export async function meteredZerionFetch(url: string, init: RequestInit): Promise<Response> {
+/**
+ * Send one metered Zerion request. Every Zerion HTTP call must go through here.
+ * The timeout starts once the request is actually sent, not while it queues.
+ */
+export async function meteredZerionFetch(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   if (await isProviderDailyCapReached("zerion")) throw new ZerionDailyCapError()
 
   await acquireSlot()
   let status: number | null = null
   try {
-    const res = await fetch(url, init)
+    const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
     status = res.status
     return res
   } finally {

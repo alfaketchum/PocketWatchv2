@@ -108,7 +108,9 @@ interface UsageCacheEntry {
   dayStart: number
   expiresAt: number
 }
-const usageCache = new Map<ProviderName, UsageCacheEntry>()
+// On globalThis so every route bundle's copy of this module shares one count
+const g = globalThis as unknown as { __pwProviderUsage?: Map<ProviderName, UsageCacheEntry> }
+const usageCache = (g.__pwProviderUsage ??= new Map())
 const USAGE_CACHE_TTL_MS = 10_000
 
 /** Drop the cached daily usage for a provider (call after recording new calls). */

@@ -23,8 +23,13 @@ interface WalletInput {
   chains: string[]
 }
 
-const positionsCache = new Map<string, CacheEntry>()
-const inflight = new Map<string, Promise<MultiWalletResult>>()
+// On globalThis: Next.js can load a separate copy of this module per route
+// bundle. Separate copies meant separate caches and no in-flight dedupe across
+// routes, so concurrent routes collided on the Zerion lease and got partials.
+const g = globalThis as unknown as {
+  __pwMultiBalance?: { positionsCache: Map<string, CacheEntry>; inflight: Map<string, Promise<MultiWalletResult>> }
+}
+const { positionsCache, inflight } = (g.__pwMultiBalance ??= { positionsCache: new Map(), inflight: new Map() })
 
 /**
  * Get wallet positions across all providers, using cache and in-flight deduplication.
