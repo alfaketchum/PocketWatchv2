@@ -13,8 +13,8 @@ export const maxDuration = 120
 /**
  * POST /api/portfolio/maintenance/rebuild-history
  * Backfill Hyperliquid/Lighter daily history, add the missing Solana value to
- * live snapshots written while Helius balances were broken, and force a full
- * Zerion chart rebuild (only replaced when every wallet's chart succeeds).
+ * live snapshots written while Helius balances were broken, and re-fetch every
+ * wallet's Zerion history (the summed chart is only rebuilt once all succeed).
  */
 export async function POST() {
   const user = await getCurrentUser()
@@ -33,12 +33,13 @@ export async function POST() {
       userId: user.id,
       zerionKey,
       addresses,
-      zerionPoints: [], // empty → forces a refresh
+      zerionPoints: [],
       nowSec: Math.floor(Date.now() / 1000),
       previousFingerprint: walletFingerprint,
       walletFingerprint,
       staleReconstructedSnapshotIds: [],
       futureRows: [],
+      force: true, // re-fetch every wallet's history (2 Zerion requests per wallet)
     })
 
     const solanaSnapshotsRepaired = zerionKey ? await repairSolanaInSnapshots(user.id, zerionKey) : 0

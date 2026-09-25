@@ -71,6 +71,11 @@ export async function getCachedMultiProviderPositions(
   return promise
 }
 
+/** Last fetched positions for a user (even if past TTL), without fetching. */
+export function peekCachedMultiProviderPositions(userId: string): MultiWalletResult | null {
+  return positionsCache.get(userId)?.data ?? null
+}
+
 /**
  * Bust the cache for a user. Call on force-refresh (POST).
  */

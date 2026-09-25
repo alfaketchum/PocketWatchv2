@@ -16,7 +16,7 @@ import {
   SCALE_FACTOR_MIN, SCALE_FACTOR_MAX,
 } from "@/lib/portfolio/snapshot-helpers"
 import {
-  refreshZerionCache, fetchRangeSpecificZerion, smoothZerionPoints,
+  refreshZerionCache, smoothZerionPoints,
   buildSnapshotPoints, mergeChartSeries, mergeWithProjectedChart, computeOnchainRef,
   normalizeZerionToRef, handleLowConfidenceZerion, blendExchangeBalances,
   computeStatusAndWarning, triggerSyncIfNeeded,
@@ -113,10 +113,10 @@ export async function GET(request: Request) {
       previousFingerprint, walletFingerprint,
       staleReconstructedSnapshotIds: staleIds,
       futureRows: cachedChartRows.filter((r) => r.timestamp > futureCutoff),
-      cacheUpdatedAt: typeof settingsObject.chartCacheUpdatedAt === "string" ? settingsObject.chartCacheUpdatedAt : undefined,
     })
 
-    let rangeSpecific = await fetchRangeSpecificZerion({ range, zerionKey, addresses, userId: user.id, walletFingerprint, nowSec })
+    // Short ranges (1D/1W) come from live_refresh snapshots — no per-view Zerion fetch
+    let rangeSpecific: ChartPoint[] = []
     const smoothed = await smoothZerionPoints({
       zerionPoints, rangeSpecificZerionPoints: rangeSpecific,
       userId: user.id, normalizedAddresses, hasRangeOverride: rangeSpecific.length > 0,
@@ -130,7 +130,7 @@ export async function GET(request: Request) {
 
     // Fetch projected chart in parallel with prune/normalize (non-blocking)
     const projectedChartPromise = fetchProjectedChart({
-      userId: user.id, zerionKey, addresses, walletFingerprint, nowSec,
+      userId: user.id, addresses, walletFingerprint, nowSec,
     }).catch((err) => {
       console.warn("[snapshots] Projected chart failed (non-fatal):", err)
       return [] as ChartPoint[]

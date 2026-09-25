@@ -26,6 +26,7 @@ model User {
   portfolioSnapshots            PortfolioSnapshot[]
   chartCaches                   ChartCache[]
   supplementalBalanceHistory    SupplementalBalanceHistory[]
+  walletChartCaches             WalletChartCache[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
   historySyncJobs               HistorySyncJob[]
@@ -261,6 +262,20 @@ model ChartCache {
 
   @@unique([userId, timestamp])
   @@index([userId, timestamp])
+}
+
+/// Per-wallet Zerion value history, fetched once per wallet and kept. ChartCache
+/// (the summed series) is rebuilt from these rows without calling Zerion.
+model WalletChartCache {
+  id        String @id @default(cuid())
+  userId    String
+  address   String // normalized (lowercase EVM, as-is Solana)
+  timestamp Int
+  value     Float
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, address, timestamp])
+  @@index([userId, address])
 }
 
 /// Daily value history for holdings the Zerion wallet chart doesn't cover

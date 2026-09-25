@@ -16,6 +16,8 @@ export async function POST() {
 
   try {
     const purged = await db.$transaction(async (tx) => {
+      // Stored per-wallet history goes too, so the re-sync fetches it fresh
+      await tx.walletChartCache.deleteMany({ where: { userId: user.id } })
       const [txCache, syncStates, chartCache, snapshots, gates, jobs] = await Promise.all([
         tx.transactionCache.deleteMany({ where: { userId: user.id } }),
         tx.transactionSyncState.deleteMany({ where: { userId: user.id } }),

@@ -149,6 +149,8 @@ export async function acquirePermit(
   }
 }
 
+const HTTP_METERED_PROVIDERS = new Set<ProviderName>(["zerion"])
+
 export async function recordProviderResult(permit: ProviderPermit, result: ProviderCallResult): Promise<void> {
   if (!permit.acquired) return
 
@@ -172,6 +174,10 @@ export async function recordProviderResult(permit: ProviderPermit, result: Provi
         lastErrorCode: result.errorCode ?? null,
       },
     })
+
+    // Zerion is metered per HTTP request in zerion-request-meter.ts; counting
+    // its permits here too would double-count.
+    if (HTTP_METERED_PROVIDERS.has(permit.provider)) return
 
     const minuteBucket = getMinuteBucket(now)
     // A batched operation reports how many HTTP calls it actually made via

@@ -8,13 +8,13 @@
  * Core formula: projected_value[day] = sum(quantity[token] × price[token][day])
  */
 
-import { createHash } from "node:crypto"
 import { db } from "@/lib/db"
 import { fetchMultiCoinChart, type ChartPricePoint } from "@/lib/defillama/chart"
 import { NATIVE_COINGECKO_IDS } from "@/lib/tracker/chains"
 import { isStableLikeSymbol, normalizeSymbolForPricing } from "@/lib/portfolio/price-symbol-utils"
-import { fetchMultiWalletPositions, type ZerionPosition } from "@/lib/portfolio/zerion-client"
-import { withProviderPermit } from "@/lib/portfolio/provider-governor"
+import type { ZerionPosition } from "@/lib/portfolio/zerion-client"
+import { peekCachedMultiProviderPositions } from "@/lib/portfolio/multi-balance-cache"
+import { SUPPLEMENTAL_SOURCES } from "@/lib/portfolio/supplemental-history"
 import type { ChartPoint } from "@/lib/portfolio/snapshot-helpers"
 
 // ─── Constants ───
@@ -261,16 +261,15 @@ const BATCH_SIZE = 500
 
 interface FetchProjectedChartParams {
   userId: string
-  zerionKey: string | null
   addresses: string[]
   walletFingerprint: string
   nowSec: number
 }
 
 export async function fetchProjectedChart(params: FetchProjectedChartParams): Promise<ChartPoint[]> {
-  const { userId, zerionKey, addresses, walletFingerprint, nowSec } = params
+  const { userId, addresses, walletFingerprint, nowSec } = params
 
-  if (!zerionKey || addresses.length === 0) return []
+  if (addresses.length === 0) return []
 
   // Check for cached projection with matching fingerprint
   const cacheCutoff = new Date(Date.now() - PROJECTION_CACHE_TTL_MS)
@@ -288,18 +287,17 @@ export async function fetchProjectedChart(params: FetchProjectedChartParams): Pr
     }))
   }
 
-  // Compute projection: fetch current positions, project backward
+  // Compute projection from the positions the balances fetch already holds —
+  // no extra Zerion calls. If balances haven't loaded in this process yet, skip;
+  // a later load (balances load on every dashboard view) computes it.
+  // Hyperliquid/Lighter are excluded: the chart adds their history separately.
   try {
-    const opHash = createHash("sha256").update(walletFingerprint).digest("hex").slice(0, 16)
-    const { wallets } = await withProviderPermit(
-      userId,
-      "zerion",
-      `positions:projected:${opHash}`,
-      undefined,
-      () => fetchMultiWalletPositions(zerionKey, addresses),
-    )
-
-    const allPositions = wallets.flatMap((w) => w.positions)
+    const cached = peekCachedMultiProviderPositions(userId)
+    if (!cached) return []
+    const venueChains = new Set<string>(SUPPLEMENTAL_SOURCES)
+    const allPositions = cached.wallets
+      .flatMap((w) => w.positions)
+      .filter((p) => !venueChains.has(p.chain))
     if (allPositions.length === 0) return []
 
     const startTimestamp = nowSec - 365 * DAY_SEC

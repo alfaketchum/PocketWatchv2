@@ -24,11 +24,12 @@ const DEFAULT_DAILY_LIMIT: Partial<Record<ProviderName, number>> = {
 }
 
 /**
- * Estimated Zerion HTTP calls per wallet per full refresh: positions + chart +
- * projected each fan out to ~1 call per wallet. Used to pace refreshes so the
- * daily quota lasts a full day instead of being spent in the first hours.
+ * Estimated Zerion HTTP calls per wallet per full refresh: positions only (~1 per
+ * wallet) — chart history is fetched once per wallet and stored, and the projected
+ * chart reuses cached positions. Used to pace refreshes so the daily quota lasts a
+ * full day; zerion-request-meter.ts enforces the real per-request count.
  */
-const DEFAULT_OPS_PER_WALLET = 3
+const DEFAULT_OPS_PER_WALLET = 1
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
@@ -113,6 +114,14 @@ const USAGE_CACHE_TTL_MS = 10_000
 /** Drop the cached daily usage for a provider (call after recording new calls). */
 export function invalidateProviderUsageCache(provider: ProviderName): void {
   usageCache.delete(provider)
+}
+
+/** Count requests just made into the cached usage, so cap checks stay current between aggregations. */
+export function bumpProviderUsageCache(provider: ProviderName, calls: number): void {
+  const cached = usageCache.get(provider)
+  if (cached && cached.dayStart === startOfUtcDay().getTime()) {
+    usageCache.set(provider, { ...cached, used: cached.used + calls })
+  }
 }
 
 /** Requests this provider has made today (UTC), excluding 429-rejected calls. */

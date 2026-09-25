@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { isStableLikeSymbol, normalizeSymbolForPricing } from "@/lib/portfolio/price-symbol-utils"
 import { loadSupplementalSeries } from "@/lib/portfolio/supplemental-history"
+import { loadLiveSnapshotByDay } from "@/lib/portfolio/live-snapshot-days"
 
 /**
  * GET /api/net-worth
@@ -132,7 +133,7 @@ export async function GET(request: Request) {
     // when the app started recording). Exchange history blends in from its own
     // snapshot table, so connecting an exchange (e.g. Bybit) extends it for free.
     const historyStartSec = Math.floor(historyStart.getTime() / 1000)
-    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt] = await Promise.all([
+    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt, liveByDay] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
@@ -155,6 +156,7 @@ export async function GET(request: Request) {
       }),
       // Hyperliquid + Lighter history, which the Zerion chart lacks
       loadSupplementalSeries(user.id),
+      loadLiveSnapshotByDay(user.id, historyStart),
     ])
 
     // Independent daily series (last value wins per day; forward-filled below).
@@ -198,13 +200,15 @@ export async function GET(request: Request) {
 
     // Forward-fill each series across the union of days; crypto = wallet + exchange.
     const todayKey = new Date().toISOString().slice(0, 10)
-    const allDays = new Set<string>([...financeByDay.keys(), ...walletByDay.keys(), ...exchangeByDay.keys()])
+    const allDays = new Set<string>([...financeByDay.keys(), ...walletByDay.keys(), ...exchangeByDay.keys(), ...liveByDay.keys()])
+    const lastChartDay = [...walletByDay.keys()].at(-1) ?? ""
     allDays.add(todayKey)
     const sortedDays = [...allDays].sort()
 
     let lastFiat = 0
     let lastWallet = 0
     let lastExchange = 0
+    let lastCrypto = 0
     // Seed finance groups with the current live values so they appear across the
     // whole history (finance snapshots have little back-history vs the year of
     // crypto chart data); real per-day snapshot values override where present.
@@ -222,9 +226,15 @@ export async function GET(request: Request) {
       if (bd) lastBd = bd
       // Today uses the live, complete crypto value (wallets + exchanges + staking)
       // so the chart's last point matches the headline number.
+      // Recorded live snapshots win their day; past the Zerion history (fetched once
+      // per wallet) with no snapshot, carry the last value forward.
+      const venues = supplementalAt(Date.parse(day) / 1000)
+      const live = liveByDay.get(day)
       const crypto = day === todayKey
         ? cryptoValue
-        : lastWallet + lastExchange + supplementalAt(Date.parse(day) / 1000)
+        : live !== undefined ? live + venues
+          : day > lastChartDay ? lastCrypto : lastWallet + lastExchange + venues
+      lastCrypto = crypto
       history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
       breakdownHistory.push({
         date: day,

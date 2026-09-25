@@ -1,5 +1,6 @@
 import { ALCHEMY_CHAIN_SLUGS, CHAIN_CONFIGS } from "@/lib/tracker/chains"
 import type { TrackerChain } from "@/lib/tracker/types"
+import { meteredZerionFetch } from "./zerion-request-meter"
 
 export type ServiceVerifyCode =
   | "ok"
@@ -89,7 +90,7 @@ async function verifyZerionKey(apiKey: string): Promise<ServiceVerifyResult> {
   const url = `https://api.zerion.io/v1/wallets/${TEST_ADDRESS}/portfolio/?currency=usd`
 
   try {
-    const res = await fetch(url, {
+    const res = await meteredZerionFetch(url, {
       headers: {
         Authorization: `Basic ${auth}`,
         Accept: "application/json",

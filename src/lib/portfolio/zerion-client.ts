@@ -1,5 +1,7 @@
 /** Zerion API v1 client — HTTP Basic auth (apiKey as username, empty password). */
 
+import { meteredZerionFetch, ZerionDailyCapError } from "./zerion-request-meter"
+
 const ZERION_BASE = "https://api.zerion.io/v1"
 const TIMEOUT_MS = 30_000
 const RETRY_MAX = 2
@@ -23,7 +25,7 @@ async function fetchWithRetry(
   let res: Response | undefined
   let hit429 = false
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    res = await fetch(url, {
+    res = await meteredZerionFetch(url, {
       headers,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     })
@@ -214,6 +216,12 @@ export async function fetchWalletChart(
 
 const CHART_RETRY_DELAY_MS = 1_500
 
+function isNonRetryable(err: unknown): boolean {
+  return err instanceof ZerionRateLimitError
+    || err instanceof ZerionDailyCapError
+    || (err as Error).message.includes("Invalid Zerion API key")
+}
+
 /**
  * Chart for one wallet, tolerant of Zerion's intermittent 5xx on long periods:
  * retry once, then (for "max") fall back to "year" so the wallet is still counted.
@@ -226,96 +234,59 @@ async function fetchWalletChartResilient(
   try {
     return await fetchWalletChart(apiKey, address, period)
   } catch (err) {
-    if (err instanceof ZerionRateLimitError || (err as Error).message.includes("Invalid Zerion API key")) throw err
+    if (isNonRetryable(err)) throw err
     await new Promise((r) => setTimeout(r, CHART_RETRY_DELAY_MS))
     try {
       return await fetchWalletChart(apiKey, address, period)
     } catch (retryErr) {
-      if (period !== "max" || retryErr instanceof ZerionRateLimitError) throw retryErr
+      if (period !== "max" || isNonRetryable(retryErr)) throw retryErr
       console.warn(`[zerion] "max" chart keeps failing for ${address.slice(0, 10)}… — using "year" (earlier history for this wallet omitted)`)
       return fetchWalletChart(apiKey, address, "year")
     }
   }
 }
 
-/** Fetch chart data for multiple wallets concurrently and sum into a single series. */
-export async function fetchMultiWalletChart(
-  apiKey: string,
-  addresses: string[],
-  period: ZerionChartPeriod = "max"
-): Promise<[number, number][]> {
-  if (addresses.length === 0) return []
-  if (addresses.length === 1) return fetchWalletChart(apiKey, addresses[0], period)
-
-  // Fetch all wallets concurrently. A sum missing any wallet is wrong history
-  // (callers persist it as the full chart), so any failure fails the whole fetch
-  // and callers keep their previous cache until a complete fetch succeeds.
-  const settled = await Promise.allSettled(
-    addresses.map((addr) => fetchWalletChartResilient(apiKey, addr, period))
-  )
-  const charts: [number, number][][] = []
-  const failed: string[] = []
-  for (let i = 0; i < settled.length; i++) {
-    const result = settled[i]
-    if (result.status === "fulfilled") {
-      charts.push(result.value)
-    } else {
-      failed.push(addresses[i])
-      console.warn(`[zerion] Chart fetch failed for ${addresses[i].slice(0, 10)}…: ${result.reason?.message ?? "unknown"}`)
-    }
+/**
+ * Full value history for one wallet: the daily "year" chart for the recent year
+ * ("max" is coarse — ~400 points over the wallet's life — and can disagree with
+ * finer periods) and "max" only for what precedes it. 2 requests per wallet.
+ */
+export async function fetchWalletHistory(apiKey: string, address: string): Promise<[number, number][]> {
+  const maxChart = await fetchWalletChartResilient(apiKey, address, "max")
+  try {
+    const yearChart = await fetchWalletChartResilient(apiKey, address, "year")
+    if (yearChart.length === 0) return maxChart
+    const yearStart = Math.min(...yearChart.map(([ts]) => ts))
+    return [...maxChart.filter(([ts]) => ts < yearStart), ...yearChart]
+  } catch (error) {
+    if (isNonRetryable(error)) throw error
+    console.warn(`[zerion] "year" chart failed for ${address.slice(0, 10)}… — using "max" only`)
+    return maxChart
   }
+}
 
-  if (failed.length > 0) {
-    throw new Error(`Zerion chart incomplete: ${failed.length}/${addresses.length} wallet(s) failed`)
-  }
+/**
+ * Sum per-wallet charts into one series. Each wallet forward-fills its last
+ * known value between its own points (no cliffs when wallets' timestamps differ)
+ * and contributes 0 before its first point.
+ */
+export function sumWalletCharts(charts: Array<Array<[number, number]>>): [number, number][] {
+  const sortedCharts = charts.map((chart) => [...chart].sort((a, b) => a[0] - b[0]))
+  const allTimestamps = [...new Set(sortedCharts.flatMap((c) => c.map(([ts]) => ts)))].sort((a, b) => a - b)
+  const cursors = sortedCharts.map(() => 0)
+  const lastKnown = sortedCharts.map(() => 0)
 
-  // Merge with forward-fill: when a wallet has no data at a timestamp,
-  // carry forward its last known value instead of contributing $0.
-  // This prevents cliffs when wallets have different date ranges.
-
-  // 1. Collect all unique timestamps across all wallets
-  const tsSet = new Set<number>()
-  for (const chart of charts) {
-    for (const [ts] of chart) {
-      tsSet.add(ts)
-    }
-  }
-  const allTimestamps = Array.from(tsSet).sort((a, b) => a - b)
-
-  // 2. Build sorted arrays per wallet for efficient lookup
-  const sortedCharts = charts.map((chart) =>
-    [...chart].sort((a, b) => a[0] - b[0])
-  )
-
-  // 3. Find the earliest timestamp where ALL wallets have data.
-  //    Before this point, the sum only reflects a subset of wallets → misleading.
-  const walletStarts = sortedCharts.map((wChart) =>
-    wChart.length > 0 ? wChart[0][0] : Number.POSITIVE_INFINITY
-  )
-  const fullCoverageStart = Math.max(...walletStarts)
-
-  // 4. For each timestamp, forward-fill each wallet and sum
-  const merged: [number, number][] = []
-  const cursors = new Array<number>(charts.length).fill(0)
-  const lastKnown = new Array<number>(charts.length).fill(0)
-
-  for (const ts of allTimestamps) {
+  return allTimestamps.map((ts): [number, number] => {
     let sum = 0
-    for (let w = 0; w < sortedCharts.length; w++) {
-      const wChart = sortedCharts[w]
+    sortedCharts.forEach((wChart, w) => {
       while (cursors[w] < wChart.length && wChart[cursors[w]][0] <= ts) {
         lastKnown[w] = wChart[cursors[w]][1]
         cursors[w]++
       }
       sum += lastKnown[w]
-    }
-    // Emit all points — wallets without data at this timestamp contribute 0
-    // via the forward-fill (lastKnown[w] starts at 0). This allows the chart
-    // to show early history from wallets that existed before others were added.
-    merged.push([ts, sum])
-  }
-
-  return merged
+    })
+    return [ts, sum]
+  })
 }
 
 export interface MultiWalletResult {

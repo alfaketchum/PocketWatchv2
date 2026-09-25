@@ -1,24 +1,20 @@
 /**
  * Data pipeline functions for the portfolio history snapshots route.
- * Handles Zerion cache refresh, range fetching, DeFi smoothing,
+ * Handles chart cache sync, DeFi smoothing,
  * snapshot point building, on-chain reference, and normalization.
  *
  * Assembly functions (merging, blending, status, etc.) live in snapshot-data-assembly.ts.
  */
 
-import { createHash } from "node:crypto"
 import { db } from "@/lib/db"
 import { reconstructPortfolioHistory } from "@/lib/portfolio/value-reconstructor"
-import { fetchMultiWalletChart, type ZerionChartPeriod } from "@/lib/portfolio/zerion-client"
-import { withProviderPermit } from "@/lib/portfolio/provider-governor"
+import { syncWalletCharts } from "@/lib/portfolio/wallet-chart-cache"
 import { smoothDefiDips } from "@/lib/portfolio/chart-defi-smoother"
-import { filterValidPoints } from "@/lib/portfolio/snapshot-validation"
 import {
-  type SnapshotRange, type SnapshotScope,
+  type SnapshotScope,
   type ChartPoint,
-  CHART_CACHE_TTL_SEC, RECONSTRUCTION_TRIGGER_INTERVAL_MS,
+  RECONSTRUCTION_TRIGGER_INTERVAL_MS,
   LEGACY_LIVE_SNAPSHOT_WINDOW_SEC,
-  sanitizeZerionSeries,
   getSnapshotWalletFingerprint, parseMetadata, onchainValueFromSnapshot,
   hasUsableReconstructedHistory, safeScaleReference,
   SCALE_FACTOR_MIN, SCALE_FACTOR_MAX,
@@ -48,95 +44,31 @@ interface RefreshZerionParams {
   walletFingerprint: string
   staleReconstructedSnapshotIds: string[]
   futureRows: Array<{ timestamp: number }>
-  /** settings.chartCacheUpdatedAt — when the cache was last rebuilt (ISO). */
-  cacheUpdatedAt?: string
+  /** Re-fetch every wallet's history from Zerion (manual rebuild only). */
+  force?: boolean
 }
 
 /**
- * Zerion's "max" chart is coarse (~400 points over the wallet's life) and can
- * disagree with its finer charts, so the most recent year comes from the daily
- * "year" chart and "max" only supplies history before that. If the year chart
- * fails, the complete max chart is used alone.
+ * Keep ChartCache in sync with the wallet set. History is fetched once per
+ * wallet and stored (wallet-chart-cache.ts); routine loads make no Zerion calls —
+ * recent days come from live_refresh snapshots.
  */
-async function fetchMaxChartWithRecentYear(zerionKey: string, addresses: string[]): Promise<[number, number][]> {
-  const maxChart = await fetchMultiWalletChart(zerionKey, addresses, "max")
-  try {
-    const yearChart = await fetchMultiWalletChart(zerionKey, addresses, "year")
-    if (yearChart.length === 0) return maxChart
-    const yearStart = Math.min(...yearChart.map(([ts]) => ts))
-    return [...maxChart.filter(([ts]) => ts < yearStart), ...yearChart]
-  } catch (error) {
-    console.warn("[snapshots] Zerion year chart failed — using max chart only:", error)
-    return maxChart
-  }
-}
-
 export async function refreshZerionCache(params: RefreshZerionParams): Promise<ChartPoint[]> {
   const {
-    userId, zerionKey, addresses, nowSec,
-    previousFingerprint, walletFingerprint,
-    staleReconstructedSnapshotIds, futureRows, cacheUpdatedAt,
+    userId, zerionKey, addresses, nowSec, previousFingerprint, walletFingerprint,
+    staleReconstructedSnapshotIds, futureRows, force,
   } = params
   let { zerionPoints } = params
 
-  if (!zerionKey || addresses.length === 0) return zerionPoints
-
-  // Age from the last rebuild, not the newest point: the daily "year" chart's
-  // newest point is UTC midnight, which would make the cache look stale all day.
-  const updatedAtSec = cacheUpdatedAt ? Math.floor(Date.parse(cacheUpdatedAt) / 1000) : NaN
-  const latestCachedTs = Number.isFinite(updatedAtSec)
-    ? updatedAtSec
-    : zerionPoints.length > 0 ? zerionPoints[zerionPoints.length - 1].timestamp : 0
-  const cacheAgeSec = latestCachedTs > 0 ? nowSec - latestCachedTs : Number.POSITIVE_INFINITY
-  const cacheIsFresh = cacheAgeSec >= 0 && cacheAgeSec < CHART_CACHE_TTL_SEC
-  const walletSetChanged = previousFingerprint !== walletFingerprint
-  const shouldRefresh = !cacheIsFresh || walletSetChanged || zerionPoints.length === 0
-
-  if (!shouldRefresh) return zerionPoints
+  if (addresses.length === 0) return zerionPoints
 
   try {
-    const fpHash = createHash("sha256").update(walletFingerprint).digest("hex").slice(0, 16)
-    const freshChart = await withProviderPermit(
-      userId,
-      "zerion",
-      `chart:max:${fpHash}`,
-      undefined,
-      () => fetchMaxChartWithRecentYear(zerionKey, addresses)
-    )
-    const sanitized = sanitizeZerionSeries(freshChart, nowSec)
-    const { valid: freshPoints } = filterValidPoints(sanitized)
-
-    await db.$transaction(async (tx) => {
-      await tx.chartCache.deleteMany({ where: { userId } })
-
-      if (freshPoints.length > 0) {
-        const BATCH_SIZE = 500
-        for (let i = 0; i < freshPoints.length; i += BATCH_SIZE) {
-          const batch = freshPoints.slice(i, i + BATCH_SIZE)
-          await tx.chartCache.createMany({
-            data: batch.map((p) => ({
-              userId,
-              timestamp: p.timestamp,
-              value: p.value,
-            })),
-          })
-        }
-      }
-
-      const chartFields = JSON.stringify({
-        chartWalletFingerprint: walletFingerprint,
-        chartCacheUpdatedAt: new Date().toISOString(),
-      })
-      const settingId = crypto.randomUUID()
-      await tx.$executeRaw`
-        INSERT INTO "PortfolioSetting" ("id", "userId", "settings")
-        VALUES (${settingId}, ${userId}, ${chartFields}::jsonb)
-        ON CONFLICT ("userId") DO UPDATE
-        SET settings = "PortfolioSetting".settings || ${chartFields}::jsonb
-      `
+    const rebuilt = await syncWalletCharts({
+      userId, zerionKey, addresses, walletFingerprint, previousFingerprint,
+      hasChartCache: zerionPoints.length > 0, nowSec, force,
     })
-
-    zerionPoints = freshPoints
+    if (!rebuilt) return zerionPoints
+    zerionPoints = rebuilt
 
     if (staleReconstructedSnapshotIds.length > 0) {
       await db.portfolioSnapshot.deleteMany({
@@ -149,51 +81,13 @@ export async function refreshZerionCache(params: RefreshZerionParams): Promise<C
       })
     }
   } catch (error) {
-    console.warn("[snapshots] Zerion refresh failed:", error)
-    if (walletSetChanged) {
+    console.warn("[snapshots] Wallet chart sync failed:", error)
+    if (previousFingerprint !== walletFingerprint) {
       zerionPoints = []
     }
   }
 
   return zerionPoints
-}
-
-// ── Range-specific Zerion fetch ──
-
-const RANGE_ZERION_PERIOD: Partial<Record<SnapshotRange, ZerionChartPeriod>> = {
-  "1D": "day",
-  "1W": "week",
-}
-
-interface FetchRangeParams {
-  range: SnapshotRange
-  zerionKey: string | null
-  addresses: string[]
-  userId: string
-  walletFingerprint: string
-  nowSec: number
-}
-
-export async function fetchRangeSpecificZerion(params: FetchRangeParams): Promise<ChartPoint[]> {
-  const { range, zerionKey, addresses, userId, walletFingerprint, nowSec } = params
-  const rangeZerionPeriod = RANGE_ZERION_PERIOD[range]
-
-  if (!rangeZerionPeriod || !zerionKey || addresses.length === 0) return []
-
-  try {
-    const fpHash = createHash("sha256").update(walletFingerprint).digest("hex").slice(0, 16)
-    const rangeChart = await withProviderPermit(
-      userId,
-      "zerion",
-      `chart:${rangeZerionPeriod}:${fpHash}`,
-      undefined,
-      () => fetchMultiWalletChart(zerionKey, addresses, rangeZerionPeriod)
-    )
-    return sanitizeZerionSeries(rangeChart, nowSec)
-  } catch (error) {
-    console.warn(`[snapshots] Zerion ${rangeZerionPeriod} range fetch failed:`, error)
-    return []
-  }
 }
 
 // ── DeFi dip smoothing ──

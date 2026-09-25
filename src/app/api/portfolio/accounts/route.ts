@@ -194,6 +194,7 @@ export async function DELETE(request: NextRequest) {
       ...(remainingWallets === 0 ? [
         db.portfolioSnapshot.deleteMany({ where: { userId: user.id } }),
         db.chartCache.deleteMany({ where: { userId: user.id } }),
+        db.walletChartCache.deleteMany({ where: { userId: user.id } }),
         db.projectedChartCache.deleteMany({ where: { userId: user.id } }),
         db.exchangeBalanceSnapshot.deleteMany({ where: { userId: user.id } }),
         db.stakingSyncState.deleteMany({ where: { userId: user.id } }),
