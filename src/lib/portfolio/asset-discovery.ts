@@ -8,7 +8,9 @@
  *    - "priced": Zerion-verified → (wallet, token) pairs get Zerion history for
  *      their band (TrackedAssetPair, fetched with a budget). Total unchanged.
  *    - "listed": Zerion prices it but it's unverified (memecoins, scams with a
- *      DEX price). Already inside Zerion's totals → nothing to add; stays Misc.
+ *      DEX price). Already inside Zerion's totals → nothing to add; stays Misc
+ *      — unless it had a single transfer ≥ $25,000 (a real position, not junk),
+ *      in which case it's tracked like a verified token.
  *    - "dead": Zerion has no price (dead/delisted/never listed) → value rebuilt
  *      from transactions (dead-token-history.ts, no API calls) and ADDED to
  *      totals, since nothing else counts it. Rebuilding a priced token would
@@ -23,6 +25,8 @@ import { normalizeWalletAddress } from "./utils"
 import { assetKey } from "./asset-values"
 
 const CANDIDATE_MIN_USD = 1_000
+/** An unverified-but-priced token with a transfer this large is a real position */
+const LISTED_TRACK_MIN_USD = 25_000
 /** Spam tokens report absurd values (billions); no real single transfer here is this large */
 const CANDIDATE_MAX_USD = 50_000_000
 const MAX_CANDIDATE_ROWS = 50_000
@@ -39,7 +43,7 @@ function normalizeContract(chain: string, address: string): string {
   return chain === "SOLANA" ? address : address.toLowerCase()
 }
 
-interface Candidate { chain: string; contract: string; symbol: string; wallets: Set<string> }
+interface Candidate { chain: string; contract: string; symbol: string; wallets: Set<string>; maxTransfer: number }
 
 /** Tokens in transaction history with a meaningful transfer, not already looked up. */
 async function findCandidates(userId: string): Promise<Candidate[]> {
@@ -52,7 +56,7 @@ async function findCandidates(userId: string): Promise<Candidate[]> {
       usdValue: { gte: CANDIDATE_MIN_USD, lte: CANDIDATE_MAX_USD },
       OR: [{ txClassification: null }, { txClassification: { not: "spam" } }],
     },
-    select: { walletAddress: true, chain: true, asset: true, symbol: true },
+    select: { walletAddress: true, chain: true, asset: true, symbol: true, usdValue: true },
     take: MAX_CANDIDATE_ROWS,
   })
   const known = await db.assetCandidate.findMany({ where: { userId }, select: { chain: true, contract: true } })
@@ -64,8 +68,9 @@ async function findCandidates(userId: string): Promise<Candidate[]> {
     const contract = normalizeContract(r.chain, r.asset)
     const key = `${r.chain}|${contract}`
     if (seen.has(key)) continue
-    const c = byToken.get(key) ?? { chain: r.chain, contract, symbol: r.symbol ?? "?", wallets: new Set<string>() }
+    const c = byToken.get(key) ?? { chain: r.chain, contract, symbol: r.symbol ?? "?", wallets: new Set<string>(), maxTransfer: 0 }
     c.wallets.add(normalizeWalletAddress(r.walletAddress))
+    c.maxTransfer = Math.max(c.maxTransfer, r.usdValue ?? 0)
     byToken.set(key, c)
   }
   return [...byToken.values()]
@@ -97,10 +102,12 @@ export async function discoverHistoricalAssets(userId: string, zerionKey: string
     for (const c of batch) {
       const impl = `${ZERION_CHAIN[c.chain]}:${c.contract.toLowerCase()}`
       const match = found.find((f) => f.implementations.includes(impl))
-      const status = match?.verified ? "priced" : match?.hasPrice ? "listed" : "dead"
+      const tracked = match?.verified || (match?.hasPrice && c.maxTransfer >= LISTED_TRACK_MIN_USD)
+      const status = tracked ? "priced" : match?.hasPrice ? "listed" : "dead"
       await db.assetCandidate.upsert({
         where: { userId_chain_contract: { userId, chain: c.chain, contract: c.contract } },
-        create: { userId, chain: c.chain, contract: c.contract, symbol: c.symbol, fungibleId: match?.id ?? null, status },
+        // Zerion's symbol when known (Solana tx symbols are often address fragments)
+        create: { userId, chain: c.chain, contract: c.contract, symbol: match?.symbol ?? c.symbol, fungibleId: match?.id ?? null, status },
         update: {},
       })
       if (status !== "priced" || !match) { if (status === "dead") dead++; continue }

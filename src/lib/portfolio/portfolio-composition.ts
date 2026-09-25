@@ -132,6 +132,9 @@ function forwardFill(series: [number, number][]) {
 
 /** Bands shown at most (by peak value in range); the rest fold into Misc */
 const MAX_BANDS = 20
+/** Misc tooltip: its biggest tokens that day (≥ $100) */
+const MISC_DETAIL_COUNT = 5
+const MISC_DETAIL_MIN_USD = 100
 
 /**
  * By asset, with range-based bands: every token ever tracked (current holdings,
@@ -181,10 +184,20 @@ async function assetComposition(userId: string, since: Date, daily: Daily): Prom
     .sort((a, b) => peak.get(b)! - peak.get(a)!)
     .slice(0, MAX_BANDS)
 
+  const bandSet = new Set(bands)
   const points = rows.map(({ t, crypto, venues, values }) => {
     const bandValues = Object.fromEntries(bands.map((s) => [s, values.get(s) ?? 0]))
     const banded = bands.reduce((sum, s) => sum + bandValues[s], 0)
-    return { t, values: { ...bandValues, [VENUES.key]: venues, [MISC.key]: Math.max(0, crypto - venues - banded) } }
+    const miscTop = [...values]
+      .filter(([s, v]) => !bandSet.has(s) && v >= MISC_DETAIL_MIN_USD)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MISC_DETAIL_COUNT)
+      .map(([label, value]) => ({ label, value }))
+    return {
+      t,
+      values: { ...bandValues, [VENUES.key]: venues, [MISC.key]: Math.max(0, crypto - venues - banded) },
+      ...(miscTop.length > 0 ? { details: { [MISC.key]: miscTop } } : {}),
+    }
   })
   return {
     data: { mode: "asset", layers: [...bands.map((s) => ({ key: s, label: s })), VENUES, MISC], points },

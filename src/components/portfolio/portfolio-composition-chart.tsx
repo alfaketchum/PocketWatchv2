@@ -5,6 +5,7 @@ import { usePortfolioComposition } from "@/hooks/portfolio/use-composition"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { useNetWorthCategories } from "@/hooks/use-net-worth-colors"
 import { StackedAreaChart, type StackLayer } from "@/components/ui/stacked-area-chart"
+import { distinctBandColors } from "@/lib/chart-band-colors"
 import type { CompositionMode } from "@/types/composition"
 
 const MISC_COLOR = "#8a8f98"
@@ -24,12 +25,16 @@ export function PortfolioCompositionChart({ mode, range, height, isHidden }: Pro
 
   const layers = useMemo<StackLayer[]>(() => {
     if (!data) return []
-    let paletteIdx = 0
+    // Token bands get distinct theme-derived colors; Stable/Digital keep the
+    // net-worth category colors; Misc stays neutral
+    const banded = data.layers.filter((l) => !["stablecoin", "digital", "misc"].includes(l.key))
+    const colors = distinctBandColors(theme.primary, banded.length)
+    const colorByKey = new Map(banded.map((l, i) => [l.key, colors[i]]))
     return data.layers.map((l) => {
       const color = l.key === "stablecoin" ? cats.stablecoin.color
         : l.key === "digital" ? cats.digital.color
           : l.key === "misc" ? MISC_COLOR
-            : theme.palette[paletteIdx++ % theme.palette.length]
+            : colorByKey.get(l.key)!
       return { key: l.key, label: l.label, color }
     })
   }, [data, cats, theme])

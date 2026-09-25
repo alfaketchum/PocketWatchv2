@@ -12,6 +12,8 @@ export interface StackedPoint {
   /** Epoch ms */
   t: number
   values: Record<string, number>
+  /** Optional per-layer breakdown rows shown under that layer in the tooltip */
+  details?: Record<string, Array<{ label: string; value: number }>>
 }
 
 function fmtCompact(v: number): string {
@@ -74,7 +76,7 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
     return () => obs.disconnect()
   }, [])
 
-  const points = useMemo(() => data.map((d) => ({ t: d.t, d: d.values })), [data])
+  const points = useMemo(() => data.map((d) => ({ t: d.t, d: d.values, details: d.details })), [data])
 
   const PAD = { top: 12, right: 16, bottom: 32, left: 56 }
   const chartW = Math.max(width - PAD.left - PAD.right, 0)
@@ -159,10 +161,18 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
           <div className="font-semibold text-foreground tabular-nums mb-1.5" style={blur}>{fmtFull(hoverTotal)}</div>
           {[...layers].reverse().map((l) => (
             (hp.d[l.key] || 0) > 0.5 && (
-              <div key={l.key} className="flex items-center gap-1.5 leading-tight">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: l.color }} />
-                <span className="text-foreground-muted flex-1">{l.label}</span>
-                <span className="tabular-nums text-foreground" style={blur}>{fmtCompact(hp.d[l.key])}</span>
+              <div key={l.key}>
+                <div className="flex items-center gap-1.5 leading-tight">
+                  <span className="inline-block w-2 h-2 rounded-full" style={{ background: l.color }} />
+                  <span className="text-foreground-muted flex-1">{l.label}</span>
+                  <span className="tabular-nums text-foreground" style={blur}>{fmtCompact(hp.d[l.key])}</span>
+                </div>
+                {hp.details?.[l.key]?.map((row) => (
+                  <div key={row.label} className="flex items-center gap-1.5 leading-tight pl-3.5 text-[10px]">
+                    <span className="text-foreground-muted flex-1 truncate">{row.label}</span>
+                    <span className="tabular-nums text-foreground-muted" style={blur}>{fmtCompact(row.value)}</span>
+                  </div>
+                ))}
               </div>
             )
           ))}
