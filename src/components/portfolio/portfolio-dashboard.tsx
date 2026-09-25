@@ -62,7 +62,7 @@ import { useSyncStatus, useWalletInfoList } from "@/hooks/use-portfolio-sync-sta
 import { SCHEDULER_DRIVES_SYNC } from "@/lib/sync-driver"
 
 export function PortfolioDashboard() {
-  const [timeframe, setTimeframe] = useState<Timeframe>("ALL")
+  const [timeframe, setTimeframe] = useState<Timeframe>("1Y")
   const chartScope: ChartScope = "total"
   const {
     data: overview,

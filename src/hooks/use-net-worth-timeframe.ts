@@ -24,19 +24,27 @@ export function daysForTf(tf: NetWorthTf): number {
   return NET_WORTH_TIMEFRAMES.find((t) => t.key === tf)?.days ?? 30
 }
 
+interface TimeframeOptions {
+  /** Starting selection (default "M") */
+  initial?: NetWorthTf
+  /** Restore the saved selection on mount (default true). Selecting always saves. */
+  restoreSaved?: boolean
+}
+
 /**
- * Persistent net-worth lookback, shared across the sidebar and page via one
- * localStorage key so the toggle selection carries everywhere.
+ * Net-worth lookback, shared across the sidebar and page via one localStorage
+ * key so the toggle selection carries everywhere.
  */
-export function useNetWorthTimeframe() {
-  const [tf, setTf] = useState<NetWorthTf>("M")
+export function useNetWorthTimeframe({ initial = "M", restoreSaved = true }: TimeframeOptions = {}) {
+  const [tf, setTf] = useState<NetWorthTf>(initial)
 
   useEffect(() => {
+    if (!restoreSaved) return
     try {
       const v = localStorage.getItem(TF_KEY)
       if (v && NET_WORTH_TIMEFRAMES.some((t) => t.key === v)) setTf(v as NetWorthTf)
     } catch { /* ignore */ }
-  }, [])
+  }, [restoreSaved])
 
   const select = useCallback((k: NetWorthTf) => {
     setTf(k)

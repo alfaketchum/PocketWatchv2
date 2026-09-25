@@ -27,7 +27,8 @@ function withinWindow<T extends { date: string }>(points: T[], cutoffMs: number)
 
 export default function NetWorthPage() {
   const { isHidden, togglePrivacy } = usePrivacyMode()
-  const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe()
+  // Always opens on 1Y; switching ranges during a visit still works as before
+  const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe({ initial: "1Y", restoreSaved: false })
   const { data, isLoading, isError } = useCombinedNetWorth(timeframe === "ALL" ? "all" : "year")
 
   const totalNetWorth = data?.totalNetWorth ?? 0
