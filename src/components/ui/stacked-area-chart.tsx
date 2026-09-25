@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useState, useEffect, useMemo, useCallback } from "react"
+import { useChartZoom } from "@/hooks/use-chart-zoom"
+import { ResetZoomButton } from "@/components/ui/reset-zoom-button"
 
 export interface StackLayer {
   key: string
@@ -26,8 +28,12 @@ function fmtCompact(v: number): string {
 function fmtFull(v: number): string {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
 }
-function fmtDate(ts: number): string {
-  return new Date(ts).toLocaleDateString("en-US", { month: "short", year: "2-digit" })
+/** Axis date: "Sep 26" (month + year) for long spans, "Sep 12" (month + day) under ~4 months */
+function fmtDate(ts: number, spanMs: number): string {
+  const opts: Intl.DateTimeFormatOptions = spanMs < 120 * 86_400_000
+    ? { month: "short", day: "numeric" }
+    : { month: "short", year: "2-digit" }
+  return new Date(ts).toLocaleDateString("en-US", opts)
 }
 function fmtTipDate(ts: number): string {
   return new Date(ts).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
@@ -76,14 +82,23 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
     return () => obs.disconnect()
   }, [])
 
-  const points = useMemo(() => data.map((d) => ({ t: d.t, d: d.values, details: d.details })), [data])
+  const allPoints = useMemo(() => data.map((d) => ({ t: d.t, d: d.values, details: d.details })), [data])
 
   const PAD = { top: 12, right: 16, bottom: 32, left: 56 }
   const chartW = Math.max(width - PAD.left - PAD.right, 0)
   const chartH = Math.max(height - PAD.top - PAD.bottom, 0)
 
-  const tMin = points.length ? points[0].t : 0
-  const tMax = points.length ? points[points.length - 1].t : 1
+  // Zoom window [t0, t1] (null = everything); new data resets it
+  const { view, setView, dragging, zoomHandlers } = useChartZoom(containerRef, allPoints, PAD.left, chartW)
+  const points = useMemo(() => {
+    if (!view) return allPoints
+    const first = Math.max(0, allPoints.findIndex((p) => p.t >= view[0]) - 1)
+    const lastInside = allPoints.findLastIndex((p) => p.t <= view[1])
+    return allPoints.slice(first, Math.min(allPoints.length, lastInside + 2))
+  }, [allPoints, view])
+
+  const tMin = view ? view[0] : points.length ? points[0].t : 0
+  const tMax = view ? view[1] : points.length ? points[points.length - 1].t : 1
   const tRange = tMax - tMin || 1
   const totals = points.map((p) => layers.reduce((s, l) => s + (p.d[l.key] || 0), 0))
   const yMaxRaw = totals.length ? Math.max(...totals) : 1
@@ -95,12 +110,12 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
   const handleMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const mx = e.clientX - rect.left
-    if (mx < PAD.left || mx > PAD.left + chartW || points.length === 0) { setHoverIdx(null); return }
+    if (dragging || mx < PAD.left || mx > PAD.left + chartW || points.length === 0) { setHoverIdx(null); return }
     const targetT = tMin + ((mx - PAD.left) / chartW) * tRange
     let lo = 0, hi = points.length - 1
     while (lo < hi) { const mid = (lo + hi) >> 1; if (points[mid].t < targetT) lo = mid + 1; else hi = mid }
     setHoverIdx(lo)
-  }, [points, tMin, tRange, chartW])
+  }, [points, tMin, tRange, chartW, dragging])
 
   if (points.length < 2 || chartW <= 0) {
     return <div ref={containerRef} style={{ width: "100%", height }} className="flex items-center justify-center"><span className="text-xs text-foreground-muted">Not enough data</span></div>
@@ -124,7 +139,7 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
   const xTickCount = Math.min(6, Math.max(3, Math.floor(chartW / 110)))
   const xTicks = Array.from({ length: xTickCount }, (_, i) => {
     const t = tMin + (tRange * i) / (xTickCount - 1)
-    return { x: sx(t), label: fmtDate(t) }
+    return { x: sx(t), label: fmtDate(t, tRange) }
   })
 
   const hp = hoverIdx !== null ? points[hoverIdx] : null
@@ -133,7 +148,16 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
 
   return (
     <div ref={containerRef} style={{ width: "100%", position: "relative" }}>
-      <svg width={width} height={height} onMouseMove={handleMove} onMouseLeave={() => setHoverIdx(null)} style={{ display: "block" }}>
+      {view && <ResetZoomButton onClick={() => setView(null)} />}
+      <svg
+        width={width} height={height}
+        onMouseDown={zoomHandlers.onMouseDown}
+        onMouseMove={(e) => { zoomHandlers.onMouseMove(e); handleMove(e) }}
+        onMouseUp={zoomHandlers.onMouseUp}
+        onMouseLeave={() => { zoomHandlers.onMouseUp(); setHoverIdx(null) }}
+        onDoubleClick={zoomHandlers.onDoubleClick}
+        style={{ display: "block", cursor: dragging ? "grabbing" : view ? "grab" : "default", userSelect: "none" }}
+      >
         {yTicks.map((tk, i) => (
           <g key={i}>
             <line x1={PAD.left} y1={tk.y} x2={PAD.left + chartW} y2={tk.y} stroke="var(--card-border)" strokeWidth={1} opacity={0.5} />

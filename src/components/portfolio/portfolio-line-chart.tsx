@@ -1,6 +1,7 @@
 "use client"
 
-import { useRef, useEffect, useCallback } from "react"
+import { useRef, useEffect, useCallback, useState } from "react"
+import { ResetZoomButton } from "@/components/ui/reset-zoom-button"
 import {
   createChart,
   type IChartApi,
@@ -170,6 +171,22 @@ export function PortfolioLineChart({
   isHiddenRef.current = isHidden
 
   const colors = COLOR_MAP[color]
+  const [zoomed, setZoomed] = useState(false)
+  const resetZoom = useCallback(() => chartRef.current?.timeScale().fitContent(), [])
+
+  // Plain wheel scrolls the page; only Ctrl/⌘+wheel (and trackpad pinch, which
+  // browsers report as ctrl+wheel) reaches the chart as zoom
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => { if (!e.ctrlKey && !e.metaKey) e.stopPropagation() }
+    el.addEventListener("wheel", onWheel, { capture: true })
+    el.addEventListener("dblclick", resetZoom)
+    return () => {
+      el.removeEventListener("wheel", onWheel, { capture: true })
+      el.removeEventListener("dblclick", resetZoom)
+    }
+  }, [resetZoom])
 
   // initChart only depends on visual settings — NOT data or isHidden.
   // Changing data updates the series in-place; changing isHidden re-renders labels.
@@ -236,8 +253,10 @@ export function PortfolioLineChart({
           }
         })(),
       },
-      handleScale: false,
-      handleScroll: false,
+      // Zoom: pinch / Ctrl-⌘+wheel (plain wheel is filtered out below so the page
+      // still scrolls). Pan: drag. Reset: double-click or the Reset zoom button.
+      handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false, axisDoubleClickReset: false },
+      handleScroll: { pressedMouseMove: true, horzTouchDrag: true, mouseWheel: false, vertTouchDrag: false },
       width: containerRef.current.clientWidth - 55,
       height,
     }
@@ -325,6 +344,19 @@ export function PortfolioLineChart({
     mouseleaveHandlerRef.current = handleMouseLeave
     containerRef.current.addEventListener("mouseleave", handleMouseLeave)
 
+    // Re-draw the axis labels for what's visible, and track whether we're zoomed in
+    chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+      requestAnimationFrame(() => {
+        const all = dataRef.current
+        if (!range || !chartRef.current || !seriesRef.current || all.length === 0) return
+        const from = range.from as number
+        const to = range.to as number
+        const visible = all.filter((p) => (p.time as number) >= from && (p.time as number) <= to)
+        renderPriceLabels(chartRef.current, seriesRef.current, visible.length >= 2 ? visible : all, isHiddenRef.current)
+        setZoomed(from > (all[0].time as number) || to < (all[all.length - 1].time as number))
+      })
+    })
+
     chart.subscribeClick((param) => {
       if (!param.time || !param.seriesData.size) return
       const dp = param.seriesData.get(series)
@@ -395,6 +427,8 @@ export function PortfolioLineChart({
       ref={containerRef}
       className="portfolio-chart-container"
       style={{ height, width: "100%", position: "relative" }}
-    />
+    >
+      {zoomed && <ResetZoomButton onClick={resetZoom} />}
+    </div>
   )
 }
