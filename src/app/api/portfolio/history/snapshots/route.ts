@@ -12,7 +12,7 @@ import {
   onchainValueFromSnapshot, applyRange, isZerionLowConfidence,
   hasUsableReconstructedHistory, interpolateSparseGaps,
   buildWalletFingerprint, getNormalizedAddresses,
-  safeScaleReference, isProjectedChartFlat,
+  safeScaleReference, isProjectedChartFlat, zerionMatchesLive,
   SCALE_FACTOR_MIN, SCALE_FACTOR_MAX,
 } from "@/lib/portfolio/snapshot-helpers"
 import {
@@ -136,6 +136,7 @@ export async function GET(request: Request) {
       return [] as ChartPoint[]
     })
 
+    const rawZerionLatest = zerionPoints.at(-1)?.value // before scaling toward the live value
     zerionPoints = await pruneAndNormalize({ userId: user.id, zerionPoints, onchainRefPoint, reconstructedPoints, latestLiveSnapshot })
     const projectedPoints = await projectedChartPromise
 
@@ -166,13 +167,13 @@ export async function GET(request: Request) {
         : projectedPoints
       zerionPoints = mergeWithProjectedChart(zerionPoints, projectedCapped)
     } else if (projectedPoints.length > 0 && projectedIsFlat && zerionPoints.length > 0) {
-      // Flat projected chart = stablecoin-heavy DeFi portfolio.
-      // Zerion chart only shows wallet remnants (not protocol-deposited value).
-      // Suppress Zerion only if we have reconstructed/live snapshots as a backbone.
+      // Flat projected chart = stablecoin-heavy portfolio. Zerion may miss value
+      // deposited in DeFi protocols — suppress its history only when it actually
+      // disagrees with the live value, and we have snapshots as a backbone.
       const hasSnapshotBackbone = snapshotMergePoints.some(
         (p) => p.source === "live_refresh" || p.source === "reconstructed",
       )
-      if (hasSnapshotBackbone) {
+      if (hasSnapshotBackbone && !zerionMatchesLive(rawZerionLatest, liveRef?.value)) {
         console.info(`[snapshots] Flat projected chart (stablecoin-heavy DeFi) — suppressing Zerion, using snapshot backbone`)
         zerionPoints = []
       }
@@ -193,7 +194,9 @@ export async function GET(request: Request) {
     const merged = mergeChartSeries({ zerionPoints, snapshotMergePoints, latestLiveSnapshot })
 
     let strictPoints = merged
-    if (effectiveScope === "onchain") {
+    // Trusted Zerion history is complete per wallet — no need to trim to tx-sync coverage
+    const zerionTrusted = zerionPoints.length > 0 && zerionMatchesLive(rawZerionLatest, liveRef?.value)
+    if (effectiveScope === "onchain" && !zerionTrusted) {
       if (strictCoverageStartSec !== null) {
         strictPoints = merged.filter((p) => p.timestamp >= strictCoverageStartSec)
       } else {

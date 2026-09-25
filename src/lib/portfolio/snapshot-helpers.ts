@@ -386,3 +386,17 @@ export function isProjectedChartFlat(points: ChartPoint[]): boolean {
   const cov = Math.sqrt(variance) / mean
   return cov < FLAT_CHART_COV_THRESHOLD
 }
+
+/** How far Zerion's latest (unscaled) value may be from the live on-chain value and still be trusted. */
+const ZERION_LIVE_MATCH_TOLERANCE = 0.25
+
+/**
+ * Whether Zerion's stored history reflects the real portfolio: its latest raw
+ * point is within 25% of the live on-chain value. When it's far below (e.g.
+ * stablecoins in DeFi protocols Zerion doesn't count), the chart falls back to
+ * snapshots only.
+ */
+export function zerionMatchesLive(rawZerionLatest: number | undefined, liveValue: number | undefined): boolean {
+  if (!rawZerionLatest || !liveValue || rawZerionLatest <= 0 || liveValue <= 0) return false
+  return Math.abs(rawZerionLatest / liveValue - 1) <= ZERION_LIVE_MATCH_TOLERANCE
+}
