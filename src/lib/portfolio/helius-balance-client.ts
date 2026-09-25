@@ -10,36 +10,39 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-interface HeliusToken {
+// Helius reports native SOL as a balance entry with this pseudo-mint.
+const NATIVE_SOL_MINT = "So11111111111111111111111111111111111111111"
+
+interface HeliusBalance {
   mint: string
-  amount: number
+  symbol?: string
+  name?: string
+  balance: number
   decimals: number
-  name: string
-  symbol: string
-  logoURI: string | null
-  valueUsd: number
+  usdValue?: number | null
+  pricePerToken?: number | null
+  logoUri?: string | null
 }
 
 interface HeliusBalanceResponse {
-  nativeBalance: { lamports: number; solPrice: number }
-  tokens: HeliusToken[]
-  totalUsdValue: number
+  balances?: HeliusBalance[]
+  totalUsdValue?: number
+  pagination?: { page: number; limit: number; hasMore: boolean }
 }
 
-function normalizeHeliusPosition(token: HeliusToken): ZerionPosition {
-  const quantity = token.amount
-  const price = quantity > 0 ? token.valueUsd / quantity : 0
+function normalizeHeliusPosition(token: HeliusBalance, address: string): ZerionPosition {
+  const isNative = token.mint === NATIVE_SOL_MINT
   return {
-    id: `helius-sol-${token.mint}`,
+    id: isNative ? `helius-sol-native-${address.slice(0, 8)}` : `helius-sol-${token.mint}`,
     symbol: token.symbol || "???",
     name: token.name || "Unknown Token",
     chain: "solana",
-    quantity,
-    price,
-    value: token.valueUsd,
-    iconUrl: token.logoURI ?? null,
+    quantity: token.balance,
+    price: token.pricePerToken ?? 0,
+    value: token.usdValue ?? 0,
+    iconUrl: token.logoUri ?? null,
     positionType: "wallet",
-    contractAddress: token.mint,
+    contractAddress: isNative ? null : token.mint,
     protocol: null,
     protocolIcon: null,
     protocolUrl: null,
@@ -67,37 +70,17 @@ export async function fetchHeliusBalances(
       throw new Error(`Helius API error: ${res.status} ${body.slice(0, 200)}`)
     }
 
-    const json: HeliusBalanceResponse & { hasMore?: boolean } = await res.json()
-
-    // Native SOL balance
-    if (page === 1 && json.nativeBalance && json.nativeBalance.lamports > 0) {
-      const solQty = json.nativeBalance.lamports / 1e9
-      const solPrice = json.nativeBalance.solPrice ?? 0
-      positions.push({
-        id: `helius-sol-native-${address.slice(0, 8)}`,
-        symbol: "SOL",
-        name: "Solana",
-        chain: "solana",
-        quantity: solQty,
-        price: solPrice,
-        value: solQty * solPrice,
-        iconUrl: null,
-        positionType: "wallet",
-        contractAddress: null,
-        protocol: null,
-        protocolIcon: null,
-        protocolUrl: null,
-        isDefi: false,
-      })
+    const json: HeliusBalanceResponse = await res.json()
+    if (!Array.isArray(json.balances)) {
+      throw new Error("Helius balances response missing `balances` array (API shape changed?)")
     }
 
-    // SPL tokens
-    for (const token of json.tokens ?? []) {
-      if (token.amount <= 0 && token.valueUsd <= 0) continue
-      positions.push(normalizeHeliusPosition(token))
+    for (const token of json.balances) {
+      if (token.balance <= 0 && (token.usdValue ?? 0) <= 0) continue
+      positions.push(normalizeHeliusPosition(token, address))
     }
 
-    hasMore = json.hasMore === true
+    hasMore = json.pagination?.hasMore === true
     page++
   }
 

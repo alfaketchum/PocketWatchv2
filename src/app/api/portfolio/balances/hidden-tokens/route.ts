@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { getHiddenTokenSymbols, setHiddenTokens } from "@/lib/portfolio/hidden-tokens"
-import { invalidateBalancesResponseCache } from "@/app/api/portfolio/balances/route"
+import { invalidateBalancesResponseCache } from "@/lib/portfolio/balances-response"
 import { invalidateBlockchainBalancesCache } from "@/app/api/portfolio/balances/blockchain/route"
 
 /** GET /api/portfolio/balances/hidden-tokens */

@@ -50,6 +50,25 @@ interface RefreshZerionParams {
   futureRows: Array<{ timestamp: number }>
 }
 
+/**
+ * Zerion's "max" chart is coarse (~400 points over the wallet's life) and can
+ * disagree with its finer charts, so the most recent year comes from the daily
+ * "year" chart and "max" only supplies history before that. If the year chart
+ * fails, the complete max chart is used alone.
+ */
+async function fetchMaxChartWithRecentYear(zerionKey: string, addresses: string[]): Promise<[number, number][]> {
+  const maxChart = await fetchMultiWalletChart(zerionKey, addresses, "max")
+  try {
+    const yearChart = await fetchMultiWalletChart(zerionKey, addresses, "year")
+    if (yearChart.length === 0) return maxChart
+    const yearStart = Math.min(...yearChart.map(([ts]) => ts))
+    return [...maxChart.filter(([ts]) => ts < yearStart), ...yearChart]
+  } catch (error) {
+    console.warn("[snapshots] Zerion year chart failed — using max chart only:", error)
+    return maxChart
+  }
+}
+
 export async function refreshZerionCache(params: RefreshZerionParams): Promise<ChartPoint[]> {
   const {
     userId, zerionKey, addresses, nowSec,
@@ -77,7 +96,7 @@ export async function refreshZerionCache(params: RefreshZerionParams): Promise<C
       "zerion",
       `chart:max:${fpHash}`,
       undefined,
-      () => fetchMultiWalletChart(zerionKey, addresses, "max")
+      () => fetchMaxChartWithRecentYear(zerionKey, addresses)
     )
     const sanitized = sanitizeZerionSeries(freshChart, nowSec)
     const { valid: freshPoints } = filterValidPoints(sanitized)

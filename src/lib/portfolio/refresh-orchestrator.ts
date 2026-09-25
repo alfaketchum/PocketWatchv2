@@ -7,6 +7,7 @@ import { buildStakingResponse } from "@/app/api/portfolio/staking/route"
 import { withProviderPermit, isProviderThrottleError } from "@/lib/portfolio/provider-governor"
 import { getRefreshBudgetIntervalMs } from "@/lib/portfolio/provider-daily-budget"
 import { sumStablecoinValue } from "@/lib/portfolio/price-symbol-utils"
+import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 type RefreshJobStatus = "queued" | "running" | "completed" | "failed"
 
@@ -315,6 +316,12 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
         (walletData ?? []).flatMap((wallet) => wallet.positions.map((p) => ({ symbol: p.symbol, value: p.value })))
       )
 
+      const supplemental = supplementalFromDistribution(chainDistribution)
+      if (allWalletsReturned) {
+        await recordSupplementalToday(job.userId, supplemental)
+          .catch((err) => console.warn("[refresh] Failed to record supplemental history:", err))
+      }
+
       await db.portfolioSnapshot.create({
         data: {
           userId: job.userId,
@@ -328,6 +335,7 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
             onchainTotalValue: onchainTotal,
             exchangeTotalValue: exchangeTotal,
             stablecoinValue,
+            supplementalValue: sumSupplemental(supplemental),
             snapshotQuality,
             exchangePartial: !exchangeIncluded,
           }),

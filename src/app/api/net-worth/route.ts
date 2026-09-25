@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { isStableLikeSymbol, normalizeSymbolForPricing } from "@/lib/portfolio/price-symbol-utils"
+import { loadSupplementalSeries } from "@/lib/portfolio/supplemental-history"
 
 /**
  * GET /api/net-worth
@@ -130,7 +131,7 @@ export async function GET() {
     // when the app started recording). Exchange history blends in from its own
     // snapshot table, so connecting an exchange (e.g. Bybit) extends it for free.
     const historyStartSec = Math.floor(historyStart.getTime() / 1000)
-    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps] = await Promise.all([
+    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
@@ -151,6 +152,8 @@ export async function GET() {
         orderBy: { date: "asc" },
         select: { accountId: true, date: true, balance: true },
       }),
+      // Hyperliquid + Lighter history, which the Zerion chart lacks
+      loadSupplementalSeries(user.id),
     ])
 
     // Independent daily series (last value wins per day; forward-filled below).
@@ -218,7 +221,9 @@ export async function GET() {
       if (bd) lastBd = bd
       // Today uses the live, complete crypto value (wallets + exchanges + staking)
       // so the chart's last point matches the headline number.
-      const crypto = day === todayKey ? cryptoValue : lastWallet + lastExchange
+      const crypto = day === todayKey
+        ? cryptoValue
+        : lastWallet + lastExchange + supplementalAt(Date.parse(day) / 1000)
       history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
       breakdownHistory.push({
         date: day,

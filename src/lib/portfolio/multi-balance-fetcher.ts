@@ -6,6 +6,7 @@
  * EVM:    Zerion only (complete data incl. DeFi; no worse-data fallback)
  * Solana: Helius → Alchemy
  * BTC:    skipped (no dedicated provider wired yet)
+ * Hyperliquid / Lighter: merged into each EVM wallet (same address)
  */
 
 import { createHash } from "node:crypto"
@@ -15,6 +16,7 @@ import { fetchMultiWalletPositions, type MultiWalletResult, type ZerionWalletDat
 import { fetchMultiHeliusBalances } from "./helius-balance-client"
 import { fetchMultiAlchemyBalances } from "./alchemy-balance-client"
 import { fetchMultiMovementBalances } from "./movement-balance-client"
+import { fetchVenuePositions, mergeVenuePositions } from "./venue-balances"
 
 // Chains treated as EVM — fetched from Zerion.
 // Includes both DB format (uppercase short codes) and Zerion format (lowercase full names).
@@ -173,14 +175,17 @@ export async function fetchAllWalletBalances(
   )
 
   // Fetch each chain type in parallel — allSettled so one failing doesn't kill the others
+  // Hyperliquid/Lighter accounts are keyed by the same EVM addresses (never throws)
+  const venuePromise = fetchVenuePositions(evmWallets.map((w) => w.address))
   const [evmSettled, solanaSettled, movementSettled] = await Promise.allSettled([
     fetchEvmBalances(userId, evmWallets),
     fetchSolanaBalances(userId, solanaWallets),
     fetchMovementBalancesDispatch(userId, movementWallets),
   ])
+  const venuePositions = await venuePromise
 
   const evmResult = evmSettled.status === "fulfilled"
-    ? evmSettled.value
+    ? { ...evmSettled.value, wallets: mergeVenuePositions(evmSettled.value.wallets, venuePositions) }
     : { wallets: [] as ZerionWalletData[], failedCount: evmWallets.length }
   const solanaResult = solanaSettled.status === "fulfilled"
     ? solanaSettled.value

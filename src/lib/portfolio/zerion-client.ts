@@ -212,7 +212,33 @@ export async function fetchWalletChart(
   return (json.data?.attributes?.points ?? []) as [number, number][]
 }
 
-/** Fetch chart data for multiple wallets sequentially and sum into a single series. */
+const CHART_RETRY_DELAY_MS = 1_500
+
+/**
+ * Chart for one wallet, tolerant of Zerion's intermittent 5xx on long periods:
+ * retry once, then (for "max") fall back to "year" so the wallet is still counted.
+ */
+async function fetchWalletChartResilient(
+  apiKey: string,
+  address: string,
+  period: ZerionChartPeriod,
+): Promise<[number, number][]> {
+  try {
+    return await fetchWalletChart(apiKey, address, period)
+  } catch (err) {
+    if (err instanceof ZerionRateLimitError || (err as Error).message.includes("Invalid Zerion API key")) throw err
+    await new Promise((r) => setTimeout(r, CHART_RETRY_DELAY_MS))
+    try {
+      return await fetchWalletChart(apiKey, address, period)
+    } catch (retryErr) {
+      if (period !== "max" || retryErr instanceof ZerionRateLimitError) throw retryErr
+      console.warn(`[zerion] "max" chart keeps failing for ${address.slice(0, 10)}… — using "year" (earlier history for this wallet omitted)`)
+      return fetchWalletChart(apiKey, address, "year")
+    }
+  }
+}
+
+/** Fetch chart data for multiple wallets concurrently and sum into a single series. */
 export async function fetchMultiWalletChart(
   apiKey: string,
   addresses: string[],
@@ -221,22 +247,27 @@ export async function fetchMultiWalletChart(
   if (addresses.length === 0) return []
   if (addresses.length === 1) return fetchWalletChart(apiKey, addresses[0], period)
 
-  // Fetch all wallets concurrently; tolerate individual failures
+  // Fetch all wallets concurrently. A sum missing any wallet is wrong history
+  // (callers persist it as the full chart), so any failure fails the whole fetch
+  // and callers keep their previous cache until a complete fetch succeeds.
   const settled = await Promise.allSettled(
-    addresses.map((addr) => fetchWalletChart(apiKey, addr, period))
+    addresses.map((addr) => fetchWalletChartResilient(apiKey, addr, period))
   )
   const charts: [number, number][][] = []
+  const failed: string[] = []
   for (let i = 0; i < settled.length; i++) {
     const result = settled[i]
     if (result.status === "fulfilled") {
       charts.push(result.value)
     } else {
+      failed.push(addresses[i])
       console.warn(`[zerion] Chart fetch failed for ${addresses[i].slice(0, 10)}…: ${result.reason?.message ?? "unknown"}`)
     }
   }
 
-  if (charts.length === 0) return []
-  if (charts.length === 1) return charts[0]
+  if (failed.length > 0) {
+    throw new Error(`Zerion chart incomplete: ${failed.length}/${addresses.length} wallet(s) failed`)
+  }
 
   // Merge with forward-fill: when a wallet has no data at a timestamp,
   // carry forward its last known value instead of contributing $0.

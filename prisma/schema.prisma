@@ -25,6 +25,7 @@ model User {
   trackedWallets                TrackedWallet[]
   portfolioSnapshots            PortfolioSnapshot[]
   chartCaches                   ChartCache[]
+  supplementalBalanceHistory    SupplementalBalanceHistory[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
   historySyncJobs               HistorySyncJob[]
@@ -260,6 +261,20 @@ model ChartCache {
 
   @@unique([userId, timestamp])
   @@index([userId, timestamp])
+}
+
+/// Daily value history for holdings the Zerion wallet chart doesn't cover
+/// (Hyperliquid, Lighter). Added onto chart history at read time.
+model SupplementalBalanceHistory {
+  id     String   @id @default(cuid())
+  userId String
+  source String // "hyperliquid" | "lighter"
+  date   DateTime // UTC midnight
+  value  Float
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, source, date])
+  @@index([userId, date])
 }
 
 model TransactionCache {

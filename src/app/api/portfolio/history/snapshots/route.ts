@@ -23,6 +23,7 @@ import {
   computeCoverageInfo, pruneAndNormalize, purgeSnapshotData,
   fetchProjectedChart,
 } from "@/lib/portfolio/snapshot-data-pipeline"
+import { loadSupplementalSeries, stripSupplementalFromSnapshots } from "@/lib/portfolio/supplemental-history"
 
 /** GET /api/portfolio/history/snapshots — return net value history. */
 export async function GET(request: Request) {
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
   const debug = searchParams.get("debug") === "true"
 
   try {
-    const [zerionKey, wallets, cachedChartRows, snapshots, portfolioSetting, transactionCount, exchangeCredentials] = await Promise.all([
+    const [zerionKey, wallets, cachedChartRows, rawSnapshots, portfolioSetting, transactionCount, exchangeCredentials, supplementalAt] = await Promise.all([
       getServiceKey(user.id, "zerion"),
       db.trackedWallet.findMany({ where: { userId: user.id }, orderBy: { createdAt: "asc" } }),
       db.chartCache.findMany({ where: { userId: user.id }, orderBy: { timestamp: "asc" } }),
@@ -44,7 +45,11 @@ export async function GET(request: Request) {
       db.portfolioSetting.findUnique({ where: { userId: user.id }, select: { settings: true } }),
       db.transactionCache.count({ where: { userId: user.id } }),
       getAllExchangeCredentials(user.id),
+      loadSupplementalSeries(user.id),
     ])
+    // Zerion's chart has no Hyperliquid/Lighter value — run the pipeline without
+    // it (so scaling compares like with like) and add its daily history back at the end.
+    const snapshots = stripSupplementalFromSnapshots(rawSnapshots)
 
     const hasExchangeAccounts = exchangeCredentials.length > 0
     const liveRefreshCount = snapshots.filter((s) => s.source === "live_refresh").length
@@ -203,6 +208,7 @@ export async function GET(request: Request) {
       strictPoints = await blendExchangeBalances({ userId: user.id, merged, matchingLiveSnapshots, onchainValueFromSnapshot })
     }
 
+    strictPoints = strictPoints.map((p) => ({ ...p, value: p.value + supplementalAt(p.timestamp) }))
     const ranged = applyRange(strictPoints, range, nowSec)
     const interpolated = range === "1D" ? ranged : interpolateSparseGaps(ranged)
     const points = interpolated.map((p) => ({ timestamp: p.timestamp, total_value: p.value, total_usd_value: p.value, source: p.source }))
