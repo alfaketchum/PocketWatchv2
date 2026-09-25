@@ -7,6 +7,7 @@ import { buildStakingResponse } from "@/app/api/portfolio/staking/route"
 import { withProviderPermit, isProviderThrottleError } from "@/lib/portfolio/provider-governor"
 import { getRefreshBudgetIntervalMs } from "@/lib/portfolio/provider-daily-budget"
 import { STABLECOIN_SET_VERSION, sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
+import { snapshotAssetValues } from "@/lib/portfolio/asset-values"
 import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 type RefreshJobStatus = "queued" | "running" | "completed" | "failed"
@@ -336,6 +337,7 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
             exchangeTotalValue: exchangeTotal,
             stablecoinValue,
             stablecoinSet: STABLECOIN_SET_VERSION,
+            assetValues: snapshotAssetValues((walletData ?? []).flatMap((wallet) => wallet.positions)),
             supplementalValue: sumSupplemental(supplemental),
             snapshotQuality,
             exchangePartial: !exchangeIncluded,

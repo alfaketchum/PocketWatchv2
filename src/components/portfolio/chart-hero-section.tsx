@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import dynamic from "next/dynamic"
+import { cn } from "@/lib/utils"
 import { TextMorph } from "torph/react"
 import { PortfolioChartCard } from "@/components/portfolio/portfolio-chart-card"
 import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
@@ -15,6 +17,37 @@ const PortfolioLineChart = dynamic(
   () => import("@/components/portfolio/portfolio-line-chart").then((m) => ({ default: m.PortfolioLineChart })),
   { ssr: false, loading: () => <div className="h-[240px] animate-shimmer rounded-xl" /> },
 )
+const PortfolioCompositionChart = dynamic(
+  () => import("@/components/portfolio/portfolio-composition-chart").then((m) => ({ default: m.PortfolioCompositionChart })),
+  { ssr: false, loading: () => <div className="h-[240px] animate-shimmer rounded-xl" /> },
+)
+
+type ChartView = "total" | "stable" | "asset"
+const CHART_VIEWS: Array<{ key: ChartView; label: string }> = [
+  { key: "total", label: "Total" },
+  { key: "stable", label: "Stable vs Digital" },
+  { key: "asset", label: "By asset" },
+]
+
+function ChartViewToggle({ view, onChange }: { view: ChartView; onChange: (v: ChartView) => void }) {
+  return (
+    <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg">
+      {CHART_VIEWS.map((v) => (
+        <button
+          key={v.key}
+          type="button"
+          onClick={() => onChange(v.key)}
+          className={cn(
+            "px-2.5 py-1.5 text-[11px] font-medium rounded-md transition-colors duration-150 whitespace-nowrap",
+            view === v.key ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
+          )}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export interface ChartHeroSectionProps {
   timeframes: typeof TIMEFRAMES
@@ -49,6 +82,7 @@ export function ChartHeroSection({
   chartStats, historyWarning, syncStatus,
 }: ChartHeroSectionProps) {
   const isHovering = hoveredPoint !== null
+  const [view, setView] = useState<ChartView>("total")
 
   return (
     <PortfolioChartCard
@@ -58,7 +92,10 @@ export function ChartHeroSection({
       onTimeframeChange={onTimeframeChange}
       isLoading={isLoading}
       headerActions={
-        <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
+        <>
+          <ChartViewToggle view={view} onChange={setView} />
+          <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
+        </>
       }
     >
       {historyWarning && (
@@ -105,7 +142,9 @@ export function ChartHeroSection({
         )}
       </div>
 
-      {chartData.length >= 1 ? (
+      {view !== "total" ? (
+        <PortfolioCompositionChart mode={view} range={timeframe} height={240} isHidden={isHidden} />
+      ) : chartData.length >= 1 ? (
         <PortfolioLineChart
           data={chartData.length === 1
             ? [chartData[0], { ...chartData[0], time: (chartData[0].time + 86400) as UTCTimestamp }]

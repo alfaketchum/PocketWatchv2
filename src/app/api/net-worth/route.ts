@@ -4,8 +4,7 @@ import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
-import { loadSupplementalSeries } from "@/lib/portfolio/supplemental-history"
-import { loadLiveSnapshotByDay } from "@/lib/portfolio/live-snapshot-days"
+import { loadCryptoDaily } from "@/lib/portfolio/crypto-daily"
 import { loadStablecoinSplit } from "@/lib/portfolio/net-worth-stable-split"
 import { syncStablecoinCharts } from "@/lib/portfolio/wallet-chart-cache"
 
@@ -127,36 +126,21 @@ export async function GET(request: Request) {
     const historyStart = fullHistory ? new Date(0) : new Date()
     if (!fullHistory) historyStart.setDate(historyStart.getDate() - 365)
 
-    // Crypto history backbone comes from the Zerion-backed chart cache (full
-    // wallet value history), NOT portfolioSnapshot (which only holds values from
-    // when the app started recording). Exchange history blends in from its own
-    // snapshot table, so connecting an exchange (e.g. Bybit) extends it for free.
-    const historyStartSec = Math.floor(historyStart.getTime() / 1000)
+    // Crypto history: stored Zerion history + exchange + Hyperliquid/Lighter, with
+    // live snapshots winning their day (crypto-daily.ts, shared with the portfolio chart).
     void syncStablecoinCharts(user.id) // fetches stablecoin history once per wallet; no-op when current
-    const [financeSnapshots, chartRows, exchangeSnaps, accountSnaps, supplementalAt, liveByDay, stableFor] = await Promise.all([
+    const [financeSnapshots, cryptoDaily, accountSnaps, stableFor] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
         select: { date: true, netWorth: true, breakdown: true },
       }),
-      db.chartCache.findMany({
-        where: { userId: user.id, timestamp: { gte: historyStartSec } },
-        orderBy: { timestamp: "asc" },
-        select: { timestamp: true, value: true },
-      }),
-      db.exchangeBalanceSnapshot.findMany({
-        where: { userId: user.id, createdAt: { gte: historyStart } },
-        orderBy: { createdAt: "asc" },
-        select: { createdAt: true, totalValue: true },
-      }),
+      loadCryptoDaily(user.id, historyStart, cryptoValue),
       db.financeAccountSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },
         orderBy: { date: "asc" },
         select: { accountId: true, date: true, balance: true },
       }),
-      // Hyperliquid + Lighter history, which the Zerion chart lacks
-      loadSupplementalSeries(user.id),
-      loadLiveSnapshotByDay(user.id, historyStart),
       loadStablecoinSplit(user.id, historyStart),
     ])
 
@@ -164,16 +148,6 @@ export async function GET(request: Request) {
     const financeByDay = new Map<string, number>()
     for (const snap of financeSnapshots) {
       financeByDay.set(snap.date.toISOString().slice(0, 10), snap.netWorth)
-    }
-    // Wallet value per day from the Zerion chart backbone.
-    const walletByDay = new Map<string, number>()
-    for (const row of chartRows) {
-      walletByDay.set(new Date(row.timestamp * 1000).toISOString().slice(0, 10), row.value)
-    }
-    // Exchange value per day (extends automatically as exchanges are connected).
-    const exchangeByDay = new Map<string, number>()
-    for (const snap of exchangeSnaps) {
-      exchangeByDay.set(snap.createdAt.toISOString().slice(0, 10), snap.totalValue)
     }
 
     // Per-day finance category breakdown (Cash = checking, Savings, Investments,
@@ -199,17 +173,11 @@ export async function GET(request: Request) {
     // fallback until the stablecoin history has been fetched.
     type GroupBreakdown = FinanceBreakdown & { stablecoin: number; digital: number }
 
-    // Forward-fill each series across the union of days; crypto = wallet + exchange.
+    // Forward-fill each series across the union of days.
     const todayKey = new Date().toISOString().slice(0, 10)
-    const allDays = new Set<string>([...financeByDay.keys(), ...walletByDay.keys(), ...exchangeByDay.keys(), ...liveByDay.keys()])
-    const lastChartDay = [...walletByDay.keys()].at(-1) ?? ""
-    allDays.add(todayKey)
-    const sortedDays = [...allDays].sort()
+    const sortedDays = [...new Set<string>([...financeByDay.keys(), ...cryptoDaily.days])].sort()
 
     let lastFiat = 0
-    let lastWallet = 0
-    let lastExchange = 0
-    let lastCrypto = 0
     // Seed finance groups with the current live values so they appear across the
     // whole history (finance snapshots have little back-history vs the year of
     // crypto chart data); real per-day snapshot values override where present.
@@ -221,21 +189,10 @@ export async function GET(request: Request) {
 
     for (const day of sortedDays) {
       if (financeByDay.has(day)) lastFiat = financeByDay.get(day)!
-      if (walletByDay.has(day)) lastWallet = walletByDay.get(day)!
-      if (exchangeByDay.has(day)) lastExchange = exchangeByDay.get(day)!
       const bd = bdByDay.get(day)
       if (bd) lastBd = bd
-      // Today uses the live, complete crypto value (wallets + exchanges + staking)
-      // so the chart's last point matches the headline number.
-      // Recorded live snapshots win their day; past the Zerion history (fetched once
-      // per wallet) with no snapshot, carry the last value forward.
-      const venues = supplementalAt(Date.parse(day) / 1000)
-      const live = liveByDay.get(day)
-      const crypto = day === todayKey
-        ? cryptoValue
-        : live !== undefined ? live + venues
-          : day > lastChartDay ? lastCrypto : lastWallet + lastExchange + venues
-      lastCrypto = crypto
+      // Today uses the live, complete crypto value so the last point matches the headline
+      const { crypto, venues } = cryptoDaily.cryptoFor(day)
       history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
       const stablecoin = day === todayKey ? cryptoStablecoins
         : stableFor ? stableFor(day, crypto, venues) : crypto * stableRatio

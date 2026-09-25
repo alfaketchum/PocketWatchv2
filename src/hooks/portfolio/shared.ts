@@ -84,6 +84,7 @@ export const portfolioKeys = {
   assetMappings: (ids: string[]) => [...portfolioKeys.all, "asset-mappings", ...ids.sort()] as const,
   staking: () => [...portfolioKeys.all, "staking"] as const,
   roi: () => [...portfolioKeys.all, "roi"] as const,
+  composition: (mode: string, range: string) => [...portfolioKeys.all, "history", "composition", mode, range] as const,
   stakingHistoryRoot: () => [...portfolioKeys.all, "staking", "history"] as const,
   stakingHistory: (params?: { year?: number; range?: string; positionKey?: string; protocol?: string }) =>
     [

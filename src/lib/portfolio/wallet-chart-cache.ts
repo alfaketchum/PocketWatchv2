@@ -26,10 +26,13 @@ import { NET_WORTH_STABLECOIN_FUNGIBLE_IDS } from "./stablecoins"
 const MAX_ROWS = 200_000
 const INSERT_BATCH = 1_000
 
-type Series = "total" | "stablecoin"
-const SERIES_FILTER: Record<Series, string[] | undefined> = {
-  total: undefined,
-  stablecoin: NET_WORTH_STABLECOIN_FUNGIBLE_IDS,
+/** "total", "stablecoin", or "asset:<zerion fungible id>" (one token's history) */
+type Series = "total" | "stablecoin" | `asset:${string}`
+
+function seriesFilter(series: Series): string[] | undefined {
+  if (series === "total") return undefined
+  if (series === "stablecoin") return NET_WORTH_STABLECOIN_FUNGIBLE_IDS
+  return [series.slice("asset:".length)]
 }
 
 // ─── Shared: keep per-wallet rows in sync with the wallet set ───
@@ -66,15 +69,16 @@ async function fetchMissingWallets(
   zerionKey: string | null,
   addresses: string[],
   series: Series,
-  walletFingerprint: string,
+  /** Scopes the governor lease (wallet fingerprint, or token id for asset series) */
+  leaseKey: string,
 ): Promise<void> {
   if (!zerionKey) throw new Error(`No Zerion key — ${addresses.length} wallet(s) have no ${series} history`)
-  const fpHash = createHash("sha256").update(walletFingerprint).digest("hex").slice(0, 16)
+  const fpHash = createHash("sha256").update(leaseKey).digest("hex").slice(0, 16)
 
   // The permit's lease stops concurrent page loads from fetching the same wallets twice
   const failed = await withProviderPermit(userId, "zerion", `wallet-history:${series}:${fpHash}`, undefined, async () => {
     const settled = await Promise.allSettled(addresses.map(async (address) => {
-      const points = await fetchWalletHistory(zerionKey, address, SERIES_FILTER[series])
+      const points = await fetchWalletHistory(zerionKey, address, seriesFilter(series))
       await storeWalletHistory(userId, normalizeWalletAddress(address), series, points)
     }))
     return settled
@@ -203,5 +207,60 @@ export async function syncStablecoinCharts(userId: string): Promise<void> {
     console.warn("[stablecoin-history] sync failed:", (err as Error).message)
   } finally {
     stableRunning.delete(userId)
+  }
+}
+
+// ─── Per-token history (portfolio "By asset" view) ───
+
+export interface AssetPair {
+  address: string
+  symbol: string
+  fungibleId: string
+}
+
+/**
+ * Fetch history for (wallet, token) pairs that don't have it yet — 2 requests
+ * per pair, once. Never throws: a failed pair is retried on a later load and its
+ * value shows under Misc meanwhile.
+ */
+export async function ensureAssetSeries(userId: string, zerionKey: string | null, pairs: AssetPair[]): Promise<void> {
+  if (!zerionKey || pairs.length === 0) return
+  const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}` as Series))]
+  const stored = await db.walletChartCache.groupBy({ by: ["address", "series"], where: { userId, series: { in: series } } })
+  const have = new Set(stored.map((r) => `${r.address}|${r.series}`))
+  const missing = pairs.filter((p) => !have.has(`${normalizeWalletAddress(p.address)}|asset:${p.fungibleId}`))
+  for (const pair of missing) {
+    try {
+      // Lease per (token, wallet) — a per-token key would throttle the same token's other wallets
+      await fetchMissingWallets(userId, zerionKey, [pair.address], `asset:${pair.fungibleId}`, `${pair.fungibleId}:${pair.address}`)
+    } catch (err) {
+      console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed: ${(err as Error).message}`)
+    }
+  }
+}
+
+/**
+ * Stored per-token history, summed across the wallets in `pairs`, keyed by
+ * symbol; `missing` counts pairs whose history hasn't been fetched yet.
+ */
+export async function loadAssetHistory(userId: string, pairs: AssetPair[]): Promise<{ bySymbol: Map<string, [number, number][]>; missing: number }> {
+  const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}`))]
+  const rows = await db.walletChartCache.findMany({
+    where: { userId, series: { in: series } },
+    select: { address: true, series: true, timestamp: true, value: true },
+    orderBy: { timestamp: "asc" },
+    take: MAX_ROWS,
+  })
+  const bySymbol = new Map<string, [number, number][][]>()
+  let missing = 0
+  for (const pair of pairs) {
+    const key = `${normalizeWalletAddress(pair.address)}|asset:${pair.fungibleId}`
+    const chart = rows.filter((r) => `${r.address}|${r.series}` === key).map((r): [number, number] => [r.timestamp, r.value])
+    if (chart.length === 0) { missing++; continue }
+    bySymbol.set(pair.symbol, [...(bySymbol.get(pair.symbol) ?? []), chart])
+  }
+  return {
+    bySymbol: new Map([...bySymbol.entries()].map(([symbol, charts]) => [symbol, sumWalletCharts(charts)])),
+    missing,
   }
 }

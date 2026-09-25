@@ -9,13 +9,15 @@ export const STABLECOIN_SET_VERSION = "usdc-usdt-usde-usdg"
 
 export const NET_WORTH_STABLECOIN_SYMBOLS = new Set(["USDC", "USDT", "USDE", "USDG"])
 
-/** Zerion fungible ids (cross-chain: one id covers every chain's USDC, etc.) */
-export const NET_WORTH_STABLECOIN_FUNGIBLE_IDS = [
-  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
-  "0xdac17f958d2ee523a2206206994597c13d831ec7", // USDT
-  "9b76c9cf-ae65-417c-aa37-c544e9248725", // USDe
-  "36f00d7d-3909-444c-b6ef-190ca1b64f8a", // USDG
-]
+/** Zerion fungible ids by symbol (cross-chain: one id covers every chain's USDC, etc.) */
+export const STABLECOIN_FUNGIBLE_ID_BY_SYMBOL: Record<string, string> = {
+  USDC: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  USDT: "0xdac17f958d2ee523a2206206994597c13d831ec7",
+  USDE: "9b76c9cf-ae65-417c-aa37-c544e9248725",
+  USDG: "36f00d7d-3909-444c-b6ef-190ca1b64f8a",
+}
+
+export const NET_WORTH_STABLECOIN_FUNGIBLE_IDS = Object.values(STABLECOIN_FUNGIBLE_ID_BY_SYMBOL)
 
 export function isNetWorthStablecoin(symbol: string): boolean {
   return NET_WORTH_STABLECOIN_SYMBOLS.has(symbol.trim().toUpperCase())

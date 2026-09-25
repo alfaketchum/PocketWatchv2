@@ -5,6 +5,7 @@ import { fetchAllExchangeBalances } from "@/lib/portfolio/exchange-client"
 import { normalizeWalletAddress } from "@/lib/portfolio/utils"
 import { getHiddenTokenSymbols } from "@/lib/portfolio/hidden-tokens"
 import { STABLECOIN_SET_VERSION, sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
+import { snapshotAssetValues } from "@/lib/portfolio/asset-values"
 import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 // Simple in-memory cache per user (survives between requests in same worker)
@@ -280,6 +281,8 @@ export async function buildBalancesResponse(userId: string): Promise<object> {
           // vs Digital Assets accurately over time (not just approximate the ratio).
           stablecoinValue: sumNetWorthStablecoins(allPositions as Array<{ symbol: string; value: number }>),
           stablecoinSet: STABLECOIN_SET_VERSION,
+          // Per-token values (≥ $100) so the "By asset" chart has real recent days
+          assetValues: snapshotAssetValues(allPositions as Array<{ symbol: string; value: number; chain: string }>),
           // Hyperliquid + Lighter value (absent from Zerion chart history)
           supplementalValue: sumSupplemental(supplemental),
         }),
