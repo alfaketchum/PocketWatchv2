@@ -8,6 +8,7 @@ import { db } from "@/lib/db"
 import { decrypt } from "@/lib/crypto"
 import type { ExchangeCredentials } from "./exchange-client"
 import { toExchangeServiceName } from "./exchanges"
+import { isZerionKeyPaused } from "./zerion-request-meter"
 
 const ENV_FALLBACKS: Record<string, string | undefined> = {
   zerion: process.env.ZERION_API_KEY,
@@ -73,8 +74,16 @@ export async function selectServiceKey(
   if (records.length > 0) {
     // Prefer keys under the throttle threshold; fall back to least-bad if all are over
     const healthy = records.filter((r) => r.consecutive429 < THROTTLE_THRESHOLD)
-    const best = healthy.length > 0 ? healthy[0] : records[0]
-    const decrypted = await decodeStoredValue(best.apiKeyEnc)
+    const ordered = healthy.length > 0 ? healthy : records
+    // Zerion: skip a key the request meter is cooling down after a 429
+    let best = ordered[0]
+    let decrypted = await decodeStoredValue(best.apiKeyEnc)
+    if (serviceName === "zerion" && isZerionKeyPaused(decrypted)) {
+      for (const candidate of ordered.slice(1)) {
+        const key = await decodeStoredValue(candidate.apiKeyEnc)
+        if (!isZerionKeyPaused(key)) { best = candidate; decrypted = key; break }
+      }
+    }
 
     // Await lastUsedAt update to ensure concurrent calls see updated round-robin state
     await db.externalApiKey.update({

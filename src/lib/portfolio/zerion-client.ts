@@ -1,6 +1,6 @@
 /** Zerion API v1 client — HTTP Basic auth (apiKey as username, empty password). */
 
-import { meteredZerionFetch, ZerionDailyCapError } from "./zerion-request-meter"
+import { meteredZerionFetch, ZerionDailyCapError, ZerionKeyCoolingDownError } from "./zerion-request-meter"
 
 const ZERION_BASE = "https://api.zerion.io/v1"
 const TIMEOUT_MS = 30_000
@@ -221,6 +221,7 @@ const CHART_RETRY_DELAY_MS = 1_500
 function isNonRetryable(err: unknown): boolean {
   return err instanceof ZerionRateLimitError
     || err instanceof ZerionDailyCapError
+    || err instanceof ZerionKeyCoolingDownError
     || (err as Error).message.includes("Invalid Zerion API key")
 }
 

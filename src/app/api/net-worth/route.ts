@@ -7,6 +7,7 @@ import { sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
 import { loadCryptoDaily } from "@/lib/portfolio/crypto-daily"
 import { loadStablecoinSplit } from "@/lib/portfolio/net-worth-stable-split"
 import { syncStablecoinCharts } from "@/lib/portfolio/wallet-chart-cache"
+import { runAsBackgroundZerion } from "@/lib/portfolio/zerion-request-meter"
 
 /**
  * GET /api/net-worth
@@ -128,7 +129,8 @@ export async function GET(request: Request) {
 
     // Crypto history: stored Zerion history + exchange + Hyperliquid/Lighter, with
     // live snapshots winning their day (crypto-daily.ts, shared with the portfolio chart).
-    void syncStablecoinCharts(user.id) // fetches stablecoin history once per wallet; no-op when current
+    // Fetches stablecoin history once per wallet (low priority); no-op when current
+    void runAsBackgroundZerion(() => syncStablecoinCharts(user.id))
     const [financeSnapshots, cryptoDaily, accountSnaps, stableFor] = await Promise.all([
       db.financeSnapshot.findMany({
         where: { userId: user.id, date: { gte: historyStart } },

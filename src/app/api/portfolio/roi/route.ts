@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { getTokenPnlStatus, refreshTokenPnl } from "@/lib/portfolio/roi/token-pnl-sync"
 import { buildRoiResponse } from "@/lib/portfolio/roi/roi-response"
+import { runAsBackgroundZerion } from "@/lib/portfolio/zerion-request-meter"
 
 export const maxDuration = 60
 
@@ -18,7 +19,7 @@ export async function GET() {
   try {
     const status = await getTokenPnlStatus(user.id)
     const startRefresh = status.due && !status.running
-    if (startRefresh) void refreshTokenPnl(user.id)
+    if (startRefresh) void runAsBackgroundZerion(() => refreshTokenPnl(user.id))
 
     const data = await buildRoiResponse(user.id, {
       refreshedAt: status.refreshedAt,
