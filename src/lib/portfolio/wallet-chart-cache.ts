@@ -220,49 +220,86 @@ export interface AssetPair {
   fungibleId: string
 }
 
-/** Pairs fetched per background run (2 requests each) — spreads a big backfill over runs */
-const ASSET_PAIRS_PER_RUN = 60
+/** Pairs tried per background run (2 requests each) — spreads a big backfill over runs */
+const ASSET_PAIRS_PER_RUN = 25
 /** Leave this much of today's Zerion quota for balances (~10 per refresh); resume tomorrow otherwise */
 const ASSET_BUDGET_RESERVE = 500
-/** Pause between pairs so a backfill stays well under Zerion's short-term rate limit */
-const ASSET_PAIR_DELAY_MS = 3_000
+/**
+ * Pause between pairs (~10 requests/min). Zerion throttles its chart endpoint
+ * separately from (and more tightly than) positions, so backfills go slowly.
+ */
+const ASSET_PAIR_DELAY_MS = 12_000
+/** A pair that failed is skipped this long, so one bad request can't block the queue */
+const PAIR_RETRY_AFTER_MS = 60 * 60_000
+/** After this many failures a pair is given up on (stored empty; its value stays in Misc) */
+const PAIR_MAX_FAILURES = 3
+/** When every key is cooling down, wait this long once before ending the run */
+const KEY_COOLDOWN_WAIT_MS = 45_000
+
+// Per-pair failure tracking for real errors (e.g. a wallet whose chart always
+// 500s) so they can't hold up the queue. Throttling (429) never counts.
+const failureStore = globalThis as unknown as { __pwAssetPairFailures?: Map<string, { count: number; at: number }> }
+const pairFailures = (failureStore.__pwAssetPairFailures ??= new Map())
 
 /**
  * Fetch history for (wallet, token) pairs that don't have it yet — 2 requests
- * per pair, once. At most 60 pairs per run, 3s apart, and only while today's
- * Zerion quota keeps a 500-request reserve. Never throws: unfetched pairs wait
- * for a later run and their value shows under Misc meanwhile.
+ * per pair, once. At most 25 pairs per run, 12s apart, only while today's
+ * Zerion quota keeps a 500-request reserve. A pair that fails is skipped for an
+ * hour and given up on after 3 failures. Never throws: unfetched pairs wait for
+ * a later run and their value shows under Misc meanwhile. Returns pairs fetched.
  */
 export async function ensureAssetSeries(userId: string, pairs: AssetPair[]): Promise<number> {
   if (pairs.length === 0) return 0
   const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}` as Series))]
   const stored = await db.walletChartCache.groupBy({ by: ["address", "series"], where: { userId, series: { in: series } } })
   const have = new Set(stored.map((r) => `${r.address}|${r.series}`))
+  const now = Date.now()
+  const failureKey = (p: AssetPair) => `${userId}|${normalizeWalletAddress(p.address)}|${p.fungibleId}`
   const missing = pairs.filter((p) => !have.has(`${normalizeWalletAddress(p.address)}|asset:${p.fungibleId}`))
+  const due = missing.filter((p) => now - (pairFailures.get(failureKey(p))?.at ?? 0) >= PAIR_RETRY_AFTER_MS)
+
+  let attempted = 0
   let fetched = 0
-  for (const pair of missing.slice(0, ASSET_PAIRS_PER_RUN)) {
+  for (const pair of due.slice(0, ASSET_PAIRS_PER_RUN)) {
     const budget = await getProviderDailyBudget("zerion")
     if (budget.remaining !== null && budget.remaining < ASSET_BUDGET_RESERVE) {
       console.info(`[asset-history] pausing — ${budget.remaining} Zerion requests left today; ${missing.length - fetched} pair(s) wait`)
       break
     }
-    if (fetched > 0) await new Promise((r) => setTimeout(r, ASSET_PAIR_DELAY_MS))
-    // Key per pair: round-robin across keys, skipping one cooling down after a 429
-    const zerionKey = await getServiceKey(userId, "zerion")
+    if (attempted > 0) await new Promise((r) => setTimeout(r, ASSET_PAIR_DELAY_MS))
+    // Key per pair: round-robin across keys, skipping one cooling down after a 429.
+    // If every key is cooling (short 30–60s cooldowns), wait it out once.
+    let zerionKey = await getServiceKey(userId, "zerion")
+    if (zerionKey && isZerionKeyPaused(zerionKey)) {
+      await new Promise((r) => setTimeout(r, KEY_COOLDOWN_WAIT_MS))
+      zerionKey = await getServiceKey(userId, "zerion")
+    }
     if (!zerionKey || isZerionKeyPaused(zerionKey)) {
       console.info(`[asset-history] pausing — no Zerion key available right now; ${missing.length - fetched} pair(s) wait`)
       break
     }
-    fetched++
+    attempted++
     try {
       // Lease per (token, wallet) — a per-token key would throttle the same token's other wallets
       await fetchMissingWallets(userId, zerionKey, [pair.address], `asset:${pair.fungibleId}`, `${pair.fungibleId}:${pair.address}`)
+      pairFailures.delete(failureKey(pair))
+      fetched++
     } catch (err) {
       const message = (err as Error).message
-      console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed: ${message}`)
-      // Out of quota: stop this run. A single key's 429 just cools that key —
-      // the next pair picks the other key (the loop stops once none is available).
-      if (/daily request cap|blocked \(daily_cap\)/i.test(message)) break
+      // Throttled or out of quota isn't this pair's fault — Zerion limits the chart
+      // endpoint separately, so stop the run and retry later without counting it
+      if (/rate limit|throttl|cooling down|daily request cap|blocked \((throttled|daily_cap|leased)\)/i.test(message)) {
+        console.info(`[asset-history] Zerion throttling charts — pausing; ${missing.length - fetched} pair(s) wait (${message})`)
+        break
+      }
+      const failures = (pairFailures.get(failureKey(pair))?.count ?? 0) + 1
+      pairFailures.set(failureKey(pair), { count: failures, at: Date.now() })
+      if (failures >= PAIR_MAX_FAILURES) {
+        await storeWalletHistory(userId, normalizeWalletAddress(pair.address), `asset:${pair.fungibleId}`, [])
+        console.warn(`[asset-history] giving up on ${pair.symbol} @ ${pair.address.slice(0, 10)}… after ${failures} failures (value stays in Misc)`)
+      } else {
+        console.warn(`[asset-history] ${pair.symbol} @ ${pair.address.slice(0, 10)}… failed (${failures}/${PAIR_MAX_FAILURES}), retry in 1h: ${message}`)
+      }
     }
   }
   return fetched

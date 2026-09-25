@@ -1,7 +1,7 @@
 /**
  * Asset History Worker — advances the "By asset" chart's background work:
  * registers current holdings, weekly discovery of past tokens, and the
- * budget-capped Zerion history backfill (60 pairs/run, low priority).
+ * budget-capped Zerion history backfill (25 pairs/run, ~10 req/min, low priority).
  *
  * POST /api/internal/asset-history
  * Protected by SNAPSHOT_WORKER_SECRET. Scheduled every 15 min (lib/scheduler.ts),
