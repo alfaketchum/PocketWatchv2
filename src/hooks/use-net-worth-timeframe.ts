@@ -2,15 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react"
 
-/** Shared net-worth change lookback windows (sidebar + page stay in sync). */
+/** Net-worth lookback windows (sidebar + page share the selection). */
 export const NET_WORTH_TIMEFRAMES = [
   { key: "D", label: "D", days: 1 },
   { key: "W", label: "W", days: 7 },
   { key: "M", label: "M", days: 30 },
   { key: "3M", label: "3M", days: 90 },
+  { key: "6M", label: "6M", days: 180 },
+  { key: "1Y", label: "1Y", days: 365 },
+  { key: "ALL", label: "ALL", days: Number.POSITIVE_INFINITY },
 ] as const
 
 export type NetWorthTf = (typeof NET_WORTH_TIMEFRAMES)[number]["key"]
+
+/** The compact sidebar widget only offers the short windows. */
+export const SIDEBAR_TIMEFRAMES = NET_WORTH_TIMEFRAMES.filter((t) => ["D", "W", "M", "3M"].includes(t.key))
 
 const TF_KEY = "pw-networth-tf"
 

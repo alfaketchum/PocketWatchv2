@@ -12,7 +12,7 @@ import { loadSupplementalSeries } from "@/lib/portfolio/supplemental-history"
  * Returns combined net worth from both finance (fiat) and portfolio (crypto).
  * Aggregates the latest finance account balances + portfolio snapshot value.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const user = await getCurrentUser()
   if (!user) return apiError("NW001", "Authentication required", 401)
 
@@ -122,9 +122,10 @@ export async function GET() {
     // ─── Combined ───
     const totalNetWorth = fiatNetWorth + cryptoValue
 
-    // ─── Historical snapshots (last 365 days: powers the sparkline + W/M/Y delta) ───
-    const historyStart = new Date()
-    historyStart.setDate(historyStart.getDate() - 365)
+    // ─── Historical snapshots (last 365 days by default; ?range=all for everything) ───
+    const fullHistory = new URL(request.url).searchParams.get("range") === "all"
+    const historyStart = fullHistory ? new Date(0) : new Date()
+    if (!fullHistory) historyStart.setDate(historyStart.getDate() - 365)
 
     // Crypto history backbone comes from the Zerion-backed chart cache (full
     // wallet value history), NOT portfolioSnapshot (which only holds values from
@@ -233,7 +234,7 @@ export async function GET() {
       })
     }
 
-    // Per-account change over D / W / M / 3M windows (from per-account snapshots).
+    // Per-account change over each timeframe window (from per-account snapshots).
     const byAccount = new Map<string, Array<{ t: number; balance: number }>>()
     for (const s of accountSnaps) {
       const arr = byAccount.get(s.accountId) ?? []
@@ -246,7 +247,7 @@ export async function GET() {
       const base = arr.find((p) => p.t >= cutoff) ?? arr[0]
       return arr[arr.length - 1].balance - base.balance
     }
-    const accountChanges: Record<string, { D: number; W: number; M: number; "3M": number }> = {}
+    const accountChanges: Record<string, Record<string, number>> = {}
     for (const [accountId, arr] of byAccount) {
       if (arr.length === 0) continue
       accountChanges[accountId] = {
@@ -254,6 +255,9 @@ export async function GET() {
         W: changeFor(arr, 7),
         M: changeFor(arr, 30),
         "3M": changeFor(arr, 90),
+        "6M": changeFor(arr, 180),
+        "1Y": changeFor(arr, 365),
+        ALL: arr[arr.length - 1].balance - arr[0].balance,
       }
     }
 

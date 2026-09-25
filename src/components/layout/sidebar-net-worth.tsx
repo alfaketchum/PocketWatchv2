@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn, formatCurrency } from "@/lib/utils"
 import { useFinanceAccounts } from "@/hooks/use-finance"
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
-import { useNetWorthTimeframe, daysForTf } from "@/hooks/use-net-worth-timeframe"
+import { useNetWorthTimeframe, daysForTf, SIDEBAR_TIMEFRAMES } from "@/hooks/use-net-worth-timeframe"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { NetWorthTimeframeToggle } from "@/components/net-worth/net-worth-timeframe-toggle"
@@ -37,7 +37,9 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   const { data: institutions, refetch } = useFinanceAccounts()
   const { data: netWorth } = useCombinedNetWorth()
   const { isHidden } = usePrivacyMode()
-  const { tf, select: selectTf } = useNetWorthTimeframe()
+  const { tf: selectedTf, select: selectTf } = useNetWorthTimeframe()
+  // The page chart offers longer ranges (6M / 1Y / ALL); the widget caps at 3M.
+  const tf = SIDEBAR_TIMEFRAMES.some((t) => t.key === selectedTf) ? selectedTf : "3M"
   const [open, setOpen] = useState<Set<string>>(() => new Set(DEFAULT_OPEN))
 
   useEffect(() => {
@@ -118,7 +120,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
             <span className="text-foreground-muted mx-0.5">·</span>
             <BlurredValue isHidden={isHidden}>{formatCurrency(Math.abs(totalChange))}</BlurredValue>
           </div>
-          <NetWorthTimeframeToggle value={tf} onSelect={selectTf} size="sm" className="mt-2.5" />
+          <NetWorthTimeframeToggle value={tf} onSelect={selectTf} size="sm" className="mt-2.5" options={SIDEBAR_TIMEFRAMES} />
         </div>
       )}
 

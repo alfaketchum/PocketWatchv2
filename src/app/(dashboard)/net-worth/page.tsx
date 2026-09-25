@@ -19,10 +19,16 @@ const NetWorthHistoryChart = dynamic(
   { ssr: false, loading: () => <div className="h-[260px] animate-shimmer rounded-xl" /> }
 )
 
+/** Points inside the selected window, keeping at least two so a line can draw. */
+function withinWindow<T extends { date: string }>(points: T[], cutoffMs: number): T[] {
+  const inWindow = points.filter((p) => new Date(p.date).getTime() >= cutoffMs)
+  return inWindow.length >= 2 ? inWindow : points.slice(-2)
+}
+
 export default function NetWorthPage() {
-  const { data, isLoading, isError } = useCombinedNetWorth()
   const { isHidden, togglePrivacy } = usePrivacyMode()
   const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe()
+  const { data, isLoading, isError } = useCombinedNetWorth(timeframe === "ALL" ? "all" : "year")
 
   const totalNetWorth = data?.totalNetWorth ?? 0
   const fiat = data?.fiat ?? { cash: 0, savings: 0, investments: 0, debt: 0, netWorth: 0 }
@@ -34,6 +40,8 @@ export default function NetWorthPage() {
   const cutoff = Date.now() - daysForTf(timeframe) * 86_400_000
   const baseline = history.find((h) => new Date(h.date).getTime() >= cutoff) ?? history[0]
   const firstTotal = baseline ? baseline.total : 0
+  const chartHistory = withinWindow(history, cutoff)
+  const chartBreakdown = data?.breakdownHistory ? withinWindow(data.breakdownHistory, cutoff) : undefined
   const delta = totalNetWorth - firstTotal
   const deltaPct = firstTotal !== 0 ? (delta / firstTotal) * 100 : 0
 
@@ -88,7 +96,7 @@ export default function NetWorthPage() {
           {isLoading ? (
             <div className="h-[260px] animate-shimmer rounded-lg" />
           ) : (
-            <NetWorthHistoryChart data={history} breakdown={data?.breakdownHistory} height={280} />
+            <NetWorthHistoryChart data={chartHistory} breakdown={chartBreakdown} height={280} />
           )}
         </FinanceHeroCard>
       </FadeIn>

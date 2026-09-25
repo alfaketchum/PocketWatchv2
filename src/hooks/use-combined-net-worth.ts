@@ -1,6 +1,7 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import type { NetWorthTf } from "@/hooks/use-net-worth-timeframe"
 
 export interface CombinedNetWorthData {
   totalNetWorth: number
@@ -34,12 +35,15 @@ export interface CombinedNetWorthData {
     credit: number
     loan: number
   }>
-  /** Per-account balance change over the D / W / M / 3M windows. */
-  accountChanges?: Record<string, { D: number; W: number; M: number; "3M": number }>
+  /** Per-account balance change over each timeframe window. */
+  accountChanges?: Record<string, Partial<Record<NetWorthTf, number>>>
 }
 
-async function fetchCombinedNetWorth(): Promise<CombinedNetWorthData> {
-  const res = await fetch("/api/net-worth", { credentials: "include" })
+/** "year" = last 365 days of history (default); "all" = full history. */
+export type NetWorthHistoryRange = "year" | "all"
+
+async function fetchCombinedNetWorth(range: NetWorthHistoryRange): Promise<CombinedNetWorthData> {
+  const res = await fetch(`/api/net-worth${range === "all" ? "?range=all" : ""}`, { credentials: "include" })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error ?? `Request failed: ${res.status}`)
@@ -49,13 +53,15 @@ async function fetchCombinedNetWorth(): Promise<CombinedNetWorthData> {
 
 export const combinedNetWorthKeys = {
   all: ["combined-net-worth"] as const,
-  summary: () => [...combinedNetWorthKeys.all, "summary"] as const,
+  summary: (range: NetWorthHistoryRange = "year") => [...combinedNetWorthKeys.all, "summary", range] as const,
 }
 
-export function useCombinedNetWorth() {
+export function useCombinedNetWorth(range: NetWorthHistoryRange = "year") {
   return useQuery({
-    queryKey: combinedNetWorthKeys.summary(),
-    queryFn: fetchCombinedNetWorth,
+    queryKey: combinedNetWorthKeys.summary(range),
+    queryFn: () => fetchCombinedNetWorth(range),
     staleTime: 2 * 60_000,
+    // Switching range keeps the current chart on screen while the other loads
+    placeholderData: keepPreviousData,
   })
 }
