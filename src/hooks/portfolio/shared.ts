@@ -83,6 +83,7 @@ export const portfolioKeys = {
   addressBook: () => [...portfolioKeys.all, "address-book"] as const,
   assetMappings: (ids: string[]) => [...portfolioKeys.all, "asset-mappings", ...ids.sort()] as const,
   staking: () => [...portfolioKeys.all, "staking"] as const,
+  roi: () => [...portfolioKeys.all, "roi"] as const,
   stakingHistoryRoot: () => [...portfolioKeys.all, "staking", "history"] as const,
   stakingHistory: (params?: { year?: number; range?: string; positionKey?: string; protocol?: string }) =>
     [

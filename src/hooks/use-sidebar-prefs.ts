@@ -27,6 +27,7 @@ export const PORTFOLIO_NAV_ITEMS: NavItem[] = [
   { id: "history",      label: "Activity",      href: "/portfolio/history",      icon: "history" },
   { id: "accounts",     label: "Wallets",       href: "/portfolio/accounts",     icon: "wallet" },
   { id: "staking",      label: "Staking",       href: "/portfolio/staking",      icon: "layers" },
+  { id: "roi",          label: "ROI",           href: "/portfolio/roi",          icon: "trending_up" },
 ]
 
 export const FINANCE_NAV_ITEMS: NavItem[] = [
@@ -123,6 +124,14 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     const cardsIdx = financeCat.order.indexOf("fin-cards")
     if (cardsIdx >= 0) financeCat.order.splice(cardsIdx + 1, 0, "fin-subscriptions")
     else financeCat.order.push("fin-subscriptions")
+    savePrefs(prefs)
+  }
+  // Inject roi item if missing (ROI page, after Staking).
+  const portfolioCat = prefs.categories.portfolio
+  if (portfolioCat && !portfolioCat.order.includes("roi")) {
+    const stakingIdx = portfolioCat.order.indexOf("staking")
+    if (stakingIdx >= 0) portfolioCat.order.splice(stakingIdx + 1, 0, "roi")
+    else portfolioCat.order.push("roi")
     savePrefs(prefs)
   }
   // Inject accounts category if missing (email-discovered login directory).

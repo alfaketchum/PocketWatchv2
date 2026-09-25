@@ -27,6 +27,7 @@ model User {
   chartCaches                   ChartCache[]
   supplementalBalanceHistory    SupplementalBalanceHistory[]
   walletChartCaches             WalletChartCache[]
+  tokenPnls                     TokenPnl[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
   historySyncJobs               HistorySyncJob[]
@@ -262,6 +263,33 @@ model ChartCache {
 
   @@unique([userId, timestamp])
   @@index([userId, timestamp])
+}
+
+/// Per-token cost basis / PnL from Zerion's wallet PnL endpoint, per wallet.
+/// Refreshed at most daily (one request per wallet covers all its tokens).
+model TokenPnl {
+  id              String   @id @default(cuid())
+  userId          String
+  walletAddress   String
+  fungibleId      String
+  symbol          String
+  name            String
+  chain           String
+  iconUrl         String?
+  quantity        Float
+  currentValue    Float
+  averageBuyPrice Float
+  totalInvested   Float
+  netInvested     Float
+  realizedGain    Float
+  unrealizedGain  Float
+  totalGain       Float
+  totalFee        Float
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletAddress, fungibleId])
+  @@index([userId])
 }
 
 /// Per-wallet Zerion value history, fetched once per wallet and kept. ChartCache

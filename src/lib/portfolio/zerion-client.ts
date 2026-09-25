@@ -59,6 +59,7 @@ export interface ZerionPosition {
   protocolIcon: string | null   // protocol icon URL
   protocolUrl: string | null    // protocol website
   isDefi: boolean               // true for deposit, locked, staked, reward, loan, investment
+  fungibleId?: string | null    // Zerion asset id (used for per-token PnL)
 }
 
 export interface ZerionWalletData {
@@ -121,6 +122,7 @@ export async function fetchWalletPositions(
       protocolIcon: attr.application_metadata?.icon?.url ?? null,
       protocolUrl: attr.application_metadata?.url ?? null,
       isDefi: (attr.position_type ?? "wallet") !== "wallet",
+      fungibleId: item.relationships?.fungible?.data?.id ?? null,
     }
   })
 
@@ -413,4 +415,43 @@ export async function fetchMultiWalletPositions(
   }
 
   return { wallets, failedCount: failed.length, requestCount, rateLimitedCount }
+}
+
+// ─── Per-token PnL ─────────────────────────────────────────────────────────
+
+/** Zerion's PnL figures for one asset in one wallet (USD). */
+export interface ZerionTokenPnl {
+  average_buy_price: number
+  total_gain: number
+  realized_gain: number
+  unrealized_gain: number
+  relative_total_gain_percentage: number
+  total_fee: number
+  total_invested: number
+  net_invested: number
+}
+
+/** Max fungible ids per PnL request (Zerion limit). */
+export const ZERION_PNL_MAX_FUNGIBLES = 100
+
+/**
+ * PnL for specific assets in a wallet — one request returns a per-asset
+ * breakdown (keyed by Zerion fungible id) for up to 100 ids.
+ */
+export async function fetchWalletTokenPnl(
+  apiKey: string,
+  address: string,
+  fungibleIds: string[],
+): Promise<Record<string, ZerionTokenPnl>> {
+  if (fungibleIds.length === 0) return {}
+  const ids = fungibleIds.slice(0, ZERION_PNL_MAX_FUNGIBLES).map(encodeURIComponent).join(",")
+  const url = `${ZERION_BASE}/wallets/${encodeURIComponent(address)}/pnl/?currency=usd&filter[fungible_ids]=${ids}`
+  const { response: res } = await fetchWithRetry(url, makeHeaders(apiKey))
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("Invalid Zerion API key")
+    if (res.status === 429) throw new ZerionRateLimitError("Zerion rate limit exceeded")
+    throw new Error(`Zerion PnL API error: ${res.status}`)
+  }
+  const json = await res.json()
+  return (json.data?.attributes?.breakdown?.by_id ?? {}) as Record<string, ZerionTokenPnl>
 }

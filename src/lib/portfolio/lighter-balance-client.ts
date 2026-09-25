@@ -7,6 +7,7 @@
  */
 
 import type { ZerionPosition } from "./zerion-client"
+import type { VenuePnlRow } from "@/types/roi"
 
 const API_BASE = "https://mainnet.zklighter.elliot.ai/api/v1"
 const TIMEOUT_MS = 15_000
@@ -16,7 +17,10 @@ const STABLE_SYMBOLS = new Set(["USDC", "USDT", "USDE"])
 export const LIGHTER_CHAIN = "lighter"
 
 interface LighterAsset { symbol: string; balance: string; margin_mode: string }
-interface LighterPosition { symbol: string; sign: number; position: string }
+interface LighterPosition {
+  symbol: string; sign: number; position: string
+  avg_entry_price?: string; position_value?: string; unrealized_pnl?: string
+}
 interface LighterAccount {
   index: number
   total_asset_value: string
@@ -107,4 +111,30 @@ export async function fetchLighterBalances(
   if (json.code === ACCOUNT_NOT_FOUND) return []
   if (status !== 200) throw Object.assign(new Error(`Lighter account fetch failed: ${status}`), { status })
   return (json.accounts ?? []).flatMap((a) => accountPositions(address, a, prices))
+}
+
+// ─── Entry price / PnL for the ROI page ─────────────────────────────────────
+
+/** Open perp positions with Lighter's own average entry and unrealized PnL. */
+export async function fetchLighterPnlRows(address: string): Promise<VenuePnlRow[]> {
+  const { status, json } = await lighterGet<{ code?: number; accounts?: LighterAccount[] }>(
+    `/account?by=l1_address&value=${encodeURIComponent(address)}`,
+  )
+  if (json.code === ACCOUNT_NOT_FOUND) return []
+  if (status !== 200) throw Object.assign(new Error(`Lighter account fetch failed: ${status}`), { status })
+
+  return (json.accounts ?? []).flatMap((a) => (a.positions ?? [])
+    .filter((p) => Number(p.position) !== 0)
+    .map((p): VenuePnlRow => {
+      const size = Math.abs(Number(p.position))
+      const entryPrice = Number(p.avg_entry_price ?? 0)
+      const unrealizedPnl = Number(p.unrealized_pnl ?? 0)
+      const cost = entryPrice * size
+      return {
+        venue: "lighter", kind: "perp", walletAddress: address, market: p.symbol,
+        side: p.sign > 0 ? "long" : "short", size, entryPrice,
+        positionValue: Number(p.position_value ?? 0), unrealizedPnl,
+        roiPct: cost > 0 ? (unrealizedPnl / cost) * 100 : null, leverage: null,
+      }
+    }))
 }

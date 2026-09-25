@@ -11,6 +11,7 @@
  */
 
 import type { ZerionPosition } from "./zerion-client"
+import type { VenuePnlRow } from "@/types/roi"
 
 const INFO_URL = "https://api.hyperliquid.xyz/info"
 const TIMEOUT_MS = 15_000
@@ -23,8 +24,13 @@ interface SpotMeta {
   universe: Array<{ tokens: [number, number]; index: number }>
 }
 interface SpotAssetCtx { markPx: string; midPx: string | null }
-interface SpotBalance { coin: string; token: number; total: string }
-interface PerpPosition { position: { coin: string; szi: string; leverage: { value: number } } }
+interface SpotBalance { coin: string; token: number; total: string; entryNtl?: string }
+interface PerpPosition {
+  position: {
+    coin: string; szi: string; leverage: { value: number }
+    entryPx?: string; positionValue?: string; unrealizedPnl?: string
+  }
+}
 type PortfolioSeries = Array<[string, { accountValueHistory: Array<[number, string]> }]>
 
 async function info<T>(body: Record<string, unknown>): Promise<T> {
@@ -128,4 +134,49 @@ export async function fetchHyperliquidBalances(
       isDefi: true,
     },
   ]
+}
+
+// ─── Entry price / PnL for the ROI page ─────────────────────────────────────
+
+function pct(gain: number, cost: number): number | null {
+  return cost > 0 ? (gain / cost) * 100 : null
+}
+
+/** Open perps + spot holdings with Hyperliquid's own entry and unrealized PnL. */
+export async function fetchHyperliquidPnlRows(address: string, prices: Map<number, number>): Promise<VenuePnlRow[]> {
+  const [spot, perp] = await Promise.all([
+    info<{ balances: SpotBalance[] }>({ type: "spotClearinghouseState", user: address }),
+    info<{ assetPositions: PerpPosition[] }>({ type: "clearinghouseState", user: address }),
+  ])
+
+  const perps = perp.assetPositions
+    .map((a) => a.position)
+    .filter((p) => Number(p.szi) !== 0)
+    .map((p): VenuePnlRow => {
+      const size = Math.abs(Number(p.szi))
+      const entryPrice = Number(p.entryPx ?? 0)
+      const unrealizedPnl = Number(p.unrealizedPnl ?? 0)
+      return {
+        venue: "hyperliquid", kind: "perp", walletAddress: address, market: p.coin,
+        side: Number(p.szi) > 0 ? "long" : "short", size, entryPrice,
+        positionValue: Number(p.positionValue ?? 0), unrealizedPnl,
+        roiPct: pct(unrealizedPnl, entryPrice * size), leverage: p.leverage.value,
+      }
+    })
+
+  // Spot reports the cost of the current balance (entryNtl); USDC has none
+  const spots = spot.balances
+    .filter((b) => b.token !== USDC_TOKEN_INDEX && Number(b.entryNtl ?? 0) > 0 && Number(b.total) > 0)
+    .map((b): VenuePnlRow => {
+      const size = Number(b.total)
+      const cost = Number(b.entryNtl)
+      const value = size * (prices.get(b.token) ?? 0)
+      return {
+        venue: "hyperliquid", kind: "spot", walletAddress: address, market: b.coin, side: null,
+        size, entryPrice: cost / size, positionValue: value, unrealizedPnl: value - cost,
+        roiPct: pct(value - cost, cost), leverage: null,
+      }
+    })
+
+  return [...perps, ...spots]
 }
