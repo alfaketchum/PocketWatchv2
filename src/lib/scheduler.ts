@@ -154,10 +154,13 @@ function buildJobs(): readonly JobConfig[] {
   ] as const
 }
 
-function createTask(job: JobConfig): ReturnType<typeof cron.schedule> {
+function createTask(job: JobConfig): {
+  task: ReturnType<typeof cron.schedule>
+  run: () => Promise<void>
+} {
   let running = false
 
-  return cron.schedule(job.schedule, async () => {
+  const run = async () => {
     if (running) {
       console.warn(
         `[scheduler] ${job.name} skipped — previous invocation still running`,
@@ -185,7 +188,9 @@ function createTask(job: JobConfig): ReturnType<typeof cron.schedule> {
     } finally {
       running = false
     }
-  })
+  }
+
+  return { task: cron.schedule(job.schedule, run), run }
 }
 
 const REQUIRED_SECRETS: Record<string, string> = {
@@ -199,23 +204,40 @@ const REQUIRED_SECRETS: Record<string, string> = {
   ACCOUNTS_SCAN_SECRET: "accounts-scan",
 }
 
-export function startScheduler(): () => void {
+// Delay before a boot-time run, so the server is listening before it calls itself.
+const RUN_ON_START_DELAY_MS = 30_000
+
+interface SchedulerOptions {
+  /** Start only these jobs (by name). Omit to start every job. */
+  readonly only?: readonly string[]
+  /** Also run each started job once shortly after boot. */
+  readonly runOnStart?: boolean
+}
+
+export function startScheduler(options: SchedulerOptions = {}): () => void {
+  const { only, runOnStart = false } = options
   // Warn about missing secrets at startup
   for (const [envVar, jobNames] of Object.entries(REQUIRED_SECRETS)) {
-    if (!process.env[envVar]) {
+    if (!process.env[envVar] && (!only || only.some((n) => jobNames.includes(n)))) {
       console.warn(
         `[scheduler] WARNING: ${envVar} not set — ${jobNames} will fail with 401`,
       )
     }
   }
 
-  const jobs = buildJobs()
+  const jobs = buildJobs().filter((j) => !only || only.includes(j.name))
   const tasks = jobs.map(createTask)
   console.log(
     `[scheduler] Started ${tasks.length} cron jobs: ${jobs.map((j) => j.name).join(", ")}`,
   )
+  const startTimer = runOnStart
+    ? setTimeout(() => {
+        for (const t of tasks) void t.run()
+      }, RUN_ON_START_DELAY_MS)
+    : null
   return () => {
-    for (const t of tasks) t.stop()
+    if (startTimer) clearTimeout(startTimer)
+    for (const t of tasks) t.task.stop()
     console.log("[scheduler] Stopped all cron jobs")
   }
 }
