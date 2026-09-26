@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import dynamic from "next/dynamic"
-import { cn } from "@/lib/utils"
+import { ChartViewToggle } from "@/components/ui/chart-view-toggle"
 import { TextMorph } from "torph/react"
 import { PortfolioChartCard } from "@/components/portfolio/portfolio-chart-card"
 import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
@@ -28,26 +28,6 @@ const CHART_VIEWS: Array<{ key: ChartView; label: string }> = [
   { key: "stable", label: "Stable vs Digital" },
   { key: "asset", label: "By asset" },
 ]
-
-function ChartViewToggle({ view, onChange }: { view: ChartView; onChange: (v: ChartView) => void }) {
-  return (
-    <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg">
-      {CHART_VIEWS.map((v) => (
-        <button
-          key={v.key}
-          type="button"
-          onClick={() => onChange(v.key)}
-          className={cn(
-            "px-2.5 py-1.5 text-[11px] font-medium rounded-md transition-colors duration-150 whitespace-nowrap",
-            view === v.key ? "bg-primary text-white shadow-sm" : "text-foreground-muted hover:text-foreground",
-          )}
-        >
-          {v.label}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 export interface ChartHeroSectionProps {
   timeframes: typeof TIMEFRAMES
@@ -93,7 +73,7 @@ export function ChartHeroSection({
       isLoading={isLoading}
       headerActions={
         <>
-          <ChartViewToggle view={view} onChange={setView} />
+          <ChartViewToggle views={CHART_VIEWS} view={view} onChange={setView} />
           <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
         </>
       }

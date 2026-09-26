@@ -71,6 +71,8 @@ export const financeKeys = {
   deepInsights: () => [...financeKeys.all, "deep-insights"] as const,
   netWorth: (range: string, includeInvestments = true) =>
     [...financeKeys.all, "net-worth", range, includeInvestments] as const,
+  composition: (mode: string, range: string, includeInvestments: boolean) =>
+    [...financeKeys.all, "composition", mode, range, includeInvestments] as const,
   categoryRules: () => [...financeKeys.all, "category-rules"] as const,
   settings: () => [...financeKeys.all, "settings"] as const,
   trends: (months: number) => [...financeKeys.all, "trends", months] as const,

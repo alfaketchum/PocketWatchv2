@@ -25,12 +25,25 @@ import { SpendingMonthCard } from "@/components/finance/spending-month-card"
 import { MonthlyBillsCard } from "@/components/finance/dashboard/monthly-bills-card"
 import { DashboardInsightsCard } from "@/components/finance/dashboard/dashboard-insights-card"
 import { FadeIn } from "@/components/motion/fade-in"
+import { ChartViewToggle } from "@/components/ui/chart-view-toggle"
 import { StaggerChildren, StaggerItem } from "@/components/motion/stagger-children"
 
 const NetWorthChart = dynamic(
   () => import("@/components/finance/net-worth-chart").then((m) => m.NetWorthChart),
   { ssr: false, loading: () => <div className="h-[200px] animate-shimmer rounded-xl" /> }
 )
+
+const FinanceCompositionChart = dynamic(
+  () => import("@/components/finance/finance-composition-chart").then((m) => m.FinanceCompositionChart),
+  { ssr: false, loading: () => <div className="h-[260px] animate-shimmer rounded-xl" /> }
+)
+
+type ChartView = "total" | "category" | "account"
+const CHART_VIEWS: Array<{ key: ChartView; label: string }> = [
+  { key: "total", label: "Total" },
+  { key: "category", label: "By category" },
+  { key: "account", label: "By account" },
+]
 
 const NW_RANGES = ["1W", "1M", "3M", "6M", "1Y", "ALL"] as const
 const RANGE_MAP: Record<string, "1w" | "1m" | "3m" | "6m" | "1y" | "all"> = {
@@ -39,6 +52,7 @@ const RANGE_MAP: Record<string, "1w" | "1m" | "3m" | "6m" | "1y" | "all"> = {
 
 export default function FinanceDashboardPage() {
   const [nwRange, setNwRange] = useState<string>("1W")
+  const [chartView, setChartView] = useState<ChartView>("total")
   const [includeInvestments, setIncludeInvestments] = useState(true)
   const [calMonth, setCalMonth] = useState<string | undefined>(undefined)
   const { isHidden, togglePrivacy } = usePrivacyMode()
@@ -195,7 +209,8 @@ export default function FinanceDashboardPage() {
                 </span>
                 {fetchHistory.isPending ? "Fetching..." : "Refresh History"}
               </button>
-            <div className="ml-auto">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <ChartViewToggle views={CHART_VIEWS} view={chartView} onChange={setChartView} />
               <div className="inline-flex rounded-lg p-0.5 mobile-pill-group" style={{ backgroundColor: "color-mix(in srgb, var(--background-secondary) 80%, transparent)" }}>
                 {NW_RANGES.map((r) => (
                   <button
@@ -216,7 +231,15 @@ export default function FinanceDashboardPage() {
           </div>
 
           {/* Net Worth Chart */}
-          {nwLoading ? (
+          {chartView !== "total" ? (
+            <FinanceCompositionChart
+              mode={chartView}
+              range={RANGE_MAP[nwRange] ?? "1y"}
+              includeInvestments={includeInvestments}
+              height={260}
+              isHidden={isHidden}
+            />
+          ) : nwLoading ? (
             <div className="h-[260px] animate-shimmer rounded-lg" />
           ) : netWorthData && netWorthData.length >= 1 ? (
             <NetWorthChart data={netWorthData} range={RANGE_MAP[nwRange] ?? "1y"} height={260} />

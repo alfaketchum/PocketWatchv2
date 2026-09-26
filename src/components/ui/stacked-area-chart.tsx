@@ -16,6 +16,8 @@ export interface StackedPoint {
   values: Record<string, number>
   /** Optional per-layer breakdown rows shown under that layer in the tooltip */
   details?: Record<string, Array<{ label: string; value: number }>>
+  /** Optional rows under the layers in the tooltip (e.g. debt, net worth) */
+  footer?: Array<{ label: string; value: number }>
 }
 
 function fmtCompact(v: number): string {
@@ -82,7 +84,7 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
     return () => obs.disconnect()
   }, [])
 
-  const allPoints = useMemo(() => data.map((d) => ({ t: d.t, d: d.values, details: d.details })), [data])
+  const allPoints = useMemo(() => data.map((d) => ({ t: d.t, d: d.values, details: d.details, footer: d.footer })), [data])
 
   const PAD = { top: 12, right: 16, bottom: 32, left: 56 }
   const chartW = Math.max(width - PAD.left - PAD.right, 0)
@@ -188,7 +190,7 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
               <div key={l.key}>
                 <div className="flex items-center gap-1.5 leading-tight">
                   <span className="inline-block w-2 h-2 rounded-full" style={{ background: l.color }} />
-                  <span className="text-foreground-muted flex-1">{l.label}</span>
+                  <span className="text-foreground-muted flex-1 truncate" title={l.label}>{l.label}</span>
                   <span className="tabular-nums text-foreground" style={blur}>{fmtCompact(hp.d[l.key])}</span>
                 </div>
                 {hp.details?.[l.key]?.map((row) => (
@@ -200,6 +202,16 @@ export function StackedAreaChart({ data, layers, height = 280, onLayerClick, isH
               </div>
             )
           ))}
+          {hp.footer && hp.footer.length > 0 && (
+            <div className="mt-1.5 pt-1.5 border-t border-card-border">
+              {hp.footer.map((row) => (
+                <div key={row.label} className="flex items-center gap-1.5 leading-tight">
+                  <span className="text-foreground-muted flex-1">{row.label}</span>
+                  <span className={row.value < 0 ? "tabular-nums text-error" : "tabular-nums text-foreground"} style={blur}>{row.value < 0 ? "−" : ""}{fmtCompact(Math.abs(row.value))}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
