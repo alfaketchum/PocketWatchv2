@@ -30,6 +30,7 @@ model User {
   stablecoinChartCaches         StablecoinChartCache[]
   assetCandidates               AssetCandidate[]
   trackedAssetPairs             TrackedAssetPair[]
+  solanaTokenAccounts           SolanaTokenAccount[]
   tokenPnls                     TokenPnl[]
   transactionCaches             TransactionCache[]
   transactionSyncStates         TransactionSyncState[]
@@ -341,6 +342,21 @@ model TrackedAssetPair {
 
   @@unique([userId, walletAddress, fungibleId])
   @@index([userId])
+}
+
+/// Solana token accounts a wallet has used (seen in its transactions), so the
+/// sync fetches incoming transfers to accounts since closed — Solana RPC's
+/// getTokenAccountsByOwner only returns open ones.
+model SolanaTokenAccount {
+  id            String   @id @default(cuid())
+  userId        String
+  walletAddress String
+  address       String
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, walletAddress, address])
+  @@index([userId, walletAddress])
 }
 
 /// Summed stablecoin-only history (USDC/USDT/USDe/USDG) across wallets —

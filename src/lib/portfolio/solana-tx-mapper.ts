@@ -207,3 +207,18 @@ export function heliusTxToRecords(
 
   return records
 }
+
+/** Token accounts owned by `wallet` that this transaction touched (incl. ones since closed). */
+export function walletTokenAccounts(htx: HeliusTransaction, wallet: string): string[] {
+  const accounts = new Set<string>()
+  for (const tt of htx.tokenTransfers ?? []) {
+    if (tt.fromUserAccount === wallet && tt.fromTokenAccount) accounts.add(tt.fromTokenAccount)
+    if (tt.toUserAccount === wallet && tt.toTokenAccount) accounts.add(tt.toTokenAccount)
+  }
+  for (const ad of htx.accountData ?? []) {
+    for (const change of ad.tokenBalanceChanges ?? []) {
+      if (change.userAccount === wallet && change.tokenAccount) accounts.add(change.tokenAccount)
+    }
+  }
+  return [...accounts]
+}

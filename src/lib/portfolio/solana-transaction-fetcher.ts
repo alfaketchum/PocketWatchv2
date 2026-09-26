@@ -16,7 +16,7 @@ import type { ServiceKeyEntry } from "./service-keys"
 import { heliusTxToRecords } from "./solana-tx-mapper"
 import type { HeliusTransaction, TransactionCacheRecord } from "./solana-tx-mapper"
 import type { WalletChainSyncResult, SyncErrorDetail } from "./transaction-fetcher"
-import { fetchATATransactions, backfillSPLSymbols } from "./solana-ata-fetcher"
+import { fetchATATransactions, backfillSPLSymbols, recordTokenAccounts } from "./solana-ata-fetcher"
 
 export { heliusTxToRecords } from "./solana-tx-mapper"
 export type { HeliusTransaction, TransactionCacheRecord } from "./solana-tx-mapper"
@@ -179,8 +179,10 @@ export async function syncSolanaWalletStep(options: {
 
     if (!heliusTxs || heliusTxs.length === 0) {
       phase = "fetching-atas"
+      pageKey = null
       break
     }
+    await recordTokenAccounts(userId, addr, heliusTxs)
 
     const allRecords: TransactionCacheRecord[] = []
     let hitKnown = false
@@ -215,6 +217,7 @@ export async function syncSolanaWalletStep(options: {
 
     if (hitKnown) {
       phase = "fetching-atas"
+      pageKey = null
       break
     }
 
@@ -222,34 +225,40 @@ export async function syncSolanaWalletStep(options: {
 
     if (heliusTxs.length < HELIUS_PAGE_LIMIT) {
       phase = "fetching-atas"
+      pageKey = null
       break
     }
   }
 
-  // -- Phase 2: ATA fetch for incoming SPL transfers --
+  // -- Phase 2: token accounts for incoming SPL transfers (resumable; pageKey = last account done) --
   if (phase === "fetching-atas" && errors.length === 0 && Date.now() - startedAtMs < maxMs) {
     const ataResult = await fetchATATransactions({
       userId,
       walletAddress: addr,
       heliusKeys,
       syncMode,
-      maxSignaturesPerATA: syncMode === "incremental" ? 50 : 200,
+      cursor: pageKey,
+      maxParseRequests: Math.max(1, maxRequests - stepRequests),
+      deadlineMs: startedAtMs + maxMs,
     })
 
     totalNew += ataResult.newRecords
     recordsInserted += ataResult.newRecords
     stepRequests += ataResult.requestsUsed
     requestsProcessed += ataResult.requestsUsed
+    pageKey = ataResult.cursor
 
-    if (ataResult.errors.length > 0) {
-      for (const e of ataResult.errors) {
-        errors.push(e)
-      }
+    const ataError = ataResult.errors[0]
+    if (ataError) {
+      errors.push(...ataResult.errors)
+      retryAfter = new Date(Date.now() + (ataError.retryAfterSec ?? 60) * 1000)
+      lastErrorCode = ataError.code
+      lastErrorMessage = ataError.message
+    } else if (ataResult.done) {
+      isComplete = true
+      phase = "completed"
+      highWaterMark = 1
     }
-
-    isComplete = true
-    phase = "completed"
-    highWaterMark = 1
   }
 
   // Persist state

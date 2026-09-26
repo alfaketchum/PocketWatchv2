@@ -44,14 +44,13 @@ export async function discoverTokenAccounts(walletAddress: string): Promise<stri
   return results
 }
 
-/** Get recent signatures for an address via Solana RPC. */
-export async function getSignaturesForAddress(
-  address: string,
-  options: { limit?: number; before?: string },
-): Promise<{ signature: string; blockTime: number | null }[]> {
-  const params: Record<string, unknown> = { limit: options.limit ?? 100 }
-  if (options.before) params.before = options.before
+const SIGNATURE_PAGE_LIMIT = 1_000
+/** Pause between signature pages — the public RPC rate-limits getSignaturesForAddress */
+const SIGNATURE_PAGE_DELAY_MS = 250
 
+interface SignatureEntry { signature: string; err: unknown }
+
+async function fetchSignaturePage(address: string, limit: number, before?: string): Promise<SignatureEntry[]> {
   const res = await fetch(SOLANA_RPC, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,15 +58,35 @@ export async function getSignaturesForAddress(
       jsonrpc: "2.0",
       id: 1,
       method: "getSignaturesForAddress",
-      params: [address, params],
+      params: [address, { limit, ...(before ? { before } : {}) }],
     }),
     signal: AbortSignal.timeout(15_000),
   })
-  const data = await res.json() as {
-    result?: { signature: string; blockTime: number | null; err: unknown }[]
+  const data = await res.json().catch(() => null) as { result?: SignatureEntry[]; error?: { message?: string } } | null
+  // An error must not read as "no more history" — that silently truncated syncs
+  if (!res.ok || !data || data.error || !data.result) {
+    throw Object.assign(new Error(`getSignaturesForAddress ${res.status}: ${data?.error?.message ?? "no result"}`), { status: res.status })
   }
-  // Only return successful transactions
-  return (data.result ?? []).filter((s) => s.err === null)
+  return data.result
+}
+
+/**
+ * Successful transaction signatures for an address, newest first — paging back
+ * until `max` are collected or its history ends. Pages on the raw cursor, so a
+ * page of only failed transactions doesn't end it early. Throws on RPC errors.
+ */
+export async function getSignaturesForAddress(address: string, max: number): Promise<string[]> {
+  const signatures: string[] = []
+  let before: string | undefined
+  while (signatures.length < max) {
+    if (before) await new Promise((r) => setTimeout(r, SIGNATURE_PAGE_DELAY_MS))
+    const limit = Math.min(SIGNATURE_PAGE_LIMIT, max - signatures.length)
+    const page = await fetchSignaturePage(address, limit, before)
+    signatures.push(...page.filter((s) => s.err === null).map((s) => s.signature))
+    if (page.length < limit) break
+    before = page[page.length - 1].signature
+  }
+  return signatures
 }
 
 /** Resolve SPL token metadata (symbol + decimals) from a mint address via Solana RPC. */
