@@ -24,6 +24,16 @@ const SECTIONS: Array<{ id: string; label: string; order: GroupKey[] }> = [
   { id: "liabilities", label: "Liabilities", order: LIABILITY_ORDER },
 ]
 
+/** Latest point at or before the cutoff (history is daily, so "D" compares to yesterday); else the earliest. */
+function baselineAt<T extends { date: string }>(points: readonly T[], cutoffMs: number): T | undefined {
+  let base: T | undefined
+  for (const p of points) {
+    if (new Date(p.date).getTime() > cutoffMs) break
+    base = p
+  }
+  return base ?? points[0]
+}
+
 function changeColor(v: number): string {
   return v > 0 ? "text-emerald-500" : v < 0 ? "text-red-500" : "text-foreground-muted"
 }
@@ -87,16 +97,16 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
   if (!anyAccounts) return null
 
   // Change over the selected lookback: total (from history) + per group (from
-  // the per-day breakdown). Baseline = earliest point within the window.
+  // the per-day breakdown). Baseline = last point at or before the cutoff.
   const cutoffMs = Date.now() - daysForTf(tf) * 86_400_000
   const hist = netWorth?.history ?? []
   const totalNow = netWorth?.totalNetWorth ?? 0
-  const totalBase = (hist.find((h) => new Date(h.date).getTime() >= cutoffMs) ?? hist[0])?.total ?? 0
+  const totalBase = baselineAt(hist, cutoffMs)?.total ?? 0
   const totalChange = totalNow - totalBase
   const totalPct = totalBase !== 0 ? (totalChange / totalBase) * 100 : 0
 
   const bh = netWorth?.breakdownHistory ?? []
-  const bdBase = bh.find((h) => new Date(h.date).getTime() >= cutoffMs) ?? bh[0]
+  const bdBase = baselineAt(bh, cutoffMs)
   const bdLast = bh[bh.length - 1]
   const groupChange = (k: GroupKey): number | null => {
     if (!bdBase || !bdLast) return null
@@ -160,7 +170,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                     <div className="ml-auto flex flex-col items-end leading-tight">
                       <span className="text-[11px] tabular-nums text-foreground-muted"><BlurredValue isHidden={isHidden}>{formatCurrency(groupTotal)}</BlurredValue></span>
                       {gc !== null && gc !== 0 && (
-                        <span className={cn("text-[9px] tabular-nums", changeColor(gc))}>
+                        <span className={cn("text-[9px] tabular-nums", changeColor(LIABILITY_ORDER.includes(k) ? -gc : gc))}>
                           {gc > 0 ? "+" : "−"}<BlurredValue isHidden={isHidden}>{formatCurrency(Math.abs(gc))}</BlurredValue>
                         </span>
                       )}
