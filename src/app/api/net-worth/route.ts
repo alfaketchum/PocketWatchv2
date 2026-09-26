@@ -159,7 +159,10 @@ export async function GET(request: Request) {
     for (const snap of financeSnapshots) {
       const key = snap.date.toISOString().slice(0, 10)
       try {
-        const b = JSON.parse(snap.breakdown) as Record<string, number>
+        // Field-decrypted + deserialized by the Prisma extension (an object);
+        // JSON.parse(object) throws, which silently flattened this history.
+        const raw: unknown = snap.breakdown
+        const b = (typeof raw === "string" ? JSON.parse(raw) : raw) as Record<string, number>
         bdByDay.set(key, {
           cash: (b.checking ?? 0) + (b.depository ?? 0) + (b.cash ?? 0),
           savings: b.savings ?? 0,
