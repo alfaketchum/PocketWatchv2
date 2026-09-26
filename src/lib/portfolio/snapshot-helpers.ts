@@ -13,7 +13,7 @@ export { sanitizeZerionSeries, sanitizeSeriesOutliers, safeScaleReference } from
 
 // ── Types ──
 
-export type SnapshotRange = "ALL" | "1Y" | "3M" | "1W" | "1D"
+export type SnapshotRange = "ALL" | "3Y" | "2Y" | "1Y" | "6M" | "3M" | "1W" | "1D"
 export type SnapshotScope = "onchain" | "total"
 export type SnapshotStatus = "ready" | "syncing" | "insufficient_history"
 export type SnapshotWarningCode =
@@ -46,7 +46,10 @@ export const RANGE_SECONDS: Record<Exclude<SnapshotRange, "ALL">, number> = {
   "1D": 86400,
   "1W": 7 * 86400,
   "3M": 90 * 86400,
+  "6M": 182 * 86400,
   "1Y": 365 * 86400,
+  "2Y": 730 * 86400,
+  "3Y": 1095 * 86400,
 }
 
 export const SOURCE_PRIORITY: Record<string, number> = {
@@ -64,9 +67,7 @@ export const SCALE_FACTOR_MAX = 3.0
 
 export function normalizeRange(input: string | null): SnapshotRange {
   const value = (input ?? "ALL").toUpperCase()
-  if (value === "1D" || value === "1W" || value === "3M" || value === "1Y" || value === "ALL") {
-    return value
-  }
+  if (value === "ALL" || value in RANGE_SECONDS) return value as SnapshotRange
   return "ALL"
 }
 

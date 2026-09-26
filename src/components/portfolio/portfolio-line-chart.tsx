@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState } from "react"
 import { ResetZoomButton } from "@/components/ui/reset-zoom-button"
+import type { SnapshotRange } from "@/lib/portfolio/snapshot-helpers"
 import {
   createChart,
   type IChartApi,
@@ -28,7 +29,7 @@ interface PortfolioLineChartProps {
   onCrosshairMove?: (point: { time: number; value: number } | null) => void
   onPointClick?: (point: { time: number; value: number }) => void
   isHidden?: boolean
-  timeframe?: "ALL" | "1Y" | "3M" | "1W" | "1D"
+  timeframe?: SnapshotRange
 }
 
 // Chart color palettes. Neutral uses the brand Apple-blue; positive/negative keep
@@ -124,7 +125,7 @@ function renderPriceLabels(chart: IChartApi, series: ISeriesApi<"Area">, data: C
   }
 }
 
-function formatTick(time: UTCTimestamp, timeframe: "ALL" | "1Y" | "3M" | "1W" | "1D"): string {
+function formatTick(time: UTCTimestamp, timeframe: SnapshotRange): string {
   const d = new Date(time * 1000)
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -137,7 +138,7 @@ function formatTick(time: UTCTimestamp, timeframe: "ALL" | "1Y" | "3M" | "1W" | 
     })
   }
 
-  if (timeframe === "1W" || timeframe === "3M") {
+  if (timeframe === "1W" || timeframe === "3M" || timeframe === "6M") {
     return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`
   }
 

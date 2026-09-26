@@ -11,7 +11,7 @@ import type {
 
 // ─── Constants ───
 
-export const TIMEFRAMES = ["ALL", "1Y", "3M", "1W", "1D"] as const
+export const TIMEFRAMES = ["ALL", "3Y", "2Y", "1Y", "6M", "3M", "1W", "1D"] as const
 export type Timeframe = (typeof TIMEFRAMES)[number]
 
 export const CHART_SCOPES = ["total", "onchain"] as const

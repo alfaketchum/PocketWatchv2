@@ -3,7 +3,7 @@
 import { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-const DEFAULT_TIMEFRAMES = ["ALL", "1Y", "3M", "1W", "1D"]
+const DEFAULT_TIMEFRAMES = ["ALL", "3Y", "2Y", "1Y", "6M", "3M", "1W", "1D"]
 
 interface PortfolioChartCardProps {
   title: string
@@ -55,7 +55,7 @@ export function PortfolioChartCard({
         <div className="flex items-center gap-3">
           {headerActions}
           {onTimeframeChange && (
-            <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg mobile-pill-group">
+            <div className="flex items-center bg-background-secondary border border-card-border p-0.5 rounded-lg mobile-pill-group">
               {timeframes.map((tf) => {
                 const isActive = activeTimeframe === tf
                 return (
@@ -64,7 +64,7 @@ export function PortfolioChartCard({
                     type="button"
                     onClick={() => onTimeframeChange(tf)}
                     className={cn(
-                      "px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors duration-150",
+                      "px-2 py-1 text-[10px] font-medium rounded-md transition-colors duration-150 tabular-nums",
                       isActive
                         ? "bg-primary text-white shadow-sm"
                         : "bg-transparent text-foreground-muted hover:text-foreground"

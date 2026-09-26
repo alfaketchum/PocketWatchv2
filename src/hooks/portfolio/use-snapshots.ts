@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { portfolioFetch, portfolioKeys } from "./shared"
+import type { SnapshotRange } from "@/lib/portfolio/snapshot-helpers"
 
 // ─── Snapshot types ───
 
@@ -15,7 +16,7 @@ export interface NetValueHistoryPoint {
 export interface NetValueHistoryMeta {
   scope: "onchain" | "total"
   effectiveScope?: "onchain" | "total"
-  range: "ALL" | "1Y" | "3M" | "1W" | "1D"
+  range: SnapshotRange
   status: "ready" | "syncing" | "insufficient_history"
   coverageStart: string | null
   coverageEnd: string | null
@@ -36,7 +37,7 @@ export interface NetValueHistoryResponse {
 function normalizeNetValueHistoryPayload(
   payload: unknown,
   scope: "onchain" | "total",
-  range: "ALL" | "1Y" | "3M" | "1W" | "1D"
+  range: SnapshotRange
 ): NetValueHistoryResponse {
   if (Array.isArray(payload)) {
     return {
@@ -80,7 +81,7 @@ function normalizeNetValueHistoryPayload(
 // ─── 12. Net Value History (Snapshots) ───
 
 export function useNetValueHistory(
-  range: "ALL" | "1Y" | "3M" | "1W" | "1D" = "ALL",
+  range: SnapshotRange = "ALL",
   scope: "onchain" | "total" = "total"
 ) {
   const params = new URLSearchParams({ range, scope })
