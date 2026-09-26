@@ -218,6 +218,18 @@ export async function fetchWalletChart(
 
 const CHART_RETRY_DELAY_MS = 1_500
 
+/**
+ * Wallets whose "max" chart Zerion can't build in time (504 after ~30s — e.g. a
+ * long-lived wallet with many tokens) skip "max" for this long and use "year" only.
+ */
+const MAX_CHART_SKIP_MS = 7 * 24 * 60 * 60_000
+const maxSkipStore = globalThis as unknown as { __pwZerionMaxChartSkip?: Map<string, number> }
+const maxChartFailedAt = (maxSkipStore.__pwZerionMaxChartSkip ??= new Map())
+
+function isMaxChartSkipped(address: string): boolean {
+  return Date.now() - (maxChartFailedAt.get(address) ?? 0) < MAX_CHART_SKIP_MS
+}
+
 function isNonRetryable(err: unknown): boolean {
   return err instanceof ZerionRateLimitError
     || err instanceof ZerionDailyCapError
@@ -244,7 +256,8 @@ async function fetchWalletChartResilient(
       return await fetchWalletChart(apiKey, address, period, fungibleIds)
     } catch (retryErr) {
       if (period !== "max" || isNonRetryable(retryErr)) throw retryErr
-      console.warn(`[zerion] "max" chart keeps failing for ${address.slice(0, 10)}… — using "year" (earlier history for this wallet omitted)`)
+      maxChartFailedAt.set(address, Date.now())
+      console.warn(`[zerion] "max" chart keeps failing for ${address.slice(0, 10)}… — using "year" for this wallet for the next 7 days (earlier history omitted)`)
       return fetchWalletChart(apiKey, address, "year", fungibleIds)
     }
   }
@@ -260,6 +273,7 @@ export async function fetchWalletHistory(
   address: string,
   fungibleIds?: string[],
 ): Promise<[number, number][]> {
+  if (isMaxChartSkipped(address)) return fetchWalletChartResilient(apiKey, address, "year", fungibleIds)
   const maxChart = await fetchWalletChartResilient(apiKey, address, "max", fungibleIds)
   try {
     const yearChart = await fetchWalletChartResilient(apiKey, address, "year", fungibleIds)
