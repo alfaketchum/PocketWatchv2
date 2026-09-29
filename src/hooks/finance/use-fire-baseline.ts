@@ -8,14 +8,18 @@ import { useFinanceIncome } from "./use-settings"
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
 import { buildBaseline } from "@/lib/fire/fire-plan"
 import { parseDataset } from "@/lib/fire/swr-simulation"
-import type { FireBaseline, MarketHistory, ShillerDataset } from "@/lib/fire/fire-types"
+import type { MarketHistory, ShillerDataset } from "@/lib/fire/fire-types"
 
 /** 12 complete months plus the current partial month (which the baseline drops). */
 const TREND_MONTHS = 13
 
-/** Auto-fill values for the FIRE planner, derived from net worth, spending and income. */
-export function useFireBaseline(): { baseline: FireBaseline; isLoading: boolean } {
-  const netWorth = useCombinedNetWorth("year")
+/**
+ * Auto-fill values for the FIRE planner, derived from net worth, spending and income.
+ * Also returns the raw net-worth and trend data so the plan can chart history and
+ * category costs without refetching.
+ */
+export function useFireBaseline() {
+  const netWorth = useCombinedNetWorth("all")
   const trends = useFinanceTrends(TREND_MONTHS)
   const income = useFinanceIncome()
 
@@ -30,7 +34,12 @@ export function useFireBaseline(): { baseline: FireBaseline; isLoading: boolean 
     [netWorth.data, trends.data, income.data],
   )
 
-  return { baseline, isLoading: netWorth.isLoading || trends.isLoading }
+  return {
+    baseline,
+    netWorth: netWorth.data,
+    trendMonths: trends.data?.months ?? [],
+    isLoading: netWorth.isLoading || trends.isLoading,
+  }
 }
 
 /** Bundled Shiller history (1871–present), loaded on demand and parsed once. */

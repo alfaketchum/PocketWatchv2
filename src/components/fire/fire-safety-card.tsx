@@ -4,9 +4,11 @@ import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { NOTABLE_COHORTS } from "@/lib/fire/fire-constants"
 import { cohortCount, failsafe, simulateCohort, successRate, summarizeCohorts } from "@/lib/fire/swr-simulation"
+import { oneMoreYear, type ExtraYearResult } from "@/lib/fire/fire-analysis"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
-import { fmtMonth, fmtPct } from "./fire-helpers"
+import { fmtMoney, fmtMonth, fmtPct, fmtSuccess } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
+import { OneMoreYearStrip } from "./one-more-year-strip"
 
 function verdict(rate: number): { label: string; tone: string } {
   if (rate >= 0.99) return { label: "Very safe", tone: "text-success" }
@@ -15,9 +17,30 @@ function verdict(rate: number): { label: string; tone: string } {
   return { label: "Risky", tone: "text-error" }
 }
 
-/** Plain-English historical backtest of the user's withdrawal rate (ERN-style cohorts since 1871). */
-export function FireSafetyCard({ state }: { state: FirePlanState }) {
-  const { history, simOptions, plan, inputs } = state
+function oneMoreYearSentence(rows: ExtraYearResult[]): string | null {
+  const [now, next] = rows
+  if (!now || !next || now.successRate === null || next.successRate === null) return null
+  if (now.successRate < 0.999 && next.successRate > now.successRate) {
+    return `Working one more year raises this to ${fmtSuccess(next.successRate)}.`
+  }
+  if (now.safeSpend !== null && next.safeSpend !== null && next.safeSpend > now.safeSpend) {
+    return `Working one more year would let you safely spend ${fmtMoney(next.safeSpend - now.safeSpend)}/yr more.`
+  }
+  return null
+}
+
+/**
+ * Plain-English historical backtest of the user's withdrawal rate (ERN-style cohorts since 1871),
+ * plus ERN's "one more year" question — a sentence in Basic, a 0–5 year strip in Advanced.
+ */
+export function FireSafetyCard({ state, isHidden = false }: { state: FirePlanState; isHidden?: boolean }) {
+  const { history, simOptions, plan, inputs, analysis, allocation } = state
+  const advanced = inputs.mode === "advanced"
+
+  const extraYears = useMemo(
+    () => (history ? oneMoreYear(inputs, analysis, plan, history, allocation.total > 0 ? allocation.sim : null, advanced ? 5 : 1) : []),
+    [history, inputs, analysis, plan, allocation, advanced],
+  )
 
   const result = useMemo(() => {
     if (!history) return null
@@ -46,7 +69,7 @@ export function FireSafetyCard({ state }: { state: FirePlanState }) {
       info={`Every ${inputs.horizonYears}-year retirement starting any month from 1871 to ${fmtMonth(history!.months[result.count - 1])}, with real stock and bond returns (Shiller data, ERN method).`}
     >
       <div className="flex items-baseline gap-3 flex-wrap">
-        <p className={cn("text-3xl font-bold tabular-nums", v.tone)}>{fmtPct(result.rate, 0)}</p>
+        <p className={cn("text-3xl font-bold tabular-nums", v.tone)}>{fmtSuccess(result.rate)}</p>
         <p className={cn("text-sm font-semibold", v.tone)}>{v.label}</p>
       </div>
       <p className="text-sm text-foreground mt-2">
@@ -75,6 +98,15 @@ export function FireSafetyCard({ state }: { state: FirePlanState }) {
             </span>
           ))}
         </div>
+      )}
+      {!advanced && oneMoreYearSentence(extraYears) && (
+        <p className="text-xs text-foreground mt-3">{oneMoreYearSentence(extraYears)}</p>
+      )}
+      {advanced && extraYears.length > 1 && (
+        <>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted mt-5">One more year</p>
+          <OneMoreYearStrip rows={extraYears} isHidden={isHidden} />
+        </>
       )}
     </FireSectionCard>
   )

@@ -5,6 +5,12 @@ export function fmtPct(value: number | null | undefined, decimals = 1): string {
   return `${(value * 100).toFixed(decimals)}%`
 }
 
+/** Success rates round down, so a single failed cohort never displays as 100%. */
+export function fmtSuccess(rate: number | null | undefined): string {
+  if (rate == null || !Number.isFinite(rate)) return "—"
+  return `${Math.floor(rate * 100 + 1e-9)}%`
+}
+
 export function fmtMoney(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "—"
   return formatCurrency(value, "USD", 0)

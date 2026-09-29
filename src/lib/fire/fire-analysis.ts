@@ -10,8 +10,8 @@ import {
   yearsToCoast,
   yearsToTarget,
 } from "./fire-projection"
-import { toMonthlyFlows } from "./swr-simulation"
-import type { FireInputs, FireTier, FireTierKey, ProjectionPoint, SimOptions } from "./fire-types"
+import { failsafe, successRate, summarizeCohorts, toMonthlyFlows } from "./swr-simulation"
+import type { EquityPlan, FireInputs, FireTier, FireTierKey, MarketHistory, ProjectionPoint, SimOptions } from "./fire-types"
 
 export interface TargetProgress {
   target: number
@@ -85,16 +85,83 @@ export function analyzePlan(inputs: FireInputs, plan: ResolvedPlan, nowYear: num
   }
 }
 
-/** Simulation options for the user's own retirement (allocation, horizon, target, income). */
-export function simOptionsForPlan(inputs: FireInputs, retireAge: number, portfolio: number): SimOptions {
+export interface SimShares {
+  stocks: number
+  bonds: number
+  cash: number
+}
+
+function allocationPlan(inputs: FireInputs, portfolioShares: SimShares | null): EquityPlan {
+  if (inputs.allocationSource === "portfolio" && portfolioShares && portfolioShares.stocks + portfolioShares.bonds + portfolioShares.cash > 0) {
+    return { start: portfolioShares.stocks, end: portfolioShares.stocks, glideMonths: 0, cash: portfolioShares.cash }
+  }
   const g = inputs.glidepath
+  return g.enabled
+    ? { start: g.startEquity, end: g.endEquity, glideMonths: Math.round(g.years * 12) }
+    : { start: inputs.equityShare, end: inputs.equityShare, glideMonths: 0 }
+}
+
+/**
+ * Simulation options for the user's own retirement. With `allocationSource: "portfolio"`
+ * the mix comes from their actual accounts; otherwise from the manual share or glidepath.
+ */
+export function simOptionsForPlan(
+  inputs: FireInputs,
+  retireAge: number,
+  portfolio: number,
+  portfolioShares: SimShares | null = null,
+): SimOptions {
   return {
-    equity: g.enabled
-      ? { start: g.startEquity, end: g.endEquity, glideMonths: Math.round(g.years * 12) }
-      : { start: inputs.equityShare, end: inputs.equityShare, glideMonths: 0 },
+    equity: allocationPlan(inputs, portfolioShares),
     horizonMonths: inputs.horizonYears * 12,
     finalValue: inputs.finalValueTarget,
     feeAnnual: FEE_DRAG_ANNUAL,
     flows: toMonthlyFlows(inputs.flows, retireAge, portfolio),
   }
+}
+
+export interface ExtraYearResult {
+  extraYears: number
+  retireAge: number
+  portfolio: number
+  withdrawalRate: number
+  successRate: number | null
+  /** Spending the worst historical cohort could have sustained from this portfolio. */
+  safeSpend: number | null
+}
+
+/**
+ * ERN's "one more year" question: keep working n extra years past the FI date, then
+ * retire on the same spending. A bigger portfolio lowers the withdrawal rate.
+ */
+export function oneMoreYear(
+  inputs: FireInputs,
+  analysis: PlanAnalysis,
+  plan: { investable: number; annualSpend: number; annualContribution: number },
+  history: MarketHistory,
+  portfolioShares: SimShares | null,
+  maxExtra = 5,
+): ExtraYearResult[] {
+  const r = inputs.realReturn
+  // Already FI: the extra years start from today's (larger) portfolio.
+  const base = analysis.yourTarget.years === 0 ? Math.max(plan.investable, analysis.fireNumber) : analysis.fireNumber
+  const out: ExtraYearResult[] = []
+  for (let n = 0; n <= maxExtra; n++) {
+    const growth = Math.pow(1 + r, n)
+    const added = Math.abs(r) < 1e-9 ? plan.annualContribution * n : (plan.annualContribution * (growth - 1)) / r
+    const portfolio = base * growth + added
+    const retireAge = analysis.retireAge + n
+    const opts = simOptionsForPlan(inputs, retireAge, portfolio, portfolioShares)
+    const wr = portfolio > 0 ? plan.annualSpend / portfolio : 0
+    const worst = failsafe(summarizeCohorts(history, opts))
+    out.push({
+      extraYears: n,
+      retireAge,
+      portfolio,
+      withdrawalRate: wr,
+      successRate: successRate(history, wr, opts),
+      safeSpend: worst ? worst.wr * portfolio : null,
+    })
+  }
+  return out
 }

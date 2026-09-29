@@ -8,7 +8,6 @@ import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtMoney, fmtPct } from "./fire-helpers"
 import { FireFlowsEditor } from "./fire-flows-editor"
 import { FireNumberField } from "./fire-number-field"
-import { FireSectionCard } from "./fire-section-card"
 
 const SWR_OPTIONS: { value: SwrPreset; label: string }[] = [
   { value: "4", label: "4%" },
@@ -38,19 +37,12 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 
 /** Full Advanced-mode input set: portfolio, withdrawal rule, retirement simulation, income, tiers. */
 export function FireInputsPanel({ state }: { state: FirePlanState }) {
-  const { inputs, update, plan, baseline, history } = state
+  const { inputs, update, plan, baseline, history, allocation } = state
+  const manual = inputs.allocationSource === "manual"
   const set = <K extends keyof FireInputs>(key: K) => (value: FireInputs[K]) => update({ [key]: value } as Partial<FireInputs>)
   const b = baseline.investable
 
   return (
-    <FireSectionCard
-      eyebrow="Advanced inputs"
-      right={
-        <button type="button" className="btn-ghost text-xs" onClick={() => update({ ...DEFAULT_FIRE_INPUTS, mode: "advanced" })}>
-          Reset to defaults
-        </button>
-      }
-    >
       <div className="space-y-6">
         <Group title="Today">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -128,20 +120,38 @@ export function FireInputsPanel({ state }: { state: FirePlanState }) {
         </Group>
 
         <Group title="Retirement simulation">
+          <div className="flex flex-wrap items-center gap-1.5 mb-3">
+            {([
+              { value: "portfolio", label: `My portfolio (${Math.round(allocation.sim.stocks * 100)}% stocks)` },
+              { value: "manual", label: "Manual mix" },
+            ] as const).map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => update({ allocationSource: o.value })}
+                className={cn(
+                  "rounded-lg border px-3 py-1 text-xs font-medium transition-colors",
+                  inputs.allocationSource === o.value ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <FireNumberField label="Horizon (years)" value={inputs.horizonYears} min={10} max={80} onChange={(v) => update({ horizonYears: Math.round(v) })} />
             <FireNumberField label="Final value target" suffix="%" scale={100} value={inputs.finalValueTarget} min={0} max={1} onChange={set("finalValueTarget")} hint="0% = spend it all · 100% = preserve capital" />
-            {!inputs.glidepath.enabled && (
+            {manual && !inputs.glidepath.enabled && (
               <FireNumberField label="Stocks" suffix="%" scale={100} value={inputs.equityShare} min={0} max={1} onChange={set("equityShare")} hint="Rest in 10-yr Treasuries" />
             )}
-            {inputs.glidepath.enabled && (
+            {manual && inputs.glidepath.enabled && (
               <>
                 <FireNumberField label="Stocks at start" suffix="%" scale={100} value={inputs.glidepath.startEquity} min={0} max={1} onChange={(startEquity) => update({ glidepath: { ...inputs.glidepath, startEquity } })} />
                 <FireNumberField label="Stocks after glide" suffix="%" scale={100} value={inputs.glidepath.endEquity} min={0} max={1} onChange={(endEquity) => update({ glidepath: { ...inputs.glidepath, endEquity } })} />
               </>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-4 mt-3">
+          {manual && <div className="flex flex-wrap items-center gap-4 mt-3">
             <Toggle
               label="Use an equity glidepath"
               checked={inputs.glidepath.enabled}
@@ -152,15 +162,17 @@ export function FireInputsPanel({ state }: { state: FirePlanState }) {
                 <FireNumberField label="Glide over (years)" value={inputs.glidepath.years} min={1} max={40} onChange={(years) => update({ glidepath: { ...inputs.glidepath, years } })} />
               </div>
             )}
-          </div>
+          </div>}
         </Group>
 
         <Group title="Retirement income">
           <FireFlowsEditor flows={inputs.flows} onChange={set("flows")} />
         </Group>
 
-        <Group title="Tier spending levels">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Group title="Milestones">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+            <FireNumberField label="Coast: retire at" value={inputs.coastAge} min={inputs.currentAge + 1} max={100} onChange={set("coastAge")} />
+            <FireNumberField label="Barista income / yr" prefix="$" value={inputs.partTimeIncome} min={0} onChange={set("partTimeIncome")} />
             {inputs.tiers.map((t, i) => (
               <FireNumberField
                 key={t.key}
@@ -173,7 +185,9 @@ export function FireInputsPanel({ state }: { state: FirePlanState }) {
             ))}
           </div>
         </Group>
+        <button type="button" className="btn-ghost text-xs" onClick={() => update({ ...DEFAULT_FIRE_INPUTS, mode: "advanced" })}>
+          Reset all to defaults
+        </button>
       </div>
-    </FireSectionCard>
   )
 }

@@ -11,6 +11,7 @@ import { GlidepathCompare } from "@/components/fire/glidepath-compare"
 import { SupplementalFlowsCard } from "@/components/fire/supplemental-flows-card"
 import { CohortPathsChart } from "@/components/fire/cohort-paths-chart"
 import { fmtMonth, fmtPct } from "@/components/fire/fire-helpers"
+import { FireAdvancedGate } from "@/components/fire/fire-advanced-gate"
 
 const chartSkeleton = () => <div className="h-[360px] animate-shimmer rounded-2xl" />
 
@@ -31,18 +32,7 @@ export default function FireResearchPage() {
   const summaries = useMemo(() => (history ? summarizeCohorts(history, simOptions) : []), [history, simOptions])
 
   if (inputs.mode !== "advanced") {
-    return (
-      <div className="bg-card border border-card-border rounded-2xl p-8 text-center">
-        <span className="material-symbols-rounded text-primary mb-2 block" style={{ fontSize: 32 }}>science</span>
-        <p className="text-sm text-foreground font-semibold">The Safe Withdrawal Lab is part of Advanced mode</p>
-        <p className="text-xs text-foreground-muted mt-1 mb-4">
-          Heatmaps, every historical retirement since 1871, CAPE-based withdrawals, glidepaths and sequence risk.
-        </p>
-        <button type="button" className="btn-primary" onClick={() => state.update({ mode: "advanced" })}>
-          Switch to Advanced
-        </button>
-      </div>
-    )
+    return <FireAdvancedGate title="The Safe Withdrawal Lab is part of Advanced mode" onSwitch={() => state.update({ mode: "advanced" })} />
   }
 
   if (!history) {

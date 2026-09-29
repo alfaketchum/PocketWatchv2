@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { NOTABLE_COHORTS } from "@/lib/fire/fire-constants"
 import { cohortCount, simulateCohort } from "@/lib/fire/swr-simulation"
 import type { MarketHistory, SimOptions } from "@/lib/fire/fire-types"
-import { fmtCompact, fmtMonth, fmtPct } from "./fire-helpers"
+import { fmtCompact, fmtMonth, fmtPct, fmtSuccess } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
 
 const W = 720
@@ -68,7 +68,7 @@ export function CohortPathsChart({ history, wr, opts, portfolio, isHidden }: Coh
   return (
     <FireSectionCard
       eyebrow="Every historical retirement"
-      title={`${fmtPct(wr, 2)} withdrawals over ${years} years — ${successRate !== null ? fmtPct(successRate, 0) : "—"} of January starts survived`}
+      title={`${fmtPct(wr, 2)} withdrawals over ${years} years — ${successRate !== null ? fmtSuccess(successRate) : "—"} of January starts survived`}
       info="Each line is one retirement cohort (real, inflation-adjusted portfolio value). Red lines ran out of money. Highlighted: 1929 crash, 1937, 1966 stagflation, 1973, 2000 dot-com, 2007 GFC."
     >
       <div className="relative" style={{ filter: isHidden ? "blur(8px)" : undefined }}>

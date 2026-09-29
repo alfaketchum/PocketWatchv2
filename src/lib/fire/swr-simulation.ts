@@ -37,8 +37,8 @@ export function parseDataset(data: ShillerDataset): MarketHistory {
   }
 }
 
-export function constantEquity(share: number): EquityPlan {
-  return { start: share, end: share, glideMonths: 0 }
+export function constantEquity(share: number, cash = 0): EquityPlan {
+  return { start: share, end: share, glideMonths: 0, cash }
 }
 
 export function equityAt(plan: EquityPlan, month: number): number {
@@ -68,8 +68,14 @@ function flowAt(flows: MonthlyFlow[], month: number): number {
   return total
 }
 
-function monthFactor(h: MarketHistory, idx: number, equity: number, feeMonthly: number): number {
-  return 1 + equity * h.equity[idx] + (1 - equity) * h.bonds[idx] - feeMonthly
+/**
+ * One month's real growth factor. Cash earns 0% real (Shiller has no T-bill series, so
+ * this is a deliberately conservative stand-in); stocks are capped so shares never exceed 1.
+ */
+function monthFactor(h: MarketHistory, idx: number, equity: number, cash: number, feeMonthly: number): number {
+  const eq = Math.min(equity, 1 - cash)
+  const bonds = Math.max(0, 1 - eq - cash)
+  return 1 + eq * h.equity[idx] + bonds * h.bonds[idx] - feeMonthly
 }
 
 /** Number of complete retirement cohorts available for a horizon. */
@@ -91,7 +97,7 @@ export function maxSafeWr(h: MarketHistory, start: number, opts: SimOptions): nu
     const inv = 1 / growth
     sumInv += inv
     flowPv += flowAt(opts.flows, t) * inv
-    growth *= monthFactor(h, start + t, equityAt(opts.equity, t), feeMonthly)
+    growth *= monthFactor(h, start + t, equityAt(opts.equity, t), opts.equity.cash ?? 0, feeMonthly)
   }
   return (12 * (1 - opts.finalValue / growth + flowPv)) / sumInv
 }
@@ -106,7 +112,7 @@ export function simulateCohort(h: MarketHistory, start: number, wr: number, opts
   for (let t = 0; t < opts.horizonMonths; t++) {
     if (value > 0) {
       const afterFlows = value - withdrawal + flowAt(opts.flows, t)
-      value = Math.max(0, afterFlows) * monthFactor(h, start + t, equityAt(opts.equity, t), feeMonthly)
+      value = Math.max(0, afterFlows) * monthFactor(h, start + t, equityAt(opts.equity, t), opts.equity.cash ?? 0, feeMonthly)
     }
     path[t + 1] = value
   }
@@ -117,7 +123,7 @@ function annualizedReturn(h: MarketHistory, start: number, months: number, opts:
   if (start + months > h.months.length) return null
   const feeMonthly = opts.feeAnnual / 12
   let growth = 1
-  for (let t = 0; t < months; t++) growth *= monthFactor(h, start + t, equityAt(opts.equity, t), feeMonthly)
+  for (let t = 0; t < months; t++) growth *= monthFactor(h, start + t, equityAt(opts.equity, t), opts.equity.cash ?? 0, feeMonthly)
   return Math.pow(growth, 12 / months) - 1
 }
 

@@ -2,6 +2,18 @@ export type FireMode = "basic" | "advanced"
 
 export type SwrPreset = "4" | "3.5" | "3.25" | "cape" | "custom"
 
+export type CryptoTreatment = "stocks" | "cash"
+
+/** Where the simulated stock/bond/cash mix comes from. */
+export type AllocationSource = "portfolio" | "manual"
+
+/** Share of an account held in each asset class (sums to 1). */
+export interface AccountMix {
+  stocks: number
+  bonds: number
+  cash: number
+}
+
 export type FireTierKey = "lean" | "regular" | "chubby" | "fat"
 
 export interface FireTier {
@@ -44,6 +56,9 @@ export interface FireInputs {
   customSwr: number
   realReturn: number
   equityShare: number
+  allocationSource: AllocationSource
+  accountMixes: Record<string, AccountMix>
+  cryptoTreatment: CryptoTreatment
   glidepath: FireGlidepath
   horizonYears: number
   finalValueTarget: number
@@ -93,6 +108,8 @@ export interface EquityPlan {
   end: number
   /** Months to move linearly from start to end; 0 = constant allocation. */
   glideMonths: number
+  /** Constant cash share at 0% real return; bonds fill whatever stocks and cash leave. */
+  cash?: number
 }
 
 /** Monthly flow as a fraction of the initial portfolio, by month offset from retirement. */

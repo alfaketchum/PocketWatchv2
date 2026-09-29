@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { financeFetch, financeKeys } from "./shared"
@@ -46,12 +46,16 @@ export function useFireInputs() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const saveRef = useRef(save.mutate)
   saveRef.current = save.mutate
+  // Cached profile data can exist before hydration; render defaults until mounted so
+  // the first client render matches the server HTML.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current)
   }, [])
 
-  const inputs = profile.data?.inputs ?? DEFAULT_FIRE_INPUTS
+  const inputs = mounted && profile.data ? profile.data.inputs : DEFAULT_FIRE_INPUTS
 
   const update = useCallback(
     (patch: Partial<FireInputs>) => {
@@ -73,7 +77,7 @@ export function useFireInputs() {
   return {
     inputs,
     update,
-    isLoading: profile.isLoading,
+    isLoading: !mounted || profile.isLoading,
     isSaving: save.isPending,
   }
 }

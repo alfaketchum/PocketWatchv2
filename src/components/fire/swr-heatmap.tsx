@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { EQUITY_STEPS, FINAL_VALUE_TARGETS, SWR_HORIZONS } from "@/lib/fire/fire-constants"
 import { buildSwrGrid } from "@/lib/fire/swr-grid"
 import type { MarketHistory } from "@/lib/fire/fire-types"
-import { fmtPct, heatColor } from "./fire-helpers"
+import { fmtPct, fmtSuccess, heatColor } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
 
 type Metric = "failsafe" | "success"
@@ -96,7 +96,7 @@ export function SwrHeatmap({ history, probeWr }: { history: MarketHistory; probe
                       className="rounded-md text-center px-1 py-2 font-semibold text-white"
                       style={{ background: heatColor(t) }}
                     >
-                      {metric === "failsafe" ? fmtPct(c.failsafeWr, 2) : fmtPct(c.successAtProbe, 0)}
+                      {metric === "failsafe" ? fmtPct(c.failsafeWr, 2) : fmtSuccess(c.successAtProbe)}
                     </td>
                   )
                 })}

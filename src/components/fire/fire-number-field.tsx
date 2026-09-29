@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
 
 interface FireNumberFieldProps {
   label: string
@@ -17,6 +16,9 @@ interface FireNumberFieldProps {
   /** When set, shows an "auto" chip while following the baseline and a reset link otherwise. */
   auto?: { isAuto: boolean; onReset: () => void }
 }
+
+/** Overrides the unlayered global input styles; the wrapper draws the border instead. */
+const BARE_INPUT = { border: "none", background: "transparent", boxShadow: "none", padding: "6px 10px", fontSize: 14 } as const
 
 function display(value: number, scale: number): string {
   const scaled = value * scale
@@ -69,7 +71,8 @@ export function FireNumberField({
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur()
           }}
-          className={cn("w-full bg-transparent px-2.5 py-1.5 text-sm tabular-nums text-foreground outline-none")}
+          className="w-full min-w-0 tabular-nums text-foreground outline-none"
+          style={BARE_INPUT}
         />
         {suffix && <span className="pr-2.5 text-xs text-foreground-muted">{suffix}</span>}
       </span>

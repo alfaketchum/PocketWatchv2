@@ -9,6 +9,8 @@ import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { FIRE_NAV_ITEMS } from "@/hooks/use-sidebar-prefs"
 import { FireModeToggle } from "./fire-mode-toggle"
 
+const TAB_LABELS: Record<string, string> = { "/fire": "Plan", "/fire/portfolio": "Portfolio", "/fire/research": "Lab" }
+
 /** FIRE section header: title, Basic/Advanced toggle, privacy, and tabs (lab tab is Advanced-only). */
 export function FireHeader() {
   const pathname = usePathname()
@@ -44,7 +46,7 @@ export function FireHeader() {
                 )}
               >
                 <span className="material-symbols-rounded" style={{ fontSize: 15 }}>{tab.icon}</span>
-                {tab.label}
+                {TAB_LABELS[tab.href] ?? tab.label}
               </Link>
             )
           })}

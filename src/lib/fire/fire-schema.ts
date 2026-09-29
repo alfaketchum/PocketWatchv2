@@ -20,6 +20,11 @@ export const fireInputsSchema = z.object({
   customSwr: z.number().min(0.005).max(0.15),
   realReturn: rate,
   equityShare: share,
+  allocationSource: z.enum(["portfolio", "manual"]),
+  accountMixes: z
+    .record(z.string().max(64), z.object({ stocks: share, bonds: share, cash: share }))
+    .refine((m) => Object.keys(m).length <= 100, "Too many accounts"),
+  cryptoTreatment: z.enum(["stocks", "cash"]),
   glidepath: z.object({
     enabled: z.boolean(),
     startEquity: share,

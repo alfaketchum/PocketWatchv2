@@ -3,6 +3,7 @@
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtAge, fmtMoney, fmtPct, fmtYearsAway } from "./fire-helpers"
+import { FireAssumptionsRow } from "./fire-assumptions-row"
 
 function headline(years: number | null, age: number | null, year: number | null): string {
   if (years === null) return "Not reachable on your current path"
@@ -58,6 +59,8 @@ export function FireHero({ state, isHidden }: { state: FirePlanState; isHidden: 
           </div>
         ))}
       </div>
+
+      <FireAssumptionsRow state={state} />
     </section>
   )
 }

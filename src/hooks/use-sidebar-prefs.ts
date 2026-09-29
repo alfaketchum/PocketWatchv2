@@ -47,6 +47,7 @@ export const NET_WORTH_NAV_ITEMS: NavItem[] = [
 
 export const FIRE_NAV_ITEMS: NavItem[] = [
   { id: "fire-plan", label: "FIRE Plan", href: "/fire", icon: "local_fire_department" },
+  { id: "fire-portfolio", label: "FIRE Portfolio", href: "/fire/portfolio", icon: "donut_small" },
   { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science" },
 ]
 
@@ -164,6 +165,13 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     const finIdx = prefs.categoryOrder.indexOf("finance")
     prefs.categoryOrder.splice(finIdx >= 0 ? finIdx + 1 : prefs.categoryOrder.length, 0, "fire")
     prefs.categories.fire = { order: FIRE_NAV_ITEMS.map((i) => i.id), hidden: [] }
+    savePrefs(prefs)
+  }
+  // Inject fire-portfolio item if missing (added with the Portfolio tab)
+  const fireCat = prefs.categories.fire
+  if (fireCat && !fireCat.order.includes("fire-portfolio")) {
+    const planIdx = fireCat.order.indexOf("fire-plan")
+    fireCat.order.splice(planIdx >= 0 ? planIdx + 1 : fireCat.order.length, 0, "fire-portfolio")
     savePrefs(prefs)
   }
   // Remove domain settings items (consolidated to /settings)
