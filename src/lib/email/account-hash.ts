@@ -45,17 +45,31 @@ function emailFromHeader(from: string): string {
 }
 
 /**
- * Reduce a `From` header to a registrable domain suitable for grouping.
- * Returns "" when no domain can be parsed.
+ * Reduce a hostname or URL ("https://www.netflix.com/account", "mail.netflix.com")
+ * to its registrable domain ("netflix.com"). Returns "" when nothing parses.
  */
-export function registrableDomain(from: string): string {
-  const host = emailFromHeader(from).replace(/[^a-z0-9.-]/g, "")
+export function domainFromHost(hostOrUrl: string): string {
+  const host = hostOrUrl
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z]+:\/\//, "")
+    .split(/[/?#:]/)[0]
+    .replace(/[^a-z0-9.-]/g, "")
   if (!host) return ""
 
   const labels = host.split(".").filter(Boolean)
-  if (labels.length <= 2) return labels.join(".")
+  if (labels.length < 2) return ""
+  if (labels.length === 2) return labels.join(".")
 
   const lastTwo = labels.slice(-2).join(".")
   const lastThree = labels.slice(-3).join(".")
   return MULTI_LABEL_TLDS.has(lastTwo) ? lastThree : lastTwo
+}
+
+/**
+ * Reduce a `From` header to a registrable domain suitable for grouping.
+ * Returns "" when no domain can be parsed.
+ */
+export function registrableDomain(from: string): string {
+  return domainFromHost(emailFromHeader(from))
 }

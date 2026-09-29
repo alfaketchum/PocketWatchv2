@@ -1,8 +1,8 @@
 /**
  * Account directory ← Gmail scan API.
  *
- * GET  → report whether Gmail is connected (drives the connect/scan button).
- * POST → scan connected Gmail for account signals and upsert discovered accounts.
+ * GET  → Gmail connection + the current scan's progress (polled while scanning).
+ * POST → start a background scan of connected Gmail (202); 409 if one is running.
  *
  * Session-guarded and userId-scoped. POST is rate-limited (provider-bound) and
  * requires at least one connected Gmail account.
@@ -13,7 +13,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { accountsRateLimiters, checkRateLimit, getClientId } from "@/lib/rate-limit"
 import { listGmailAccounts } from "@/lib/integrations/gmail-client"
-import { syncAccountsFromGmail } from "@/lib/email/account-sync"
+import { ScanAlreadyRunningError, startBackgroundScan } from "@/lib/email/account-sync"
+import { getScanStatus } from "@/lib/email/account-scan-status"
 
 export async function GET() {
   const user = await getCurrentUser()
@@ -21,7 +22,11 @@ export async function GET() {
 
   try {
     const accounts = await listGmailAccounts(user.id)
-    return NextResponse.json({ connected: accounts.length > 0, accounts })
+    return NextResponse.json({
+      connected: accounts.length > 0,
+      accounts,
+      status: getScanStatus(user.id),
+    })
   } catch (err) {
     return apiError("ACC11", "Failed to check Gmail connection", 500, err)
   }
@@ -46,9 +51,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await syncAccountsFromGmail(user.id)
-    return NextResponse.json(result, { headers: rl.headers })
+    startBackgroundScan(user.id)
+    return NextResponse.json({ status: getScanStatus(user.id) }, { status: 202, headers: rl.headers })
   } catch (err) {
+    if (err instanceof ScanAlreadyRunningError) {
+      return apiError("ACC16", err.message, 409)
+    }
     return apiError("ACC15", "Failed to scan Gmail for accounts", 500, err)
   }
 }

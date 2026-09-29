@@ -1,5 +1,5 @@
 /**
- * Account directory hooks — list, scan, and per-account update.
+ * Account directory hooks — list and per-account update.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -9,7 +9,6 @@ import {
   accountsQuery,
   type AccountFilters,
   type AccountListResponse,
-  type AccountScanResult,
   type AccountStatus,
   type DiscoveredAccount,
 } from "./shared"
@@ -28,16 +27,6 @@ export function useAccounts(filters: AccountFilters = {}) {
     queryKey: accountKeys.list(filters),
     queryFn: () => accountsFetch<AccountListResponse>(accountsQuery(filters)),
     refetchOnMount: true,
-  })
-}
-
-/** Scan connected Gmail for account signals and refresh the directory. */
-export function useScanAccounts() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: () =>
-      accountsFetch<AccountScanResult>("/scan", { method: "POST", timeoutMs: 120_000 }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: accountKeys.all }),
   })
 }
 

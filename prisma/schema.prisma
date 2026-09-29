@@ -74,6 +74,7 @@ model User {
   pkceFlows                     PkceFlow[]
   trips                         Trip[]
   discoveredAccounts            DiscoveredAccount[]
+  gmailScanStates               GmailScanState[]
   calendarTokenVersion          Int?                           @default(1)
 
 }
@@ -972,6 +973,11 @@ model DiscoveredAccount {
   extractedBy      String    @default("heuristic") // "heuristic" | "llm"
   firstSeenAt      DateTime?
   lastSeenAt       DateTime?
+  // Payment method seen on a receipt ("Visa ending in 1234"); matched to FinanceAccount.mask.
+  paymentBrand     String?   // visa | mastercard | amex | discover | paypal | apple_pay | ...
+  paymentLast4     String?
+  // User override for which FinanceAccount pays this service (wins over auto-matching).
+  paymentAccountId String?
   // User curation.
   status           String    @default("active") // active | dismissed
   userEdited       Boolean   @default(false)
@@ -983,6 +989,24 @@ model DiscoveredAccount {
   @@index([userId, status])
   @@index([userId, category])
   @@index([userId, serviceDomain])
+}
+
+// Per-mailbox cursor for the account-directory Gmail scan: a resumable backfill
+// (newest → oldest via Gmail pageToken) plus an incremental `after:` watermark,
+// so each message is fetched once instead of re-reading the same newest page.
+model GmailScanState {
+  id                String    @id @default(cuid())
+  userId            String
+  service           String    // FinanceCredential service ("gmail_oauth:<email>")
+  backfillPageToken String?
+  backfillDone      Boolean   @default(false)
+  lastIncrementalAt DateTime?
+  processedCount    Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, service])
 }
 
 model FinanceCategoryRule {

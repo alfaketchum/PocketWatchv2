@@ -42,12 +42,22 @@ export interface AccountFilters {
   limit?: number
 }
 
-export interface AccountScanResult {
+export interface AccountScanStatus {
+  state: "idle" | "running" | "done" | "error"
+  startedAt: string | null
+  finishedAt: string | null
   scanned: number
   imported: number
   updated: number
   skipped: number
-  accounts: { email: string | null; imported: number; updated: number }[]
+  llmCalls: number
+  backfillComplete: boolean
+  error: string | null
+}
+
+export interface AccountScanInfo {
+  connected: boolean
+  status: AccountScanStatus
 }
 
 export async function accountsFetch<T>(

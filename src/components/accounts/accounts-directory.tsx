@@ -9,8 +9,6 @@ import { AccountsSkeleton } from "./accounts-skeleton"
 
 interface AccountsDirectoryProps {
   hasGmail: boolean
-  onScan: () => void
-  isScanning: boolean
 }
 
 interface ServiceGroup {
@@ -39,7 +37,7 @@ function groupByService(accounts: DiscoveredAccount[]): ServiceGroup[] {
   return [...map.values()]
 }
 
-export function AccountsDirectory({ hasGmail, onScan, isScanning }: AccountsDirectoryProps) {
+export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
   const [filters, setFilters] = useState<AccountFilters>({ status: "active" })
   const [debounced, setDebounced] = useState<AccountFilters>(filters)
 
@@ -78,8 +76,7 @@ export function AccountsDirectory({ hasGmail, onScan, isScanning }: AccountsDire
           <EmptyState
             icon="alternate_email"
             title="No logins discovered yet"
-            description="Scan your connected Gmail to build a directory of the services you've signed up for and the email you used for each."
-            action={{ label: isScanning ? "Scanning…" : "Scan Gmail", onClick: onScan }}
+            description="Click Scan Gmail above to build a directory of the services you've signed up for and the email you used for each."
           />
         ) : (
           <EmptyState

@@ -8,6 +8,7 @@
 
 export * from "./shared"
 export * from "./use-accounts"
+export * from "./use-accounts-scan"
 export {
   useGmailAccounts,
   useDisconnectGmail,

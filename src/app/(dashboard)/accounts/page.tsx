@@ -2,10 +2,11 @@
 
 import { useEffect } from "react"
 import { toast } from "sonner"
-import { useGmailAccounts, useScanAccounts } from "@/hooks/accounts"
+import { useGmailAccounts } from "@/hooks/accounts"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { GmailAccountsBar } from "@/components/trips/gmail-accounts-bar"
 import { AccountsDirectory } from "@/components/accounts/accounts-directory"
+import { AccountsScanButton } from "@/components/accounts/accounts-scan-button"
 
 const GMAIL_CONNECT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   connected: { ok: true, text: "Gmail account connected" },
@@ -20,7 +21,6 @@ const GMAIL_CONNECT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
 
 export default function AccountsPage() {
   const { data: gmailAccounts } = useGmailAccounts()
-  const scan = useScanAccounts()
 
   // Surface the OAuth callback result (?gmail=...), then drop it from the URL.
   useEffect(() => {
@@ -35,21 +35,6 @@ export default function AccountsPage() {
 
   const hasGmail = (gmailAccounts?.length ?? 0) > 0
 
-  const handleScan = () => {
-    scan.mutate(undefined, {
-      onSuccess: (result) => {
-        const found = result.imported + result.updated
-        toast.success(
-          found > 0
-            ? `Found ${result.imported} new and updated ${result.updated} account${result.updated === 1 ? "" : "s"}`
-            : "No new logins found in your email",
-        )
-      },
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : "Failed to scan Gmail"),
-    })
-  }
-
   return (
     <div className="py-6 space-y-6">
       <FinancePageHeader
@@ -57,16 +42,7 @@ export default function AccountsPage() {
         subtitle="Which email you used to sign up for each service"
         actions={
           hasGmail ? (
-            <button onClick={handleScan} disabled={scan.isPending} className="btn-secondary">
-              <span
-                className={`material-symbols-rounded ${scan.isPending ? "animate-spin" : ""}`}
-                style={{ fontSize: 16 }}
-                aria-hidden="true"
-              >
-                {scan.isPending ? "progress_activity" : "search"}
-              </span>
-              {scan.isPending ? "Scanning…" : "Scan Gmail"}
-            </button>
+            <AccountsScanButton />
           ) : (
             <a href="/api/integrations/gmail/connect" className="btn-secondary">
               <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
@@ -80,7 +56,7 @@ export default function AccountsPage() {
 
       {hasGmail && <GmailAccountsBar accounts={gmailAccounts ?? []} />}
 
-      <AccountsDirectory hasGmail={hasGmail} onScan={handleScan} isScanning={scan.isPending} />
+      <AccountsDirectory hasGmail={hasGmail} />
     </div>
   )
 }
