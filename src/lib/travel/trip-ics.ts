@@ -13,6 +13,7 @@
  */
 
 import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto"
+import { APP_NAME } from "@/lib/brand"
 
 const TOKEN_PREFIX = "trip-ics:"
 const HKDF_INFO = "pocketwatch-ics-v1"
@@ -145,7 +146,7 @@ export function buildTripsIcs(trips: ReadonlyArray<TripLike>): string {
     "PRODID:-//PocketWatch//Trips//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:PocketWatch Trips",
+    `X-WR-CALNAME:${APP_NAME} Trips`,
   ]
 
   for (const trip of trips) {

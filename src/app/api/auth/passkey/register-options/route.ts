@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api-error"
 import { getCurrentUser } from "@/lib/auth"
 import { createRegistrationOptions, getRpConfig } from "@/lib/passkey"
 import { db } from "@/lib/db"
+import { APP_NAME } from "@/lib/brand"
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     const rp = getRpConfig(request)
     const options = await createRegistrationOptions(
       user.id,
-      "PocketWatch Vault",
+      `${APP_NAME} Vault`,
       existing.map((p) => p.credentialId),
       rp,
     )

@@ -16,6 +16,7 @@
  */
 
 import { gzipSync, gunzipSync } from "node:zlib"
+import { APP_NAME } from "@/lib/brand"
 
 const MAGIC = new Uint8Array([0x50, 0x57, 0x54, 0x42]) // "PWTB"
 const FORMAT_VERSION = 0x01
@@ -141,18 +142,18 @@ export async function decryptBackup(
   password: string,
 ): Promise<unknown> {
   if (buffer.length < HEADER_SIZE + 16) {
-    throw new Error("File is too small to be a valid PocketWatch backup")
+    throw new Error(`File is too small to be a valid ${APP_NAME} backup`)
   }
 
   for (let i = 0; i < 4; i++) {
     if (buffer[i] !== MAGIC[i]) {
-      throw new Error("Not a valid PocketWatch backup file")
+      throw new Error(`Not a valid ${APP_NAME} backup file`)
     }
   }
 
   if (buffer[4] !== FORMAT_VERSION) {
     throw new Error(
-      `Unsupported backup version ${buffer[4]}. This version of PocketWatch supports version ${FORMAT_VERSION}.`,
+      `Unsupported backup version ${buffer[4]}. This version of ${APP_NAME} supports version ${FORMAT_VERSION}.`,
     )
   }
 

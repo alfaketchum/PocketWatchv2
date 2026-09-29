@@ -5,6 +5,7 @@ import { useTravelCredentials, useSaveTravelCredential, useDeleteTravelCredentia
 import { toast } from "sonner"
 import { CredentialCard } from "./credential-card"
 import { TravelerProfileCard } from "./traveler-profile-card"
+import { APP_NAME } from "@/lib/brand"
 
 export function TravelSettingsForm() {
   const { data, isLoading } = useTravelCredentials()
@@ -147,7 +148,7 @@ export function TravelSettingsForm() {
         </div>
         <p className="text-xs text-foreground-muted">
           Searches all airlines for award availability in one call. Requires an ATF{" "}
-          <strong>Premium</strong> plan. One-time connect: sign in to ATF and authorize PocketWatch.
+          <strong>Premium</strong> plan. One-time connect: sign in to ATF and authorize {APP_NAME}.
         </p>
         {atfOauthCred ? (
           <div className="bg-background rounded-lg p-3 border border-card-border flex items-center justify-between gap-3">

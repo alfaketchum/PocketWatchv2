@@ -5,6 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider"
 import { ErrorBoundary, StaleChunkReloader } from "@/components/error-boundary"
 import { SkipToContent } from "@/components/skip-to-content"
 import { ClientShell } from "@/components/layout/client-shell"
+import { APP_NAME } from "@/lib/brand"
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-sans",
@@ -32,7 +33,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
-  title: "PocketWatch — Personal Wealth Tracker",
+  title: `${APP_NAME} — Personal Wealth Tracker`,
   description: "See everything you own. In one place.",
   manifest: "/manifest.json",
   icons: {
@@ -45,10 +46,10 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PocketWatch",
+    title: APP_NAME,
   },
   openGraph: {
-    title: "PocketWatch — Personal Wealth Tracker",
+    title: `${APP_NAME} — Personal Wealth Tracker`,
     description: "See everything you own. In one place.",
     type: "website",
     images: [
@@ -56,13 +57,13 @@ export const metadata: Metadata = {
         url: "/img/og-banner.jpg",
         width: 1200,
         height: 630,
-        alt: "PocketWatch — Personal Wealth Tracker",
+        alt: `${APP_NAME} — Personal Wealth Tracker`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PocketWatch — Personal Wealth Tracker",
+    title: `${APP_NAME} — Personal Wealth Tracker`,
     description: "See everything you own. In one place.",
     images: ["/img/og-banner.jpg"],
   },

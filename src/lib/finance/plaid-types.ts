@@ -10,6 +10,7 @@ import {
 } from "plaid"
 import { db } from "@/lib/db"
 import { decryptCredential } from "./crypto"
+import { APP_NAME } from "@/lib/brand"
 
 const PLAID_BASE_URLS: Record<string, string> = {
   sandbox: "https://sandbox.plaid.com",
@@ -167,7 +168,7 @@ export async function createLinkToken(userId: string): Promise<string> {
   const client = await getPlaidClient(userId)
   const response = await client.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: "PocketWatch",
+    client_name: APP_NAME,
     products: [Products.Transactions],
     optional_products: [
       Products.Liabilities,
@@ -189,7 +190,7 @@ export async function createUpdateLinkToken(
   const client = await getPlaidClient(userId)
   const response = await client.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: "PocketWatch",
+    client_name: APP_NAME,
     access_token: accessToken,
     country_codes: [CountryCode.Us],
     language: "en",

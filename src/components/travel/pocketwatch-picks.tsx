@@ -5,6 +5,7 @@ import type { ValueScoredFlight, PickCandidate } from "@/types/travel"
 import { selectPicks, PICK_CATEGORY_META, formatDuration } from "@/lib/travel/pick-selector"
 import { PROGRAM_DISPLAY_NAMES } from "@/lib/travel/constants"
 import { cn } from "@/lib/utils"
+import { APP_NAME } from "@/lib/brand"
 
 // ─── Main Component ─────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ export function PocketWatchPicks({ flights, isMultiSearch, onPickClick }: Pocket
         <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 18 }}>
           auto_awesome
         </span>
-        <h2 className="text-sm font-bold text-foreground">PocketWatch Picks</h2>
+        <h2 className="text-sm font-bold text-foreground">{APP_NAME} Picks</h2>
         <span className="text-[11px] text-foreground-muted">
           {picks.length} of {flights.length}
         </span>

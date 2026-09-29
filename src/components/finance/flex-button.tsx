@@ -7,6 +7,7 @@ import {
   type ShareableStats,
 } from "@/lib/share-stats"
 import { renderReceiptImage, downloadImage } from "@/lib/share-receipt-image"
+import { APP_NAME } from "@/lib/brand"
 
 // ─── Data extraction ────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function FlexPreview({ imageUrl, imageBlob, tweetText, onClose }: FlexPreviewPro
         <div className="p-4 pb-0">
           <img
             src={imageUrl}
-            alt="Your PocketWatch Flex Card"
+            alt={`Your ${APP_NAME} Flex Card`}
             className="w-full rounded-xl border border-card-border"
           />
         </div>

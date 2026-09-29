@@ -17,6 +17,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server"
+import { APP_NAME } from "@/lib/brand"
 
 // ---------------------------------------------------------------------------
 // Challenge store (in-memory with TTL)
@@ -76,7 +77,7 @@ export function getRpConfig(request: Request): RpConfig {
   const hostname = host.split(":")[0]
   return {
     rpId: hostname,
-    rpName: "PocketWatch",
+    rpName: APP_NAME,
     origin: `${proto}://${host}`,
   }
 }

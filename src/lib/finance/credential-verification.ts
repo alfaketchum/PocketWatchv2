@@ -15,6 +15,7 @@ import type {
   PlaidCredentialVerifyResult,
   PlaidVerifyCode,
 } from "./verification-types"
+import { APP_NAME } from "@/lib/brand"
 export type { FinanceVerificationPayload, PlaidCredentialVerifyResult, PlaidVerifyCode } from "./verification-types"
 
 interface PlaidErrorDetails {
@@ -196,7 +197,7 @@ export async function validatePlaidCredentials(params: {
   try {
     await client.linkTokenCreate({
       user: { client_user_id: params.probeUserId ?? `verify_${Date.now()}` },
-      client_name: "PocketWatch Verification",
+      client_name: `${APP_NAME} Verification`,
       products: [Products.Transactions],
       country_codes: [CountryCode.Us],
       language: "en",

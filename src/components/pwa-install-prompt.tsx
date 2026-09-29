@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { APP_NAME } from "@/lib/brand"
 
 const STORAGE_KEY = "pocketwatch_pwa_install_dismissed"
 const DISMISS_DAYS = 7
@@ -146,7 +147,7 @@ export function PWAInstallPrompt() {
           />
           <div>
             <div className="text-sm font-semibold text-foreground">
-              Install PocketWatch
+              Install {APP_NAME}
             </div>
             <div className="text-[11px] text-foreground-muted">
               Quick access from your home screen

@@ -15,9 +15,10 @@ import { db } from "@/lib/db"
 import { checkRateLimit, rateLimiters, rateLimitHeaders, getClientId } from "@/lib/rate-limit"
 import { NextRequest, NextResponse } from "next/server"
 import type { ChannelResult } from "@/lib/notifications/dispatcher"
+import { APP_NAME } from "@/lib/brand"
 
 const TEST_PAYLOAD = {
-  title: "PocketWatch Test",
+  title: `${APP_NAME} Test`,
   body: "If you see this, notifications are working!",
   url: "/settings",
   tag: "test",

@@ -1,6 +1,6 @@
 {
-  "name": "PocketWatch",
-  "short_name": "PocketWatch",
+  "name": "FuegoTracker",
+  "short_name": "FuegoTracker",
   "description": "See everything you own. In one place.",
   "start_url": "/net-worth",
   "display": "standalone",
