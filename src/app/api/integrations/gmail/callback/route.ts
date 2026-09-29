@@ -8,13 +8,13 @@
  *   rely on the session cookie (which is sameSite=strict and absent here).
  * - Exchanges the code using the flow's PKCE verifier + the client_secret.
  * - Stores tokens ENCRYPTED via persistGmailTokensForService, keyed by account.
- * - 302s back to settings.
+ * - 302s back to /accounts?gmail=<status> on every outcome (this is a browser
+ *   navigation, so a JSON error body would strand the user on a raw error page).
  *
  * SECURITY: tokens/codes/verifiers never appear in the redirect URL or logs.
  */
 
 import { NextResponse, type NextRequest } from "next/server"
-import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import {
   GMAIL_REDIRECT_URI,
@@ -28,6 +28,15 @@ import {
 } from "@/lib/integrations/gmail-client"
 
 const OAUTH_ERROR_RE = /^[a-z_]{1,40}$/
+const RETURN_PATH = "/accounts"
+
+type GmailConnectStatus = "connected" | "denied" | "expired" | "error"
+
+function redirectWithStatus(req: NextRequest, status: GmailConnectStatus) {
+  const url = new URL(RETURN_PATH, req.nextUrl.origin)
+  url.searchParams.set("gmail", status)
+  return NextResponse.redirect(url, { status: 302 })
+}
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams
@@ -35,20 +44,23 @@ export async function GET(req: NextRequest) {
   const oauthError = params.get("error")
   if (oauthError) {
     const safe = OAUTH_ERROR_RE.test(oauthError) ? oauthError : "authorization_failed"
-    return apiError("G2201", `Gmail authorization denied: ${safe}`, 400)
+    console.warn("[API_ERROR] G2201: Gmail authorization denied", { reason: safe })
+    return redirectWithStatus(req, "denied")
   }
 
   const code = params.get("code")
   const state = params.get("state")
   if (!code || !state) {
-    return apiError("G2202", "Missing authorization code or state", 400)
+    console.warn("[API_ERROR] G2202: Missing authorization code or state")
+    return redirectWithStatus(req, "error")
   }
 
   // Look up + consume the single-use server-side flow (CSRF + user binding).
   const flow = await db.pkceFlow.findUnique({ where: { state } })
   if (flow) await db.pkceFlow.delete({ where: { state } }).catch(() => {})
   if (!flow || flow.provider !== "gmail" || flow.expiresAt < new Date()) {
-    return apiError("G2203", "Invalid or expired OAuth state (CSRF check failed)", 400)
+    console.warn("[API_ERROR] G2203: Invalid or expired OAuth state (CSRF check failed)")
+    return redirectWithStatus(req, "expired")
   }
 
   try {
@@ -68,10 +80,8 @@ export async function GET(req: NextRequest) {
     // different account's tokens; the user can simply retry.
     const email = await fetchGmailAccountEmail(token.access_token)
     if (!email) {
-      return NextResponse.redirect(
-        new URL("/portfolio/settings?gmail=error", req.nextUrl.origin),
-        { status: 302 },
-      )
+      console.warn("[API_ERROR] G2205: Could not resolve Gmail account email")
+      return redirectWithStatus(req, "error")
     }
     const service = gmailServiceForEmail(email)
 
@@ -82,11 +92,11 @@ export async function GET(req: NextRequest) {
         typeof token.expires_in === "number" ? Date.now() + token.expires_in * 1000 : 0,
     })
 
-    return NextResponse.redirect(
-      new URL("/portfolio/settings?gmail=connected", req.nextUrl.origin),
-      { status: 302 },
-    )
+    return redirectWithStatus(req, "connected")
   } catch (err) {
-    return apiError("G2204", "Failed to complete Gmail authorization", 500, err)
+    console.error("[API_ERROR] G2204: Failed to complete Gmail authorization", {
+      message: err instanceof Error ? err.message : String(err),
+    })
+    return redirectWithStatus(req, "error")
   }
 }
