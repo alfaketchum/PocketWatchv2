@@ -157,7 +157,7 @@ export function isMerchantListed(
 export function findMissingEmail(
   services: { domain: string; name: string; domains?: string[] }[],
   index: FinanceIndex,
-): Omit<MissingEmailService, "notInInbox">[] {
+): Omit<MissingEmailService, "notInInbox" | "suggestedEmail">[] {
   const allKeys = services.map(keysFor)
   return index.recurring
     .filter((entry) => !allKeys.some((keys) => recurringScore(keys, entry) > 0))

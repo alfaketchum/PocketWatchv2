@@ -22,30 +22,46 @@ const MAX_TARGETS_PER_RUN = 60
 const MIN_MERCHANT_SPEND = 20
 const NEGATIVE_TTL_MS = 24 * 60 * 60 * 1000
 
-// userId → (compact merchant name → expiry) for merchants no inbox had mail from.
-const notFound = new Map<string, Map<string, number>>()
+/**
+ * Per-user lookup outcomes that are NOT persisted as directory entries, keyed by
+ * compact merchant name: "none" = no inbox has mail from it; otherwise the inbox
+ * that has only non-account mail (marketing) from it — a suggestion to confirm.
+ */
+interface LookupOutcome {
+  suggestedEmail: string | null
+  expiresAt: number
+}
+const outcomes = new Map<string, Map<string, LookupOutcome>>()
 
-export function isKnownNotFound(userId: string, merchantName: string): boolean {
-  const expiry = notFound.get(userId)?.get(compactName(merchantName))
-  return !!expiry && expiry > Date.now()
+function getOutcome(userId: string, merchantName: string): LookupOutcome | null {
+  const outcome = outcomes.get(userId)?.get(compactName(merchantName))
+  return outcome && outcome.expiresAt > Date.now() ? outcome : null
 }
 
-function markNotFound(userId: string, merchantName: string) {
-  const map = notFound.get(userId) ?? new Map<string, number>()
-  map.set(compactName(merchantName), Date.now() + NEGATIVE_TTL_MS)
-  notFound.set(userId, map)
+function setOutcome(userId: string, merchantName: string, suggestedEmail: string | null) {
+  const map = outcomes.get(userId) ?? new Map<string, LookupOutcome>()
+  map.set(compactName(merchantName), { suggestedEmail, expiresAt: Date.now() + NEGATIVE_TTL_MS })
+  outcomes.set(userId, map)
+}
+
+/** The last lookup result for a charge that has no directory entry (null = not looked up). */
+export function lookupOutcomeFor(userId: string, merchantName: string) {
+  const outcome = getOutcome(userId, merchantName)
+  if (!outcome) return null
+  return { notInInbox: outcome.suggestedEmail === null, suggestedEmail: outcome.suggestedEmail }
 }
 
 export interface FinanceLinkResult {
   checked: number
   linked: number
+  suggested: number
   notFound: number
 }
 
 type Services = Awaited<ReturnType<typeof loadDirectory>>["services"]
 
 /** Unmatched recurring charges first, then unmatched merchants by spend (domain known). */
-function buildTargets(userId: string, services: Services, index: FinanceIndex): LookupTarget[] {
+export function buildTargets(userId: string, services: Services, index: FinanceIndex): LookupTarget[] {
   const recurring: LookupTarget[] = findMissingEmail(services, index).map((m) => ({
     merchantName: m.merchantName,
     domain: m.domain,
@@ -64,32 +80,38 @@ function buildTargets(userId: string, services: Services, index: FinanceIndex): 
     })
 
   return [...recurring, ...merchants]
-    .filter((t) => !isKnownNotFound(userId, t.merchantName))
+    .filter((t) => !getOutcome(userId, t.merchantName))
     .slice(0, MAX_TARGETS_PER_RUN)
 }
 
 export async function linkFinancesToInboxes(userId: string): Promise<FinanceLinkResult> {
   const accounts = (await listGmailAccounts(userId)).filter((a) => a.email)
-  if (accounts.length === 0) return { checked: 0, linked: 0, notFound: 0 }
+  if (accounts.length === 0) return { checked: 0, linked: 0, suggested: 0, notFound: 0 }
 
   const { services, index } = await loadDirectory(userId, "active")
   const targets = buildTargets(userId, services, index)
   let linked = 0
+  let suggested = 0
   let missing = 0
 
   await forEachConcurrent(targets, LOOKUP_CONCURRENCY, async (target) => {
     try {
       const hit = await findInboxFor(userId, accounts, target)
       if (!hit) {
-        markNotFound(userId, target.merchantName)
+        setOutcome(userId, target.merchantName, null)
         missing++
-        return
+      } else if (hit.accountMail) {
+        // Account mail proves where the account lives — record it.
+        if (await recordInferredAccount(userId, target, hit)) linked++
+      } else {
+        // Only marketing-type mail: likely the right inbox, but let the user confirm.
+        setOutcome(userId, target.merchantName, hit.account.email)
+        suggested++
       }
-      if (await recordInferredAccount(userId, target, hit)) linked++
     } catch (err) {
       console.warn("[accounts] finance inbox lookup failed:", (err as Error).message)
     }
   })
 
-  return { checked: targets.length, linked, notFound: missing }
+  return { checked: targets.length, linked, suggested, notFound: missing }
 }

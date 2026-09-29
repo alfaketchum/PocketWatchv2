@@ -42,9 +42,14 @@ export function AccountsMissingEmail({ onAdd, linking }: AccountsMissingEmailPro
                 {s.paidWith && ` · ${paidWithLabel(s.paidWith)}`}
                 {s.notInInbox && " · not in your connected inboxes"}
               </p>
+              {s.suggestedEmail && (
+                <p className="truncate text-[11px] text-primary">
+                  Probably {s.suggestedEmail} — mail from them is there
+                </p>
+              )}
             </div>
             <button type="button" onClick={() => onAdd(s)} className="btn-secondary text-xs">
-              Add email
+              {s.suggestedEmail ? "Confirm" : "Add email"}
             </button>
           </li>
         ))}

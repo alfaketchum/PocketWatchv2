@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { loadDirectory } from "@/lib/accounts/directory-query"
 import { findMissingEmail } from "@/lib/accounts/finance-match"
-import { isKnownNotFound } from "@/lib/accounts/finance-inbox-link"
+import { lookupOutcomeFor } from "@/lib/accounts/finance-inbox-link"
 
 export async function GET() {
   const user = await getCurrentUser()
@@ -17,10 +17,14 @@ export async function GET() {
 
   try {
     const { services, index } = await loadDirectory(user.id, "active")
-    const missing = findMissingEmail(services, index).map((m) => ({
-      ...m,
-      notInInbox: isKnownNotFound(user.id, m.merchantName),
-    }))
+    const missing = findMissingEmail(services, index).map((m) => {
+      const outcome = lookupOutcomeFor(user.id, m.merchantName)
+      return {
+        ...m,
+        notInInbox: outcome?.notInInbox ?? false,
+        suggestedEmail: outcome?.suggestedEmail ?? null,
+      }
+    })
     return NextResponse.json({ services: missing })
   } catch (err) {
     return apiError("ACC36", "Failed to load unmatched charges", 500, err)

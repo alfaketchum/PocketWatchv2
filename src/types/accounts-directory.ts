@@ -92,6 +92,8 @@ export interface MissingEmailService {
   paidWith: DirectoryPaidWith | null
   /** None of the connected inboxes has mail from this merchant. */
   notInInbox: boolean
+  /** Inbox with (non-account) mail from this merchant — likely where the account is. */
+  suggestedEmail: string | null
 }
 
 export interface MissingEmailResponse {
@@ -101,6 +103,7 @@ export interface MissingEmailResponse {
 export interface FinanceLinkResponse {
   checked: number
   linked: number
+  suggested: number
   notFound: number
 }
 

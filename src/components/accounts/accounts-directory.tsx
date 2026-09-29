@@ -77,6 +77,7 @@ export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
     setAdding({
       serviceName: s.merchantName,
       serviceDomain: s.domain ?? "",
+      accountEmail: s.suggestedEmail,
       paymentAccountId: s.paidWith?.accountId ?? null,
     })
 

@@ -11,6 +11,7 @@ import { AccountsModalShell, INPUT_CLASS, ModalField } from "./accounts-modal-sh
 export interface AccountAddDefaults {
   serviceName?: string
   serviceDomain?: string
+  accountEmail?: string | null
   paymentAccountId?: string | null
 }
 
@@ -26,7 +27,7 @@ export function AccountAddDialog({ defaults, knownEmails, paymentAccounts, onClo
   const create = useCreateAccount()
   const [name, setName] = useState(defaults.serviceName ?? "")
   const [domain, setDomain] = useState(defaults.serviceDomain ?? "")
-  const [email, setEmail] = useState(knownEmails[0] ?? "")
+  const [email, setEmail] = useState(defaults.accountEmail ?? knownEmails[0] ?? "")
   const [category, setCategory] = useState("")
   const [paymentAccountId, setPaymentAccountId] = useState(defaults.paymentAccountId ?? "")
 

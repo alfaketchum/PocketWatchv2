@@ -21,6 +21,10 @@ const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "suggested"]
 export const NON_SERVICE_RE =
   /autopay|crcardpmt|card\s*pmt|ach\s*pmt|credit\s*crd|epay|zelle|venmo|transfer|payment to|interest charge|membership fee|annual fee|late fee|overdraft/i
 const NON_SERVICE_BILL_TYPES = new Set(["cc_payment", "cc_annual_fee"])
+// Plaid categories that are never "a service you have an account with".
+const NON_SERVICE_CATEGORIES = new Set(["LOAN_PAYMENTS", "BANK_FEES", "INCOME", "TRANSFER_IN"])
+// Money sent to people / ATMs — a service only when the merchant has a website.
+const TRANSFER_CATEGORY = "TRANSFER_OUT"
 const TRAILING_MASK_RE = /\s*[•·*x]{2,}\s*\d{2,4}\s*$/i
 
 export interface RecurringEntry {
@@ -37,6 +41,8 @@ export interface MerchantSpend {
   merchantName: string
   compact: string
   domains: Set<string>
+  /** Plaid primary category → transaction count. */
+  categories: Map<string, number>
   total: number
   lastDate: Date
   countByAccount: Map<string, number>
@@ -44,6 +50,8 @@ export interface MerchantSpend {
 
 export interface FinanceIndex {
   accounts: Map<string, DirectoryPaymentAccount>
+  /** Compact names of merchants whose charges are payments/transfers/fees, not services. */
+  nonServiceMerchants: Set<string>
   recurring: RecurringEntry[]
   merchants: MerchantSpend[]
   /** Registrable domain → institution / exchange display name. */
@@ -55,14 +63,33 @@ export function compactName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
+function dominantCategory(m: MerchantSpend): string | null {
+  return [...m.categories.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+}
+
+/** Payments, fees, and transfers to merchants with no website aren't services. */
+export function isNonServiceMerchant(m: MerchantSpend): boolean {
+  if (NON_SERVICE_RE.test(m.merchantName)) return true
+  const category = dominantCategory(m)
+  if (category && NON_SERVICE_CATEGORIES.has(category)) return true
+  return category === TRANSFER_CATEGORY && m.domains.size === 0
+}
+
 export async function loadFinanceIndex(userId: string): Promise<FinanceIndex> {
-  const [accounts, recurring, merchants, institutions] = await Promise.all([
+  const [accounts, recurring, allMerchants, institutions] = await Promise.all([
     loadPaymentAccounts(userId),
     loadRecurring(userId),
     loadMerchantSpend(userId),
     loadInstitutions(userId),
   ])
-  return { accounts, recurring, merchants, institutions }
+  const nonService = new Set(allMerchants.filter(isNonServiceMerchant).map((m) => m.compact))
+  return {
+    accounts,
+    nonServiceMerchants: nonService,
+    recurring: recurring.filter((r) => !nonService.has(r.compact)),
+    merchants: allMerchants.filter((m) => !nonService.has(m.compact)),
+    institutions,
+  }
 }
 
 async function loadPaymentAccounts(userId: string) {
@@ -118,7 +145,7 @@ async function loadRecurring(userId: string): Promise<RecurringEntry[]> {
       where: { userId, streamType: "outflow", isActive: true },
       select: {
         merchantName: true,
-        description: true,
+        category: true,
         averageAmount: true,
         lastAmount: true,
         frequency: true,
@@ -142,9 +169,11 @@ async function loadRecurring(userId: string): Promise<RecurringEntry[]> {
   }))
   const seen = new Set(entries.map((e) => e.compact))
   for (const st of streams) {
-    const name = st.merchantName || st.description
+    // Streams without a merchant name are raw bank strings — payments / transfers.
+    const name = st.merchantName ?? ""
     const compact = compactName(name)
     if (!compact || seen.has(compact) || NON_SERVICE_RE.test(name)) continue
+    if (st.category && NON_SERVICE_CATEGORIES.has(st.category)) continue
     seen.add(compact)
     entries.push({
       merchantName: name,
@@ -170,7 +199,14 @@ async function loadMerchantSpend(userId: string): Promise<MerchantSpend[]> {
       date: { gte: since },
       merchantName: { not: null },
     },
-    select: { merchantName: true, website: true, amount: true, date: true, accountId: true },
+    select: {
+      merchantName: true,
+      website: true,
+      amount: true,
+      date: true,
+      accountId: true,
+      plaidCategoryPrimary: true,
+    },
     orderBy: { date: "desc" },
     take: MAX_TRANSACTIONS,
   })
@@ -184,6 +220,7 @@ async function loadMerchantSpend(userId: string): Promise<MerchantSpend[]> {
       merchantName: name,
       compact,
       domains: new Set<string>(),
+      categories: new Map<string, number>(),
       total: 0,
       lastDate: tx.date,
       countByAccount: new Map<string, number>(),
@@ -191,6 +228,8 @@ async function loadMerchantSpend(userId: string): Promise<MerchantSpend[]> {
     const site = tx.website ? domainFromHost(tx.website) : ""
     const domain = site || knownMerchantDomain(name)
     if (domain) entry.domains.add(domain)
+    const category = tx.plaidCategoryPrimary
+    if (category) entry.categories.set(category, (entry.categories.get(category) ?? 0) + 1)
     entry.total += tx.amount
     if (tx.date > entry.lastDate) entry.lastDate = tx.date
     entry.countByAccount.set(tx.accountId, (entry.countByAccount.get(tx.accountId) ?? 0) + 1)
