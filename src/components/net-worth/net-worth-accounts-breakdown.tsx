@@ -11,6 +11,7 @@ import {
   type GroupKey, type AccountRow,
 } from "./account-groups"
 import type { NetWorthTf } from "@/hooks/use-net-worth-timeframe"
+import { useHydrated } from "@/hooks/use-hydrated"
 
 type GroupChanges = Partial<Record<GroupKey, number>>
 type Timeframe = NetWorthTf
@@ -30,9 +31,12 @@ function ChangeAmount({ change, isLiability, isHidden, className }: { change: nu
 }
 
 export function NetWorthAccountsBreakdown({ isHidden, changes, accountChanges, timeframe = "M" }: { isHidden: boolean; changes?: GroupChanges; accountChanges?: AccountChanges; timeframe?: Timeframe }) {
-  const { data: institutions, isLoading } = useFinanceAccounts()
+  const hydrated = useHydrated()
+  const accountsQuery = useFinanceAccounts()
+  // Accounts may already be cached before hydration; render the server's loading state first.
+  const institutions = hydrated ? accountsQuery.data : undefined
 
-  if (isLoading) {
+  if (!hydrated || accountsQuery.isLoading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (

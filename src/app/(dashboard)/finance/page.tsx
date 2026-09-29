@@ -13,6 +13,7 @@ import { BillsCalendar } from "@/components/finance/bills-calendar"
 import { formatCurrency, formatRelativeTime, cn } from "@/lib/utils"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
+import { useHydrated } from "@/hooks/use-hydrated"
 import { FlexButton } from "@/components/finance/flex-button"
 import { WhereIveBeenButton } from "@/components/finance/where-ive-been-button"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
@@ -60,10 +61,20 @@ export default function FinanceDashboardPage() {
   const [calMonth, setCalMonth] = useState<string | undefined>(undefined)
   const { isHidden } = usePrivacyMode()
 
-  const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useFinanceAccounts()
-  const { data: deep } = useFinanceDeepInsights()
-  const { data: netWorthData, isLoading: nwLoading } = useNetWorth(RANGE_MAP[nwRange] ?? "1y", includeInvestments)
-  const { data: billsData } = useUpcomingBills(calMonth)
+  // The finance layout prefetches accounts/insights, so cached data can exist before hydration;
+  // ignore it until hydrated so the first client render matches the server.
+  const hydrated = useHydrated()
+  const accountsQuery = useFinanceAccounts()
+  const deepQuery = useFinanceDeepInsights()
+  const netWorthQuery = useNetWorth(RANGE_MAP[nwRange] ?? "1y", includeInvestments)
+  const billsQuery = useUpcomingBills(calMonth)
+  const accounts = hydrated ? accountsQuery.data : undefined
+  const accountsLoading = !hydrated || accountsQuery.isLoading
+  const accountsError = hydrated && accountsQuery.isError
+  const deep = hydrated ? deepQuery.data : undefined
+  const netWorthData = hydrated ? netWorthQuery.data : undefined
+  const nwLoading = !hydrated || netWorthQuery.isLoading
+  const billsData = hydrated ? billsQuery.data : undefined
 
   // autoCategorize removed — replaced by review flow
   const fetchHistory = useFetchFullHistory()

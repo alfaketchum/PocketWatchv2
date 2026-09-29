@@ -1,6 +1,7 @@
 "use client"
 
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
+import { useHydrated } from "@/hooks/use-hydrated"
 import { useNetWorthTimeframe, daysForTf } from "@/hooks/use-net-worth-timeframe"
 import { formatCurrency, cn } from "@/lib/utils"
 import { FadeIn } from "@/components/motion/fade-in"
@@ -29,7 +30,12 @@ export default function NetWorthPage() {
   const { isHidden } = usePrivacyMode()
   // Always opens on 1Y; switching ranges during a visit still works as before
   const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe({ initial: "1Y", restoreSaved: false })
-  const { data, isLoading, isError } = useCombinedNetWorth(timeframe === "ALL" ? "all" : "year")
+  const hydrated = useHydrated()
+  const netWorthQuery = useCombinedNetWorth(timeframe === "ALL" ? "all" : "year")
+  // Cached data can exist before hydration (the sidebar loads net worth); match the server first.
+  const data = hydrated ? netWorthQuery.data : undefined
+  const isLoading = !hydrated || netWorthQuery.isLoading
+  const isError = hydrated && netWorthQuery.isError
 
   const totalNetWorth = data?.totalNetWorth ?? 0
   const fiat = data?.fiat ?? { cash: 0, savings: 0, investments: 0, debt: 0, netWorth: 0 }
