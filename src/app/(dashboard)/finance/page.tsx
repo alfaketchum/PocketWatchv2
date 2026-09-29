@@ -23,6 +23,10 @@ import { FinanceCardSkeleton } from "@/components/finance/finance-loading"
 import { SpendingMonthCard } from "@/components/finance/spending-month-card"
 import { MonthlyBillsCard } from "@/components/finance/dashboard/monthly-bills-card"
 import { DashboardInsightsCard } from "@/components/finance/dashboard/dashboard-insights-card"
+const CashFlowSankeyCard = dynamic(
+  () => import("@/components/finance/cash-flow-sankey-card").then((m) => m.CashFlowSankeyCard),
+  { ssr: false, loading: () => <div className="h-[420px] animate-shimmer rounded-xl" /> },
+)
 import { FadeIn } from "@/components/motion/fade-in"
 import { ChartViewToggle } from "@/components/ui/chart-view-toggle"
 import { StaggerChildren, StaggerItem } from "@/components/motion/stagger-children"
@@ -462,6 +466,11 @@ export default function FinanceDashboardPage() {
           <DashboardInsightsCard />
         </FadeIn>
       )}
+
+      {/* Cash-flow Sankey: income → categories + saved */}
+      <FadeIn delay={0.32} className="mb-8">
+        <CashFlowSankeyCard isHidden={isHidden} />
+      </FadeIn>
     </div>
   )
 }

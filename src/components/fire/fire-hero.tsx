@@ -43,7 +43,10 @@ export function FireHero({ state, isHidden }: { state: FirePlanState; isHidden: 
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-[11px] text-foreground-muted mb-1.5">
-          <span>{fmtPct(t.progress, 0)} of the way there</span>
+          <span>
+            {fmtPct(t.progress, 0)} of the way there
+            {plan.annualSpend > 0 && <> · <b className="text-foreground">{(plan.investable / plan.annualSpend).toFixed(1)} years</b> of expenses saved</>}
+          </span>
           <BlurredValue isHidden={isHidden}>
             <span className="tabular-nums">{fmtMoney(plan.investable)} / {fmtMoney(analysis.fireNumber)}</span>
           </BlurredValue>

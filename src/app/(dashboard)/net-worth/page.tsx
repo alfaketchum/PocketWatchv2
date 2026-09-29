@@ -10,6 +10,7 @@ import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { FinanceHeroCard } from "@/components/finance/finance-hero-card"
 import { NetWorthBreakdown } from "@/components/net-worth/net-worth-breakdown"
 import { NetWorthAccountsBreakdown } from "@/components/net-worth/net-worth-accounts-breakdown"
+import { NetWorthPeersCard } from "@/components/net-worth/net-worth-peers-card"
 import { NetWorthTimeframeToggle } from "@/components/net-worth/net-worth-timeframe-toggle"
 import dynamic from "next/dynamic"
 
@@ -125,6 +126,13 @@ export default function NetWorthPage() {
           />
         )}
       </FadeIn>
+
+      {/* Peer comparison (Fed SCF) */}
+      {!isLoading && (
+        <FadeIn delay={0.12} className="mt-4">
+          <NetWorthPeersCard netWorth={totalNetWorth} isHidden={isHidden} />
+        </FadeIn>
+      )}
 
       {/* Accounts — collapsible groups (Assets / Liabilities) */}
       <FadeIn delay={0.15}>
