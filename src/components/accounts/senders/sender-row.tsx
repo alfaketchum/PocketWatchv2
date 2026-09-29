@@ -12,7 +12,17 @@ interface SenderRowProps {
   onSelect: (checked: boolean) => void
 }
 
-const METHOD_LABEL = { one_click: "One-click", link: "Opens link", mailto: "Sends email" } as const
+// Say up front what clicking will do: one-click happens silently on our server.
+const METHOD_BUTTON = {
+  one_click: "Unsubscribe now",
+  link: "Open unsubscribe page",
+  mailto: "Email to unsubscribe",
+} as const
+const METHOD_HINT = {
+  one_click: "Unsubscribes you directly — nothing opens",
+  link: "Opens the sender's unsubscribe page in a new tab",
+  mailto: "Opens a pre-filled unsubscribe email in your mail app",
+} as const
 const BADGE = "rounded-full border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
 
 /** One mailing-list sender: volume, recency, and how to leave. */
@@ -32,7 +42,7 @@ export function SenderRow({ sender, selected, onSelect }: SenderRowProps) {
       unsubscribe.mutate([sender.id], {
         onSuccess: ({ results }) => {
           const r = results[0]
-          if (r?.ok) toast.success(`Unsubscribed from ${sender.displayName}`)
+          if (r?.ok) toast.success(`Unsubscribed from ${sender.displayName} — done, no page needed`)
           else toast.error(r?.error ?? "Unsubscribe failed")
         },
         onError,
@@ -93,7 +103,7 @@ export function SenderRow({ sender, selected, onSelect }: SenderRowProps) {
         <p className="font-mono text-sm text-foreground">{sender.messageCount}</p>
         <p className="text-[11px] text-foreground-muted">{dateLabel(sender.lastSeenAt) ?? "—"}</p>
       </div>
-      <div className="flex w-40 flex-shrink-0 items-center justify-end gap-1">
+      <div className="flex flex-shrink-0 items-center justify-end gap-1">
         {active ? (
           <>
             <button type="button" onClick={() => setStatus("kept")} disabled={busy} className="btn-ghost text-xs" title="Keep — hide from this list">
@@ -104,9 +114,9 @@ export function SenderRow({ sender, selected, onSelect }: SenderRowProps) {
               onClick={handleUnsubscribe}
               disabled={busy || !sender.method}
               className="btn-secondary text-xs"
-              title={sender.method ? METHOD_LABEL[sender.method] : "No unsubscribe option"}
+              title={sender.method ? METHOD_HINT[sender.method] : "No unsubscribe option"}
             >
-              {unsubscribe.isPending ? "…" : "Unsubscribe"}
+              {unsubscribe.isPending ? "Unsubscribing…" : sender.method ? METHOD_BUTTON[sender.method] : "Unsubscribe"}
             </button>
           </>
         ) : (
@@ -114,7 +124,13 @@ export function SenderRow({ sender, selected, onSelect }: SenderRowProps) {
             <span className="text-[11px] text-foreground-muted">
               {sender.status === "kept" ? "Kept" : `Unsubscribed ${dateLabel(sender.unsubscribedAt) ?? ""}`}
             </span>
-            <button type="button" onClick={() => setStatus("active")} disabled={busy} className="btn-ghost text-xs">
+            <button
+              type="button"
+              onClick={() => setStatus("active")}
+              disabled={busy}
+              className="btn-ghost text-xs"
+              title="Moves it back to your list — it does not re-subscribe you with the sender"
+            >
               Undo
             </button>
           </>
