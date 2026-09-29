@@ -3,6 +3,7 @@
  */
 
 import { db } from "@/lib/db"
+import type { Prisma } from "@/generated/prisma/client"
 import { decryptCredential } from "../crypto"
 import * as plaid from "../plaid-client"
 import { categorizeTransaction, cleanMerchantName } from "../categorize"
@@ -14,6 +15,32 @@ import type { InstitutionReport, InstitutionSyncContext } from "../plaid-sync-he
 import { withRetry } from "../retry"
 import { markJobRunning, markJobCompleted, markJobFailed } from "./plaid-sync-jobs"
 import type { SyncResult } from "./helpers"
+
+/**
+ * When a pending txn posts, Plaid removes it and adds a new txn with a new id.
+ * Carry the user's edits (manual category, notes, tags, exclusion) onto the
+ * posted txn so they aren't lost.
+ */
+async function userEditsFromPending(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  pendingTransactionId: string | null,
+): Promise<Partial<Prisma.FinanceTransactionUncheckedCreateInput>> {
+  if (!pendingTransactionId) return {}
+  const prev = await tx.financeTransaction.findFirst({
+    where: { userId, externalId: pendingTransactionId },
+    select: { category: true, subcategory: true, isAutoApplied: true, nickname: true, notes: true, tags: true, isExcluded: true },
+  })
+  if (!prev) return {}
+  const manualCategory = !prev.isAutoApplied && !!prev.category
+  return {
+    ...(manualCategory ? { category: prev.category, subcategory: prev.subcategory, isAutoApplied: false, needsReview: false } : {}),
+    nickname: prev.nickname,
+    notes: prev.notes,
+    ...(prev.tags.length > 0 ? { tags: prev.tags } : {}),
+    isExcluded: prev.isExcluded,
+  }
+}
 
 export async function syncPlaid(
   institution: Awaited<ReturnType<typeof db.financeInstitution.findUnique>> & { accounts: Array<{ id: string; externalId: string; name: string; type: string }> }
@@ -96,6 +123,7 @@ export async function syncPlaid(
           },
           userRules
         )
+        const carried = await userEditsFromPending(tx, institution!.userId, txn.pendingTransactionId)
 
         await tx.financeTransaction.upsert({
           where: {
@@ -121,6 +149,7 @@ export async function syncPlaid(
             needsReview: cat.needsReview,
             plaidCategory: txn.personalFinanceCategory?.detailed ?? null,
             plaidCategoryPrimary: txn.personalFinanceCategory?.primary ?? null,
+            ...carried,
             isPending: txn.pending,
             authorizedDate: txn.authorizedDate ? new Date(txn.authorizedDate) : null,
             paymentChannel: txn.paymentChannel,

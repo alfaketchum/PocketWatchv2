@@ -20,6 +20,7 @@ function mapPlaidTransaction(t: any): PlaidTransaction {
     amount: t.amount,
     isoCurrencyCode: t.iso_currency_code ?? null,
     pending: t.pending,
+    pendingTransactionId: t.pending_transaction_id ?? null,
     category: null,
     personalFinanceCategory: t.personal_finance_category ?? null,
     paymentChannel: t.payment_channel ?? null,

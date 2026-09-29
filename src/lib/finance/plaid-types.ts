@@ -93,6 +93,8 @@ export interface PlaidTransaction {
   amount: number
   isoCurrencyCode: string | null
   pending: boolean
+  /** For a posted txn: the id of the pending txn it replaces (Plaid removes that one). */
+  pendingTransactionId: string | null
   category: string | null
   personalFinanceCategory: { primary: string; detailed: string } | null
   paymentChannel: string | null
