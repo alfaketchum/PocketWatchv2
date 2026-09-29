@@ -72,6 +72,11 @@ export function SenderRow({ sender, selected, onSelect }: SenderRowProps) {
               Account
             </span>
           )}
+          {sender.relatedUnsubscribed && (
+            <span className={`${BADGE} border-primary text-primary`} title="You unsubscribed from another address at this domain in this inbox">
+              Unsubscribed from another list here
+            </span>
+          )}
           {sender.stillSending && (
             <span className={`${BADGE} border-error text-error`} title="Mail kept arriving after you unsubscribed">
               Still sending

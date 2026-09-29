@@ -22,6 +22,11 @@ export interface MailSenderRow {
   stillSending: boolean
   /** You have an account with this sender's domain (from the directory). */
   isAccount: boolean
+  /**
+   * Still subscribed, but you unsubscribed from another address at the same
+   * domain in this inbox — likely the same sender under a new From address.
+   */
+  relatedUnsubscribed: boolean
   lastError: string | null
 }
 

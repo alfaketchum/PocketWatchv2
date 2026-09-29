@@ -40,7 +40,7 @@ function methodFor(row: Row): UnsubscribeMethod | null {
   return row.unsubscribeMailto ? "mailto" : null
 }
 
-function toRow(row: Row, accountDomains: Set<string>): MailSenderRow {
+function toRow(row: Row, accountDomains: Set<string>, unsubscribedDomains: Set<string>): MailSenderRow {
   const stillSending =
     row.status === "unsubscribed" && !!row.unsubscribedAt && !!row.lastSeenAt &&
     row.lastSeenAt.getTime() > row.unsubscribedAt.getTime() + GRACE_MS
@@ -60,6 +60,8 @@ function toRow(row: Row, accountDomains: Set<string>): MailSenderRow {
     unsubscribedAt: row.unsubscribedAt?.toISOString() ?? null,
     stillSending,
     isAccount: accountDomains.has(row.senderDomain),
+    relatedUnsubscribed:
+      row.status === "active" && unsubscribedDomains.has(`${row.service}|${row.senderDomain}`),
     lastError: row.lastError,
   }
 }
@@ -85,7 +87,7 @@ export async function GET(req: NextRequest) {
       ]
     }
 
-    const [rows, total, mailboxGroups, accountRows] = await Promise.all([
+    const [rows, total, mailboxGroups, accountRows, unsubscribedRows] = await Promise.all([
       db.mailSender.findMany({
         where,
         select: ROW_SELECT,
@@ -101,11 +103,18 @@ export async function GET(req: NextRequest) {
         distinct: ["serviceDomain"],
         take: 5_000,
       }),
+      db.mailSender.findMany({
+        where: { userId: user.id, status: "unsubscribed" },
+        select: { service: true, senderDomain: true },
+        distinct: ["service", "senderDomain"],
+        take: 5_000,
+      }),
     ])
 
     const accountDomains = new Set(accountRows.map((r) => r.serviceDomain))
+    const unsubscribedDomains = new Set(unsubscribedRows.map((r) => `${r.service}|${r.senderDomain}`))
     return NextResponse.json({
-      senders: rows.map((r) => toRow(r, accountDomains)),
+      senders: rows.map((r) => toRow(r, accountDomains, unsubscribedDomains)),
       total,
       page,
       limit,

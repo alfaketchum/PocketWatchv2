@@ -156,20 +156,36 @@ export class SenderScanRunningError extends Error {
   }
 }
 
-/** Start a background sender scan across all connected mailboxes. */
-export function startSenderScan(userId: string): void {
+interface SenderScanOptions {
+  /** Don't start another mailbox after this many ms (the scheduled worker's budget). */
+  timeBudgetMs?: number
+}
+
+/** Run a sender scan across all connected mailboxes to completion. */
+export async function runSenderScan(userId: string, options: SenderScanOptions = {}) {
   const key = senderScanKey(userId)
   if (isScanRunning(key)) throw new SenderScanRunningError()
   beginScan(key)
-  ;(async () => {
-    const accounts = await listGmailAccounts(userId)
-    for (const account of accounts) await scanMailboxSenders(userId, account)
-  })()
-    .then(() => finishScan(key, null))
-    .catch((err: unknown) => {
-      console.error("[email] sender scan failed:", (err as Error).message)
-      finishScan(key, err instanceof Error ? err.message : String(err))
-    })
+  const deadline = options.timeBudgetMs ? Date.now() + options.timeBudgetMs : null
+  try {
+    for (const account of await listGmailAccounts(userId)) {
+      if (deadline !== null && Date.now() > deadline) break
+      await scanMailboxSenders(userId, account)
+    }
+    finishScan(key, null)
+  } catch (err) {
+    finishScan(key, err instanceof Error ? err.message : String(err))
+    throw err
+  }
+  return getScanStatus(key)
+}
+
+/** Start a sender scan without awaiting it (interactive "Scan senders"). */
+export function startSenderScan(userId: string): void {
+  if (isScanRunning(senderScanKey(userId))) throw new SenderScanRunningError()
+  runSenderScan(userId).catch((err: unknown) => {
+    console.error("[email] sender scan failed:", (err as Error).message)
+  })
 }
 
 export function getSenderScanStatus(userId: string) {

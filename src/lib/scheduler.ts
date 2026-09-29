@@ -151,6 +151,16 @@ function buildJobs(): readonly JobConfig[] {
       headers: bearerHeader(process.env.ACCOUNTS_SCAN_SECRET),
       timeoutMs: LONG_TIMEOUT_MS,
     },
+    {
+      // Daily at 04:40 — after accounts-scan's window; new mailing-list senders
+      // for the unsubscribe manager (headers only, incremental).
+      name: "sender-scan",
+      schedule: "55 40 4 * * *",
+      endpoint: "/api/internal/sender-scan-worker",
+      method: "POST",
+      headers: bearerHeader(process.env.ACCOUNTS_SCAN_SECRET),
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
   ] as const
 }
 
@@ -201,7 +211,7 @@ const REQUIRED_SECRETS: Record<string, string> = {
   SNAPSHOT_WORKER_SECRET: "snapshot-worker, asset-history, classify-transactions, backup-worker",
   TRAVEL_PRICE_CHECK_SECRET: "travel-price-check",
   FINANCE_DIGEST_SECRET: "finance-digest",
-  ACCOUNTS_SCAN_SECRET: "accounts-scan",
+  ACCOUNTS_SCAN_SECRET: "accounts-scan, sender-scan",
 }
 
 // Delay before a boot-time run, so the server is listening before it calls itself.
