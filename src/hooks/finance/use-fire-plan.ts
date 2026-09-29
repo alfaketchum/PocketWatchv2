@@ -11,6 +11,11 @@ import { buildAllocation, portfolioAccounts } from "@/lib/fire/fire-portfolio"
 import { investableHistory, nowFractionalYear } from "@/lib/fire/fire-history"
 import { categoryCosts } from "@/lib/fire/fire-spending-cost"
 import { resolveDrops, stressSummary } from "@/lib/fire/crypto-stress"
+import { fiDateRange } from "@/lib/fire/fi-date-range"
+import { fiSensitivity } from "@/lib/fire/fire-sensitivity"
+import { windfallsFor } from "@/lib/fire/fire-analysis"
+import { constantEquity } from "@/lib/fire/swr-simulation"
+import { FEE_DRAG_ANNUAL } from "@/lib/fire/fire-constants"
 
 /** Everything the FIRE pages render from: inputs, baseline, plan, analysis, allocation, history. */
 export function useFirePlan() {
@@ -70,9 +75,35 @@ export function useFirePlan() {
     [trendMonths, plan, inputs.realReturn],
   )
 
+  // Historical range of FI dates (Advanced): today's mix, contributions until FI.
+  const historyData = history.data
+  const fiRange = useMemo(() => {
+    if (inputs.mode !== "advanced" || !historyData) return null
+    const years = analysis.yourTarget.years
+    const mix = inputs.allocationSource === "portfolio" && allocation.total > 0
+      ? constantEquity(allocation.sim.stocks, allocation.sim.cash)
+      : constantEquity(inputs.equityShare)
+    return fiDateRange(historyData, {
+      start: plan.investable,
+      annualContribution: plan.annualContribution,
+      target: analysis.fireNumber,
+      equity: mix,
+      feeAnnual: FEE_DRAG_ANNUAL,
+      windfalls: windfallsFor(inputs),
+      bandYears: years === null ? 25 : Math.max(3, Math.ceil(years) + 3),
+    })
+  }, [inputs, historyData, allocation, plan, analysis.fireNumber, analysis.yourTarget.years])
+
+  const sensitivity = useMemo(
+    () => fiSensitivity({ ...plan, realReturn: inputs.realReturn, windfalls: windfallsFor(inputs) }),
+    [plan, inputs],
+  )
+
   return {
     inputs,
     update,
+    fiRange,
+    sensitivity,
     baseline,
     plan,
     analysis,

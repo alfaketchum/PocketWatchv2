@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { cn } from "@/lib/utils"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
@@ -10,6 +10,7 @@ import { windfallsFor } from "@/lib/fire/fire-analysis"
 import { nowFractionalYear } from "@/lib/fire/fire-history"
 import { fmtCompact, fmtMoney, fmtPct } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
+import { FireSensitivityRow } from "./fire-sensitivity-row"
 
 type View = "nest" | "monthly" | "fi"
 
@@ -17,6 +18,9 @@ interface Point {
   x: number
   actual?: number
   projected?: number
+  /** Historical 10th–90th and 25th–75th percentile range (Advanced). */
+  outer?: [number, number]
+  inner?: [number, number]
 }
 
 const VIEWS: { value: View; label: string; advancedOnly?: boolean }[] = [
@@ -45,7 +49,7 @@ function PathTooltip({ active, payload, format }: { active?: boolean; payload?: 
 /** Your path to FI: actual history (solid) joined to the projection (dashed), in three lenses. */
 export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHidden: boolean }) {
   const [view, setView] = useState<View>("nest")
-  const { analysis, plan, inputs, actualHistory } = state
+  const { analysis, plan, inputs, actualHistory, fiRange, sensitivity } = state
   const { primary, foregroundMuted, border, warning, success } = useChartTheme()
   const advanced = inputs.mode === "advanced"
   const active = !advanced && view === "fi" ? "nest" : view
@@ -65,13 +69,19 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
     const years = analysis.yourTarget.years
     const span = years === null ? UNREACHABLE_SPAN : Math.max(YEARS_AFTER_FI, Math.ceil(years) + YEARS_AFTER_FI)
     const projection = projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, span, 0, windfallsFor(inputs), analysis.fireNumber)
+    const bands = advanced ? fiRange?.bands ?? [] : []
+    const bandAt = (i: number): Pick<Point, "outer" | "inner"> => {
+      const b = bands[i]
+      if (!b) return {}
+      return { outer: [transform(b.p10), transform(b.p90)], inner: [transform(b.p25), transform(b.p75)] }
+    }
     const points: Point[] = [
       ...actualHistory.filter((p) => p.x < now).map((p) => ({ x: p.x, actual: transform(p.value) })),
-      { x: now, actual: transform(plan.investable), projected: transform(plan.investable) },
-      ...projection.slice(1).map((p, i) => ({ x: now + i + 1, projected: transform(p.value) })),
+      { x: now, actual: transform(plan.investable), projected: transform(plan.investable), ...bandAt(0) },
+      ...projection.slice(1).map((p, i) => ({ x: now + i + 1, projected: transform(p.value), ...bandAt(i + 1) })),
     ]
     return { data: points, fiX: years !== null && years > 0 ? now + years : null }
-  }, [actualHistory, plan, inputs, analysis.yourTarget.years, analysis.fireNumber, transform])
+  }, [actualHistory, plan, inputs, analysis.yourTarget.years, analysis.fireNumber, transform, advanced, fiRange])
 
   const views = VIEWS.filter((v) => advanced || !v.advancedOnly)
 
@@ -111,11 +121,23 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
             {fiX !== null && (
               <ReferenceDot x={fiX} y={target} r={4} fill={success} stroke="none" label={{ value: `FI ${Math.floor(fiX)}`, position: "top", fontSize: 10, fill: success }} />
             )}
+            {advanced && fiRange && (
+              <>
+                <Area type="monotone" dataKey="outer" stroke="none" fill={primary} fillOpacity={0.08} isAnimationActive={false} connectNulls={false} />
+                <Area type="monotone" dataKey="inner" stroke="none" fill={primary} fillOpacity={0.14} isAnimationActive={false} connectNulls={false} />
+              </>
+            )}
             <Line type="monotone" dataKey="actual" stroke={primary} strokeWidth={2} dot={false} connectNulls={false} animationDuration={500} />
             <Line type="monotone" dataKey="projected" stroke={primary} strokeWidth={2} strokeDasharray="5 4" strokeOpacity={0.7} dot={false} connectNulls={false} animationDuration={500} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+      {advanced && fiRange && (
+        <p className="text-[11px] text-foreground-muted mt-2">
+          Shaded: your plan through every historical period since 1871 (darker = middle half, lighter = 80% of outcomes).
+        </p>
+      )}
+      <FireSensitivityRow items={sensitivity} />
     </FireSectionCard>
   )
 }

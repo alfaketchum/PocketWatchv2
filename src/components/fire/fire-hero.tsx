@@ -12,8 +12,9 @@ function headline(years: number | null, age: number | null, year: number | null)
 }
 
 export function FireHero({ state, isHidden }: { state: FirePlanState; isHidden: boolean }) {
-  const { analysis, plan, baseline, isLoading } = state
+  const { analysis, plan, baseline, isLoading, fiRange, inputs } = state
   const t = analysis.yourTarget
+  const showRange = inputs.mode === "advanced" && fiRange && t.years !== null && t.years > 0
 
   if (isLoading) {
     return <div className="h-[188px] animate-shimmer rounded-2xl" />
@@ -32,6 +33,13 @@ export function FireHero({ state, isHidden }: { state: FirePlanState; isHidden: 
     >
       <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">Your FIRE date</p>
       <h2 className="text-xl sm:text-2xl font-bold text-foreground mt-1">{headline(t.years, t.age, t.year)}</h2>
+      {showRange && (
+        <p className="text-xs text-foreground-muted mt-1">
+          Across history since 1871: {fiRange.p10.toFixed(1)}–{fiRange.p90.toFixed(1)} years (age{" "}
+          {Math.floor(inputs.currentAge + fiRange.p10)}–{Math.floor(inputs.currentAge + fiRange.p90)}), typically{" "}
+          {fiRange.p50.toFixed(1)}. The headline assumes a steady {(inputs.realReturn * 100).toFixed(1)}% real return.
+        </p>
+      )}
 
       <div className="mt-4">
         <div className="flex items-center justify-between text-[11px] text-foreground-muted mb-1.5">

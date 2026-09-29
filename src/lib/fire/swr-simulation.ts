@@ -72,7 +72,7 @@ function flowAt(flows: MonthlyFlow[], month: number): number {
  * One month's real growth factor. Cash earns 0% real (Shiller has no T-bill series, so
  * this is a deliberately conservative stand-in); stocks are capped so shares never exceed 1.
  */
-function monthFactor(h: MarketHistory, idx: number, equity: number, cash: number, feeMonthly: number): number {
+export function monthFactor(h: MarketHistory, idx: number, equity: number, cash: number, feeMonthly: number): number {
   const eq = Math.min(equity, 1 - cash)
   const bonds = Math.max(0, 1 - eq - cash)
   return 1 + eq * h.equity[idx] + bonds * h.bonds[idx] - feeMonthly

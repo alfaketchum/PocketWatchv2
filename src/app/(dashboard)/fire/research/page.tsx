@@ -19,6 +19,10 @@ const MaxWrByYearChart = dynamic(
   () => import("@/components/fire/max-wr-by-year-chart").then((m) => m.MaxWrByYearChart),
   { ssr: false, loading: chartSkeleton },
 )
+const WithdrawalStrategiesCard = dynamic(
+  () => import("@/components/fire/withdrawal-strategies-card").then((m) => m.WithdrawalStrategiesCard),
+  { ssr: false, loading: chartSkeleton },
+)
 const SequenceRiskChart = dynamic(
   () => import("@/components/fire/sequence-risk-chart").then((m) => m.SequenceRiskChart),
   { ssr: false, loading: chartSkeleton },
@@ -56,6 +60,7 @@ export default function FireResearchPage() {
       <SwrHeatmap history={history} probeWr={plan.swr} />
       <CohortPathsChart history={history} wr={plan.swr} opts={simOptions} portfolio={analysis.fireNumber} isHidden={isHidden} />
       <MaxWrByYearChart summaries={summaries} wr={plan.swr} horizonYears={inputs.horizonYears} />
+      <WithdrawalStrategiesCard state={state} isHidden={isHidden} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CapeRuleCard state={state} isHidden={isHidden} />
         <SupplementalFlowsCard
