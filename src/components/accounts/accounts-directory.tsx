@@ -1,60 +1,76 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useAccounts, type AccountFilters, type DiscoveredAccount } from "@/hooks/accounts"
+import { useAccountsDirectory, type DirectoryFilters } from "@/hooks/accounts"
 import { EmptyState } from "@/components/ui/empty-state"
-import { AccountsSearchBar } from "./accounts-search-bar"
-import { AccountGroup } from "./account-group"
+import type {
+  DirectoryEmail,
+  DirectoryService,
+  MissingEmailService,
+} from "@/types/accounts-directory"
+import { AccountsFilterBar } from "./accounts-filter-bar"
+import { AccountsTable } from "./accounts-table"
+import { AccountsMissingEmail } from "./accounts-missing-email"
 import { AccountsSkeleton } from "./accounts-skeleton"
+import { AccountEditDialog } from "./account-edit-dialog"
+import { AccountAddDialog, type AccountAddDefaults } from "./account-add-dialog"
+import { groupDirectory, type DirectoryGroupBy } from "./accounts-helpers"
 
 interface AccountsDirectoryProps {
   hasGmail: boolean
 }
 
-interface ServiceGroup {
-  serviceDomain: string
-  serviceName: string
-  category: string | null
-  accounts: DiscoveredAccount[]
+const PAGE_SIZE = 100
+const SEARCH_DEBOUNCE_MS = 300
+
+interface EditTarget {
+  service: DirectoryService
+  email: DirectoryEmail
 }
 
-function groupByService(accounts: DiscoveredAccount[]): ServiceGroup[] {
-  const map = new Map<string, ServiceGroup>()
-  for (const account of accounts) {
-    const existing = map.get(account.serviceDomain)
-    if (existing) {
-      existing.accounts.push(account)
-      if (!existing.category && account.category) existing.category = account.category
-    } else {
-      map.set(account.serviceDomain, {
-        serviceDomain: account.serviceDomain,
-        serviceName: account.serviceName,
-        category: account.category,
-        accounts: [account],
-      })
-    }
-  }
-  return [...map.values()]
-}
-
+/** Accounts page body: filters, the service list, and the "no email found" list. */
 export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
-  const [filters, setFilters] = useState<AccountFilters>({ status: "active" })
-  const [debounced, setDebounced] = useState<AccountFilters>(filters)
+  const [filters, setFilters] = useState<DirectoryFilters>({ status: "active", page: 1, limit: PAGE_SIZE })
+  const [debounced, setDebounced] = useState<DirectoryFilters>(filters)
+  const [groupBy, setGroupBy] = useState<DirectoryGroupBy>("none")
+  const [editing, setEditing] = useState<EditTarget | null>(null)
+  const [adding, setAdding] = useState<AccountAddDefaults | null>(null)
 
   // Debounce so typing in the search box doesn't fire a request per keystroke.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(filters), 300)
+    const t = setTimeout(() => setDebounced(filters), SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [filters])
 
-  const { data, isLoading, isError } = useAccounts(debounced)
-  const groups = useMemo(() => groupByService(data?.accounts ?? []), [data])
+  const { data, isLoading, isError } = useAccountsDirectory(debounced)
+  const services = useMemo(() => data?.services ?? [], [data])
+  const sections = useMemo(() => groupDirectory(services, groupBy), [services, groupBy])
+  const knownEmails = useMemo(() => data?.facets.emails.map((o) => o.label) ?? [], [data])
+  const paymentAccounts = data?.paymentAccounts ?? []
 
-  const isFiltered = Boolean(filters.service || filters.category) || filters.status === "dismissed"
+  const page = filters.page ?? 1
+  const pageCount = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
+  const isFiltered =
+    Boolean(filters.q || filters.email || filters.accountId || filters.category) ||
+    (filters.link ?? "all") !== "all" ||
+    filters.status === "dismissed"
+
+  const handleAddMissing = (s: MissingEmailService) =>
+    setAdding({
+      serviceName: s.merchantName,
+      serviceDomain: s.domain ?? "",
+      paymentAccountId: s.paidWith?.accountId ?? null,
+    })
 
   return (
     <div className="space-y-4">
-      <AccountsSearchBar filters={filters} onChange={setFilters} />
+      <AccountsFilterBar
+        filters={filters}
+        onChange={setFilters}
+        groupBy={groupBy}
+        onGroupByChange={setGroupBy}
+        facets={data?.facets}
+      />
 
       {isLoading && <AccountsSkeleton />}
 
@@ -65,12 +81,12 @@ export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
         </div>
       )}
 
-      {!isLoading && !isError && groups.length === 0 && (
+      {!isLoading && !isError && services.length === 0 && (
         isFiltered ? (
           <EmptyState
             icon="filter_alt"
             title="No matches"
-            description="No discovered accounts match your filters. Try clearing the search or category."
+            description="No services match your filters. Try clearing the search, email or card filter."
           />
         ) : hasGmail ? (
           <EmptyState
@@ -88,18 +104,53 @@ export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
         )
       )}
 
-      {!isLoading && !isError && groups.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {groups.map((g) => (
-            <AccountGroup
-              key={g.serviceDomain}
-              serviceName={g.serviceName}
-              serviceDomain={g.serviceDomain}
-              category={g.category}
-              accounts={g.accounts}
-            />
-          ))}
-        </div>
+      {!isLoading && !isError && services.length > 0 && (
+        <>
+          <div className="flex items-center justify-between text-xs text-foreground-muted">
+            <span>
+              {data?.total} service{data?.total === 1 ? "" : "s"}
+            </span>
+            <button type="button" onClick={() => setAdding({})} className="btn-ghost text-xs">
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
+                add
+              </span>
+              Add manually
+            </button>
+          </div>
+          <AccountsTable sections={sections} onEdit={(service, email) => setEditing({ service, email })} />
+          {pageCount > 1 && (
+            <div className="flex items-center justify-end gap-2 text-xs text-foreground-muted">
+              <button type="button" className="btn-ghost" disabled={page <= 1} onClick={() => setFilters({ ...filters, page: page - 1 })}>
+                Previous
+              </button>
+              <span>
+                Page {page} of {pageCount}
+              </span>
+              <button type="button" className="btn-ghost" disabled={page >= pageCount} onClick={() => setFilters({ ...filters, page: page + 1 })}>
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {filters.status !== "dismissed" && <AccountsMissingEmail onAdd={handleAddMissing} />}
+
+      {editing && (
+        <AccountEditDialog
+          service={editing.service}
+          email={editing.email}
+          paymentAccounts={paymentAccounts}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {adding && (
+        <AccountAddDialog
+          defaults={adding}
+          knownEmails={knownEmails}
+          paymentAccounts={paymentAccounts}
+          onClose={() => setAdding(null)}
+        />
       )}
     </div>
   )

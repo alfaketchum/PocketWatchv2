@@ -81,6 +81,16 @@ const NAME_TO_DOMAIN: Record<string, string> = {
   "venmo": "venmo.com",
 }
 
+/** Institution name → primary domain ("Chase" → "chase.com"), or null. */
+export function institutionNameToDomain(institutionName: string): string | null {
+  const nameLower = institutionName.toLowerCase().trim()
+  if (NAME_TO_DOMAIN[nameLower]) return NAME_TO_DOMAIN[nameLower]
+  for (const [key, domain] of Object.entries(NAME_TO_DOMAIN)) {
+    if (nameLower.includes(key)) return domain
+  }
+  return null
+}
+
 /**
  * Resolve institution logo. Fallback chain:
  * 1. Plaid-provided logo URL

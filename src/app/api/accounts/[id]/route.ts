@@ -22,6 +22,7 @@ const patchSchema = z
     serviceName: z.string().trim().min(1).max(60).optional(),
     category: z.string().trim().min(1).max(24).nullable().optional(),
     accountEmail: z.string().trim().email().max(200).optional(),
+    paymentAccountId: z.string().trim().min(1).max(64).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "No fields to update" })
 
@@ -44,7 +45,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     })
     if (!existing) return apiError("ACC22", "Account not found", 404)
 
-    const { status, serviceName, category, accountEmail } = parsed.data
+    const { status, serviceName, category, accountEmail, paymentAccountId } = parsed.data
+    if (paymentAccountId) {
+      const owned = await db.financeAccount.findFirst({
+        where: { id: paymentAccountId, userId: user.id },
+        select: { id: true },
+      })
+      if (!owned) return apiError("ACC25", "Payment account not found", 404)
+    }
     const curated = serviceName !== undefined || category !== undefined || accountEmail !== undefined
 
     const data: Prisma.DiscoveredAccountUpdateInput = {}
@@ -55,6 +63,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       data.accountEmail = accountEmail
       data.accountEmailHash = hashAccountEmail(accountEmail)
     }
+    if (paymentAccountId !== undefined) data.paymentAccountId = paymentAccountId
     if (curated) data.userEdited = true
 
     const account = await db.discoveredAccount.update({
@@ -71,6 +80,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         extractedBy: true,
         lastSeenAt: true,
         status: true,
+        paymentAccountId: true,
       },
     })
     return NextResponse.json({ account })

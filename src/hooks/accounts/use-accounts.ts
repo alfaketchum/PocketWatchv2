@@ -19,6 +19,7 @@ export interface UpdateAccountInput {
   serviceName?: string
   category?: string | null
   accountEmail?: string
+  paymentAccountId?: string | null
 }
 
 /** Paginated, filterable list of discovered accounts. */

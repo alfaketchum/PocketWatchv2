@@ -21,7 +21,7 @@ export interface DiscoveredAccount {
   accountEmail: string
   signalTypes: AccountSignalType[]
   confidence: number
-  extractedBy: "heuristic" | "llm"
+  extractedBy: "heuristic" | "llm" | "manual"
   lastSeenAt: string | null
   status: AccountStatus
 }
@@ -90,14 +90,28 @@ export async function accountsFetch<T>(
   }
 }
 
+export interface DirectoryFilters {
+  status?: AccountStatus
+  q?: string
+  email?: string
+  category?: string
+  accountId?: string
+  link?: "all" | "linked" | "unlinked"
+  sort?: "name" | "spend" | "recent"
+  page?: number
+  limit?: number
+}
+
 export const accountKeys = {
   all: ["accounts"] as const,
   list: (filters: AccountFilters) => [...accountKeys.all, "list", filters] as const,
+  directory: (filters: DirectoryFilters) => [...accountKeys.all, "directory", filters] as const,
+  missingEmail: () => [...accountKeys.all, "missing-email"] as const,
   scanStatus: () => [...accountKeys.all, "scan-status"] as const,
 }
 
 /** Build the /api/accounts query string from filters (omitting empty values). */
-export function accountsQuery(filters: AccountFilters): string {
+export function accountsQuery(filters: AccountFilters | DirectoryFilters): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(filters)) {
     if (value !== undefined && value !== null && `${value}`.length > 0) {

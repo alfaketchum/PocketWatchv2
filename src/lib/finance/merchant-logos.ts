@@ -310,9 +310,9 @@ function faviconUrl(domain: string): string {
 /** Try to match a merchant name against the known domains map */
 function resolveFromKnownDomains(merchantName: string): string | null {
   const lower = merchantName.toLowerCase().replace(/\s*••••\d+$/, "").trim()
-  if (MERCHANT_DOMAINS[lower]) return faviconUrl(MERCHANT_DOMAINS[lower])
+  if (MERCHANT_DOMAINS[lower]) return MERCHANT_DOMAINS[lower]
   for (const [key, domain] of Object.entries(MERCHANT_DOMAINS)) {
-    if (lower.includes(key)) return faviconUrl(domain)
+    if (lower.includes(key)) return domain
   }
   return null
 }
@@ -332,13 +332,26 @@ function guessDomain(merchantName: string): string | null {
   // Skip names that look like CC payments or generic labels
   if (/credit|card|payment|auto.?pay|bank|loan|mortgage|fee/i.test(cleaned)) return null
   // If it already looks like a domain, use it
-  if (/^[a-z0-9-]+\.(com|io|co|org|net|app|tv|so|me)$/.test(cleaned)) return faviconUrl(cleaned)
+  if (/^[a-z0-9-]+\.(com|io|co|org|net|app|tv|so|me)$/.test(cleaned)) return cleaned
   // Single word → try .com
   const words = cleaned.split(/\s+/)
-  if (words.length === 1 && words[0].length >= 3) return faviconUrl(`${words[0]}.com`)
+  if (words.length === 1 && words[0].length >= 3) return `${words[0]}.com`
   // Two words joined → try joined.com
-  if (words.length === 2) return faviconUrl(`${words.join("")}.com`)
+  if (words.length === 2) return `${words.join("")}.com`
   return null
+}
+
+/**
+ * Best-effort merchant name → registrable domain ("NETFLIX.COM" / "Netflix" →
+ * "netflix.com"). Known merchants first, then the name-shape guess.
+ */
+export function merchantNameToDomain(merchantName: string): string | null {
+  return resolveFromKnownDomains(merchantName) ?? guessDomain(merchantName)
+}
+
+/** Only the curated merchant map — no guessing (for high-precision matching). */
+export function knownMerchantDomain(merchantName: string): string | null {
+  return resolveFromKnownDomains(merchantName)
 }
 
 /**
@@ -385,12 +398,12 @@ export async function lookupMerchantLogos(
     if (found) continue
 
     // 3. Known domains
-    const domainLogo = resolveFromKnownDomains(name)
-    if (domainLogo) { logoMap.set(name, domainLogo); continue }
+    const known = resolveFromKnownDomains(name)
+    if (known) { logoMap.set(name, faviconUrl(known)); continue }
 
     // 4. Domain guessing
     const guessed = guessDomain(name)
-    if (guessed) logoMap.set(name, guessed)
+    if (guessed) logoMap.set(name, faviconUrl(guessed))
   }
 
   return logoMap
