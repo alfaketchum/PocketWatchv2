@@ -14,13 +14,14 @@ interface BudgetBuilderSimpleEditorProps {
   onChange: (lines: DraftLine[]) => void
   stats: Map<string, CategoryStats>
   typicalSpend: number
+  steadyIncome: number | null
   /** AI summary shown above the sliders when the draft came from an AI proposal. */
   aiSummary?: string | null
   onSwitchToManual: () => void
 }
 
 /** One monthly total, split across categories with percentage sliders. */
-export function BudgetBuilderSimpleEditor({ lines, onChange, stats, typicalSpend, aiSummary, onSwitchToManual }: BudgetBuilderSimpleEditorProps) {
+export function BudgetBuilderSimpleEditor({ lines, onChange, stats, typicalSpend, steadyIncome, aiSummary, onSwitchToManual }: BudgetBuilderSimpleEditorProps) {
   const total = draftTotal(lines)
   const [totalInput, setTotalInput] = useState(String(Math.round(total)))
   const [picking, setPicking] = useState(false)
@@ -67,11 +68,12 @@ export function BudgetBuilderSimpleEditor({ lines, onChange, stats, typicalSpend
           </span>
         </label>
         <div className="flex flex-wrap gap-2 pb-1">
+          {steadyIncome != null && <Chip label={`80% of income ${formatCurrency(steadyIncome * 0.8, "USD", 0)}`} onClick={() => commitTotal(String(Math.round(steadyIncome * 0.8)))} />}
           {typicalSpend > 0 && <Chip label={`Typical month ${formatCurrency(typicalSpend, "USD", 0)}`} onClick={() => commitTotal(String(Math.round(typicalSpend)))} />}
         </div>
       </div>
 
-      <BudgetBuilderSummaryBar total={total} typicalSpend={typicalSpend} />
+      <BudgetBuilderSummaryBar total={total} typicalSpend={typicalSpend} steadyIncome={steadyIncome} />
 
       <div className="rounded-2xl border border-card-border bg-card">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-card-border/50">

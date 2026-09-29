@@ -1,11 +1,12 @@
 /**
  * Gathers the lifestyle-spending picture the AI budget generator reasons over:
  * per-category and per-subcategory monthly history, subscriptions, current
- * budgets and top merchants. Taxes and income are reported as context only.
+ * budgets and top merchants. Taxes are context only; income shapes the budget
+ * only when it's steady (see classifyIncome).
  */
 
 import { db } from "@/lib/db"
-import { DEFAULT_BUDGET_LOOKBACK, getLifestyleCategories } from "@/lib/finance/budget-builder-config"
+import { DEFAULT_BUDGET_LOOKBACK, classifyIncome, getLifestyleCategories, type IncomeProfile } from "@/lib/finance/budget-builder-config"
 
 const TOP_MERCHANTS_PER_CATEGORY = 3
 const MAX_SUBCATEGORIES = 6
@@ -38,8 +39,7 @@ export interface BudgetContext {
   avgMonthlySpend: number
   /** Sum of per-category medians. */
   typicalMonthlySpend: number
-  avgMonthlyIncome: number
-  incomeOverride: number | null
+  income: IncomeProfile
   taxes: { total: number; paymentMonths: number }
   subscriptions: Array<{ name: string; monthly: number; category: string | null }>
   subscriptionsMonthly: number
@@ -104,11 +104,11 @@ function accumulate(txs: HistoryTx[]) {
   const lifestyle = new Set(getLifestyleCategories())
   const byCat = new Map<string, CategoryAcc>()
   const taxMonths = new Map<string, number>()
-  let income = 0
+  const incomeMonths = new Map<string, number>()
   for (const tx of txs) {
     const month = tx.date.toISOString().slice(0, 7)
     if (tx.amount < 0) {
-      if (tx.category === "Income") income += Math.abs(tx.amount)
+      if (tx.category === "Income") bump(incomeMonths, month, Math.abs(tx.amount))
       continue
     }
     if (tx.category === TAX_CATEGORY) { bump(taxMonths, month, tx.amount); continue }
@@ -123,7 +123,7 @@ function accumulate(txs: HistoryTx[]) {
     acc.subs.set(subName, { ...sub, count: sub.count + 1 })
     byCat.set(cat, acc)
   }
-  return { byCat, taxMonths, income }
+  return { byCat, taxMonths, incomeMonths }
 }
 
 function toHistory(category: string, acc: CategoryAcc, months: string[]): CategoryHistory {
@@ -164,7 +164,7 @@ export async function gatherBudgetContext(userId: string, lookback: number = DEF
     }),
   ])
 
-  const { byCat, taxMonths, income } = accumulate(txs)
+  const { byCat, taxMonths, incomeMonths } = accumulate(txs)
   const categories = [...byCat.entries()]
     .map(([cat, acc]) => toHistory(cat, acc, months))
     .sort((a, b) => b.avgMonthly - a.avgMonthly)
@@ -178,13 +178,13 @@ export async function gatherBudgetContext(userId: string, lookback: number = DEF
       category: s.category,
     }))
 
+  const typicalMonthlySpend = round2(categories.reduce((s, c) => s + c.medianMonthly, 0))
   return {
     months,
     categories,
     avgMonthlySpend: round2(categories.reduce((s, c) => s + c.avgMonthly, 0)),
-    typicalMonthlySpend: round2(categories.reduce((s, c) => s + c.medianMonthly, 0)),
-    avgMonthlyIncome: round2(income / months.length),
-    incomeOverride: user?.monthlyIncomeOverride ?? null,
+    typicalMonthlySpend,
+    income: classifyIncome(months.map((m) => incomeMonths.get(m) ?? 0), typicalMonthlySpend, user?.monthlyIncomeOverride ?? null),
     taxes: { total: round2([...taxMonths.values()].reduce((s, v) => s + v, 0)), paymentMonths: taxMonths.size },
     subscriptions,
     subscriptionsMonthly: round2(subscriptions.reduce((s, x) => s + x.monthly, 0)),

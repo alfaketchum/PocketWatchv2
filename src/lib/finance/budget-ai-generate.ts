@@ -27,6 +27,15 @@ function formatCategory(c: CategoryHistory, monthCount: number): string {
   return `${head}${subs ? `\n${subs}` : ""}${merchants}`
 }
 
+function formatIncome(ctx: BudgetContext): string {
+  const { income } = ctx
+  if (income.kind === "variable") {
+    return `INCOME: variable (avg ${money(income.monthly)}/mo, irregular — e.g. investment income). Context only: do NOT cap or scale the budget by income.`
+  }
+  const source = income.source === "override" ? "user-entered" : "detected from regular deposits"
+  return `INCOME: steady ${money(income.monthly)}/mo (${source}). The budget total must fit within it and leave room to save (aim for 10-20% when feasible).`
+}
+
 function formatContext(ctx: BudgetContext): string {
   const n = ctx.months.length
   const subs = ctx.subscriptions.length > 0
@@ -35,7 +44,6 @@ function formatContext(ctx: BudgetContext): string {
   const budgets = ctx.currentBudgets.length > 0
     ? ctx.currentBudgets.map((b) => `- ${b.category}: ${money(b.monthlyLimit)}`).join("\n")
     : "- none yet"
-  const income = ctx.incomeOverride != null ? `${money(ctx.incomeOverride)}/mo (user-entered)` : `${money(ctx.avgMonthlyIncome)}/mo average`
 
   return `MONTHS ANALYZED (${n} complete months, oldest → newest): ${ctx.months.join(", ")}
 LIFESTYLE SPENDING: avg ${money(ctx.avgMonthlySpend)}/mo; typical month (sum of category medians) ${money(ctx.typicalMonthlySpend)}
@@ -49,20 +57,19 @@ ${subs}
 CURRENT BUDGETS:
 ${budgets}
 
-CONTEXT ONLY (do NOT budget or size the budget from these):
-- Income: ${income}. It may be variable (e.g. investment income), so it is not a spending cap.
-- Taxes: ${money(ctx.taxes.total)} paid across ${ctx.taxes.paymentMonths} month(s). They swing with income and are planned separately.`
+${formatIncome(ctx)}
+- Taxes (context only, never budget them): ${money(ctx.taxes.total)} paid across ${ctx.taxes.paymentMonths} month(s). They are planned separately.`
 }
 
 export function buildBudgetPlanPrompt(ctx: BudgetContext): string {
   return `You are a personal finance coach building a realistic MONTHLY LIFESTYLE budget from the user's real data.
 A budget here means the day-to-day cost of the user's lifestyle: housing, food, transport, shopping, travel, fun and so on.
-It is NOT a savings plan and NOT sized to income.
+It is not a savings plan. Income only constrains it when income is steady (see INCOME below).
 Respond ONLY with valid JSON matching the schema below. No markdown, no explanation, just JSON.
 
 SCHEMA:
 {
-  "summary": "string (2-3 sentences: what a normal month of this lifestyle costs, the total budgeted, and the key trade-offs)",
+  "summary": "string (2-3 sentences: what a normal month of this lifestyle costs, the total budgeted, the key trade-offs, and — only if income is steady — how much it leaves to save)",
   "categories": [{ "category": "string (one of the allowed categories)", "amount": number (whole dollars per month), "reason": "string (under ${MAX_REASON} chars, cite real numbers and the subcategories driving it)" }]
 }
 
@@ -78,7 +85,7 @@ RULES:
 - Weigh recent months more heavily when spending has clearly shifted (e.g. a rent change), but use the longer history for annual and seasonal costs (spread them monthly).
 - Fixed costs (rent, utilities, insurance, subscriptions) should cover what the user actually pays now.
 - Trim discretionary subcategories where history shows room, but stay achievable (not below ~80% of the typical month without reason).
-- Never budget taxes, and never cap or scale the budget by income.
+- Never budget taxes. Apply the INCOME instruction exactly as stated.
 - Respect current budgets where they already fit the data; change them only with a clear reason.
 - Round amounts to the nearest $5.`
 }

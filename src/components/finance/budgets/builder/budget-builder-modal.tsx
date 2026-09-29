@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import {
-  useFinanceBudgets, useFinanceTrends, useBudgetAI,
+  useFinanceBudgets, useFinanceTrends, useFinanceIncome, useBudgetAI,
   useGenerateBudgetPlan, useSaveBudgetPlan,
 } from "@/hooks/use-finance"
 import { BudgetBuilderMethodPicker } from "./budget-builder-method-picker"
@@ -17,7 +17,7 @@ import {
   typicalMonthlySpend, buildCategoryStats, buildInitialDraft, completeTrendMonths,
   diffDraft, draftFromProposal, draftTotal, saveAmount,
 } from "./budget-builder-helpers"
-import { DEFAULT_BUDGET_LOOKBACK, type BudgetLookback } from "@/lib/finance/budget-builder-config"
+import { DEFAULT_BUDGET_LOOKBACK, classifyIncome, type BudgetLookback } from "@/lib/finance/budget-builder-config"
 import type { BuilderMethod, BuilderStep, DraftLine, ExistingBudget } from "./budget-builder-types"
 
 interface BudgetBuilderModalProps {
@@ -40,6 +40,7 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
   const { data: budgets } = useFinanceBudgets()
   // One extra month so dropping the in-progress month still leaves `lookback` complete months.
   const { data: trends, isFetching: trendsLoading } = useFinanceTrends(lookback + 1)
+  const { data: incomeData } = useFinanceIncome()
   const { data: aiInfo } = useBudgetAI()
   const generate = useGenerateBudgetPlan()
   const save = useSaveBudgetPlan()
@@ -59,6 +60,11 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
   const months = useMemo(() => completeTrendMonths(trends?.months, lookback), [trends, lookback])
   const stats = useMemo(() => buildCategoryStats(months), [months])
   const typicalSpend = typicalMonthlySpend(stats)
+  const incomeProfile = useMemo(
+    () => classifyIncome(months.map((m) => m.income), typicalSpend, incomeData?.override ?? null),
+    [months, typicalSpend, incomeData],
+  )
+  const steadyIncome = incomeProfile.kind === "steady" ? incomeProfile.monthly : null
 
   const diff = useMemo(() => diffDraft(existing, lines), [existing, lines])
   const hasChanges = diff.added.length + diff.changed.length + diff.removed.length > 0
@@ -160,15 +166,15 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
             <BudgetBuilderAILoading months={months.length || lookback} providerLabel={aiInfo?.providerLabel ?? null} error={aiError} onRetry={() => runAI(true)} onCancel={cancelAI} />
           )}
           {step === "ai-proposal" && (
-            <BudgetBuilderAIProposal summary={aiSummary} lines={lines} existing={existing} diff={diff} typicalSpend={typicalSpend} />
+            <BudgetBuilderAIProposal summary={aiSummary} lines={lines} existing={existing} diff={diff} typicalSpend={typicalSpend} steadyIncome={steadyIncome} />
           )}
           {step === "edit" && method !== "manual" && (
-            <BudgetBuilderSimpleEditor key={editorKey} lines={lines} onChange={setLines} stats={stats} typicalSpend={typicalSpend} aiSummary={aiSummary} onSwitchToManual={() => setMethod("manual")} />
+            <BudgetBuilderSimpleEditor key={editorKey} lines={lines} onChange={setLines} stats={stats} typicalSpend={typicalSpend} steadyIncome={steadyIncome} aiSummary={aiSummary} onSwitchToManual={() => setMethod("manual")} />
           )}
           {step === "edit" && method === "manual" && (
-            <BudgetBuilderManualEditor months={months.length} lines={lines} onChange={setLines} stats={stats} typicalSpend={typicalSpend} onFillSuggestions={fillSuggestions} />
+            <BudgetBuilderManualEditor months={months.length} lines={lines} onChange={setLines} stats={stats} typicalSpend={typicalSpend} steadyIncome={steadyIncome} onFillSuggestions={fillSuggestions} />
           )}
-          {step === "review" && <BudgetBuilderReview diff={diff} total={draftTotal(lines.map((l) => ({ ...l, amount: saveAmount(l.amount) })))} typicalSpend={typicalSpend} />}
+          {step === "review" && <BudgetBuilderReview diff={diff} total={draftTotal(lines.map((l) => ({ ...l, amount: saveAmount(l.amount) })))} typicalSpend={typicalSpend} steadyIncome={steadyIncome} />}
         </div>
 
         {step === "ai-proposal" && (
