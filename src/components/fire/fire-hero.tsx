@@ -22,7 +22,7 @@ export function FireHero({ state, isHidden }: { state: FirePlanState; isHidden: 
   const stats = [
     { label: "FIRE number", value: fmtMoney(analysis.fireNumber), sub: `${fmtMoney(plan.annualSpend)}/yr at ${fmtPct(plan.swr, 2)}` },
     { label: "Invested now", value: fmtMoney(plan.investable), sub: plan.investableIsAuto ? "From your accounts" : "Manual" },
-    { label: "Adding per year", value: fmtMoney(plan.annualContribution), sub: baseline.annualIncome ? `${fmtPct(plan.annualContribution / baseline.annualIncome, 0)} of income` : " " },
+    { label: "Investing each year until FI", value: fmtMoney(plan.annualContribution), sub: baseline.annualIncome ? `${fmtPct(plan.annualContribution / baseline.annualIncome, 0)} of income` : " " },
   ]
 
   return (

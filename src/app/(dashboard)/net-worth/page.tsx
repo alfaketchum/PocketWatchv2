@@ -6,7 +6,6 @@ import { formatCurrency, cn } from "@/lib/utils"
 import { FadeIn } from "@/components/motion/fade-in"
 import { StaggerChildren, StaggerItem } from "@/components/motion/stagger-children"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { FinanceHeroCard } from "@/components/finance/finance-hero-card"
 import { NetWorthBreakdown } from "@/components/net-worth/net-worth-breakdown"
@@ -26,7 +25,7 @@ function withinWindow<T extends { date: string }>(points: T[], cutoffMs: number)
 }
 
 export default function NetWorthPage() {
-  const { isHidden, togglePrivacy } = usePrivacyMode()
+  const { isHidden } = usePrivacyMode()
   // Always opens on 1Y; switching ranges during a visit still works as before
   const { tf: timeframe, select: setTimeframe } = useNetWorthTimeframe({ initial: "1Y", restoreSaved: false })
   const { data, isLoading, isError } = useCombinedNetWorth(timeframe === "ALL" ? "all" : "year")
@@ -63,7 +62,7 @@ export default function NetWorthPage() {
   if (isError) {
     return (
       <div className="space-y-6">
-        <Header isHidden={isHidden} togglePrivacy={togglePrivacy} />
+        <Header />
         <div className="bg-card border border-error/30 rounded-xl p-8 text-center">
           <span className="material-symbols-rounded text-error mb-2 block" style={{ fontSize: 32 }}>error</span>
           <p className="text-sm text-error">Failed to load net worth data. Please try again.</p>
@@ -74,7 +73,7 @@ export default function NetWorthPage() {
 
   return (
     <div>
-      <Header isHidden={isHidden} togglePrivacy={togglePrivacy} />
+      <Header />
 
       {/* Hero Card */}
       <FadeIn className="mt-6 mb-8">
@@ -173,14 +172,13 @@ export default function NetWorthPage() {
 
 // ─── Sub-components ──────────────────────────────────────────
 
-function Header({ isHidden, togglePrivacy }: { isHidden: boolean; togglePrivacy: () => void }) {
+function Header() {
   return (
     <div className="flex items-center justify-between">
       <div>
         <h1 className="text-2xl text-foreground font-semibold">Net Worth</h1>
         <p className="text-xs text-foreground-muted mt-0.5">Combined view across all accounts</p>
       </div>
-      <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
     </div>
   )
 }

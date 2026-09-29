@@ -43,6 +43,8 @@ export const config = {
     "/portfolio/:path*",
     "/finance/:path*",
     "/net-worth/:path*",
+    "/fire/:path*",
+    "/fire",
     "/tracker/:path*",
     "/settings/:path*",
     "/settings",

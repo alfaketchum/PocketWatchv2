@@ -13,7 +13,6 @@ import { BillsCalendar } from "@/components/finance/bills-calendar"
 import { formatCurrency, formatRelativeTime, cn } from "@/lib/utils"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { FlexButton } from "@/components/finance/flex-button"
 import { WhereIveBeenButton } from "@/components/finance/where-ive-been-button"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
@@ -55,7 +54,7 @@ export default function FinanceDashboardPage() {
   const [chartView, setChartView] = useState<ChartView>("total")
   const [includeInvestments, setIncludeInvestments] = useState(true)
   const [calMonth, setCalMonth] = useState<string | undefined>(undefined)
-  const { isHidden, togglePrivacy } = usePrivacyMode()
+  const { isHidden } = usePrivacyMode()
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useFinanceAccounts()
   const { data: deep } = useFinanceDeepInsights()
@@ -160,7 +159,6 @@ export default function FinanceDashboardPage() {
             </button>
             {deep && <FlexButton deep={deep} />}
             <WhereIveBeenButton />
-            <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
           </>
         }
       />

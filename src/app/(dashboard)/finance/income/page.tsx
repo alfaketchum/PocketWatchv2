@@ -2,7 +2,6 @@
 
 import { useIncomeStreams } from "@/hooks/finance/use-income-streams"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { FinanceCardSkeleton } from "@/components/finance/finance-loading"
@@ -28,7 +27,7 @@ const STATUS_STYLES: Record<string, { icon: string; color: string; label: string
 
 export default function FinanceIncomePage() {
   const { data, isLoading, isError } = useIncomeStreams()
-  const { isHidden, togglePrivacy } = usePrivacyMode()
+  const { isHidden } = usePrivacyMode()
 
   if (isError) {
     return (
@@ -52,7 +51,6 @@ export default function FinanceIncomePage() {
       <FinancePageHeader
         title="Income Streams"
         subtitle="Recurring income detected from your transactions"
-        actions={<PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />}
       />
 
       {isLoading ? (

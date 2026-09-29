@@ -42,12 +42,15 @@ export function projectPath(
   years: number,
   startYear: number,
   windfalls: Windfall[] = [],
+  /** Contributions stop once the portfolio reaches this value (you're FI). */
+  stopContributingAt = Infinity,
 ): ProjectionPoint[] {
   const span = Math.min(Math.max(1, Math.ceil(years)), MAX_PROJECTION_YEARS)
   const points: ProjectionPoint[] = [{ age: currentAge, year: startYear, value: current }]
   let value = current
   for (let i = 1; i <= span; i++) {
-    value = value * (1 + r) + contribution + windfallsInYear(windfalls, i)
+    const adding = value >= stopContributingAt ? 0 : contribution
+    value = value * (1 + r) + adding + windfallsInYear(windfalls, i)
     points.push({ age: currentAge + i, year: startYear + i, value })
   }
   return points

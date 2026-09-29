@@ -64,14 +64,14 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
     const now = nowFractionalYear(new Date())
     const years = analysis.yourTarget.years
     const span = years === null ? UNREACHABLE_SPAN : Math.max(YEARS_AFTER_FI, Math.ceil(years) + YEARS_AFTER_FI)
-    const projection = projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, span, 0, windfallsFor(inputs))
+    const projection = projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, span, 0, windfallsFor(inputs), analysis.fireNumber)
     const points: Point[] = [
       ...actualHistory.filter((p) => p.x < now).map((p) => ({ x: p.x, actual: transform(p.value) })),
       { x: now, actual: transform(plan.investable), projected: transform(plan.investable) },
       ...projection.slice(1).map((p, i) => ({ x: now + i + 1, projected: transform(p.value) })),
     ]
     return { data: points, fiX: years !== null && years > 0 ? now + years : null }
-  }, [actualHistory, plan, inputs, analysis.yourTarget.years, transform])
+  }, [actualHistory, plan, inputs, analysis.yourTarget.years, analysis.fireNumber, transform])
 
   const views = VIEWS.filter((v) => advanced || !v.advancedOnly)
 
@@ -79,7 +79,7 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
     <FireSectionCard
       eyebrow="Your path"
       title={active === "monthly" ? "When your portfolio can pay your bills" : "Where your investments are headed"}
-      info={`Solid = your actual invested assets. Dashed = projected at ${fmtPct(inputs.realReturn, 1)} real return plus ${fmtMoney(plan.annualContribution)}/yr, in today's dollars. Monthly = what ${fmtPct(plan.swr, 2)} of your portfolio pays each month.`}
+      info={`Solid = your actual invested assets. Dashed = projected at ${fmtPct(inputs.realReturn, 1)} real return plus ${fmtMoney(plan.annualContribution)}/yr until FI (growth only after), in today's dollars. Monthly = what ${fmtPct(plan.swr, 2)} of your portfolio pays each month.`}
       right={
         <div role="radiogroup" aria-label="Chart view" className="inline-flex rounded-lg border border-card-border p-0.5">
           {views.map((v) => (

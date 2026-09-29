@@ -4,6 +4,9 @@ import { useEffect, useState } from "react"
 
 type Theme = "light" | "dark"
 
+// Same-tab broadcast so every toggle instance (top bar, settings) shows the current theme.
+const THEME_EVENT = "pw-theme-change"
+
 function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "light"
   const stored = localStorage.getItem("theme") as Theme | null
@@ -18,6 +21,9 @@ export function ThemeToggle() {
   useEffect(() => {
     setTheme(getInitialTheme())
     setMounted(true)
+    const onChange = (e: Event) => setTheme((e as CustomEvent<Theme>).detail)
+    window.addEventListener(THEME_EVENT, onChange)
+    return () => window.removeEventListener(THEME_EVENT, onChange)
   }, [])
 
   useEffect(() => {
@@ -27,7 +33,11 @@ export function ThemeToggle() {
     localStorage.setItem("theme", theme)
   }, [theme, mounted])
 
-  const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"))
+  const toggle = () => {
+    const next: Theme = theme === "light" ? "dark" : "light"
+    setTheme(next)
+    window.dispatchEvent(new CustomEvent<Theme>(THEME_EVENT, { detail: next }))
+  }
 
   // Avoid hydration mismatch — render placeholder until mounted
   if (!mounted) {

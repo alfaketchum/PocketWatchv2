@@ -16,7 +16,7 @@ export function FireAssumptionsRow({ state }: { state: FirePlanState }) {
   const chips = [
     `Age ${inputs.currentAge}`,
     `${fmtCompact(plan.annualSpend)}/yr spend`,
-    `${fmtCompact(plan.annualContribution)}/yr invested`,
+    `${fmtCompact(plan.annualContribution)}/yr invested until FI`,
     `${fmtPct(plan.swr, 2)} withdrawals`,
     ...(advanced ? [`${fmtPct(inputs.realReturn, 1)} real return`, `${inputs.horizonYears}-yr retirement`] : []),
   ]

@@ -4,8 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useFireMode } from "@/hooks/finance/use-fire-profile"
-import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { FIRE_NAV_ITEMS } from "@/hooks/use-sidebar-prefs"
 import { FireModeToggle } from "./fire-mode-toggle"
 
@@ -15,7 +13,6 @@ const TAB_LABELS: Record<string, string> = { "/fire": "Plan", "/fire/portfolio":
 export function FireHeader() {
   const pathname = usePathname()
   const [mode, setMode] = useFireMode()
-  const { isHidden, togglePrivacy } = usePrivacyMode()
   const tabs = mode === "advanced" ? FIRE_NAV_ITEMS : FIRE_NAV_ITEMS.filter((t) => t.href === "/fire")
 
   return (
@@ -27,7 +24,6 @@ export function FireHeader() {
         </div>
         <div className="flex items-center gap-2">
           <FireModeToggle mode={mode} onChange={setMode} />
-          <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
         </div>
       </div>
       {tabs.length > 1 && (

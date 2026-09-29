@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 import { motion, AnimatePresence, useReducedMotion } from "motion/react"
 import { cn } from "@/lib/utils"
 import { fadeIn, durations } from "@/lib/motion"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { SidebarNavSection } from "./sidebar-nav-section"
 import { SidebarEditControls } from "./sidebar-edit-controls"
@@ -93,7 +92,7 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
         )}
         style={{ boxShadow: "2px 0 12px rgba(0,0,0,0.04)", willChange: "transform" }}
       >
-        {/* Logo + Theme Toggle */}
+        {/* Logo + nav edit */}
         <div className={cn(
           "h-14 flex items-center justify-between px-4 border-b border-card-border flex-shrink-0",
           collapsed && "lg:px-0 lg:justify-center",
@@ -109,7 +108,6 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
             </span>
           </div>
           <div className={cn("flex items-center gap-1", collapsed && "lg:hidden")}>
-            <ThemeToggle />
             <button
               onClick={() => setIsEditing(!isEditing)}
               className={cn(

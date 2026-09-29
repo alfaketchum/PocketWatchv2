@@ -84,7 +84,7 @@ export function PortfolioDashboard() {
   const refresh = useRefreshBalances()
   const [refreshTaskId, setRefreshTaskId] = useState<string | null>(null)
   const { data: taskStatus } = useTaskStatus(refreshTaskId)
-  const { isHidden, togglePrivacy } = usePrivacyMode()
+  const { isHidden } = usePrivacyMode()
   const [hoveredPoint, setHoveredPoint] = useState<{ time: number; value: number } | null>(null)
   const [clickedPoint, setClickedPoint] = useState<{ time: number; value: number } | null>(null)
   const isRefreshing = refresh.isPending || (refreshTaskId && taskStatus?.status === "pending")
@@ -236,7 +236,7 @@ export function PortfolioDashboard() {
       <ChartHeroSection
         timeframes={TIMEFRAMES} timeframe={timeframe} onTimeframeChange={(tf) => setTimeframe(tf as Timeframe)}
         chartScopes={CHART_SCOPES} chartScope={chartScope} onChartScopeChange={() => {}}
-        isLoading={isLoading} headlineLoading={headlineLoading} isHidden={isHidden} togglePrivacy={togglePrivacy}
+        isLoading={isLoading} headlineLoading={headlineLoading} isHidden={isHidden}
         chartDisplayValue={chartDisplayValue} hoveredPoint={hoveredPoint} onCrosshairMove={setHoveredPoint}
         onPointClick={setClickedPoint}
         periodChange={periodChange} hoverDelta={hoverDelta} chartData={chartData} chartColor={chartColor}

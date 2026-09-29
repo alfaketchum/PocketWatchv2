@@ -31,12 +31,12 @@ function MoneyBasic({ state }: SectionProps) {
         auto={{ isAuto: plan.spendIsAuto, onReset: () => update({ annualSpend: null }) }}
       />
       <FireNumberField
-        label="Invested / yr"
+        label="Invested / yr until FI"
         prefix="$"
         value={Math.round(plan.annualContribution)}
         min={0}
         onChange={(annualContribution) => update({ annualContribution })}
-        hint="Income minus spending"
+        hint="Every year until you reach FI · auto = income − spending"
         auto={{ isAuto: plan.contributionIsAuto, onReset: () => update({ annualContribution: null }) }}
       />
     </div>

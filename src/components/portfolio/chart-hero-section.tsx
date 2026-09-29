@@ -5,7 +5,6 @@ import dynamic from "next/dynamic"
 import { ChartViewToggle } from "@/components/ui/chart-view-toggle"
 import { TextMorph } from "torph/react"
 import { PortfolioChartCard } from "@/components/portfolio/portfolio-chart-card"
-import { PrivacyToggle } from "@/components/portfolio/privacy-toggle"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { ChartSubline, ChartEmptyState } from "@/components/portfolio/chart-subline"
 import { formatFiatValue } from "@/lib/portfolio/utils"
@@ -39,7 +38,6 @@ export interface ChartHeroSectionProps {
   isLoading: boolean
   headlineLoading: boolean
   isHidden: boolean
-  togglePrivacy: () => void
   chartDisplayValue: number
   hoveredPoint: { time: number; value: number } | null
   onCrosshairMove: (point: { time: number; value: number } | null) => void
@@ -56,7 +54,7 @@ export interface ChartHeroSectionProps {
 export function ChartHeroSection({
   timeframes, timeframe, onTimeframeChange,
   chartScopes, chartScope, onChartScopeChange,
-  isLoading, headlineLoading, isHidden, togglePrivacy,
+  isLoading, headlineLoading, isHidden,
   chartDisplayValue, hoveredPoint, onCrosshairMove, onPointClick,
   periodChange, hoverDelta, chartData, chartColor,
   chartStats, historyWarning, syncStatus,
@@ -74,7 +72,6 @@ export function ChartHeroSection({
       headerActions={
         <>
           <ChartViewToggle views={CHART_VIEWS} view={view} onChange={setView} />
-          <PrivacyToggle isHidden={isHidden} onToggle={togglePrivacy} />
         </>
       }
     >

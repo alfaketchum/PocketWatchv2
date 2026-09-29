@@ -52,10 +52,11 @@ export function MoneySection({ state }: SectionProps) {
           auto={{ isAuto: plan.spendIsAuto, onReset: () => update({ annualSpend: null }) }}
         />
         <FireNumberField
-          label="Invested / yr"
+          label="Invested / yr until FI"
           prefix="$"
           value={Math.round(plan.annualContribution)}
           onChange={set("annualContribution")}
+          hint="Every year until you reach FI"
           auto={{ isAuto: plan.contributionIsAuto, onReset: () => update({ annualContribution: null }) }}
         />
         <FireNumberField label="Real return" suffix="%" scale={100} value={inputs.realReturn} min={-0.05} max={0.15} onChange={set("realReturn")} hint="After inflation" />
