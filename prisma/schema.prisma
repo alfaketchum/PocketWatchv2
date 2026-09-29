@@ -75,6 +75,7 @@ model User {
   trips                         Trip[]
   discoveredAccounts            DiscoveredAccount[]
   gmailScanStates               GmailScanState[]
+  mailSenders                   MailSender[]
   calendarTokenVersion          Int?                           @default(1)
 
 }
@@ -991,6 +992,36 @@ model DiscoveredAccount {
   @@index([userId, serviceDomain])
 }
 
+// Mailing-list senders per mailbox, from List-Unsubscribe headers (headers only —
+// no bodies). Drives the unsubscribe manager: volume, last seen, and how to leave.
+model MailSender {
+  id                String    @id @default(cuid())
+  userId            String
+  service           String    // FinanceCredential service of the mailbox ("gmail_oauth:<email>")
+  senderEmail       String    // lowercased From address
+  senderDomain      String    // registrable domain of senderEmail
+  displayName       String
+  messageCount      Int       @default(0)
+  firstSeenAt       DateTime?
+  lastSeenAt        DateTime?
+  // From the newest message's List-Unsubscribe header — SENSITIVE (encrypted):
+  // these URLs carry per-recipient tokens.
+  unsubscribeUrl    String?
+  unsubscribeMailto String?
+  // RFC 8058 List-Unsubscribe-Post: one-click unsubscribe via a server POST.
+  oneClick          Boolean   @default(false)
+  status            String    @default("active") // active | unsubscribed | kept
+  unsubscribedAt    DateTime?
+  unsubscribeMethod String?   // one_click | link | mailto
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, service, senderEmail])
+  @@index([userId, status])
+}
+
 // Per-mailbox cursor for the account-directory Gmail scan: a resumable backfill
 // (newest → oldest via Gmail pageToken) plus an incremental `after:` watermark,
 // so each message is fetched once instead of re-reading the same newest page.
@@ -1002,6 +1033,8 @@ model GmailScanState {
   backfillDone      Boolean   @default(false)
   lastIncrementalAt DateTime?
   processedCount    Int       @default(0)
+  // Watermark for the mailing-list sender scan (unsubscribe manager).
+  senderScanAt      DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -62,7 +62,7 @@ export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
-  accounts:  { label: "Accounts",      items: ACCOUNTS_NAV_ITEMS },
+  accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
   ai:        { label: "Assistant",     items: AI_NAV_ITEMS },

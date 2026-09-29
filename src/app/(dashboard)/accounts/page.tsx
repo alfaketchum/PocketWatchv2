@@ -7,6 +7,7 @@ import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { GmailAccountsBar } from "@/components/trips/gmail-accounts-bar"
 import { AccountsDirectory } from "@/components/accounts/accounts-directory"
 import { AccountsScanButton } from "@/components/accounts/accounts-scan-button"
+import { AccountsTabs } from "@/components/accounts/accounts-tabs"
 
 const GMAIL_CONNECT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   connected: { ok: true, text: "Gmail account connected" },
@@ -53,6 +54,8 @@ export default function AccountsPage() {
           )
         }
       />
+
+      <AccountsTabs />
 
       {hasGmail && <GmailAccountsBar accounts={gmailAccounts ?? []} />}
 

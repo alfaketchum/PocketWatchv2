@@ -164,6 +164,10 @@ export const financeRateLimiters = {
 export const accountsRateLimiters = {
   /** Gmail account scan: 3 requests per 5 minutes */
   scan: createRateLimiter({ limit: 3, windowSeconds: 300 }),
+  /** Mailing-list sender scan: 3 requests per 5 minutes */
+  senderScan: createRateLimiter({ limit: 3, windowSeconds: 300 }),
+  /** Outbound one-click unsubscribe POSTs: 120 senders per 5 minutes */
+  unsubscribe: createRateLimiter({ limit: 120, windowSeconds: 300 }),
 }
 
 /**

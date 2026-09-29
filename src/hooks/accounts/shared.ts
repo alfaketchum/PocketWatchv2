@@ -102,16 +102,27 @@ export interface DirectoryFilters {
   limit?: number
 }
 
+export interface SenderFilters {
+  status?: "active" | "unsubscribed" | "kept" | "all"
+  mailbox?: string
+  q?: string
+  sort?: "count" | "recent"
+  page?: number
+  limit?: number
+}
+
 export const accountKeys = {
   all: ["accounts"] as const,
   list: (filters: AccountFilters) => [...accountKeys.all, "list", filters] as const,
   directory: (filters: DirectoryFilters) => [...accountKeys.all, "directory", filters] as const,
   missingEmail: () => [...accountKeys.all, "missing-email"] as const,
+  senders: (filters: SenderFilters) => [...accountKeys.all, "senders", filters] as const,
+  senderScanStatus: () => [...accountKeys.all, "senders", "scan-status"] as const,
   scanStatus: () => [...accountKeys.all, "scan-status"] as const,
 }
 
 /** Build the /api/accounts query string from filters (omitting empty values). */
-export function accountsQuery(filters: AccountFilters | DirectoryFilters): string {
+export function accountsQuery(filters: AccountFilters | DirectoryFilters | SenderFilters): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(filters)) {
     if (value !== undefined && value !== null && `${value}`.length > 0) {

@@ -10,6 +10,7 @@ export * from "./shared"
 export * from "./use-accounts"
 export * from "./use-accounts-scan"
 export * from "./use-accounts-directory"
+export * from "./use-mail-senders"
 export {
   useGmailAccounts,
   useDisconnectGmail,
