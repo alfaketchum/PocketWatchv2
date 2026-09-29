@@ -1,14 +1,13 @@
 import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
-import { decryptCredential } from "@/lib/finance/crypto"
-import { callAIProviderRaw, getProviderLabel, type AIProviderType } from "@/lib/finance/ai-providers"
+import { getProviderLabel, type AIProviderType } from "@/lib/finance/ai-providers"
+import { AI_SERVICES, resolveBudgetAIProvider } from "@/lib/finance/ai-budget-provider"
 import { getCached, setCache } from "@/lib/cache"
 import { financeRateLimiters, getClientId } from "@/lib/rate-limit"
 import { computeBudgetSuggestions, type BudgetSuggestion } from "@/lib/finance/budget-suggestions"
 import { NextRequest, NextResponse } from "next/server"
 
-const AI_SERVICES = ["ai_claude_cli", "ai_claude_api", "ai_openai", "ai_gemini"]
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 // ─── Response Types ─────────────────────────────────────────────
@@ -87,15 +86,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Find AI provider — fall back to Claude CLI if no stored key
-  const providerKey = await db.externalApiKey.findFirst({
-    where: { userId: user.id, serviceName: { in: AI_SERVICES }, verified: true },
-    orderBy: { updatedAt: "desc" },
-  })
-
-  const useCLIFallback = !providerKey
+  const ai = await resolveBudgetAIProvider(user.id)
 
   // Rate limit only for remote API providers
-  if (providerKey && providerKey.serviceName !== "ai_claude_cli") {
+  if (ai.isRemote) {
     const rl = financeRateLimiters.aiGenerate(getClientId(request))
     if (!rl.success) {
       return apiError("BIA03", "Rate limit exceeded. Try again in a few minutes.", 429)
@@ -138,18 +132,8 @@ export async function POST(request: NextRequest) {
     const prompt = buildBudgetAnalysisPrompt(suggestions, budgetMap, spentByCategory)
 
     // Call AI provider (stored key or CLI fallback)
-    let provider: AIProviderType
-    let rawText: string
-    // Web search so insights can reference current external context when useful.
-    if (useCLIFallback) {
-      provider = "ai_claude_cli"
-      rawText = await callAIProviderRaw({ provider, apiKey: "enabled", model: undefined }, prompt, { webSearch: true })
-    } else {
-      const apiKey = await decryptCredential(providerKey.apiKeyEnc)
-      provider = providerKey.serviceName as AIProviderType
-      const webSearch = provider === "ai_claude_api" || provider === "ai_claude_cli"
-      rawText = await callAIProviderRaw({ provider, apiKey, model: providerKey.model ?? undefined }, prompt, { webSearch })
-    }
+    const provider: AIProviderType = ai.provider
+    const rawText = await ai.run(prompt)
     const analysis = parseBudgetAIResponse(rawText)
 
     const result: CachedBudgetAI = {

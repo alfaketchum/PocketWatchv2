@@ -48,6 +48,9 @@ export {
   useGenerateBudgetAI,
 } from "./use-budgets"
 
+export { useGenerateBudgetPlan, useSaveBudgetPlan } from "./use-budget-builder"
+export type { GeneratedBudgetPlan, BudgetPlanProposal, BudgetPlanSave } from "./use-budget-builder"
+
 export type { SubscriptionItem } from "./use-subscriptions"
 export {
   useFinanceSubscriptions,

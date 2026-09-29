@@ -29,6 +29,10 @@ const BudgetPaceChart = dynamic(
   () => import("@/components/finance/budgets/budget-pace-chart").then((m) => m.BudgetPaceChart),
   { ssr: false },
 )
+const BudgetBuilderModal = dynamic(
+  () => import("@/components/finance/budgets/builder/budget-builder-modal").then((m) => m.BudgetBuilderModal),
+  { ssr: false },
+)
 const BudgetPeriodComparison = dynamic(
   () => import("@/components/finance/budgets/budget-period-comparison").then((m) => m.BudgetPeriodComparison),
   { ssr: false },
@@ -66,6 +70,7 @@ export default function FinanceBudgetsPage() {
   const hasBudgets = (budgets?.length ?? 0) > 0
   const [activeTab, setActiveTab] = useState<BudgetTab>("data-driven")
   const [showModal, setShowModal] = useState(false)
+  const [showBuilder, setShowBuilder] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [compare, setCompare] = useState(true)
 
@@ -197,7 +202,7 @@ export default function FinanceBudgetsPage() {
           )}
         </div>
         {activeTab === "my-budget" && (
-          <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors">
+          <button onClick={() => setShowBuilder(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors">
             <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span>
             Create Budget
           </button>
@@ -229,7 +234,7 @@ export default function FinanceBudgetsPage() {
           txByCategory={txByCategory}
           currentMonth={currentMonth}
           hasBudgets={hasBudgets}
-          onCreateBudget={() => setShowModal(true)}
+          onCreateBudget={() => setShowBuilder(true)}
         />
       ) : summary.budgetCount === 0 ? (
         /* ── My Budget empty state ── */
@@ -239,7 +244,7 @@ export default function FinanceBudgetsPage() {
           </div>
           <h3 className="text-base font-semibold text-foreground mb-1.5">No budgets yet</h3>
           <p className="text-sm text-foreground-muted mb-4 max-w-sm mx-auto">Set spending limits by category to track your progress against goals.</p>
-          <button onClick={() => setShowModal(true)} className="relative overflow-hidden px-5 py-2.5 bg-foreground text-background rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+          <button onClick={() => setShowBuilder(true)} className="relative overflow-hidden px-5 py-2.5 bg-foreground text-background rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
             <BorderBeam radius={12} size={1.5} speed={6} color="var(--primary)" />
             Create Your First Budget
           </button>
@@ -333,6 +338,7 @@ export default function FinanceBudgetsPage() {
 
       {/* ── Modals ── */}
       <BudgetCreateModal isOpen={showModal} onClose={() => setShowModal(false)} existingBudgets={budgets} suggestions={defaultSuggestions} trendsData={trendsData} onCreate={handleCreateBudget} isPending={createBudget.isPending} />
+      {showBuilder && <BudgetBuilderModal isOpen onClose={() => setShowBuilder(false)} onSaved={() => setActiveTab("my-budget")} />}
       <ConfirmDialog open={!!deletingId} onClose={() => setDeletingId(null)} onConfirm={() => { if (deletingId) deleteBudget.mutate(deletingId, { onSuccess: () => setDeletingId(null) }) }} title={`Delete ${deletingBudget?.category ?? ""} budget?`} description="This will permanently delete this budget." confirmLabel="Delete" variant="danger" isLoading={deleteBudget.isPending} />
     </div>
   )
