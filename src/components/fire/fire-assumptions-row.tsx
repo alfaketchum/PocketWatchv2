@@ -23,20 +23,21 @@ export function FireAssumptionsRow({ state }: { state: FirePlanState }) {
 
   return (
     <div className="border-t border-card-border mt-5 pt-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 text-left group"
-      >
-        <span className="text-[11px] text-foreground-muted truncate">{chips.join(" · ")}</span>
-        <span className="flex items-center gap-0.5 text-[11px] font-medium text-primary shrink-0">
-          {open ? "Done" : "Edit"}
-          <span className={cn("material-symbols-rounded transition-transform", open && "rotate-180")} style={{ fontSize: 16 }}>
-            expand_more
-          </span>
-        </span>
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-foreground-muted truncate">{chips.join(" · ")}</span>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className={cn(
+            "flex items-center gap-1.5 shrink-0 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors",
+            open ? "border-primary bg-primary text-white" : "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15",
+          )}
+        >
+          <span className="material-symbols-rounded" style={{ fontSize: 18 }}>{open ? "check" : "tune"}</span>
+          {open ? "Done" : "Edit plan"}
+        </button>
+      </div>
       {open && <div className="mt-4">{advanced ? <FireInputsPanel state={state} /> : <FireBasicInputs state={state} />}</div>}
     </div>
   )
