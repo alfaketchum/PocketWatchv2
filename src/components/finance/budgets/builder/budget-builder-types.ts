@@ -23,6 +23,8 @@ export interface ExistingBudget {
 
 export interface CategoryStats {
   avgMonthly: number
+  /** Median month — robust to one-off spikes (e.g. a large tax payment). */
+  median: number
   lastMonth: number
   /** Oldest → newest, complete months. */
   history: number[]

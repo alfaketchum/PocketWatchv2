@@ -6,8 +6,8 @@
 
 import { db } from "@/lib/db"
 import { getBudgetableCategories } from "@/lib/finance/categories"
+import { DEFAULT_BUDGET_LOOKBACK } from "@/lib/finance/budget-lookback"
 
-const HISTORY_MONTHS = 6
 const TOP_MERCHANTS_PER_CATEGORY = 3
 const LARGE_CATEGORY_LIMIT = 8
 // Same exclusions the budget totals use.
@@ -22,6 +22,8 @@ export interface CategoryHistory {
   /** Oldest → newest, one entry per complete month. */
   monthly: number[]
   avgMonthly: number
+  /** Median month — robust to one-off spikes. */
+  medianMonthly: number
   topMerchants: Array<{ name: string; avgMonthly: number }>
 }
 
@@ -29,6 +31,8 @@ export interface BudgetContext {
   months: string[]
   categories: CategoryHistory[]
   avgMonthlySpend: number
+  /** Sum of per-category medians. */
+  typicalMonthlySpend: number
   avgMonthlyIncome: number
   incomeOverride: number | null
   subscriptions: Array<{ name: string; monthly: number; category: string | null }>
@@ -37,6 +41,12 @@ export interface BudgetContext {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
 
 /** The last N complete calendar months as YYYY-MM, oldest first. */
 function completeMonths(now: Date, count: number): string[] {
@@ -78,7 +88,7 @@ function summarizeSpending(txs: HistoryTx[], months: string[]) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, TOP_MERCHANTS_PER_CATEGORY)
         .map(([name, total]) => ({ name, avgMonthly: round2(total / n) }))
-      return { category, monthly, avgMonthly, topMerchants }
+      return { category, monthly, avgMonthly, medianMonthly: round2(median(monthly)), topMerchants }
     })
     .sort((a, b) => b.avgMonthly - a.avgMonthly)
     .map((c, i) => (i < LARGE_CATEGORY_LIMIT ? c : { ...c, topMerchants: [] }))
@@ -86,8 +96,24 @@ function summarizeSpending(txs: HistoryTx[], months: string[]) {
   return { categories, avgMonthlyIncome: round2(income / n) }
 }
 
-export async function gatherBudgetContext(userId: string, now = new Date()): Promise<BudgetContext> {
-  const months = completeMonths(now, HISTORY_MONTHS)
+/** Requested complete months, dropping any before the user's first transaction. */
+async function availableMonths(userId: string, now: Date, lookback: number): Promise<string[]> {
+  const first = await db.financeTransaction.aggregate({
+    where: { userId, isDuplicate: false, isExcluded: false },
+    _min: { date: true },
+  })
+  const firstDate = first._min.date
+  const months = completeMonths(now, lookback)
+  if (!firstDate) return months
+  // History runs out inside the window: skip the first month too if it's only partially covered.
+  const firstMonth = firstDate.toISOString().slice(0, 7)
+  const partial = firstDate.getUTCDate() > 1
+  const clipped = months.filter((m) => (partial ? m > firstMonth : m >= firstMonth))
+  return clipped.length > 0 ? clipped : months.slice(-1)
+}
+
+export async function gatherBudgetContext(userId: string, lookback: number = DEFAULT_BUDGET_LOOKBACK, now = new Date()): Promise<BudgetContext> {
+  const months = await availableMonths(userId, now, lookback)
   const start = new Date(`${months[0]}-01T00:00:00`)
   const end = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -121,6 +147,7 @@ export async function gatherBudgetContext(userId: string, now = new Date()): Pro
     months,
     categories,
     avgMonthlySpend: round2(categories.reduce((s, c) => s + c.avgMonthly, 0)),
+    typicalMonthlySpend: round2(categories.reduce((s, c) => s + c.medianMonthly, 0)),
     avgMonthlyIncome,
     incomeOverride: user?.monthlyIncomeOverride ?? null,
     subscriptions,

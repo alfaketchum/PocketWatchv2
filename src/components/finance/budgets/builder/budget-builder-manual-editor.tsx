@@ -9,23 +9,25 @@ import { addLine, draftTotal, removeLine, updateLine } from "./budget-builder-he
 import type { CategoryStats, DraftLine } from "./budget-builder-types"
 
 interface BudgetBuilderManualEditorProps {
+  /** Complete months the averages cover. */
+  months: number
   lines: DraftLine[]
   onChange: (lines: DraftLine[]) => void
   stats: Map<string, CategoryStats>
   income: number
-  avgSpend: number
+  typicalSpend: number
   /** Fill in suggested amounts for categories with spending that aren't budgeted yet. */
   onFillSuggestions: () => void
 }
 
 /** Category-by-category amounts, with averages as a guide. */
-export function BudgetBuilderManualEditor({ lines, onChange, stats, income, avgSpend, onFillSuggestions }: BudgetBuilderManualEditorProps) {
+export function BudgetBuilderManualEditor({ months, lines, onChange, stats, income, typicalSpend, onFillSuggestions }: BudgetBuilderManualEditorProps) {
   const [picking, setPicking] = useState(lines.length === 0)
   const available = getBudgetableCategories().filter((c) => !lines.some((l) => l.category === c))
 
   return (
     <div className="space-y-4">
-      <BudgetBuilderSummaryBar total={draftTotal(lines)} income={income} avgSpend={avgSpend} />
+      <BudgetBuilderSummaryBar total={draftTotal(lines)} income={income} typicalSpend={typicalSpend} />
 
       <div className="rounded-2xl border border-card-border bg-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-card-border/50">
@@ -49,7 +51,7 @@ export function BudgetBuilderManualEditor({ lines, onChange, stats, income, avgS
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
                 <th className="text-left font-semibold px-4 py-2">Category</th>
-                <th className="text-right font-semibold px-3 py-2">6-mo avg</th>
+                <th className="text-right font-semibold px-3 py-2">{months}-mo avg</th>
                 <th className="text-right font-semibold px-3 py-2">Last month</th>
                 <th className="text-right font-semibold px-3 py-2">Budget</th>
                 <th className="w-10" />

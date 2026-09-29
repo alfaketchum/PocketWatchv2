@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import {
-  useFinanceBudgets, useBudgetSuggestions, useFinanceTrends, useFinanceIncome, useBudgetAI,
+  useFinanceBudgets, useFinanceTrends, useFinanceIncome, useBudgetAI,
   useGenerateBudgetPlan, useSaveBudgetPlan,
 } from "@/hooks/use-finance"
 import { BudgetBuilderMethodPicker } from "./budget-builder-method-picker"
@@ -14,9 +14,10 @@ import { BudgetBuilderReview } from "./budget-builder-review"
 import { BudgetBuilderAILoading } from "./budget-builder-ai-loading"
 import { BudgetBuilderAIProposal } from "./budget-builder-ai-proposal"
 import {
-  HISTORY_MONTHS, avgMonthlyIncome, buildCategoryStats, buildInitialDraft, completeTrendMonths,
+  avgMonthlyIncome, typicalMonthlySpend, buildCategoryStats, buildInitialDraft, completeTrendMonths,
   diffDraft, draftFromProposal, draftTotal, saveAmount,
 } from "./budget-builder-helpers"
+import { DEFAULT_BUDGET_LOOKBACK, type BudgetLookback } from "@/lib/finance/budget-lookback"
 import type { BuilderMethod, BuilderStep, DraftLine, ExistingBudget } from "./budget-builder-types"
 
 interface BudgetBuilderModalProps {
@@ -35,10 +36,10 @@ const TITLES: Record<BuilderStep, string> = {
 
 /** Large popup offering AI / set-a-total / manual budget creation, ending in a single bulk save. */
 export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderModalProps) {
+  const [lookback, setLookback] = useState<BudgetLookback>(DEFAULT_BUDGET_LOOKBACK)
   const { data: budgets } = useFinanceBudgets()
-  const { data: suggestionsData } = useBudgetSuggestions()
-  // One extra month so dropping the in-progress month still leaves HISTORY_MONTHS.
-  const { data: trends } = useFinanceTrends(HISTORY_MONTHS + 1)
+  // One extra month so dropping the in-progress month still leaves `lookback` complete months.
+  const { data: trends, isFetching: trendsLoading } = useFinanceTrends(lookback + 1)
   const { data: incomeData } = useFinanceIncome()
   const { data: aiInfo } = useBudgetAI()
   const generate = useGenerateBudgetPlan()
@@ -56,11 +57,10 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
     () => (budgets ?? []).map((b) => ({ category: b.category, monthlyLimit: b.baseMonthlyLimit ?? b.monthlyLimit })),
     [budgets],
   )
-  const months = useMemo(() => completeTrendMonths(trends?.months), [trends])
+  const months = useMemo(() => completeTrendMonths(trends?.months, lookback), [trends, lookback])
   const stats = useMemo(() => buildCategoryStats(months), [months])
   const income = incomeData?.override ?? avgMonthlyIncome(months)
-  const avgSpend = months.length > 0 ? months.reduce((s, m) => s + m.spending, 0) / months.length : 0
-  const suggestions = suggestionsData?.suggestions ?? []
+  const typicalSpend = typicalMonthlySpend(stats)
 
   const diff = useMemo(() => diffDraft(existing, lines), [existing, lines])
   const hasChanges = diff.added.length + diff.changed.length + diff.removed.length > 0
@@ -77,7 +77,7 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
     const id = ++aiRequest.current
     setAiError(null)
     setStep("ai-loading")
-    generate.mutate({ force }, {
+    generate.mutate({ months: lookback, force }, {
       onSuccess: (res) => {
         if (id !== aiRequest.current) return
         setMethod("ai")
@@ -91,12 +91,12 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
 
   const pick = (m: BuilderMethod) => {
     if (m === "ai") return runAI()
-    openEditor(m, buildInitialDraft(existing, suggestions, stats, m === "simple"))
+    openEditor(m, buildInitialDraft(existing, stats, m === "simple"))
   }
 
   const fillSuggestions = () => {
     const have = new Set(lines.map((l) => l.category))
-    const extra = buildInitialDraft([], suggestions, stats, true).filter((l) => !have.has(l.category))
+    const extra = buildInitialDraft([], stats, true).filter((l) => !have.has(l.category))
     setLines([...lines, ...extra])
   }
 
@@ -149,21 +149,28 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
 
         <div className="p-6 overflow-y-auto flex-1 scroll-touch">
           {step === "choose" && (
-            <BudgetBuilderMethodPicker hasBudgets={existing.length > 0} providerLabel={aiInfo?.providerLabel ?? null} onPick={pick} />
+            <BudgetBuilderMethodPicker
+              hasBudgets={existing.length > 0}
+              providerLabel={aiInfo?.providerLabel ?? null}
+              lookback={lookback}
+              onLookbackChange={setLookback}
+              monthsAvailable={trendsLoading ? null : months.length}
+              onPick={pick}
+            />
           )}
           {step === "ai-loading" && (
-            <BudgetBuilderAILoading providerLabel={aiInfo?.providerLabel ?? null} error={aiError} onRetry={() => runAI(true)} onCancel={cancelAI} />
+            <BudgetBuilderAILoading months={months.length || lookback} providerLabel={aiInfo?.providerLabel ?? null} error={aiError} onRetry={() => runAI(true)} onCancel={cancelAI} />
           )}
           {step === "ai-proposal" && (
-            <BudgetBuilderAIProposal summary={aiSummary} lines={lines} existing={existing} diff={diff} income={income} avgSpend={avgSpend} />
+            <BudgetBuilderAIProposal summary={aiSummary} lines={lines} existing={existing} diff={diff} income={income} typicalSpend={typicalSpend} />
           )}
           {step === "edit" && method !== "manual" && (
-            <BudgetBuilderSimpleEditor key={editorKey} lines={lines} onChange={setLines} stats={stats} income={income} avgSpend={avgSpend} aiSummary={aiSummary} onSwitchToManual={() => setMethod("manual")} />
+            <BudgetBuilderSimpleEditor key={editorKey} lines={lines} onChange={setLines} stats={stats} income={income} typicalSpend={typicalSpend} aiSummary={aiSummary} onSwitchToManual={() => setMethod("manual")} />
           )}
           {step === "edit" && method === "manual" && (
-            <BudgetBuilderManualEditor lines={lines} onChange={setLines} stats={stats} income={income} avgSpend={avgSpend} onFillSuggestions={fillSuggestions} />
+            <BudgetBuilderManualEditor months={months.length} lines={lines} onChange={setLines} stats={stats} income={income} typicalSpend={typicalSpend} onFillSuggestions={fillSuggestions} />
           )}
-          {step === "review" && <BudgetBuilderReview diff={diff} total={draftTotal(lines.map((l) => ({ ...l, amount: saveAmount(l.amount) })))} income={income} avgSpend={avgSpend} />}
+          {step === "review" && <BudgetBuilderReview diff={diff} total={draftTotal(lines.map((l) => ({ ...l, amount: saveAmount(l.amount) })))} income={income} typicalSpend={typicalSpend} />}
         </div>
 
         {step === "ai-proposal" && (

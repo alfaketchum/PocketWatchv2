@@ -1,18 +1,30 @@
+import { getBudgetableCategories } from "@/lib/finance/categories"
 import type { CategoryStats, DraftDiff, DraftLine, ExistingBudget } from "./budget-builder-types"
 
-export const HISTORY_MONTHS = 6
-
 interface TrendMonth { month: string; income: number; categories: Record<string, number> }
-interface Suggestion { category: string; suggested: number }
 interface ProposalLine { category: string; amount: number; reason: string }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-/** Trend months with the in-progress current month dropped, newest HISTORY_MONTHS kept. */
-export function completeTrendMonths<T extends { month: string }>(months: T[] | undefined, now = new Date()): T[] {
-  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  return (months ?? []).filter((m) => m.month < current).slice(-HISTORY_MONTHS)
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
+
+/**
+ * Trend months with the in-progress current month dropped, newest `count` kept.
+ * When history runs out inside the window, the oldest month is usually partial
+ * (data starts mid-month), so it's dropped too.
+ */
+export function completeTrendMonths<T extends { month: string }>(months: T[] | undefined, count: number, now = new Date()): T[] {
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const complete = (months ?? []).filter((m) => m.month < current).slice(-count)
+  return complete.length < count && complete.length > 1 ? complete.slice(1) : complete
+}
+
+/** Data-driven starting amount: typical (median) month + 10% headroom, rounded up to $10. */
+export const suggestedAmount = (typical: number) => Math.ceil((typical * 1.1) / 10) * 10
 
 export function buildCategoryStats(months: TrendMonth[]): Map<string, CategoryStats> {
   const out = new Map<string, CategoryStats>()
@@ -23,10 +35,16 @@ export function buildCategoryStats(months: TrendMonth[]): Map<string, CategorySt
     out.set(cat, {
       history,
       avgMonthly: round2(history.reduce((s, v) => s + v, 0) / months.length),
+      median: round2(median(history)),
       lastMonth: history[history.length - 1] ?? 0,
     })
   }
   return out
+}
+
+/** Sum of per-category medians: what a normal month costs, ignoring one-off spikes. */
+export function typicalMonthlySpend(stats: Map<string, CategoryStats>): number {
+  return round2([...stats.values()].reduce((s, c) => s + c.median, 0))
 }
 
 export function avgMonthlyIncome(months: TrendMonth[]): number {
@@ -41,19 +59,19 @@ function line(category: string, amount: number, stats: Map<string, CategoryStats
 
 const byAmountDesc = (a: DraftLine, b: DraftLine) => b.amount - a.amount
 
-/** Existing budgets at their current amounts; optionally plus suggested categories not yet budgeted. */
+/** Existing budgets at their current amounts; optionally plus suggested amounts for categories with spending. */
 export function buildInitialDraft(
   existing: ExistingBudget[],
-  suggestions: Suggestion[],
   stats: Map<string, CategoryStats>,
   includeSuggestions: boolean,
 ): DraftLine[] {
   const lines = existing.map((b) => line(b.category, b.monthlyLimit, stats))
   if (!includeSuggestions) return lines.sort(byAmountDesc)
   const have = new Set(existing.map((b) => b.category))
-  const extra = suggestions
-    .filter((s) => !have.has(s.category) && s.suggested > 0)
-    .map((s) => line(s.category, s.suggested, stats))
+  const budgetable = new Set(getBudgetableCategories())
+  const extra = [...stats.entries()]
+    .filter(([cat, s]) => !have.has(cat) && budgetable.has(cat) && s.median > 0)
+    .map(([cat, s]) => line(cat, suggestedAmount(s.median), stats))
   return [...lines, ...extra].sort(byAmountDesc)
 }
 

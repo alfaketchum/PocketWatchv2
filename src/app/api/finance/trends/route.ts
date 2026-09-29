@@ -8,7 +8,7 @@ import { z } from "zod/v4"
 const CACHE_TTL = 10 * 60 * 1000 // 10 minutes
 
 const paramsSchema = z.object({
-  months: z.coerce.number().int().min(1).max(24).default(6),
+  months: z.coerce.number().int().min(1).max(48).default(6),
 })
 
 export async function GET(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const parsed = paramsSchema.safeParse({ months: searchParams.get("months") ?? 6 })
   if (!parsed.success) {
-    return apiError("F9002", "Invalid months parameter (1-24)", 400)
+    return apiError("F9002", "Invalid months parameter (1-48)", 400)
   }
   const { months } = parsed.data
 

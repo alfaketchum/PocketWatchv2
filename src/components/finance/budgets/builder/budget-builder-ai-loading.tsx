@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 
-const STAGES = [
-  "Reading 6 months of transactions…",
+const stages = (months: number) => [
+  `Reading ${months} months of transactions…`,
   "Measuring each category against your income…",
   "Checking subscriptions and fixed costs…",
   "Drafting category amounts…",
@@ -11,13 +11,15 @@ const STAGES = [
 const STAGE_MS = 8_000
 
 interface BudgetBuilderAILoadingProps {
+  months: number
   providerLabel: string | null
   error: string | null
   onRetry: () => void
   onCancel: () => void
 }
 
-export function BudgetBuilderAILoading({ providerLabel, error, onRetry, onCancel }: BudgetBuilderAILoadingProps) {
+export function BudgetBuilderAILoading({ months, providerLabel, error, onRetry, onCancel }: BudgetBuilderAILoadingProps) {
+  const STAGES = stages(months)
   const [stage, setStage] = useState(0)
   useEffect(() => {
     if (error) return

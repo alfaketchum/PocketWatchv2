@@ -29,8 +29,8 @@ export interface BudgetPlanSave {
 
 export function useGenerateBudgetPlan() {
   return useMutation({
-    mutationFn: (opts?: { force?: boolean }) =>
-      financeFetch<GeneratedBudgetPlan>(`/budgets/generate${opts?.force ? "?force=true" : ""}`, { method: "POST", timeoutMs: GENERATE_TIMEOUT_MS }),
+    mutationFn: ({ months, force }: { months: number; force?: boolean }) =>
+      financeFetch<GeneratedBudgetPlan>(`/budgets/generate?months=${months}${force ? "&force=true" : ""}`, { method: "POST", timeoutMs: GENERATE_TIMEOUT_MS }),
   })
 }
 

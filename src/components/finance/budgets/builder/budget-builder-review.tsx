@@ -7,15 +7,15 @@ interface BudgetBuilderReviewProps {
   diff: DraftDiff
   total: number
   income: number
-  avgSpend: number
+  typicalSpend: number
 }
 
 /** What saving will add, change and remove. */
-export function BudgetBuilderReview({ diff, total, income, avgSpend }: BudgetBuilderReviewProps) {
+export function BudgetBuilderReview({ diff, total, income, typicalSpend }: BudgetBuilderReviewProps) {
   const noChanges = diff.added.length + diff.changed.length + diff.removed.length === 0
   return (
     <div className="space-y-4">
-      <BudgetBuilderSummaryBar total={total} income={income} avgSpend={avgSpend} />
+      <BudgetBuilderSummaryBar total={total} income={income} typicalSpend={typicalSpend} />
       {noChanges ? (
         <p className="text-sm text-foreground-muted py-8 text-center">No changes from your current budgets.</p>
       ) : (

@@ -23,7 +23,7 @@ function formatContext(ctx: BudgetContext): string {
     const merchants = c.topMerchants.length > 0
       ? ` | top: ${c.topMerchants.map((m) => `${m.name} ${money(m.avgMonthly)}/mo`).join(", ")}`
       : ""
-    return `- ${c.category}: avg ${money(c.avgMonthly)}/mo | monthly ${c.monthly.map(money).join(", ")}${merchants}`
+    return `- ${c.category}: avg ${money(c.avgMonthly)}/mo, median ${money(c.medianMonthly)}/mo | monthly ${c.monthly.map(money).join(", ")}${merchants}`
   }).join("\n")
 
   const subs = ctx.subscriptions.length > 0
@@ -38,9 +38,9 @@ function formatContext(ctx: BudgetContext): string {
     ? `${money(ctx.incomeOverride)}/mo (user-entered); transactions average ${money(ctx.avgMonthlyIncome)}/mo`
     : `${money(ctx.avgMonthlyIncome)}/mo average from Income transactions`
 
-  return `MONTHS ANALYZED (complete months, oldest → newest): ${ctx.months.join(", ")}
+  return `MONTHS ANALYZED (${ctx.months.length} complete months, oldest → newest): ${ctx.months.join(", ")}
 INCOME: ${income}
-AVERAGE MONTHLY SPENDING: ${money(ctx.avgMonthlySpend)}
+AVERAGE MONTHLY SPENDING: ${money(ctx.avgMonthlySpend)} (typical month, sum of category medians: ${money(ctx.typicalMonthlySpend)})
 
 SPENDING BY CATEGORY:
 ${categoryLines || "- no spending history"}
@@ -70,6 +70,9 @@ ${formatContext(ctx)}
 
 RULES:
 - Budget every category with meaningful recurring spending; skip one-off spikes unless they recur.
+- Large irregular payments (e.g. estimated/annual tax payments) are not monthly spending: leave them out of the budget unless they recur monthly, and mention them in the summary.
+- Prefer the median over the mean when a category has spikes.
+- Weigh recent months more heavily when spending has clearly shifted, but use the longer history to catch annual and seasonal costs (spread them monthly).
 - Fixed costs (Housing, Bills & Utilities, Insurance, subscriptions) should cover what the user actually pays.
 - Trim discretionary categories where history shows room, but stay achievable (not below ~80% of the average without reason).
 - If income is known, total budget + savingsTarget should not exceed income; aim for 10-20% savings when feasible.

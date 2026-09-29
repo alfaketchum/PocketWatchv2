@@ -10,11 +10,11 @@ interface BudgetBuilderAIProposalProps {
   existing: ExistingBudget[]
   diff: DraftDiff
   income: number
-  avgSpend: number
+  typicalSpend: number
 }
 
 /** Read-only view of the AI's proposed budget: current → proposed per category, with reasons. */
-export function BudgetBuilderAIProposal({ summary, lines, existing, diff, income, avgSpend }: BudgetBuilderAIProposalProps) {
+export function BudgetBuilderAIProposal({ summary, lines, existing, diff, income, typicalSpend }: BudgetBuilderAIProposalProps) {
   const current = new Map(existing.map((b) => [b.category, b.monthlyLimit]))
   return (
     <div className="space-y-4">
@@ -25,7 +25,7 @@ export function BudgetBuilderAIProposal({ summary, lines, existing, diff, income
         </div>
       )}
 
-      <BudgetBuilderSummaryBar total={draftTotal(lines)} income={income} avgSpend={avgSpend} />
+      <BudgetBuilderSummaryBar total={draftTotal(lines)} income={income} typicalSpend={typicalSpend} />
 
       <p className="text-xs text-foreground-muted">
         {diff.added.length} new · {diff.changed.length} changed · {lines.length - diff.added.length - diff.changed.length} unchanged

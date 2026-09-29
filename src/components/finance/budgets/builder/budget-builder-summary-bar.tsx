@@ -3,11 +3,11 @@ import { formatCurrency, cn } from "@/lib/utils"
 interface BudgetBuilderSummaryBarProps {
   total: number
   income: number
-  avgSpend: number
+  typicalSpend: number
 }
 
 /** Total budgeted vs average income and historical spend. */
-export function BudgetBuilderSummaryBar({ total, income, avgSpend }: BudgetBuilderSummaryBarProps) {
+export function BudgetBuilderSummaryBar({ total, income, typicalSpend }: BudgetBuilderSummaryBarProps) {
   const left = income - total
   const pctOfIncome = income > 0 ? (total / income) * 100 : null
   return (
@@ -17,7 +17,7 @@ export function BudgetBuilderSummaryBar({ total, income, avgSpend }: BudgetBuild
       <Stat
         label={left >= 0 ? "Left to save" : "Over income"}
         value={income > 0 ? formatCurrency(Math.abs(left), "USD", 0) : "—"}
-        sub={avgSpend > 0 ? `you avg ${formatCurrency(avgSpend, "USD", 0)} spend` : ""}
+        sub={typicalSpend > 0 ? `typical month ${formatCurrency(typicalSpend, "USD", 0)}` : ""}
         tone={income > 0 ? (left >= 0 ? "good" : "bad") : undefined}
       />
     </div>

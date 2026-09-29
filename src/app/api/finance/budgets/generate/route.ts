@@ -5,6 +5,7 @@ import { financeRateLimiters, getClientId } from "@/lib/rate-limit"
 import { resolveBudgetAIProvider, getProviderLabel } from "@/lib/finance/ai-budget-provider"
 import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBudgetPlanPrompt, parseBudgetPlanResponse, type BudgetPlanProposal } from "@/lib/finance/budget-ai-generate"
+import { DEFAULT_BUDGET_LOOKBACK, isBudgetLookback } from "@/lib/finance/budget-lookback"
 import { NextRequest, NextResponse } from "next/server"
 
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour
@@ -25,8 +26,10 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return apiError("BGN01", "Authentication required", 401)
 
+  const monthsParam = Number(request.nextUrl.searchParams.get("months") ?? DEFAULT_BUDGET_LOOKBACK)
+  if (!isBudgetLookback(monthsParam)) return apiError("BGN05", "Invalid lookback months", 400)
   const month = new Date().toISOString().slice(0, 7)
-  const cacheKey = `budget-plan:${user.id}:${month}`
+  const cacheKey = `budget-plan:${user.id}:${month}:${monthsParam}`
   const force = request.nextUrl.searchParams.get("force") === "true"
 
   if (!force) {
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
       if (!rl.success) return apiError("BGN02", "Rate limit exceeded. Try again in a few minutes.", 429)
     }
 
-    const ctx = await gatherBudgetContext(user.id)
+    const ctx = await gatherBudgetContext(user.id, monthsParam)
     if (ctx.categories.length === 0) {
       return apiError("BGN03", "Not enough spending history to build a budget yet.", 422)
     }
