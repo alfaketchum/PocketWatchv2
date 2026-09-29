@@ -12,6 +12,8 @@ import { resolveRangeDates, getPriorRange, type BudgetRange } from "./budget-hel
 
 interface BudgetPeriodComparisonProps {
   range: BudgetRange
+  /** Budget per category for the current period (pro-rated for lookback windows). */
+  budgets: Array<{ category: string; monthlyLimit: number }>
 }
 
 const TOP_N = 8
@@ -24,10 +26,10 @@ function fmtDay(iso: string): string {
 
 /**
  * Period-over-period comparison: the current selection vs the equal-length window
- * immediately before it, as grouped bars per category plus a delta table.
+ * immediately before it and vs budget, as grouped bars per category plus a delta table.
  */
-export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
-  const { primary, foregroundMuted, border } = useChartTheme()
+export function BudgetPeriodComparison({ range, budgets }: BudgetPeriodComparisonProps) {
+  const { primary, foreground, foregroundMuted, border } = useChartTheme()
 
   const current = useMemo(() => resolveRangeDates(range), [range])
   const prior = useMemo(() => getPriorRange(range), [range])
@@ -40,10 +42,11 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
   const rows = useMemo(() => {
     const cur = new Map((curData?.categories ?? []).map((c) => [c.category, c.total]))
     const pri = new Map((priData?.categories ?? []).map((c) => [c.category, c.total]))
-    const cats = [...new Set([...cur.keys(), ...pri.keys()])]
+    const bud = new Map(budgets.map((b) => [b.category, b.monthlyLimit]))
+    const cats = [...new Set([...cur.keys(), ...pri.keys(), ...bud.keys()])]
     const all = cats
-      .map((category) => ({ category, current: cur.get(category) ?? 0, prior: pri.get(category) ?? 0 }))
-      .sort((a, b) => Math.max(b.current, b.prior) - Math.max(a.current, a.prior))
+      .map((category) => ({ category, current: cur.get(category) ?? 0, prior: pri.get(category) ?? 0, budget: bud.get(category) ?? null }))
+      .sort((a, b) => Math.max(b.current, b.prior, b.budget ?? 0) - Math.max(a.current, a.prior, a.budget ?? 0))
     if (all.length <= TOP_N) return all
     const rest = all.slice(TOP_N)
     return [
@@ -52,9 +55,13 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
         category: "Other",
         current: rest.reduce((s, r) => s + r.current, 0),
         prior: rest.reduce((s, r) => s + r.prior, 0),
+        budget: rest.some((r) => r.budget != null) ? rest.reduce((s, r) => s + (r.budget ?? 0), 0) : null,
       },
     ]
-  }, [curData, priData])
+  }, [curData, priData, budgets])
+
+  const budgetTotal = budgets.reduce((s, b) => s + b.monthlyLimit, 0)
+  const hasBudget = budgetTotal > 0
 
   const curTotal = curData?.total ?? 0
   const priTotal = priData?.total ?? 0
@@ -83,6 +90,11 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
             <p className={cn("text-[11px] font-medium tabular-nums", up ? "text-error" : "text-success")}>
               {up ? "▲" : "▼"} {formatCurrency(Math.abs(delta), "USD", 0)}{pct !== null ? ` (${up ? "+" : ""}${pct.toFixed(0)}%)` : ""} vs {formatCurrency(priTotal, "USD", 0)}
             </p>
+            {hasBudget && (
+              <p className={cn("text-[11px] font-medium tabular-nums", curTotal > budgetTotal ? "text-error" : "text-success")}>
+                {formatCurrency(Math.abs(budgetTotal - curTotal), "USD", 0)} {curTotal > budgetTotal ? "over" : "under"} budget of {formatCurrency(budgetTotal, "USD", 0)}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -93,7 +105,7 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
         <div className="h-[120px] flex items-center justify-center text-xs text-foreground-muted">No spending in either period.</div>
       ) : (
         <>
-          <ResponsiveContainer width="100%" height={Math.max(160, rows.length * 40 + 30)}>
+          <ResponsiveContainer width="100%" height={Math.max(160, rows.length * (hasBudget ? 52 : 40) + 30)}>
             <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }} barCategoryGap="22%">
               <CartesianGrid horizontal={false} stroke={border} strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v}`} axisLine={false} tickLine={false} />
@@ -102,10 +114,13 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               <Bar dataKey="prior" name={priorLabel} fill={foregroundMuted} fillOpacity={0.45} radius={[0, 3, 3, 0]} animationDuration={600} />
               <Bar dataKey="current" name={currentLabel} fill={primary} radius={[0, 3, 3, 0]} animationDuration={600} />
+              {hasBudget && (
+                <Bar dataKey="budget" name="Budget" fill="transparent" stroke={foreground} strokeOpacity={0.55} strokeDasharray="3 2" radius={[0, 3, 3, 0]} animationDuration={600} />
+              )}
             </BarChart>
           </ResponsiveContainer>
 
-          <div className="mt-4 overflow-hidden rounded-lg border border-card-border">
+          <div className="mt-4 overflow-x-auto rounded-lg border border-card-border">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-card-elevated text-[10px] uppercase tracking-wider text-foreground-muted">
@@ -113,6 +128,8 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
                   <th className="text-right font-semibold px-3 py-2">{priorLabel}</th>
                   <th className="text-right font-semibold px-3 py-2">{currentLabel}</th>
                   <th className="text-right font-semibold px-3 py-2">Change</th>
+                  {hasBudget && <th className="text-right font-semibold px-3 py-2">Budget</th>}
+                  {hasBudget && <th className="text-right font-semibold px-3 py-2">vs Budget</th>}
                 </tr>
               </thead>
               <tbody>
@@ -129,6 +146,10 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
                         {d === 0 ? "—" : `${rUp ? "+" : "−"}${formatCurrency(Math.abs(d))}`}
                         {p !== null && d !== 0 ? <span className="text-foreground-muted"> ({rUp ? "+" : ""}{p.toFixed(0)}%)</span> : null}
                       </td>
+                      {hasBudget && (
+                        <td className="px-3 py-2 text-right tabular-nums text-foreground-muted">{r.budget != null ? formatCurrency(r.budget) : "—"}</td>
+                      )}
+                      {hasBudget && <VsBudgetCell current={r.current} budget={r.budget} />}
                     </tr>
                   )
                 })}
@@ -138,5 +159,17 @@ export function BudgetPeriodComparison({ range }: BudgetPeriodComparisonProps) {
         </>
       )}
     </div>
+  )
+}
+
+function VsBudgetCell({ current, budget }: { current: number; budget: number | null }) {
+  if (budget == null || budget <= 0) return <td className="px-3 py-2 text-right text-foreground-muted">—</td>
+  const diff = current - budget
+  const over = diff > 0
+  return (
+    <td className={cn("px-3 py-2 text-right tabular-nums font-medium", over ? "text-error" : "text-success")}>
+      {over ? "+" : "−"}{formatCurrency(Math.abs(diff))}
+      <span className="text-foreground-muted"> ({((current / budget) * 100).toFixed(0)}%)</span>
+    </td>
   )
 }

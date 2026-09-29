@@ -276,9 +276,10 @@ export default function FinanceBudgetsPage() {
           <FadeIn>
             <BudgetOverview
               transactions={txData?.transactions ?? []}
+              budgets={segments}
               totalBudgeted={summary.totalBudgeted}
               periodLabel={isThisMonth ? currentMonth : range.label}
-              belowChart={compare ? <BudgetPeriodComparison range={range} /> : null}
+              belowChart={compare ? <BudgetPeriodComparison range={range} budgets={segments} /> : null}
             />
           </FadeIn>
 

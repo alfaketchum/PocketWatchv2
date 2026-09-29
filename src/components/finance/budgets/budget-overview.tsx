@@ -55,6 +55,8 @@ function buildDailySeries(start: string | undefined, end: string | undefined, da
 
 interface BudgetOverviewProps {
   transactions: OverviewTx[]
+  /** Budget per category for the period (already pro-rated for lookback windows). */
+  budgets: Array<{ category: string; monthlyLimit: number }>
   totalBudgeted: number
   periodLabel: string
   /** Rendered between the spending chart card and the transactions table. */
@@ -66,7 +68,7 @@ interface BudgetOverviewProps {
  * a category's transactions on click, a category spending list, a daily bar
  * chart, and a filterable transactions table.
  */
-export function BudgetOverview({ transactions, totalBudgeted, periodLabel, belowChart }: BudgetOverviewProps) {
+export function BudgetOverview({ transactions, budgets, totalBudgeted, periodLabel, belowChart }: BudgetOverviewProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const updateCat = useUpdateTransactionCategory()
@@ -108,6 +110,16 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel, below
     return { slices: catList as DonutSlice[], catList, daily, totalSpend }
   }, [transactions])
 
+  // Outer ring: budgets in the same order as the spending slices, budget-only categories last.
+  const { budgetSlices, budgetByCat } = useMemo(() => {
+    const budgetByCat = new Map(budgets.map((b) => [b.category, b.monthlyLimit]))
+    const order = [...catList.map((c) => c.category), ...budgets.map((b) => b.category).filter((c) => !catList.some((x) => x.category === c))]
+    const budgetSlices: DonutSlice[] = order
+      .filter((c) => (budgetByCat.get(c) ?? 0) > 0)
+      .map((c) => ({ category: c, amount: budgetByCat.get(c) ?? 0, color: getCategoryMeta(c).hex }))
+    return { budgetSlices, budgetByCat }
+  }, [budgets, catList])
+
   const tableRows: BudgetTxRow[] = useMemo(
     () =>
       transactions
@@ -143,7 +155,7 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel, below
           <span className="text-xs text-foreground-muted">{periodLabel}</span>
         </div>
         <div className="flex flex-col lg:flex-row gap-6">
-          <BudgetSpendingDonut slices={slices} total={totalSpend} budget={totalBudgeted} selected={selected} onSelect={setSelected} />
+          <BudgetSpendingDonut slices={slices} budgetSlices={budgetSlices} total={totalSpend} budget={totalBudgeted} selected={selected} onSelect={setSelected} />
 
           {/* Category list */}
           <div className="flex-1 min-w-0 lg:max-w-[280px] max-h-[220px] overflow-y-auto scroll-touch">
@@ -157,7 +169,14 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel, below
               >
                 <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: c.color }} />
                 <span className="text-sm text-foreground truncate">{c.category}</span>
-                <span className="ml-auto text-sm tabular-nums text-foreground-muted">{formatCurrency(c.amount)}</span>
+                <span className="ml-auto text-sm tabular-nums text-foreground-muted whitespace-nowrap">
+                  {formatCurrency(c.amount)}
+                  {budgetByCat.has(c.category) && (
+                    <span className={cn("text-[10px] ml-1", c.amount > (budgetByCat.get(c.category) ?? 0) ? "text-error" : "text-foreground-muted/70")}>
+                      / {formatCurrency(budgetByCat.get(c.category) ?? 0, "USD", 0)}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </div>
