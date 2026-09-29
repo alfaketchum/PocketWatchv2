@@ -67,7 +67,7 @@ export default function FinanceBudgetsPage() {
   const [activeTab, setActiveTab] = useState<BudgetTab>("data-driven")
   const [showModal, setShowModal] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [compare, setCompare] = useState(false)
+  const [compare, setCompare] = useState(true)
 
   // Persisted toggle for the secondary analysis panels (pace, stats, subs,
   // insights, untracked). Core ring + category list always show.
@@ -254,7 +254,7 @@ export default function FinanceBudgetsPage() {
             </p>
           )}
 
-          {/* Period-over-period comparison toggle + panel */}
+          {/* Period-over-period comparison toggle (panel renders below the donut) */}
           <button
             onClick={() => setCompare((c) => !c)}
             className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
@@ -266,12 +266,6 @@ export default function FinanceBudgetsPage() {
               <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", compare ? "translate-x-[18px]" : "translate-x-0.5")} />
             </span>
           </button>
-          {compare && (
-            <FadeIn>
-              <BudgetPeriodComparison range={range} />
-            </FadeIn>
-          )}
-
           {/* Spending overview — click a category to decompose the ring into
               that category's transactions (Personal Capital style). */}
           <FadeIn>
@@ -279,6 +273,7 @@ export default function FinanceBudgetsPage() {
               transactions={txData?.transactions ?? []}
               totalBudgeted={summary.totalBudgeted}
               periodLabel={isThisMonth ? currentMonth : range.label}
+              belowChart={compare ? <BudgetPeriodComparison range={range} /> : null}
             />
           </FadeIn>
 

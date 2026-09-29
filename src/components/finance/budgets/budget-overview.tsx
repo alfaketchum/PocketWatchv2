@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
 import { useUpdateTransactionCategory, useBulkCategorize, useUpdateTransaction, useMarkSubscription } from "@/hooks/use-finance"
@@ -57,6 +57,8 @@ interface BudgetOverviewProps {
   transactions: OverviewTx[]
   totalBudgeted: number
   periodLabel: string
+  /** Rendered between the spending chart card and the transactions table. */
+  belowChart?: ReactNode
 }
 
 /**
@@ -64,7 +66,7 @@ interface BudgetOverviewProps {
  * a category's transactions on click, a category spending list, a daily bar
  * chart, and a filterable transactions table.
  */
-export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: BudgetOverviewProps) {
+export function BudgetOverview({ transactions, totalBudgeted, periodLabel, belowChart }: BudgetOverviewProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const updateCat = useUpdateTransactionCategory()
@@ -126,7 +128,18 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
     <div className="space-y-4">
       <div className="bg-card border border-card-border rounded-xl p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-foreground">All spending</h2>
+          {selected ? (
+            <button
+              onClick={() => setSelected(null)}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+              title="Show all spending"
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">arrow_back</span>
+              All spending
+            </button>
+          ) : (
+            <h2 className="text-sm font-semibold text-foreground">All spending</h2>
+          )}
           <span className="text-xs text-foreground-muted">{periodLabel}</span>
         </div>
         <div className="flex flex-col lg:flex-row gap-6">
@@ -156,6 +169,8 @@ export function BudgetOverview({ transactions, totalBudgeted, periodLabel }: Bud
           </div>
         </div>
       </div>
+
+      {belowChart}
 
       <BudgetTransactionsTable
         transactions={tableRows}
