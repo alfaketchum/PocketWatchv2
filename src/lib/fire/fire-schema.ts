@@ -60,6 +60,14 @@ export const fireInputsSchema = z.object({
       }),
     )
     .max(10),
+  compare: z.object({
+    zip: z.string().regex(/^\d{5}$/).nullable(),
+    // Census groups some occupations under wildcard SOC codes like "15-124X".
+    occupation: z.string().regex(/^\d{2}-[\dX]{4}$/).nullable(),
+    education: z.number().int().min(1).max(4).nullable(),
+    householdIncome: money.nullable(),
+    earnedIncome: money.nullable(),
+  }),
   tiers: z
     .array(
       z.object({

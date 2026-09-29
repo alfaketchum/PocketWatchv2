@@ -24,6 +24,11 @@ CDC_TABLES = {"total": "Table01.xlsx", "male": "Table02.xlsx", "female": "Table0
 SCF_URL = "https://www.federalreserve.gov/econres/files/scfp2022excel.zip"
 SCF_AGE_CLASSES = {1: [0, 34], 2: [35, 44], 3: [45, 54], 4: [55, 64], 5: [65, 74], 6: [75, 120]}
 PERCENTILES = [5, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 95, 99]
+# Household income brackets (pre-tax, previous year) and SCF education classes (EDCL).
+INCOME_BRACKETS = [0, 50_000, 100_000, 150_000, 250_000, 500_000]
+EDUCATION_CLASSES = {1: "No high school diploma", 2: "High school diploma", 3: "Some college", 4: "College degree"}
+# The summary extract has 5 implicates per household.
+IMPLICATES = 5
 MAX_AGE = 100
 
 
@@ -58,8 +63,22 @@ def build_scf() -> dict:
     archive = zipfile.ZipFile(io.BytesIO(fetch(SCF_URL)))
     rows = csv.DictReader(io.TextIOWrapper(archive.open("SCFP2022.csv"), encoding="utf-8"))
     groups: dict[int, list[tuple[float, float]]] = {}
+    by_income: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    by_edu: dict[tuple[int, int], list[tuple[float, float]]] = {}
     for row in rows:
-        groups.setdefault(int(row["AGECL"]), []).append((float(row["NETWORTH"]), float(row["WGT"])))
+        age, nw, wgt = int(row["AGECL"]), float(row["NETWORTH"]), float(row["WGT"])
+        groups.setdefault(age, []).append((nw, wgt))
+        bracket = max(i for i, lo in enumerate(INCOME_BRACKETS) if float(row["INCOME"]) >= lo) if float(row["INCOME"]) >= 0 else 0
+        by_income.setdefault((age, bracket), []).append((nw, wgt))
+        by_edu.setdefault((age, int(row["EDCL"])), []).append((nw, wgt))
+
+    def cells(source: dict[tuple[int, int], list[tuple[float, float]]]) -> list[dict]:
+        return [
+            {"ageClass": a, "key": k, "households": len(v) // IMPLICATES,
+             "values": [round(weighted_percentile(v, p / 100)) for p in PERCENTILES]}
+            for (a, k), v in sorted(source.items())
+        ]
+
     return {
         "source": "Federal Reserve, Survey of Consumer Finances 2022 (summary extract, weighted)",
         "dollars": 2022,
@@ -68,6 +87,11 @@ def build_scf() -> dict:
             {"ages": SCF_AGE_CLASSES[k], "values": [round(weighted_percentile(groups[k], p / 100)) for p in PERCENTILES]}
             for k in sorted(groups)
         ],
+        "incomeBrackets": INCOME_BRACKETS,
+        "educationClasses": EDUCATION_CLASSES,
+        "ageClasses": SCF_AGE_CLASSES,
+        "byIncome": cells(by_income),
+        "byEducation": cells(by_edu),
     }
 
 

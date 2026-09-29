@@ -7,13 +7,21 @@ import { useFireMode } from "@/hooks/finance/use-fire-profile"
 import { FIRE_NAV_ITEMS } from "@/hooks/use-sidebar-prefs"
 import { FireModeToggle } from "./fire-mode-toggle"
 
-const TAB_LABELS: Record<string, string> = { "/fire": "Plan", "/fire/portfolio": "Portfolio", "/fire/research": "Lab" }
+const TAB_LABELS: Record<string, string> = {
+  "/fire": "Plan",
+  "/fire/portfolio": "Portfolio",
+  "/fire/research": "Lab",
+  "/fire/compare": "Compare",
+}
+
+/** Tabs available in Basic mode; Advanced shows every FIRE page. */
+const BASIC_TABS = new Set(["/fire", "/fire/compare"])
 
 /** FIRE section header: title, Basic/Advanced toggle, privacy, and tabs (lab tab is Advanced-only). */
 export function FireHeader() {
   const pathname = usePathname()
   const [mode, setMode] = useFireMode()
-  const tabs = mode === "advanced" ? FIRE_NAV_ITEMS : FIRE_NAV_ITEMS.filter((t) => t.href === "/fire")
+  const tabs = mode === "advanced" ? FIRE_NAV_ITEMS : FIRE_NAV_ITEMS.filter((t) => BASIC_TABS.has(t.href))
 
   return (
     <div className="space-y-3">

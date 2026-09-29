@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/utils"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
 
-const SCF = scfJson as ScfData
+const SCF = scfJson as unknown as ScfData
 
 function fmtShort(v: number): string {
   const abs = Math.abs(v)

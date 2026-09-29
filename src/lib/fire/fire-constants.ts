@@ -63,4 +63,5 @@ export const DEFAULT_FIRE_INPUTS: FireInputs = {
   flows: [],
   lumpSums: [],
   tiers: DEFAULT_TIERS,
+  compare: { zip: null, occupation: null, education: null, householdIncome: null, earnedIncome: null },
 }

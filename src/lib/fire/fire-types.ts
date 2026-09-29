@@ -44,6 +44,19 @@ export interface FireLumpSum {
   amount: number
 }
 
+/** Details for FIRE › Compare. All optional; stored with the FIRE profile. */
+export interface FireCompareInputs {
+  zip: string | null
+  /** SOC code, e.g. "15-1252" (Census combined groups use wildcards like "15-124X"). */
+  occupation: string | null
+  /** SCF education class: 1 no HS diploma, 2 HS diploma, 3 some college, 4 college degree. */
+  education: number | null
+  /** Pre-tax household income from all sources; null = derive from income data. */
+  householdIncome: number | null
+  /** Your own pre-tax pay from work, for the occupation comparison. */
+  earnedIncome: number | null
+}
+
 export interface FireGlidepath {
   enabled: boolean
   startEquity: number
@@ -83,6 +96,7 @@ export interface FireInputs {
   flows: FireFlow[]
   lumpSums: FireLumpSum[]
   tiers: FireTier[]
+  compare: FireCompareInputs
 }
 
 /** Auto-filled values derived from the user's PocketWatch data. */
