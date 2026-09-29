@@ -18,7 +18,7 @@ const SPEND_WINDOW_DAYS = 365
 const MAX_TRANSACTIONS = 5_000
 const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "suggested"]
 // Recurring outflows that are money movement, not a service you have an account with.
-const NON_SERVICE_RE =
+export const NON_SERVICE_RE =
   /autopay|crcardpmt|card\s*pmt|ach\s*pmt|credit\s*crd|epay|zelle|venmo|transfer|payment to|interest charge|membership fee|annual fee|late fee|overdraft/i
 const NON_SERVICE_BILL_TYPES = new Set(["cc_payment", "cc_annual_fee"])
 const TRAILING_MASK_RE = /\s*[•·*x]{2,}\s*\d{2,4}\s*$/i

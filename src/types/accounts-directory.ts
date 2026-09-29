@@ -90,10 +90,18 @@ export interface MissingEmailService {
   frequency: string
   nextChargeDate: string | null
   paidWith: DirectoryPaidWith | null
+  /** None of the connected inboxes has mail from this merchant. */
+  notInInbox: boolean
 }
 
 export interface MissingEmailResponse {
   services: MissingEmailService[]
+}
+
+export interface FinanceLinkResponse {
+  checked: number
+  linked: number
+  notFound: number
 }
 
 /** A card or bank account the user can pick as "paid with". */

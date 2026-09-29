@@ -143,11 +143,21 @@ function summarizeSpend(keys: ServiceKeys, index: FinanceIndex) {
   return { total, lastDate, topAccountId }
 }
 
+/** True when some directory service already accounts for this merchant. */
+export function isMerchantListed(
+  services: { domain: string; name: string; domains?: string[] }[],
+  domains: Iterable<string>,
+  compact: string,
+): boolean {
+  const list = [...domains]
+  return services.some((s) => matchScore(keysFor(s), list, compact) > 0)
+}
+
 /** Recurring charges that no directory service accounts for. */
 export function findMissingEmail(
   services: { domain: string; name: string; domains?: string[] }[],
   index: FinanceIndex,
-): MissingEmailService[] {
+): Omit<MissingEmailService, "notInInbox">[] {
   const allKeys = services.map(keysFor)
   return index.recurring
     .filter((entry) => !allKeys.some((keys) => recurringScore(keys, entry) > 0))

@@ -7,10 +7,12 @@ import { paidWithLabel, recurringLabel } from "./accounts-helpers"
 
 interface AccountsMissingEmailProps {
   onAdd: (service: MissingEmailService) => void
+  /** True while charges are being matched to inboxes. */
+  linking: boolean
 }
 
 /** Recurring charges with no matching service: "you pay for this — which email is it on?" */
-export function AccountsMissingEmail({ onAdd }: AccountsMissingEmailProps) {
+export function AccountsMissingEmail({ onAdd, linking }: AccountsMissingEmailProps) {
   const { data, isLoading } = useMissingEmailServices()
   const services = data?.services ?? []
 
@@ -24,7 +26,9 @@ export function AccountsMissingEmail({ onAdd }: AccountsMissingEmailProps) {
           Paying, but no email found
         </h2>
         <p className="mt-0.5 text-xs text-foreground-muted">
-          Recurring charges we couldn&apos;t match to a signup email. Add the email you use so everything is in one place.
+          {linking
+            ? "Checking which of your inboxes each of these is on…"
+            : "Recurring charges we couldn't place in any connected inbox. Add the email you use so everything is in one place."}
         </p>
       </div>
       <ul>
@@ -36,6 +40,7 @@ export function AccountsMissingEmail({ onAdd }: AccountsMissingEmailProps) {
               <p className="truncate text-[11px] text-foreground-muted">
                 <span className="font-mono">{recurringLabel(s)}</span>
                 {s.paidWith && ` · ${paidWithLabel(s.paidWith)}`}
+                {s.notInInbox && " · not in your connected inboxes"}
               </p>
             </div>
             <button type="button" onClick={() => onAdd(s)} className="btn-secondary text-xs">

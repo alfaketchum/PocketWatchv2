@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useAccountsDirectory, type DirectoryFilters } from "@/hooks/accounts"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
+import { useAccountsDirectory, useLinkFinances, type DirectoryFilters } from "@/hooks/accounts"
 import { EmptyState } from "@/components/ui/empty-state"
 import type {
   DirectoryEmail,
@@ -43,6 +44,23 @@ export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
   }, [filters])
 
   const { data, isLoading, isError } = useAccountsDirectory(debounced)
+
+  // Finance-first pass: once per visit, find which inbox holds each account you
+  // pay for but that the email scan hasn't listed. Cheap on repeat (server caches misses).
+  const linkFinances = useLinkFinances()
+  const linkStarted = useRef(false)
+  useEffect(() => {
+    if (!hasGmail || linkStarted.current) return
+    linkStarted.current = true
+    linkFinances.mutate(undefined, {
+      onSuccess: (r) => {
+        if (r.linked > 0) toast.success(`Matched ${r.linked} charge${r.linked === 1 ? "" : "s"} to your inboxes`)
+      },
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Couldn't match charges to your inboxes"),
+    })
+  }, [hasGmail, linkFinances])
+
   const services = useMemo(() => data?.services ?? [], [data])
   const sections = useMemo(() => groupDirectory(services, groupBy), [services, groupBy])
   const knownEmails = useMemo(() => data?.facets.emails.map((o) => o.label) ?? [], [data])
@@ -134,7 +152,9 @@ export function AccountsDirectory({ hasGmail }: AccountsDirectoryProps) {
         </>
       )}
 
-      {filters.status !== "dismissed" && <AccountsMissingEmail onAdd={handleAddMissing} />}
+      {filters.status !== "dismissed" && (
+        <AccountsMissingEmail onAdd={handleAddMissing} linking={linkFinances.isPending} />
+      )}
 
       {editing && (
         <AccountEditDialog
