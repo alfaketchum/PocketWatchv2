@@ -10,6 +10,10 @@ import { AccountsDirectory } from "@/components/accounts/accounts-directory"
 const GMAIL_CONNECT_MESSAGES: Record<string, { ok: boolean; text: string }> = {
   connected: { ok: true, text: "Gmail account connected" },
   denied: { ok: false, text: "Gmail access was not granted" },
+  missing_scope: {
+    ok: false,
+    text: "Gmail access wasn't granted — reconnect and tick the \"Read your email\" checkbox",
+  },
   expired: { ok: false, text: "Gmail sign-in link expired — please try again" },
   error: { ok: false, text: "Couldn't connect Gmail — please try again" },
 }

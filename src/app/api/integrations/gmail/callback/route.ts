@@ -17,6 +17,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { db } from "@/lib/db"
 import {
+  GMAIL_READONLY_SCOPE,
   GMAIL_REDIRECT_URI,
   exchangeCode,
   fetchGmailAccountEmail,
@@ -30,7 +31,7 @@ import {
 const OAUTH_ERROR_RE = /^[a-z_]{1,40}$/
 const RETURN_PATH = "/accounts"
 
-type GmailConnectStatus = "connected" | "denied" | "expired" | "error"
+type GmailConnectStatus = "connected" | "denied" | "expired" | "missing_scope" | "error"
 
 function redirectWithStatus(status: GmailConnectStatus) {
   // Resolve against the public redirect URI, not req.nextUrl.origin: behind the
@@ -74,6 +75,13 @@ export async function GET(req: NextRequest) {
       clientSecret: config.clientSecret,
       redirectUri: GMAIL_REDIRECT_URI,
     })
+
+    // Google's granular consent lets the user untick the Gmail checkbox; the
+    // token is then issued without gmail.readonly and every Gmail call 403s.
+    if (token.scope && !token.scope.split(" ").includes(GMAIL_READONLY_SCOPE)) {
+      console.warn("[API_ERROR] G2206: Gmail scope not granted on consent screen")
+      return redirectWithStatus("missing_scope")
+    }
 
     // Identify which Google account this is so we can store it per-account.
     // The email MUST resolve — keying a multi-account credential by it is the

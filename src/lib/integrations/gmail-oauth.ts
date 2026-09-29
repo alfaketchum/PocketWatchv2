@@ -32,7 +32,8 @@ const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 const PROFILE_ENDPOINT = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
 
 /** Minimal scope: read-only Gmail + openid (identity). */
-const SCOPE = "https://www.googleapis.com/auth/gmail.readonly openid"
+export const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+const SCOPE = `${GMAIL_READONLY_SCOPE} openid`
 const REQUEST_TIMEOUT_MS = 15_000
 
 export const GMAIL_OAUTH_SCOPE = SCOPE
