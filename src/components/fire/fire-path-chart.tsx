@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { projectPath } from "@/lib/fire/fire-projection"
+import { windfallsFor } from "@/lib/fire/fire-analysis"
 import { nowFractionalYear } from "@/lib/fire/fire-history"
 import { fmtCompact, fmtMoney, fmtPct } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
@@ -63,14 +64,14 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
     const now = nowFractionalYear(new Date())
     const years = analysis.yourTarget.years
     const span = years === null ? UNREACHABLE_SPAN : Math.max(YEARS_AFTER_FI, Math.ceil(years) + YEARS_AFTER_FI)
-    const projection = projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, span, 0)
+    const projection = projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, span, 0, windfallsFor(inputs))
     const points: Point[] = [
       ...actualHistory.filter((p) => p.x < now).map((p) => ({ x: p.x, actual: transform(p.value) })),
       { x: now, actual: transform(plan.investable), projected: transform(plan.investable) },
       ...projection.slice(1).map((p, i) => ({ x: now + i + 1, projected: transform(p.value) })),
     ]
     return { data: points, fiX: years !== null && years > 0 ? now + years : null }
-  }, [actualHistory, plan, inputs.realReturn, inputs.currentAge, analysis.yourTarget.years, transform])
+  }, [actualHistory, plan, inputs, analysis.yourTarget.years, transform])
 
   const views = VIEWS.filter((v) => advanced || !v.advancedOnly)
 

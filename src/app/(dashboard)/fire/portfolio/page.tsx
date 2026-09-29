@@ -5,6 +5,7 @@ import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { PortfolioAllocation } from "@/components/fire/portfolio-allocation"
 import { PortfolioRiskChecks } from "@/components/fire/portfolio-risk-checks"
 import { AccountMixEditor } from "@/components/fire/account-mix-editor"
+import { CryptoRiskCard } from "@/components/fire/crypto-risk-card"
 import { FireAdvancedGate } from "@/components/fire/fire-advanced-gate"
 
 export default function FirePortfolioPage() {
@@ -21,6 +22,7 @@ export default function FirePortfolioPage() {
         <PortfolioAllocation state={state} isHidden={isHidden} />
         <PortfolioRiskChecks state={state} />
       </div>
+      <CryptoRiskCard state={state} isHidden={isHidden} />
       <AccountMixEditor state={state} isHidden={isHidden} />
     </div>
   )

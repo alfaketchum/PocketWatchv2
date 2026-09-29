@@ -23,7 +23,17 @@ export function yearsToTarget(current: number, contribution: number, r: number, 
   return Number.isFinite(years) && years >= 0 ? years : null
 }
 
-/** Year-by-year projected portfolio value (today's dollars). */
+/** A one-time inflow `yearsFromNow` years out, credited at the end of that projection year. */
+export interface Windfall {
+  yearsFromNow: number
+  amount: number
+}
+
+function windfallsInYear(windfalls: Windfall[], year: number): number {
+  return windfalls.reduce((s, w) => (w.yearsFromNow > year - 1 && w.yearsFromNow <= year ? s + w.amount : s), 0)
+}
+
+/** Year-by-year projected portfolio value (today's dollars), including one-time windfalls. */
 export function projectPath(
   current: number,
   contribution: number,
@@ -31,15 +41,39 @@ export function projectPath(
   currentAge: number,
   years: number,
   startYear: number,
+  windfalls: Windfall[] = [],
 ): ProjectionPoint[] {
   const span = Math.min(Math.max(1, Math.ceil(years)), MAX_PROJECTION_YEARS)
   const points: ProjectionPoint[] = [{ age: currentAge, year: startYear, value: current }]
   let value = current
   for (let i = 1; i <= span; i++) {
-    value = value * (1 + r) + contribution
+    value = value * (1 + r) + contribution + windfallsInYear(windfalls, i)
     points.push({ age: currentAge + i, year: startYear + i, value })
   }
   return points
+}
+
+/**
+ * `yearsToTarget` with one-time windfalls. Steps a year at a time and uses the closed form
+ * within a year, so with no windfalls it matches `yearsToTarget` exactly.
+ */
+export function yearsToTargetWithWindfalls(
+  current: number,
+  contribution: number,
+  r: number,
+  target: number,
+  windfalls: Windfall[],
+): number | null {
+  const upcoming = windfalls.filter((w) => w.yearsFromNow > 0 && w.amount > 0)
+  if (upcoming.length === 0) return yearsToTarget(current, contribution, r, target)
+  let value = current
+  for (let n = 0; n < MAX_PROJECTION_YEARS; n++) {
+    const within = yearsToTarget(value, contribution, r, target)
+    if (within !== null && within <= 1) return n + within
+    value = value * (1 + r) + contribution + windfallsInYear(upcoming, n + 1)
+    if (value >= target) return n + 1
+  }
+  return null
 }
 
 /** Amount needed today so that growth alone reaches `target` by `years` from now. */

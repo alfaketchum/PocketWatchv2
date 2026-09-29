@@ -25,6 +25,8 @@ export const fireInputsSchema = z.object({
     .record(z.string().max(64), z.object({ stocks: share, bonds: share, cash: share }))
     .refine((m) => Object.keys(m).length <= 100, "Too many accounts"),
   cryptoTreatment: z.enum(["stocks", "cash"]),
+  cryptoStressPreset: z.enum(["cautious", "moderate", "full", "custom"]),
+  cryptoDrops: z.object({ btc: share, eth: share, top100: share, longTail: share }),
   glidepath: z.object({
     enabled: z.boolean(),
     startEquity: share,
@@ -44,6 +46,16 @@ export const fireInputsSchema = z.object({
         startAge: age,
         endAge: age.nullable(),
         annualAmount: z.number().min(-1e7).max(1e7),
+      }),
+    )
+    .max(10),
+  lumpSums: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(64),
+        label: z.string().max(60),
+        age: age,
+        amount: z.number().min(0).max(1e9),
       }),
     )
     .max(10),

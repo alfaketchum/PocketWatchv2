@@ -46,11 +46,10 @@ export function FireFlowsEditor({ flows, onChange }: FireFlowsEditorProps) {
           <FireNumberField label="Per year" prefix="$" value={f.annualAmount} onChange={(annualAmount) => patch(f.id, { annualAmount })} />
           <FireNumberField label="From age" value={f.startAge} min={0} max={120} onChange={(startAge) => patch(f.id, { startAge })} />
           <FireNumberField
-            label="Until age"
+            label="Until age (0 = life)"
             value={f.endAge ?? 0}
             min={0}
             max={120}
-            hint={f.endAge === null ? "0 = for life" : undefined}
             onChange={(endAge) => patch(f.id, { endAge: endAge > 0 ? endAge : null })}
           />
           <button

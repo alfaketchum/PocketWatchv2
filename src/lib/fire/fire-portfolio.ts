@@ -1,15 +1,24 @@
 import type { AccountMix, CryptoTreatment } from "./fire-types"
+import { scaleTiers } from "./crypto-stress"
+import type { CryptoTier } from "./crypto-tiers"
 
-export type AssetClass = "stocks" | "bonds" | "cash" | "stablecoins" | "crypto"
+/** `crypto` holds unclassified crypto when tier data isn't available yet. */
+export type AssetClass = "stocks" | "bonds" | "cash" | "stablecoins" | "btc" | "eth" | "top100" | "longTail" | "crypto"
 export type AccountGroup = "cash" | "savings" | "investments"
 
-export const ASSET_CLASSES: AssetClass[] = ["stocks", "bonds", "cash", "stablecoins", "crypto"]
+export const ASSET_CLASSES: AssetClass[] = ["stocks", "bonds", "cash", "stablecoins", "btc", "eth", "top100", "longTail", "crypto"]
+
+const CRYPTO_CLASSES: AssetClass[] = ["btc", "eth", "top100", "longTail", "crypto"]
 
 export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
   stocks: "Stocks",
   bonds: "Bonds",
   cash: "Cash",
   stablecoins: "Stablecoins",
+  btc: "Bitcoin",
+  eth: "Ether",
+  top100: "Top-100 coins",
+  longTail: "Long-tail coins",
   crypto: "Crypto",
 }
 
@@ -85,10 +94,29 @@ export interface AllocationInput {
   includeCrypto: boolean
   cryptoTreatment: CryptoTreatment
   annualSpend: number
+  /** Crypto split by tier; rescaled to stablecoins + digital when present. */
+  cryptoTiers?: Record<CryptoTier, number> | null
+}
+
+function addCrypto(byClass: Record<AssetClass, number>, input: AllocationInput): void {
+  const total = Math.max(0, input.stablecoins) + Math.max(0, input.digital)
+  const tiers = input.cryptoTiers ? scaleTiers(input.cryptoTiers, total) : null
+  if (!tiers) {
+    byClass.stablecoins = Math.max(0, input.stablecoins)
+    byClass.crypto = Math.max(0, input.digital)
+    return
+  }
+  byClass.stablecoins = tiers.stable
+  byClass.btc = tiers.btc
+  byClass.eth = tiers.eth
+  byClass.top100 = tiers.top100
+  byClass.longTail = tiers.longTail
 }
 
 export function buildAllocation(input: AllocationInput): Allocation {
-  const byClass: Record<AssetClass, number> = { stocks: 0, bonds: 0, cash: 0, stablecoins: 0, crypto: 0 }
+  const byClass: Record<AssetClass, number> = {
+    stocks: 0, bonds: 0, cash: 0, stablecoins: 0, btc: 0, eth: 0, top100: 0, longTail: 0, crypto: 0,
+  }
   for (const acct of input.accounts) {
     if (acct.group === "cash" && !input.includeCash) continue
     const mix = input.mixes[acct.id] ?? defaultMix(acct.group)
@@ -96,13 +124,11 @@ export function buildAllocation(input: AllocationInput): Allocation {
     byClass.bonds += acct.balance * mix.bonds
     byClass.cash += acct.balance * mix.cash
   }
-  if (input.includeCrypto) {
-    byClass.stablecoins = Math.max(0, input.stablecoins)
-    byClass.crypto = Math.max(0, input.digital)
-  }
+  if (input.includeCrypto) addCrypto(byClass, input)
   const total = ASSET_CLASSES.reduce((s, c) => s + byClass[c], 0)
-  const cryptoAsStocks = input.cryptoTreatment === "stocks" ? byClass.crypto : 0
-  const cashLike = byClass.cash + byClass.stablecoins + (input.cryptoTreatment === "cash" ? byClass.crypto : 0)
+  const volatileCrypto = CRYPTO_CLASSES.reduce((s, c) => s + byClass[c], 0)
+  const cryptoAsStocks = input.cryptoTreatment === "stocks" ? volatileCrypto : 0
+  const cashLike = byClass.cash + byClass.stablecoins + (input.cryptoTreatment === "cash" ? volatileCrypto : 0)
   const sim = total > 0
     ? { stocks: (byClass.stocks + cryptoAsStocks) / total, bonds: byClass.bonds / total, cash: cashLike / total }
     : { stocks: 0, bonds: 0, cash: 0 }

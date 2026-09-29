@@ -3,7 +3,6 @@
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
 import { constantEquity, failsafe, successRate, summarizeCohorts } from "@/lib/fire/swr-simulation"
-import { fireNumber, yearsToTarget } from "@/lib/fire/fire-projection"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtPct, fmtSuccess } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
@@ -13,7 +12,6 @@ const ERN_STOCKS = 0.75
 /** Cash cushion band ERN's bucket/cash-cushion posts treat as reasonable, in years of spending. */
 const RUNWAY_LOW = 0.25
 const RUNWAY_HIGH = 3
-const CRYPTO_SHOCK = 0.5
 
 type Tone = "good" | "warn" | "info"
 
@@ -39,7 +37,7 @@ function runwayCheck(years: number | null): Check {
 
 /** Your real mix checked against ERN's research: allocation, cash cushion, and crypto concentration. */
 export function PortfolioRiskChecks({ state }: { state: FirePlanState }) {
-  const { history, simOptions, allocation, plan, inputs, analysis } = state
+  const { history, simOptions, allocation, plan } = state
 
   const checks = useMemo<Check[]>(() => {
     const out: Check[] = []
@@ -60,27 +58,11 @@ export function PortfolioRiskChecks({ state }: { state: FirePlanState }) {
       })
     }
     out.push(runwayCheck(allocation.cashRunwayYears))
-    if (allocation.byClass.crypto > 0) {
-      const target = fireNumber(plan.annualSpend, plan.swr)
-      const shocked = yearsToTarget(plan.investable - allocation.byClass.crypto * CRYPTO_SHOCK, plan.annualContribution, inputs.realReturn, target)
-      const base = analysis.yourTarget.years
-      const delay = shocked !== null && base !== null ? shocked - base : null
-      out.push({
-        key: "crypto",
-        icon: "currency_bitcoin",
-        label: "Crypto crash test",
-        text:
-          delay === null
-            ? `If crypto fell ${CRYPTO_SHOCK * 100}%, FI would slip out of reach on this path.`
-            : `If crypto fell ${CRYPTO_SHOCK * 100}% tomorrow, FI moves ${delay < 0.1 ? "barely at all" : `${delay.toFixed(1)} years later`} (crypto is ${fmtPct(allocation.byClass.crypto / allocation.total, 0)} of your portfolio).`,
-        tone: delay !== null && delay < 1 ? "good" : "warn",
-      })
-    }
     return out
-  }, [history, simOptions, allocation, plan, inputs.realReturn, analysis.yourTarget.years])
+  }, [history, simOptions, allocation, plan])
 
   return (
-    <FireSectionCard eyebrow="Risk checks" info="Based on Big ERN's SWR series: asset allocation (parts 19–20), cash cushions and buckets (12, 48). Crypto has no long history, so it's stress-tested instead.">
+    <FireSectionCard eyebrow="Risk checks" info="Based on Big ERN's SWR series: asset allocation (parts 19–20), cash cushions and buckets (12, 48). Crypto is stress-tested separately below.">
       <ul className="space-y-3">
         {checks.map((c) => (
           <li key={c.key} className="flex gap-3">

@@ -4,6 +4,8 @@ export type SwrPreset = "4" | "3.5" | "3.25" | "cape" | "custom"
 
 export type CryptoTreatment = "stocks" | "cash"
 
+export type CryptoStressPreset = "cautious" | "moderate" | "full" | "custom"
+
 /** Where the simulated stock/bond/cash mix comes from. */
 export type AllocationSource = "portfolio" | "manual"
 
@@ -34,6 +36,14 @@ export interface FireFlow {
   annualAmount: number
 }
 
+/** One-time real inflow (inheritance, home sale), today's dollars, received at `age`. */
+export interface FireLumpSum {
+  id: string
+  label: string
+  age: number
+  amount: number
+}
+
 export interface FireGlidepath {
   enabled: boolean
   startEquity: number
@@ -59,6 +69,9 @@ export interface FireInputs {
   allocationSource: AllocationSource
   accountMixes: Record<string, AccountMix>
   cryptoTreatment: CryptoTreatment
+  cryptoStressPreset: CryptoStressPreset
+  /** Stress drop per crypto tier (0–1), used when the preset is "custom". */
+  cryptoDrops: { btc: number; eth: number; top100: number; longTail: number }
   glidepath: FireGlidepath
   horizonYears: number
   finalValueTarget: number
@@ -66,6 +79,7 @@ export interface FireInputs {
   capeB: number
   partTimeIncome: number
   flows: FireFlow[]
+  lumpSums: FireLumpSum[]
   tiers: FireTier[]
 }
 

@@ -116,4 +116,5 @@ export const financeKeys = {
   locations: () => [...financeKeys.all, "locations"] as const,
   fireProfile: () => [...financeKeys.all, "fire-profile"] as const,
   fireHistory: () => [...financeKeys.all, "fire-history"] as const,
+  fireCrypto: () => [...financeKeys.all, "fire-crypto"] as const,
 }

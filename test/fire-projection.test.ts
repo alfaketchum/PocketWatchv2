@@ -11,7 +11,7 @@ import {
   yearsToTarget,
 } from "@/lib/fire/fire-projection"
 import { capeWithdrawalRate } from "@/lib/fire/cape-rule"
-import { DEFAULT_TIERS } from "@/lib/fire/fire-constants"
+import { DEFAULT_FIRE_INPUTS, DEFAULT_TIERS } from "@/lib/fire/fire-constants"
 
 function assertClose(actual: number, expected: number, tolerance: number, message?: string) {
   const diff = Math.abs(actual - expected)
@@ -61,4 +61,31 @@ test("tierForSpend: picks the smallest tier covering spend", () => {
 
 test("CAPE rule: CAPE 30 with ERN defaults ≈ 3.42%", () => {
   assertClose(capeWithdrawalRate(30, 0.0175, 0.5), 0.0175 + 0.5 / 30, 1e-12)
+})
+
+test("windfalls: none matches the closed form; an inheritance before FI brings it forward", async () => {
+  const { yearsToTargetWithWindfalls } = await import("@/lib/fire/fire-projection")
+  const base = yearsToTarget(100_000, 50_000, 0.05, 1_000_000)!
+  assertClose(yearsToTargetWithWindfalls(100_000, 50_000, 0.05, 1_000_000, [])!, base, 1e-12)
+  const sooner = yearsToTargetWithWindfalls(100_000, 50_000, 0.05, 1_000_000, [{ yearsFromNow: 3, amount: 300_000 }])!
+  assert.ok(sooner < base, `${sooner} should be < ${base}`)
+  const late = yearsToTargetWithWindfalls(100_000, 50_000, 0.05, 1_000_000, [{ yearsFromNow: 40, amount: 300_000 }])!
+  assertClose(late, base, 1e-12)
+  assert.equal(yearsToTargetWithWindfalls(0, 0, 0.05, 100, [{ yearsFromNow: 2, amount: 500 }]), 2)
+})
+
+test("windfalls: an inheritance after retirement raises the safe withdrawal rate", async () => {
+  const { simOptionsForPlan } = await import("@/lib/fire/fire-analysis")
+  const { maxSafeWr, parseDataset } = await import("@/lib/fire/swr-simulation")
+  const { readFileSync } = await import("node:fs")
+  const h = parseDataset(JSON.parse(readFileSync("src/lib/fire/data/shiller-monthly.json", "utf8")))
+  const base = simOptionsForPlan(DEFAULT_FIRE_INPUTS, 45, 1_500_000)
+  const withLump = simOptionsForPlan(
+    { ...DEFAULT_FIRE_INPUTS, lumpSums: [{ id: "i", label: "Inheritance", age: 60, amount: 500_000 }] },
+    45,
+    1_500_000,
+  )
+  assert.equal(withLump.flows.length, 1)
+  assert.equal(withLump.flows[0].startMonth, 180)
+  assert.ok(maxSafeWr(h, 0, withLump) > maxSafeWr(h, 0, base))
 })

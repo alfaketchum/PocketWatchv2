@@ -9,6 +9,7 @@ import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtMoney, fmtMonth, fmtPct, fmtSuccess } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
 import { OneMoreYearStrip } from "./one-more-year-strip"
+import { FireCryptoStressLine } from "./fire-crypto-stress-line"
 
 function verdict(rate: number): { label: string; tone: string } {
   if (rate >= 0.99) return { label: "Very safe", tone: "text-success" }
@@ -102,6 +103,7 @@ export function FireSafetyCard({ state, isHidden = false }: { state: FirePlanSta
       {!advanced && oneMoreYearSentence(extraYears) && (
         <p className="text-xs text-foreground mt-3">{oneMoreYearSentence(extraYears)}</p>
       )}
+      <FireCryptoStressLine state={state} isHidden={isHidden} />
       {advanced && extraYears.length > 1 && (
         <>
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted mt-5">One more year</p>

@@ -11,6 +11,10 @@ const CLASS_COLORS: Record<AssetClass, string> = {
   bonds: "var(--success)",
   cash: "var(--foreground-muted)",
   stablecoins: "color-mix(in oklab, var(--foreground-muted) 55%, var(--primary))",
+  btc: "var(--warning)",
+  eth: "color-mix(in oklab, var(--warning) 75%, var(--error))",
+  top100: "color-mix(in oklab, var(--warning) 50%, var(--error))",
+  longTail: "color-mix(in oklab, var(--warning) 25%, var(--error))",
   crypto: "var(--warning)",
 }
 

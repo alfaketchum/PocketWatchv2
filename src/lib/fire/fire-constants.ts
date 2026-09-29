@@ -51,6 +51,8 @@ export const DEFAULT_FIRE_INPUTS: FireInputs = {
   allocationSource: "portfolio",
   accountMixes: {},
   cryptoTreatment: "stocks",
+  cryptoStressPreset: "cautious",
+  cryptoDrops: { btc: 0.75, eth: 0.85, top100: 0.9, longTail: 1 },
   glidepath: { enabled: false, startEquity: 0.6, endEquity: 1, years: 10 },
   horizonYears: 50,
   finalValueTarget: 0,
@@ -58,5 +60,6 @@ export const DEFAULT_FIRE_INPUTS: FireInputs = {
   capeB: CAPE_RULE_DEFAULT_B,
   partTimeIncome: 20_000,
   flows: [],
+  lumpSums: [],
   tiers: DEFAULT_TIERS,
 }

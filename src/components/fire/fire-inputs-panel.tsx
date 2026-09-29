@@ -7,7 +7,10 @@ import type { FireInputs, SwrPreset } from "@/lib/fire/fire-types"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtMoney, fmtPct } from "./fire-helpers"
 import { FireFlowsEditor } from "./fire-flows-editor"
+import { FireLumpSumsEditor } from "./fire-lump-sums-editor"
 import { FireNumberField } from "./fire-number-field"
+import { CRYPTO_PRESET_LABELS, resolveDrops, type TierDrops } from "@/lib/fire/crypto-stress"
+import { CRYPTO_TIER_LABELS, RISK_TIERS } from "@/lib/fire/crypto-tiers"
 
 const SWR_OPTIONS: { value: SwrPreset; label: string }[] = [
   { value: "4", label: "4%" },
@@ -39,6 +42,9 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 export function FireInputsPanel({ state }: { state: FirePlanState }) {
   const { inputs, update, plan, baseline, history, allocation } = state
   const manual = inputs.allocationSource === "manual"
+  const drops = resolveDrops(inputs.cryptoStressPreset, inputs.cryptoDrops)
+  const setDrop = (tier: keyof TierDrops, value: number) =>
+    update({ cryptoStressPreset: "custom", cryptoDrops: { ...drops, [tier]: value } })
   const set = <K extends keyof FireInputs>(key: K) => (value: FireInputs[K]) => update({ [key]: value } as Partial<FireInputs>)
   const b = baseline.investable
 
@@ -168,6 +174,29 @@ export function FireInputsPanel({ state }: { state: FirePlanState }) {
         <Group title="Retirement income">
           <FireFlowsEditor flows={inputs.flows} onChange={set("flows")} />
         </Group>
+
+        <Group title="Inheritance & one-time amounts">
+          <FireLumpSumsEditor lumpSums={inputs.lumpSums} currentAge={inputs.currentAge} onChange={set("lumpSums")} />
+        </Group>
+
+        {inputs.includeCrypto && (
+          <Group title={`Crypto stress · ${CRYPTO_PRESET_LABELS[inputs.cryptoStressPreset]}`}>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {RISK_TIERS.map((t) => (
+                <FireNumberField
+                  key={t}
+                  label={`${CRYPTO_TIER_LABELS[t]} drop`}
+                  suffix="%"
+                  scale={100}
+                  value={drops[t]}
+                  min={0}
+                  max={1}
+                  onChange={(v) => setDrop(t, v)}
+                />
+              ))}
+            </div>
+          </Group>
+        )}
 
         <Group title="Milestones">
           <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">

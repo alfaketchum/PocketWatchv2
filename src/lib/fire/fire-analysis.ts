@@ -1,6 +1,8 @@
 import { FEE_DRAG_ANNUAL } from "./fire-constants"
 import type { ResolvedPlan } from "./fire-plan"
 import {
+  yearsToTargetWithWindfalls,
+  type Windfall,
   baristaGap,
   baristaNumber,
   coastNumber,
@@ -36,8 +38,15 @@ export interface PlanAnalysis {
   projection: ProjectionPoint[]
 }
 
+/** One-time inflows still ahead, as years from now. */
+export function windfallsFor(inputs: FireInputs): Windfall[] {
+  return inputs.lumpSums
+    .map((l) => ({ yearsFromNow: l.age - inputs.currentAge, amount: l.amount }))
+    .filter((w) => w.yearsFromNow > 0 && w.amount > 0)
+}
+
 function progressTo(target: number, plan: ResolvedPlan, inputs: FireInputs, nowYear: number): TargetProgress {
-  const years = yearsToTarget(plan.investable, plan.annualContribution, inputs.realReturn, target)
+  const years = yearsToTargetWithWindfalls(plan.investable, plan.annualContribution, inputs.realReturn, target, windfallsFor(inputs))
   return {
     target,
     progress: target > 0 ? Math.min(1, plan.investable / target) : 1,
@@ -81,8 +90,19 @@ export function analyzePlan(inputs: FireInputs, plan: ResolvedPlan, nowYear: num
       number: baristaTarget,
       progress: progressTo(baristaTarget, plan, inputs, nowYear),
     },
-    projection: projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, horizonYears, nowYear),
+    projection: projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, horizonYears, nowYear, windfallsFor(inputs)),
   }
+}
+
+/** Lump sums arriving after retirement enter the simulation as a single month's inflow. */
+function lumpFlows(inputs: FireInputs, retireAge: number, portfolio: number) {
+  if (portfolio <= 0) return []
+  return inputs.lumpSums
+    .filter((l) => l.amount > 0 && l.age >= retireAge)
+    .map((l) => {
+      const startMonth = Math.round((l.age - retireAge) * 12)
+      return { startMonth, endMonth: startMonth + 1, amount: l.amount / portfolio }
+    })
 }
 
 export interface SimShares {
@@ -116,7 +136,7 @@ export function simOptionsForPlan(
     horizonMonths: inputs.horizonYears * 12,
     finalValue: inputs.finalValueTarget,
     feeAnnual: FEE_DRAG_ANNUAL,
-    flows: toMonthlyFlows(inputs.flows, retireAge, portfolio),
+    flows: [...toMonthlyFlows(inputs.flows, retireAge, portfolio), ...lumpFlows(inputs, retireAge, portfolio)],
   }
 }
 
