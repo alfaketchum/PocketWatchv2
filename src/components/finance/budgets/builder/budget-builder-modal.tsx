@@ -12,6 +12,7 @@ import { BudgetBuilderSimpleEditor } from "./budget-builder-simple-editor"
 import { BudgetBuilderManualEditor } from "./budget-builder-manual-editor"
 import { BudgetBuilderReview } from "./budget-builder-review"
 import { BudgetBuilderAILoading } from "./budget-builder-ai-loading"
+import { BudgetBuilderAIProposal } from "./budget-builder-ai-proposal"
 import {
   HISTORY_MONTHS, avgMonthlyIncome, buildCategoryStats, buildInitialDraft, completeTrendMonths,
   diffDraft, draftFromProposal, draftTotal, saveAmount,
@@ -27,6 +28,7 @@ interface BudgetBuilderModalProps {
 const TITLES: Record<BuilderStep, string> = {
   choose: "Create budget",
   "ai-loading": "Building your AI budget",
+  "ai-proposal": "AI budget proposal",
   edit: "Adjust your budget",
   review: "Review changes",
 }
@@ -78,7 +80,10 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
     generate.mutate({ force }, {
       onSuccess: (res) => {
         if (id !== aiRequest.current) return
-        openEditor("ai", draftFromProposal(res.proposal.categories, existing, stats), res.proposal.summary)
+        setMethod("ai")
+        setLines(draftFromProposal(res.proposal.categories, existing, stats))
+        setAiSummary(res.proposal.summary)
+        setStep("ai-proposal")
       },
       onError: (e) => { if (id === aiRequest.current) setAiError(e.message) },
     })
@@ -121,7 +126,9 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
   if (!isOpen || typeof document === "undefined") return null
 
   const cancelAI = () => { aiRequest.current++; setAiError(null); setStep("choose") }
-  const backTarget: BuilderStep | null = step === "edit" ? "choose" : step === "review" ? "edit" : null
+  const backTarget: BuilderStep | null = step === "edit" || step === "ai-proposal" ? "choose" : step === "review" ? "edit" : null
+  const rejectAI = () => { setLines([]); setAiSummary(null); setStep("choose") }
+  const editAI = (m: "simple" | "manual") => { setMethod(m); setEditorKey((k) => k + 1); setStep("edit") }
 
   return createPortal(
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
@@ -147,6 +154,9 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
           {step === "ai-loading" && (
             <BudgetBuilderAILoading providerLabel={aiInfo?.providerLabel ?? null} error={aiError} onRetry={() => runAI(true)} onCancel={cancelAI} />
           )}
+          {step === "ai-proposal" && (
+            <BudgetBuilderAIProposal summary={aiSummary} lines={lines} existing={existing} diff={diff} income={income} avgSpend={avgSpend} />
+          )}
           {step === "edit" && method !== "manual" && (
             <BudgetBuilderSimpleEditor key={editorKey} lines={lines} onChange={setLines} stats={stats} income={income} avgSpend={avgSpend} aiSummary={aiSummary} onSwitchToManual={() => setMethod("manual")} />
           )}
@@ -156,6 +166,21 @@ export function BudgetBuilderModal({ isOpen, onClose, onSaved }: BudgetBuilderMo
           {step === "review" && <BudgetBuilderReview diff={diff} total={draftTotal(lines.map((l) => ({ ...l, amount: saveAmount(l.amount) })))} income={income} avgSpend={avgSpend} />}
         </div>
 
+        {step === "ai-proposal" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-card-border flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <button onClick={rejectAI} className="px-4 py-2 text-sm font-semibold text-error hover:bg-error/10 rounded-xl transition-colors">Reject</button>
+              <button onClick={() => runAI(true)} className="text-xs font-medium text-foreground-muted hover:text-foreground">Regenerate</button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button onClick={() => editAI("manual")} className="px-4 py-2 text-sm font-semibold text-foreground bg-background-secondary border border-card-border rounded-xl hover:border-card-border-hover transition-colors">Edit amounts</button>
+              <button onClick={() => editAI("simple")} className="px-4 py-2 text-sm font-semibold text-foreground bg-background-secondary border border-card-border rounded-xl hover:border-card-border-hover transition-colors">Adjust with sliders</button>
+              <button onClick={handleSave} disabled={!hasChanges || save.isPending} className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-xl hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                {save.isPending ? "Saving…" : hasChanges ? "Accept & save" : "Matches your budgets"}
+              </button>
+            </div>
+          </div>
+        )}
         {(step === "edit" || step === "review") && (
           <div className="flex items-center justify-between gap-3 px-6 py-3 border-t border-card-border flex-shrink-0">
             {step === "edit" && aiSummary ? (

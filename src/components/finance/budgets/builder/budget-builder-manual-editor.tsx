@@ -65,6 +65,7 @@ export function BudgetBuilderManualEditor({ lines, onChange, stats, income, avgS
                         <span className="material-symbols-rounded flex-shrink-0" style={{ fontSize: 16, color: meta.hex }} aria-hidden="true">{meta.icon}</span>
                         <span className="truncate text-foreground">{l.category}</span>
                       </span>
+                      {l.reason && <p className="text-[10px] text-foreground-muted mt-0.5 ml-6 leading-snug max-w-[320px]">{l.reason}</p>}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <button

@@ -1,6 +1,6 @@
 export type BuilderMethod = "ai" | "simple" | "manual"
 
-export type BuilderStep = "choose" | "ai-loading" | "edit" | "review"
+export type BuilderStep = "choose" | "ai-loading" | "ai-proposal" | "edit" | "review"
 
 /** One category in the budget being built. `amount` is unrounded while editing. */
 export interface DraftLine {
