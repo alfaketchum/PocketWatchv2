@@ -12,7 +12,7 @@ const GOOGLE_USER_DATA_POLICY_URL =
 
 const SECTIONS: LegalSection[] = [
   {
-    heading: "What FuegoTracker is",
+    heading: "What FlameFolio is",
     body: [
       `${APP_NAME} is a privately operated personal finance tracker. It is not a commercial service; accounts exist only for the people who run and use this instance.`,
     ],
@@ -20,15 +20,15 @@ const SECTIONS: LegalSection[] = [
   {
     heading: "Gmail data we access",
     body: [
-      "When you choose to connect a Google account, FuegoTracker requests read-only access to Gmail (the gmail.readonly scope) and your basic account identity. It cannot send, delete, or modify email.",
-      "FuegoTracker searches for specific kinds of messages: sign-up and account notification emails (to build a directory of which email address you used for each service) and travel confirmations such as flight, hotel, and car bookings (to import trips).",
+      "When you choose to connect a Google account, FlameFolio requests read-only access to Gmail (the gmail.readonly scope) and your basic account identity. It cannot send, delete, or modify email.",
+      "FlameFolio searches for specific kinds of messages: sign-up and account notification emails (to build a directory of which email address you used for each service) and travel confirmations such as flight, hotel, and car bookings (to import trips).",
     ],
   },
   {
     heading: "How that data is used",
     body: [
-      "Matching messages are read to extract account and trip details, which are saved to your FuegoTracker account. Full email bodies are not stored; for the account directory, the subject, sender, and a short snippet are kept (encrypted) as evidence of where each entry came from.",
-      "If you have configured an AI provider in FuegoTracker (Anthropic Claude, OpenAI, or Google Gemini), the subject and text of matching messages are sent to that provider solely to extract those details. Trip import requires an AI provider; the account directory falls back to a local rule-based parser without one.",
+      "Matching messages are read to extract account and trip details, which are saved to your FlameFolio account. Full email bodies are not stored; for the account directory, the subject, sender, and a short snippet are kept (encrypted) as evidence of where each entry came from.",
+      "If you have configured an AI provider in FlameFolio (Anthropic Claude, OpenAI, or Google Gemini), the subject and text of matching messages are sent to that provider solely to extract those details. Trip import requires an AI provider; the account directory falls back to a local rule-based parser without one.",
       "Gmail data is never sold, never used for advertising, and never shared with anyone other than the AI provider you configure for the purpose above.",
     ],
   },

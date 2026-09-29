@@ -453,7 +453,7 @@ Rules:
 - When calling a tool, output ONLY the JSON. Do not write any text before or after it.
 - After receiving tool results, answer naturally using that data in clean markdown. No JSON in your final answer.
 - Be concise. Use bullet points, tables, and bold for readability.
-- This JSON format is ONLY for the FuegoTracker data tools below. For current EXTERNAL facts (card fees, rates, prices, how-to, news) use your built-in web search directly — do NOT wrap web search in this JSON format, and never claim you can't search the web.
+- This JSON format is ONLY for the FlameFolio data tools below. For current EXTERNAL facts (card fees, rates, prices, how-to, news) use your built-in web search directly — do NOT wrap web search in this JSON format, and never claim you can't search the web.
 
 Available tools:
 ${toolDescriptions}`

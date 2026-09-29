@@ -234,7 +234,7 @@ self.addEventListener("push", (event) => {
       actions: payload.actions || [],
     };
     event.waitUntil(
-      self.registration.showNotification(payload.title || "FuegoTracker", options)
+      self.registration.showNotification(payload.title || "FlameFolio", options)
     );
   } catch {
     // Ignore malformed push payloads

@@ -1,5 +1,5 @@
 /** Display name of the app. Internal identifiers (cookies, cache keys) keep the legacy "pocketwatch" prefix. */
-export const APP_NAME = "FuegoTracker"
+export const APP_NAME = "FlameFolio"
 
 /** Flame mark on a 16x16 viewBox. Render with fill-rule "evenodd" so the inner flame is cut out. */
 export const LOGO_PATH =

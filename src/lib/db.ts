@@ -12,7 +12,7 @@ import {
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
   throw new Error(
-    "DATABASE_URL is not configured. Set DATABASE_URL before starting FuegoTracker."
+    "DATABASE_URL is not configured. Set DATABASE_URL before starting FlameFolio."
   )
 }
 

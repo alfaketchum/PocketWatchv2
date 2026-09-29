@@ -143,7 +143,7 @@ export function LandingPage() {
             <path fillRule="evenodd" d={LOGO_PATH} />
           </svg>
           <span className="text-2xl font-semibold tracking-wide text-foreground">
-            Fuego<span className="font-normal">Tracker</span>
+            Flame<span className="font-normal">Folio</span>
           </span>
         </div>
 

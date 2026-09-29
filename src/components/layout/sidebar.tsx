@@ -104,7 +104,7 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
               </svg>
             </div>
             <span className="text-sm font-semibold tracking-tight text-foreground">
-              Fuego<span className="text-foreground-muted font-normal">Tracker</span>
+              Flame<span className="text-foreground-muted font-normal">Folio</span>
             </span>
           </div>
           <div className={cn("flex items-center gap-1", collapsed && "lg:hidden")}>
