@@ -26,9 +26,9 @@ export default function FirePage() {
   return (
     <div className="space-y-5">
       <FireHero state={state} isHidden={isHidden} />
+      <FireMilestones state={state} isHidden={isHidden} />
       <FirePathChart state={state} isHidden={isHidden} />
       <FireWhatMoves state={state} />
-      <FireMilestones state={state} isHidden={isHidden} />
       <FireSpendingCost state={state} isHidden={isHidden} />
       <FireSafetyCard state={state} isHidden={isHidden} />
       {!advanced && (
