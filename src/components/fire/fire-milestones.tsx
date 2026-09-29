@@ -19,6 +19,7 @@ interface Milestone {
   age: number | null
   you?: boolean
   yourTier?: boolean
+  sublabel?: string
 }
 
 const TIER_ICONS: Record<string, string> = { lean: "eco", regular: "home", chubby: "restaurant", fat: "diamond" }
@@ -42,7 +43,12 @@ function buildMilestones(state: FirePlanState): Milestone[] {
       key: "barista",
       icon: "local_cafe",
       label: "Barista FIRE",
-      hint: `Quit full-time work; ${fmtMoney(inputs.partTimeIncome)}/yr of part-time income covers the rest.`,
+      sublabel: barista.partTimeYears === null ? "part-time for life" : `then ${barista.partTimeYears} yrs part-time`,
+      hint:
+        `Leave full-time work and earn ${fmtMoney(inputs.partTimeIncome)}/yr part-time` +
+        (barista.partTimeYears === null
+          ? " for life."
+          : ` for ${barista.partTimeYears} years; your portfolio covers the gap, then everything once you fully retire.`),
       target: barista.number,
       progress: barista.progress.progress,
       years: barista.progress.years,
@@ -90,6 +96,7 @@ export function FireMilestones({ state, isHidden }: { state: FirePlanState; isHi
                   <span className={cn("text-sm truncate cursor-help", m.you ? "font-semibold text-primary" : "text-foreground")}>{m.label}</span>
                 </InfoTooltip>
                 {m.yourTier && <span className="block text-[9px] uppercase tracking-wider text-primary">your tier</span>}
+                {m.sublabel && <span className="block text-[10px] text-foreground-muted">{m.sublabel}</span>}
               </div>
               <div className="flex-1 h-1.5 rounded-full bg-foreground/5 overflow-hidden hidden sm:block">
                 <div className={cn("h-full rounded-full", done ? "bg-success" : "bg-primary")} style={{ width: `${Math.max(2, m.progress * 100)}%` }} />

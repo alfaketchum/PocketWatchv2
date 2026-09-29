@@ -59,6 +59,7 @@ export const DEFAULT_FIRE_INPUTS: FireInputs = {
   capeA: CAPE_RULE_DEFAULT_A,
   capeB: CAPE_RULE_DEFAULT_B,
   partTimeIncome: 20_000,
+  partTimeYears: 10,
   flows: [],
   lumpSums: [],
   tiers: DEFAULT_TIERS,

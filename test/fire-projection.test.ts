@@ -1,7 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
-  baristaGap,
   baristaNumber,
   coastNumber,
   fireNumber,
@@ -47,10 +46,32 @@ test("yearsToCoast: 0 when already coasting, positive otherwise", () => {
   assert.ok(n !== null && n > 0 && n < 30)
 })
 
-test("barista: gap and number", () => {
-  assert.equal(baristaGap(60_000, 1_000_000, 0.04), 20_000)
-  assert.equal(baristaGap(30_000, 1_000_000, 0.04), 0)
-  assert.equal(baristaNumber(60_000, 20_000, 0.04), 1_000_000)
+test("barista: part-time for life is the classic (spend − income) ÷ SWR", () => {
+  assert.equal(baristaNumber(60_000, 20_000, 0.04, 0.05, null), 1_000_000)
+})
+
+test("barista bridge: 0 years = full FIRE number; more years = smaller number; never above full", () => {
+  const full = 60_000 / 0.04
+  assert.equal(baristaNumber(60_000, 20_000, 0.04, 0.05, 0), full)
+  const five = baristaNumber(60_000, 20_000, 0.04, 0.05, 5)
+  const ten = baristaNumber(60_000, 20_000, 0.04, 0.05, 10)
+  assert.ok(ten < five && five < full, `${ten} < ${five} < ${full}`)
+  assert.ok(ten > baristaNumber(60_000, 20_000, 0.04, 0.05, null), "a finite bridge needs more than part-time for life")
+  assert.equal(baristaNumber(60_000, 0, 0.04, 0, 10), full, "no part-time income at 0% return can't beat full FIRE")
+})
+
+test("barista bridge: 0% return is linear (full number + gap × years)", () => {
+  // A positive gap with no growth needs more than the full number, so it's capped there.
+  assert.equal(baristaNumber(60_000, 50_000, 0.04, 0, 10), 1_500_000)
+  assertClose(baristaNumber(60_000, 70_000, 0.04, 0, 10), 1_500_000 - 100_000, 1e-6)
+})
+
+test("barista bridge: the deterministic path lands exactly on the full FIRE number", () => {
+  const r = 0.05
+  const years = 8
+  let v = baristaNumber(60_000, 25_000, 0.04, r, years)
+  for (let i = 0; i < years; i++) v = v * (1 + r) - (60_000 - 25_000)
+  assertClose(v, 60_000 / 0.04, 1e-3)
 })
 
 test("tierForSpend: picks the smallest tier covering spend", () => {

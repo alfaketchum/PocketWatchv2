@@ -3,7 +3,6 @@ import type { ResolvedPlan } from "./fire-plan"
 import {
   yearsToTargetWithWindfalls,
   type Windfall,
-  baristaGap,
   baristaNumber,
   coastNumber,
   fireNumber,
@@ -34,7 +33,14 @@ export interface PlanAnalysis {
   tiers: TierProgress[]
   currentTier: FireTierKey | null
   coast: { number: number; reached: boolean; yearsToCoast: number | null; coastAge: number }
-  barista: { gapToday: number; number: number; progress: TargetProgress }
+  barista: {
+    number: number
+    progress: TargetProgress
+    partTimeYears: number | null
+    /** Age you'd leave full-time work, and the age part-time work ends (null = never / unreachable). */
+    downshiftAge: number | null
+    fullRetireAge: number | null
+  }
   projection: ProjectionPoint[]
 }
 
@@ -62,7 +68,8 @@ export function analyzePlan(inputs: FireInputs, plan: ResolvedPlan, nowYear: num
   const retireAge = yourTarget.age ?? inputs.coastAge
   const yearsToCoastAge = Math.max(0, inputs.coastAge - inputs.currentAge)
   const coastTarget = coastNumber(number, yearsToCoastAge, inputs.realReturn)
-  const baristaTarget = baristaNumber(plan.annualSpend, inputs.partTimeIncome, plan.swr)
+  const baristaTarget = baristaNumber(plan.annualSpend, inputs.partTimeIncome, plan.swr, inputs.realReturn, inputs.partTimeYears)
+  const baristaProgress = progressTo(baristaTarget, plan, inputs, nowYear)
   const tiers = inputs.tiers.map((tier) => ({
     tier,
     ...progressTo(fireNumber(tier.annualSpend, plan.swr), plan, inputs, nowYear),
@@ -86,9 +93,12 @@ export function analyzePlan(inputs: FireInputs, plan: ResolvedPlan, nowYear: num
       coastAge: inputs.coastAge,
     },
     barista: {
-      gapToday: baristaGap(plan.annualSpend, plan.investable, plan.swr),
       number: baristaTarget,
-      progress: progressTo(baristaTarget, plan, inputs, nowYear),
+      progress: baristaProgress,
+      partTimeYears: inputs.partTimeYears,
+      downshiftAge: baristaProgress.age,
+      fullRetireAge:
+        baristaProgress.age !== null && inputs.partTimeYears !== null ? baristaProgress.age + inputs.partTimeYears : null,
     },
     projection: projectPath(plan.investable, plan.annualContribution, inputs.realReturn, inputs.currentAge, horizonYears, nowYear, windfallsFor(inputs)),
   }
@@ -184,4 +194,20 @@ export function oneMoreYear(
     })
   }
   return out
+}
+
+/**
+ * Historical check of the Barista bridge: start at the Barista number on the downshift date,
+ * with part-time income as a temporary inflow (like ERN's supplemental cash flows), then full retirement.
+ */
+export function baristaSimOptions(
+  inputs: FireInputs,
+  downshiftAge: number,
+  portfolio: number,
+  portfolioShares: SimShares | null,
+): SimOptions {
+  const base = simOptionsForPlan(inputs, downshiftAge, portfolio, portfolioShares)
+  if (portfolio <= 0 || inputs.partTimeIncome <= 0) return base
+  const endMonth = inputs.partTimeYears === null ? Number.MAX_SAFE_INTEGER : Math.round(inputs.partTimeYears * 12)
+  return { ...base, flows: [...base.flows, { startMonth: 0, endMonth, amount: inputs.partTimeIncome / 12 / portfolio }] }
 }

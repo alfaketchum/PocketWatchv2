@@ -104,14 +104,28 @@ export function yearsToCoast(
   return null
 }
 
-/** Part-time income per year still needed if you stopped full-time work today. */
-export function baristaGap(annualSpend: number, portfolio: number, swr: number): number {
-  return Math.max(0, annualSpend - portfolio * swr)
-}
-
-/** Nest egg needed when part-time work covers `partTimeIncome` of spending. */
-export function baristaNumber(annualSpend: number, partTimeIncome: number, swr: number): number {
-  return fireNumber(Math.max(0, annualSpend - partTimeIncome), swr)
+/**
+ * Nest egg needed the day you downshift to part-time work (Barista FIRE).
+ *
+ * `partTimeYears === null` means part-time income for life: the classic (spend − income) ÷ SWR.
+ * Otherwise it is a bridge: during the part-time years the portfolio covers only the gap
+ * (spend − income) while growing at `r`, and when the job ends it must still equal the full
+ * FIRE number. Never more than the full FIRE number — then you'd simply retire outright.
+ */
+export function baristaNumber(
+  annualSpend: number,
+  partTimeIncome: number,
+  swr: number,
+  r = 0,
+  partTimeYears: number | null = null,
+): number {
+  const full = fireNumber(annualSpend, swr)
+  if (partTimeYears === null) return Math.min(full, fireNumber(Math.max(0, annualSpend - partTimeIncome), swr))
+  if (partTimeYears <= 0) return full
+  const gap = annualSpend - partTimeIncome
+  const growth = Math.pow(1 + r, partTimeYears)
+  const gapPv = Math.abs(r) < 1e-9 ? gap * partTimeYears : (gap * (1 - 1 / growth)) / r
+  return Math.max(0, Math.min(full, full / growth + gapPv))
 }
 
 /** The tier whose spend level covers `annualSpend` (the largest tier if above all). */

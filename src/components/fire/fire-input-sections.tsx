@@ -9,6 +9,7 @@ import { FireFlowsEditor } from "./fire-flows-editor"
 import { FireLumpSumsEditor } from "./fire-lump-sums-editor"
 import { FireNumberField } from "./fire-number-field"
 import { ChoiceChips, InputBlock, Toggle } from "./fire-input-controls"
+import { FireBaristaCheck, FireBaristaFields } from "./fire-barista-fields"
 
 type SectionProps = { state: FirePlanState }
 
@@ -180,10 +181,9 @@ export function MilestonesSection({ state }: SectionProps) {
   const set = setterFor(state)
   return (
     <div className="space-y-6">
-      <InputBlock title="Barista FIRE" description="Part-time income you'd earn after leaving full-time work.">
-        <div className="max-w-[200px]">
-          <FireNumberField label="Part-time income / yr" prefix="$" value={inputs.partTimeIncome} min={0} onChange={set("partTimeIncome")} />
-        </div>
+      <InputBlock title="Barista FIRE" description="Leave full-time work early and bridge with a part-time job, then retire fully.">
+        <FireBaristaFields state={state} />
+        <FireBaristaCheck state={state} />
       </InputBlock>
       <InputBlock title="Tier spending levels" description="Yearly retirement spending that defines each lifestyle.">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

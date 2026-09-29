@@ -38,6 +38,7 @@ export const fireInputsSchema = z.object({
   capeA: z.number().min(0).max(0.1),
   capeB: z.number().min(0).max(5),
   partTimeIncome: money,
+  partTimeYears: z.number().min(0).max(60).nullable(),
   flows: z
     .array(
       z.object({

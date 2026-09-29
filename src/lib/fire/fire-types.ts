@@ -78,6 +78,8 @@ export interface FireInputs {
   capeA: number
   capeB: number
   partTimeIncome: number
+  /** Years of part-time work after downshifting; null = for life. */
+  partTimeYears: number | null
   flows: FireFlow[]
   lumpSums: FireLumpSum[]
   tiers: FireTier[]

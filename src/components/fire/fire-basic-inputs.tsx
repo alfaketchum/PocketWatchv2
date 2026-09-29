@@ -5,6 +5,7 @@ import { BASIC_SWR_PRESETS } from "@/lib/fire/fire-constants"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { FireNumberField } from "./fire-number-field"
 import { FireSectionTabs, type EditorSection } from "./fire-section-tabs"
+import { FireBaristaFields } from "./fire-barista-fields"
 
 type SectionProps = { state: FirePlanState }
 
@@ -79,19 +80,14 @@ function SafetyBasic({ state }: SectionProps) {
 }
 
 function BaristaBasic({ state }: SectionProps) {
-  const { inputs, update } = state
-  return (
-    <div className="max-w-[240px]">
-      <FireNumberField label="Part-time income / yr" prefix="$" value={inputs.partTimeIncome} min={0} onChange={(partTimeIncome) => update({ partTimeIncome })} />
-    </div>
-  )
+  return <FireBaristaFields state={state} />
 }
 
 const SECTIONS: EditorSection[] = [
   { key: "you", label: "You", icon: "person", title: "You", description: "Your age today.", Body: YouBasic },
   { key: "money", label: "Money", icon: "payments", title: "Money", description: "What you'll spend each year in retirement and what you invest today.", Body: MoneyBasic },
   { key: "safety", label: "Safety", icon: "shield", title: "How safe do you want to be?", description: "A lower withdrawal rate needs a bigger nest egg but survives worse markets.", Body: SafetyBasic },
-  { key: "barista", label: "Barista", icon: "local_cafe", title: "Barista FIRE", description: "Part-time income you'd earn after leaving full-time work.", Body: BaristaBasic },
+  { key: "barista", label: "Barista", icon: "local_cafe", title: "Barista FIRE", description: "Leave full-time work early and bridge with a part-time job, then retire fully.", Body: BaristaBasic },
 ]
 
 /** Basic editor: the few assumptions that matter, one tab at a time. */
