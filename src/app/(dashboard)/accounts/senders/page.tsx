@@ -13,7 +13,7 @@ export default function SendersPage() {
   return (
     <div className="space-y-6 py-6">
       <FinancePageHeader
-        title="Unsubscribe"
+        title="Email Accounts"
         subtitle="Mailing lists in your inboxes, ranked by how much they send"
         actions={hasGmail ? <SendersScanButton /> : undefined}
       />

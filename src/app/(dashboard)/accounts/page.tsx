@@ -39,7 +39,7 @@ export default function AccountsPage() {
   return (
     <div className="py-6 space-y-6">
       <FinancePageHeader
-        title="Accounts"
+        title="Email Accounts"
         subtitle="Which email you used to sign up for each service"
         actions={
           hasGmail ? (
