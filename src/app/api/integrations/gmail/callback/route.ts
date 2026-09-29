@@ -32,8 +32,10 @@ const RETURN_PATH = "/accounts"
 
 type GmailConnectStatus = "connected" | "denied" | "expired" | "error"
 
-function redirectWithStatus(req: NextRequest, status: GmailConnectStatus) {
-  const url = new URL(RETURN_PATH, req.nextUrl.origin)
+function redirectWithStatus(status: GmailConnectStatus) {
+  // Resolve against the public redirect URI, not req.nextUrl.origin: behind the
+  // HTTPS proxy the request origin is the internal localhost:<port>.
+  const url = new URL(RETURN_PATH, GMAIL_REDIRECT_URI)
   url.searchParams.set("gmail", status)
   return NextResponse.redirect(url, { status: 302 })
 }
@@ -45,14 +47,14 @@ export async function GET(req: NextRequest) {
   if (oauthError) {
     const safe = OAUTH_ERROR_RE.test(oauthError) ? oauthError : "authorization_failed"
     console.warn("[API_ERROR] G2201: Gmail authorization denied", { reason: safe })
-    return redirectWithStatus(req, "denied")
+    return redirectWithStatus("denied")
   }
 
   const code = params.get("code")
   const state = params.get("state")
   if (!code || !state) {
     console.warn("[API_ERROR] G2202: Missing authorization code or state")
-    return redirectWithStatus(req, "error")
+    return redirectWithStatus("error")
   }
 
   // Look up + consume the single-use server-side flow (CSRF + user binding).
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
   if (flow) await db.pkceFlow.delete({ where: { state } }).catch(() => {})
   if (!flow || flow.provider !== "gmail" || flow.expiresAt < new Date()) {
     console.warn("[API_ERROR] G2203: Invalid or expired OAuth state (CSRF check failed)")
-    return redirectWithStatus(req, "expired")
+    return redirectWithStatus("expired")
   }
 
   try {
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
     const email = await fetchGmailAccountEmail(token.access_token)
     if (!email) {
       console.warn("[API_ERROR] G2205: Could not resolve Gmail account email")
-      return redirectWithStatus(req, "error")
+      return redirectWithStatus("error")
     }
     const service = gmailServiceForEmail(email)
 
@@ -92,11 +94,11 @@ export async function GET(req: NextRequest) {
         typeof token.expires_in === "number" ? Date.now() + token.expires_in * 1000 : 0,
     })
 
-    return redirectWithStatus(req, "connected")
+    return redirectWithStatus("connected")
   } catch (err) {
     console.error("[API_ERROR] G2204: Failed to complete Gmail authorization", {
       message: err instanceof Error ? err.message : String(err),
     })
-    return redirectWithStatus(req, "error")
+    return redirectWithStatus("error")
   }
 }

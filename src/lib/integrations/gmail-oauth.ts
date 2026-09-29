@@ -233,7 +233,12 @@ export async function fetchGmailAccountEmail(
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })
-    if (!resp.ok) return null
+    if (!resp.ok) {
+      // Google's error body (e.g. SERVICE_DISABLED, insufficient scopes) holds no secrets.
+      const body = await resp.text().catch(() => "")
+      console.warn(`Gmail profile lookup -> HTTP ${resp.status}: ${body.slice(0, 300)}`)
+      return null
+    }
     const data = (await resp.json()) as GmailProfileResponse
     const email = data.emailAddress?.trim().toLowerCase()
     return email ? email : null
