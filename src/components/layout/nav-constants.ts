@@ -12,6 +12,7 @@ export interface SectionTab {
 export const SECTION_TABS: readonly SectionTab[] = [
   { key: "netWorth",  icon: "equalizer",   label: "Worth",    root: "/net-worth" },
   { key: "finance",   icon: "monitoring",  label: "Finance",  root: "/finance" },
+  { key: "fire",      icon: "local_fire_department", label: "FIRE", root: "/fire" },
   { key: "portfolio", icon: "pie_chart",   label: "Assets",   root: "/portfolio" },
   { key: "travel",    icon: "flight",      label: "Travel",   root: "/travel" },
   { key: "ai",        icon: "smart_toy",   label: "Chat",     root: "/chat" },
@@ -21,6 +22,7 @@ export const SECTION_TABS: readonly SectionTab[] = [
 export function getActiveSection(pathname: string): string {
   if (pathname.startsWith("/net-worth")) return "netWorth"
   if (pathname.startsWith("/finance")) return "finance"
+  if (pathname.startsWith("/fire")) return "fire"
   if (pathname.startsWith("/portfolio") || pathname.startsWith("/tracker")) return "portfolio"
   if (pathname.startsWith("/travel") || pathname.startsWith("/trips")) return "travel"
   if (pathname.startsWith("/chat")) return "ai"

@@ -155,3 +155,6 @@ export {
 } from "./use-ai-rebuild"
 
 export { useTransactionLocations } from "./use-locations"
+
+export { useFireProfile, useFireInputs, useFireMode } from "./use-fire-profile"
+export { useFireBaseline, useFireHistoryData } from "./use-fire-baseline"

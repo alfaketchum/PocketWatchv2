@@ -7,14 +7,14 @@ import { Command } from "cmdk"
 import { useFinanceAccounts, useCreditCards, useFinanceSubscriptions, useFinanceTransactions } from "@/hooks/use-finance"
 import { useTrips } from "@/hooks/use-trips"
 import {
-  NET_WORTH_NAV_ITEMS, FINANCE_NAV_ITEMS, PORTFOLIO_NAV_ITEMS, TRAVEL_NAV_ITEMS, AI_NAV_ITEMS,
+  NET_WORTH_NAV_ITEMS, FINANCE_NAV_ITEMS, FIRE_NAV_ITEMS, PORTFOLIO_NAV_ITEMS, TRAVEL_NAV_ITEMS, AI_NAV_ITEMS,
 } from "@/hooks/use-sidebar-prefs"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { formatCurrency } from "@/lib/utils"
 
 const PAGES = [
-  ...NET_WORTH_NAV_ITEMS, ...FINANCE_NAV_ITEMS, ...PORTFOLIO_NAV_ITEMS, ...TRAVEL_NAV_ITEMS, ...AI_NAV_ITEMS,
+  ...NET_WORTH_NAV_ITEMS, ...FINANCE_NAV_ITEMS, ...FIRE_NAV_ITEMS, ...PORTFOLIO_NAV_ITEMS, ...TRAVEL_NAV_ITEMS, ...AI_NAV_ITEMS,
 ]
 
 const QUICK_ACTIONS = [

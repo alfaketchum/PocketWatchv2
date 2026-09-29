@@ -114,4 +114,6 @@ export const financeKeys = {
   reviewCount: () => [...financeKeys.all, "review-count"] as const,
   aiRebuild: () => [...financeKeys.all, "ai-rebuild"] as const,
   locations: () => [...financeKeys.all, "locations"] as const,
+  fireProfile: () => [...financeKeys.all, "fire-profile"] as const,
+  fireHistory: () => [...financeKeys.all, "fire-history"] as const,
 }

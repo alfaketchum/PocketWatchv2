@@ -45,6 +45,11 @@ export const NET_WORTH_NAV_ITEMS: NavItem[] = [
   { id: "net-worth", label: "Net Worth", href: "/net-worth", icon: "equalizer" },
 ]
 
+export const FIRE_NAV_ITEMS: NavItem[] = [
+  { id: "fire-plan", label: "FIRE Plan", href: "/fire", icon: "local_fire_department" },
+  { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science" },
+]
+
 export const TRAVEL_NAV_ITEMS: NavItem[] = [
   { id: "travel-flights", label: "Flight Search", href: "/travel", icon: "flight" },
   { id: "travel-hotels", label: "Hotel Search", href: "/travel/hotels", icon: "hotel" },
@@ -62,6 +67,7 @@ export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
+  fire:      { label: "FIRE",          items: FIRE_NAV_ITEMS },
   accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
@@ -70,10 +76,11 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
 
 function buildDefaultPrefs(): SidebarPrefs {
   return {
-    categoryOrder: ["netWorth", "finance", "accounts", "portfolio", "travel", "ai"],
+    categoryOrder: ["netWorth", "finance", "fire", "accounts", "portfolio", "travel", "ai"],
     categories: {
       netWorth:  { order: NET_WORTH_NAV_ITEMS.map((i) => i.id), hidden: [] },
       finance:   { order: FINANCE_NAV_ITEMS.map((i) => i.id),   hidden: [] },
+      fire:      { order: FIRE_NAV_ITEMS.map((i) => i.id),      hidden: [] },
       accounts:  { order: ACCOUNTS_NAV_ITEMS.map((i) => i.id),  hidden: [] },
       portfolio: { order: PORTFOLIO_NAV_ITEMS.map((i) => i.id), hidden: [] },
       travel:    { order: TRAVEL_NAV_ITEMS.map((i) => i.id),    hidden: [] },
@@ -150,6 +157,13 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
   if (!prefs.categoryOrder.includes("ai")) {
     prefs.categoryOrder.push("ai")
     prefs.categories.ai = { order: AI_NAV_ITEMS.map((i) => i.id), hidden: [] }
+    savePrefs(prefs)
+  }
+  // Inject fire category if missing (FIRE planner, placed right after Finance)
+  if (!prefs.categoryOrder.includes("fire")) {
+    const finIdx = prefs.categoryOrder.indexOf("finance")
+    prefs.categoryOrder.splice(finIdx >= 0 ? finIdx + 1 : prefs.categoryOrder.length, 0, "fire")
+    prefs.categories.fire = { order: FIRE_NAV_ITEMS.map((i) => i.id), hidden: [] }
     savePrefs(prefs)
   }
   // Remove domain settings items (consolidated to /settings)
