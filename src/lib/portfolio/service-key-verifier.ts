@@ -340,6 +340,24 @@ async function verifyMoralisKey(apiKey: string): Promise<ServiceVerifyResult> {
   }
 }
 
+/** BLS API v2 rejects bad registration keys with status REQUEST_NOT_PROCESSED. */
+async function verifyBlsKey(apiKey: string): Promise<ServiceVerifyResult> {
+  try {
+    const res = await fetch("https://api.bls.gov/publicAPI/v2/timeseries/data/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seriesid: ["OEUN000000000000015125213"], registrationkey: apiKey, latest: true }),
+      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+    })
+    if (!res.ok) return fail("upstream_error", `BLS API returned ${res.status}`)
+    const json = (await res.json()) as { status?: string; message?: string[] }
+    if (json.status === "REQUEST_SUCCEEDED") return ok("BLS key verified")
+    return fail("invalid_key", json.message?.[0] ?? "BLS rejected the key")
+  } catch {
+    return fail("upstream_error", "Could not reach the BLS API")
+  }
+}
+
 async function verifyCoinGeckoKey(apiKey: string): Promise<ServiceVerifyResult> {
   // Try pro endpoint first, then demo endpoint (free-tier keys use different host + header)
   const endpoints = [
@@ -412,6 +430,7 @@ export async function verifyServiceKey(
   if (normalized === "helius") return verifyHeliusKey(trimmed)
   if (normalized === "moralis") return verifyMoralisKey(trimmed)
   if (normalized === "coingecko") return verifyCoinGeckoKey(trimmed)
+  if (normalized === "bls") return verifyBlsKey(trimmed)
   if (normalized === "codex") return verifyCodexKey(trimmed)
 
   // Etherscan-compatible explorers (bscscan, arbiscan, lineascan, etc.)

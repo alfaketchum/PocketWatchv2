@@ -17,6 +17,7 @@ const ENV_FALLBACKS: Record<string, string | undefined> = {
   coingecko: process.env.COINGECKO_API_KEY,
   helius: process.env.HELIUS_API_KEY,
   moralis: process.env.MORALIS_API_KEY,
+  bls: process.env.BLS_API_KEY,
 }
 
 /** Services that support multiple API keys for round-robin rotation */

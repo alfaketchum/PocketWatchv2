@@ -26,6 +26,8 @@ const VALID_SERVICES = [
   "lineascan", "scrollscan", "zksync_explorer",
   // Unified multi-chain provider
   "codex",
+  // FIRE › Compare occupation wages
+  "bls",
 ]
 
 async function getKeyHint(apiKeyEnc: string): Promise<string> {
