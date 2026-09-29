@@ -10,8 +10,6 @@ const GENERATE_TIMEOUT_MS = 200_000
 
 export interface BudgetPlanProposal {
   summary: string
-  monthlyIncome: number
-  savingsTarget: number
   categories: Array<{ category: string; amount: number; reason: string }>
 }
 

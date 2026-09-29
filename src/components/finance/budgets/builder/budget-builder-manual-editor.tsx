@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { getBudgetableCategories, getCategoryMeta } from "@/lib/finance/categories"
+import { getCategoryMeta } from "@/lib/finance/categories"
+import { getLifestyleCategories } from "@/lib/finance/budget-builder-config"
 import { formatCurrency } from "@/lib/utils"
 import { WorkshopCategoryPicker } from "@/components/finance/budget-workshop/workshop-category-picker"
 import { BudgetBuilderSummaryBar } from "./budget-builder-summary-bar"
@@ -14,20 +15,19 @@ interface BudgetBuilderManualEditorProps {
   lines: DraftLine[]
   onChange: (lines: DraftLine[]) => void
   stats: Map<string, CategoryStats>
-  income: number
   typicalSpend: number
   /** Fill in suggested amounts for categories with spending that aren't budgeted yet. */
   onFillSuggestions: () => void
 }
 
 /** Category-by-category amounts, with averages as a guide. */
-export function BudgetBuilderManualEditor({ months, lines, onChange, stats, income, typicalSpend, onFillSuggestions }: BudgetBuilderManualEditorProps) {
+export function BudgetBuilderManualEditor({ months, lines, onChange, stats, typicalSpend, onFillSuggestions }: BudgetBuilderManualEditorProps) {
   const [picking, setPicking] = useState(lines.length === 0)
-  const available = getBudgetableCategories().filter((c) => !lines.some((l) => l.category === c))
+  const available = getLifestyleCategories().filter((c) => !lines.some((l) => l.category === c))
 
   return (
     <div className="space-y-4">
-      <BudgetBuilderSummaryBar total={draftTotal(lines)} income={income} typicalSpend={typicalSpend} />
+      <BudgetBuilderSummaryBar total={draftTotal(lines)} typicalSpend={typicalSpend} />
 
       <div className="rounded-2xl border border-card-border bg-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-card-border/50">

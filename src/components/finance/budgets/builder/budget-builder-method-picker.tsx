@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { BUDGET_LOOKBACK_OPTIONS, type BudgetLookback } from "@/lib/finance/budget-lookback"
+import { BUDGET_LOOKBACK_OPTIONS, type BudgetLookback } from "@/lib/finance/budget-builder-config"
 import type { BuilderMethod } from "./budget-builder-types"
 
 interface MethodOption {
@@ -14,7 +14,7 @@ const METHODS: MethodOption[] = [
     method: "ai",
     icon: "auto_awesome",
     title: "AI budget",
-    description: (n) => `AI reviews ${n} months of spending, income, subscriptions and your current budgets, then proposes a budget you can accept, edit or reject.`,
+    description: (n) => `AI reviews ${n} months of lifestyle spending, down to subcategories, plus subscriptions and your current budgets. It proposes a budget you can accept, edit or reject. Taxes are left out.`,
   },
   {
     method: "simple",

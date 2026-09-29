@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 
 const stages = (months: number) => [
   `Reading ${months} months of transactions…`,
-  "Measuring each category against your income…",
+  "Breaking categories down by subcategory…",
   "Checking subscriptions and fixed costs…",
   "Drafting category amounts…",
 ]

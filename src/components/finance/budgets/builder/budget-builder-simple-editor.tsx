@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { getBudgetableCategories } from "@/lib/finance/categories"
+import { getLifestyleCategories } from "@/lib/finance/budget-builder-config"
 import { formatCurrency } from "@/lib/utils"
 import { WorkshopCategoryPicker } from "@/components/finance/budget-workshop/workshop-category-picker"
 import { BudgetBuilderSliderRow } from "./budget-builder-slider-row"
@@ -13,7 +13,6 @@ interface BudgetBuilderSimpleEditorProps {
   lines: DraftLine[]
   onChange: (lines: DraftLine[]) => void
   stats: Map<string, CategoryStats>
-  income: number
   typicalSpend: number
   /** AI summary shown above the sliders when the draft came from an AI proposal. */
   aiSummary?: string | null
@@ -21,7 +20,7 @@ interface BudgetBuilderSimpleEditorProps {
 }
 
 /** One monthly total, split across categories with percentage sliders. */
-export function BudgetBuilderSimpleEditor({ lines, onChange, stats, income, typicalSpend, aiSummary, onSwitchToManual }: BudgetBuilderSimpleEditorProps) {
+export function BudgetBuilderSimpleEditor({ lines, onChange, stats, typicalSpend, aiSummary, onSwitchToManual }: BudgetBuilderSimpleEditorProps) {
   const total = draftTotal(lines)
   const [totalInput, setTotalInput] = useState(String(Math.round(total)))
   const [picking, setPicking] = useState(false)
@@ -39,7 +38,7 @@ export function BudgetBuilderSimpleEditor({ lines, onChange, stats, income, typi
     onChange(next)
   }
 
-  const available = getBudgetableCategories().filter((c) => !lines.some((l) => l.category === c))
+  const available = getLifestyleCategories().filter((c) => !lines.some((l) => l.category === c))
 
   return (
     <div className="space-y-4">
@@ -69,11 +68,10 @@ export function BudgetBuilderSimpleEditor({ lines, onChange, stats, income, typi
         </label>
         <div className="flex flex-wrap gap-2 pb-1">
           {typicalSpend > 0 && <Chip label={`Typical month ${formatCurrency(typicalSpend, "USD", 0)}`} onClick={() => commitTotal(String(Math.round(typicalSpend)))} />}
-          {income > 0 && <Chip label={`80% of income ${formatCurrency(income * 0.8, "USD", 0)}`} onClick={() => commitTotal(String(Math.round(income * 0.8)))} />}
         </div>
       </div>
 
-      <BudgetBuilderSummaryBar total={total} income={income} typicalSpend={typicalSpend} />
+      <BudgetBuilderSummaryBar total={total} typicalSpend={typicalSpend} />
 
       <div className="rounded-2xl border border-card-border bg-card">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-card-border/50">

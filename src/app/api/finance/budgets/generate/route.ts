@@ -5,7 +5,7 @@ import { financeRateLimiters, getClientId } from "@/lib/rate-limit"
 import { resolveBudgetAIProvider, getProviderLabel } from "@/lib/finance/ai-budget-provider"
 import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBudgetPlanPrompt, parseBudgetPlanResponse, type BudgetPlanProposal } from "@/lib/finance/budget-ai-generate"
-import { DEFAULT_BUDGET_LOOKBACK, isBudgetLookback } from "@/lib/finance/budget-lookback"
+import { DEFAULT_BUDGET_LOOKBACK, isBudgetLookback } from "@/lib/finance/budget-builder-config"
 import { NextRequest, NextResponse } from "next/server"
 
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour

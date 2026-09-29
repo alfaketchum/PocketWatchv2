@@ -1,7 +1,7 @@
-import { getBudgetableCategories } from "@/lib/finance/categories"
+import { getLifestyleCategories, isLifestyleCategory } from "@/lib/finance/budget-builder-config"
 import type { CategoryStats, DraftDiff, DraftLine, ExistingBudget } from "./budget-builder-types"
 
-interface TrendMonth { month: string; income: number; categories: Record<string, number> }
+interface TrendMonth { month: string; categories: Record<string, number> }
 interface ProposalLine { category: string; amount: number; reason: string }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -29,7 +29,7 @@ export const suggestedAmount = (typical: number) => Math.ceil((typical * 1.1) / 
 export function buildCategoryStats(months: TrendMonth[]): Map<string, CategoryStats> {
   const out = new Map<string, CategoryStats>()
   if (months.length === 0) return out
-  const cats = new Set(months.flatMap((m) => Object.keys(m.categories)))
+  const cats = new Set(months.flatMap((m) => Object.keys(m.categories)).filter(isLifestyleCategory))
   for (const cat of cats) {
     const history = months.map((m) => m.categories[cat] ?? 0)
     out.set(cat, {
@@ -45,11 +45,6 @@ export function buildCategoryStats(months: TrendMonth[]): Map<string, CategorySt
 /** Sum of per-category medians: what a normal month costs, ignoring one-off spikes. */
 export function typicalMonthlySpend(stats: Map<string, CategoryStats>): number {
   return round2([...stats.values()].reduce((s, c) => s + c.median, 0))
-}
-
-export function avgMonthlyIncome(months: TrendMonth[]): number {
-  if (months.length === 0) return 0
-  return round2(months.reduce((s, m) => s + m.income, 0) / months.length)
 }
 
 function line(category: string, amount: number, stats: Map<string, CategoryStats>, reason?: string): DraftLine {
@@ -68,7 +63,7 @@ export function buildInitialDraft(
   const lines = existing.map((b) => line(b.category, b.monthlyLimit, stats))
   if (!includeSuggestions) return lines.sort(byAmountDesc)
   const have = new Set(existing.map((b) => b.category))
-  const budgetable = new Set(getBudgetableCategories())
+  const budgetable = new Set(getLifestyleCategories())
   const extra = [...stats.entries()]
     .filter(([cat, s]) => !have.has(cat) && budgetable.has(cat) && s.median > 0)
     .map(([cat, s]) => line(cat, suggestedAmount(s.median), stats))

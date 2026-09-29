@@ -1,29 +1,34 @@
 /**
- * Gathers the spending picture the AI budget generator reasons over:
- * per-category monthly history, income, subscriptions, current budgets and
- * the biggest merchants in each large category.
+ * Gathers the lifestyle-spending picture the AI budget generator reasons over:
+ * per-category and per-subcategory monthly history, subscriptions, current
+ * budgets and top merchants. Taxes and income are reported as context only.
  */
 
 import { db } from "@/lib/db"
-import { getBudgetableCategories } from "@/lib/finance/categories"
-import { DEFAULT_BUDGET_LOOKBACK } from "@/lib/finance/budget-lookback"
+import { DEFAULT_BUDGET_LOOKBACK, getLifestyleCategories } from "@/lib/finance/budget-builder-config"
 
 const TOP_MERCHANTS_PER_CATEGORY = 3
+const MAX_SUBCATEGORIES = 6
 const LARGE_CATEGORY_LIMIT = 8
-// Same exclusions the budget totals use.
-const NON_SPENDING = new Set(["Transfer", "Income", "Investment", "Crypto"])
+const TAX_CATEGORY = "Taxes"
 const SUBSCRIPTION_TYPES = new Set(["subscription", "insurance", "membership"])
 const MONTHLY_MULTIPLIER: Record<string, number> = {
   weekly: 4.33, biweekly: 2.17, semimonthly: 2, monthly: 1, quarterly: 1 / 3, semi_annual: 1 / 6, yearly: 1 / 12, annual: 1 / 12,
 }
 
-export interface CategoryHistory {
-  category: string
-  /** Oldest → newest, one entry per complete month. */
-  monthly: number[]
+export interface SpendSeries {
   avgMonthly: number
   /** Median month — robust to one-off spikes. */
   medianMonthly: number
+  /** Months (of the window) with any spend. */
+  activeMonths: number
+}
+
+export interface CategoryHistory extends SpendSeries {
+  category: string
+  /** Oldest → newest, one entry per complete month. */
+  monthly: number[]
+  subcategories: Array<SpendSeries & { name: string; txCount: number }>
   topMerchants: Array<{ name: string; avgMonthly: number }>
 }
 
@@ -35,6 +40,7 @@ export interface BudgetContext {
   typicalMonthlySpend: number
   avgMonthlyIncome: number
   incomeOverride: number | null
+  taxes: { total: number; paymentMonths: number }
   subscriptions: Array<{ name: string; monthly: number; category: string | null }>
   subscriptionsMonthly: number
   currentBudgets: Array<{ category: string; monthlyLimit: number }>
@@ -48,6 +54,16 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+function series(byMonth: Map<string, number>, months: string[]): SpendSeries & { monthly: number[] } {
+  const monthly = months.map((m) => round2(byMonth.get(m) ?? 0))
+  return {
+    monthly,
+    avgMonthly: round2(monthly.reduce((s, v) => s + v, 0) / months.length),
+    medianMonthly: round2(median(monthly)),
+    activeMonths: monthly.filter((v) => v > 0).length,
+  }
+}
+
 /** The last N complete calendar months as YYYY-MM, oldest first. */
 function completeMonths(now: Date, count: number): string[] {
   const out: string[] = []
@@ -56,44 +72,6 @@ function completeMonths(now: Date, count: number): string[] {
     out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
   }
   return out
-}
-
-interface HistoryTx { date: Date; amount: number; category: string | null; merchantName: string | null; name: string }
-
-function summarizeSpending(txs: HistoryTx[], months: string[]) {
-  const budgetable = new Set(getBudgetableCategories())
-  const byCat = new Map<string, { monthly: Map<string, number>; merchants: Map<string, number> }>()
-  let income = 0
-  for (const tx of txs) {
-    const month = tx.date.toISOString().slice(0, 7)
-    if (tx.amount < 0) {
-      if (tx.category === "Income") income += Math.abs(tx.amount)
-      continue
-    }
-    const cat = tx.category ?? "Uncategorized"
-    if (NON_SPENDING.has(cat) || !budgetable.has(cat)) continue
-    const entry = byCat.get(cat) ?? { monthly: new Map(), merchants: new Map() }
-    entry.monthly.set(month, (entry.monthly.get(month) ?? 0) + tx.amount)
-    const merchant = tx.merchantName ?? tx.name
-    entry.merchants.set(merchant, (entry.merchants.get(merchant) ?? 0) + tx.amount)
-    byCat.set(cat, entry)
-  }
-
-  const n = months.length
-  const categories: CategoryHistory[] = [...byCat.entries()]
-    .map(([category, e]) => {
-      const monthly = months.map((m) => round2(e.monthly.get(m) ?? 0))
-      const avgMonthly = round2(monthly.reduce((s, v) => s + v, 0) / n)
-      const topMerchants = [...e.merchants.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, TOP_MERCHANTS_PER_CATEGORY)
-        .map(([name, total]) => ({ name, avgMonthly: round2(total / n) }))
-      return { category, monthly, avgMonthly, medianMonthly: round2(median(monthly)), topMerchants }
-    })
-    .sort((a, b) => b.avgMonthly - a.avgMonthly)
-    .map((c, i) => (i < LARGE_CATEGORY_LIMIT ? c : { ...c, topMerchants: [] }))
-
-  return { categories, avgMonthlyIncome: round2(income / n) }
 }
 
 /** Requested complete months, dropping any before the user's first transaction. */
@@ -112,6 +90,58 @@ async function availableMonths(userId: string, now: Date, lookback: number): Pro
   return clipped.length > 0 ? clipped : months.slice(-1)
 }
 
+interface HistoryTx { date: Date; amount: number; category: string | null; subcategory: string | null; merchantName: string | null; name: string }
+
+interface CategoryAcc {
+  monthly: Map<string, number>
+  merchants: Map<string, number>
+  subs: Map<string, { monthly: Map<string, number>; count: number }>
+}
+
+const bump = (m: Map<string, number>, k: string, v: number) => m.set(k, (m.get(k) ?? 0) + v)
+
+function accumulate(txs: HistoryTx[]) {
+  const lifestyle = new Set(getLifestyleCategories())
+  const byCat = new Map<string, CategoryAcc>()
+  const taxMonths = new Map<string, number>()
+  let income = 0
+  for (const tx of txs) {
+    const month = tx.date.toISOString().slice(0, 7)
+    if (tx.amount < 0) {
+      if (tx.category === "Income") income += Math.abs(tx.amount)
+      continue
+    }
+    if (tx.category === TAX_CATEGORY) { bump(taxMonths, month, tx.amount); continue }
+    const cat = tx.category ?? "Uncategorized"
+    if (!lifestyle.has(cat)) continue
+    const acc = byCat.get(cat) ?? { monthly: new Map(), merchants: new Map(), subs: new Map() }
+    bump(acc.monthly, month, tx.amount)
+    bump(acc.merchants, tx.merchantName ?? tx.name, tx.amount)
+    const subName = tx.subcategory ?? "(no subcategory)"
+    const sub = acc.subs.get(subName) ?? { monthly: new Map(), count: 0 }
+    bump(sub.monthly, month, tx.amount)
+    acc.subs.set(subName, { ...sub, count: sub.count + 1 })
+    byCat.set(cat, acc)
+  }
+  return { byCat, taxMonths, income }
+}
+
+function toHistory(category: string, acc: CategoryAcc, months: string[]): CategoryHistory {
+  const n = months.length
+  const subcategories = [...acc.subs.entries()]
+    .map(([name, s]) => {
+      const { avgMonthly, medianMonthly, activeMonths } = series(s.monthly, months)
+      return { name, txCount: s.count, avgMonthly, medianMonthly, activeMonths }
+    })
+    .sort((a, b) => b.avgMonthly - a.avgMonthly)
+    .slice(0, MAX_SUBCATEGORIES)
+  const topMerchants = [...acc.merchants.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_MERCHANTS_PER_CATEGORY)
+    .map(([name, total]) => ({ name, avgMonthly: round2(total / n) }))
+  return { category, ...series(acc.monthly, months), subcategories, topMerchants }
+}
+
 export async function gatherBudgetContext(userId: string, lookback: number = DEFAULT_BUDGET_LOOKBACK, now = new Date()): Promise<BudgetContext> {
   const months = await availableMonths(userId, now, lookback)
   const start = new Date(`${months[0]}-01T00:00:00`)
@@ -120,7 +150,7 @@ export async function gatherBudgetContext(userId: string, lookback: number = DEF
   const [txs, user, subs, budgets] = await Promise.all([
     db.financeTransaction.findMany({
       where: { userId, isDuplicate: false, isExcluded: false, date: { gte: start, lt: end } },
-      select: { date: true, amount: true, category: true, merchantName: true, name: true },
+      select: { date: true, amount: true, category: true, subcategory: true, merchantName: true, name: true },
     }),
     db.user.findUnique({ where: { id: userId }, select: { monthlyIncomeOverride: true } }),
     db.financeSubscription.findMany({
@@ -134,7 +164,12 @@ export async function gatherBudgetContext(userId: string, lookback: number = DEF
     }),
   ])
 
-  const { categories, avgMonthlyIncome } = summarizeSpending(txs, months)
+  const { byCat, taxMonths, income } = accumulate(txs)
+  const categories = [...byCat.entries()]
+    .map(([cat, acc]) => toHistory(cat, acc, months))
+    .sort((a, b) => b.avgMonthly - a.avgMonthly)
+    .map((c, i) => (i < LARGE_CATEGORY_LIMIT ? c : { ...c, topMerchants: [] }))
+
   const subscriptions = subs
     .filter((s) => SUBSCRIPTION_TYPES.has(s.billType ?? ""))
     .map((s) => ({
@@ -148,8 +183,9 @@ export async function gatherBudgetContext(userId: string, lookback: number = DEF
     categories,
     avgMonthlySpend: round2(categories.reduce((s, c) => s + c.avgMonthly, 0)),
     typicalMonthlySpend: round2(categories.reduce((s, c) => s + c.medianMonthly, 0)),
-    avgMonthlyIncome,
+    avgMonthlyIncome: round2(income / months.length),
     incomeOverride: user?.monthlyIncomeOverride ?? null,
+    taxes: { total: round2([...taxMonths.values()].reduce((s, v) => s + v, 0)), paymentMonths: taxMonths.size },
     subscriptions,
     subscriptionsMonthly: round2(subscriptions.reduce((s, x) => s + x.monthly, 0)),
     currentBudgets: budgets,

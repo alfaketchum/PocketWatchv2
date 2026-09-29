@@ -1,81 +1,84 @@
 /**
  * Prompt + parser for AI budget generation: turns a BudgetContext into a
- * complete proposed monthly budget with a short reason per category.
+ * proposed monthly lifestyle budget with a short reason per category.
  */
 
-import { getBudgetableCategories } from "@/lib/finance/categories"
-import type { BudgetContext } from "@/lib/finance/budget-ai-context"
+import { getLifestyleCategories } from "@/lib/finance/budget-builder-config"
+import type { BudgetContext, CategoryHistory } from "@/lib/finance/budget-ai-context"
 
 export interface BudgetPlanProposal {
   summary: string
-  monthlyIncome: number
-  savingsTarget: number
   categories: Array<{ category: string; amount: number; reason: string }>
 }
 
-const MAX_REASON = 160
+const MAX_REASON = 180
 const MAX_SUMMARY = 600
 
 const money = (n: number) => `$${Math.round(n)}`
 
-function formatContext(ctx: BudgetContext): string {
-  const categoryLines = ctx.categories.map((c) => {
-    const merchants = c.topMerchants.length > 0
-      ? ` | top: ${c.topMerchants.map((m) => `${m.name} ${money(m.avgMonthly)}/mo`).join(", ")}`
-      : ""
-    return `- ${c.category}: avg ${money(c.avgMonthly)}/mo, median ${money(c.medianMonthly)}/mo | monthly ${c.monthly.map(money).join(", ")}${merchants}`
-  }).join("\n")
+function formatCategory(c: CategoryHistory, monthCount: number): string {
+  const head = `- ${c.category}: avg ${money(c.avgMonthly)}/mo, median ${money(c.medianMonthly)}/mo, active ${c.activeMonths}/${monthCount} months | monthly ${c.monthly.map(money).join(", ")}`
+  const subs = c.subcategories
+    .map((s) => `    · ${s.name}: avg ${money(s.avgMonthly)}/mo, median ${money(s.medianMonthly)}/mo, ${s.activeMonths}/${monthCount} months, ${s.txCount} txns`)
+    .join("\n")
+  const merchants = c.topMerchants.length > 0
+    ? `\n    top merchants: ${c.topMerchants.map((m) => `${m.name} ${money(m.avgMonthly)}/mo`).join(", ")}`
+    : ""
+  return `${head}${subs ? `\n${subs}` : ""}${merchants}`
+}
 
+function formatContext(ctx: BudgetContext): string {
+  const n = ctx.months.length
   const subs = ctx.subscriptions.length > 0
     ? ctx.subscriptions.map((s) => `- ${s.name}: ${money(s.monthly)}/mo (${s.category ?? "uncategorized"})`).join("\n")
     : "- none detected"
-
   const budgets = ctx.currentBudgets.length > 0
     ? ctx.currentBudgets.map((b) => `- ${b.category}: ${money(b.monthlyLimit)}`).join("\n")
     : "- none yet"
+  const income = ctx.incomeOverride != null ? `${money(ctx.incomeOverride)}/mo (user-entered)` : `${money(ctx.avgMonthlyIncome)}/mo average`
 
-  const income = ctx.incomeOverride != null
-    ? `${money(ctx.incomeOverride)}/mo (user-entered); transactions average ${money(ctx.avgMonthlyIncome)}/mo`
-    : `${money(ctx.avgMonthlyIncome)}/mo average from Income transactions`
+  return `MONTHS ANALYZED (${n} complete months, oldest → newest): ${ctx.months.join(", ")}
+LIFESTYLE SPENDING: avg ${money(ctx.avgMonthlySpend)}/mo; typical month (sum of category medians) ${money(ctx.typicalMonthlySpend)}
 
-  return `MONTHS ANALYZED (${ctx.months.length} complete months, oldest → newest): ${ctx.months.join(", ")}
-INCOME: ${income}
-AVERAGE MONTHLY SPENDING: ${money(ctx.avgMonthlySpend)} (typical month, sum of category medians: ${money(ctx.typicalMonthlySpend)})
-
-SPENDING BY CATEGORY:
-${categoryLines || "- no spending history"}
+SPENDING BY CATEGORY (with subcategories):
+${ctx.categories.map((c) => formatCategory(c, n)).join("\n") || "- no spending history"}
 
 RECURRING SUBSCRIPTIONS (${money(ctx.subscriptionsMonthly)}/mo total):
 ${subs}
 
 CURRENT BUDGETS:
-${budgets}`
+${budgets}
+
+CONTEXT ONLY (do NOT budget or size the budget from these):
+- Income: ${income}. It may be variable (e.g. investment income), so it is not a spending cap.
+- Taxes: ${money(ctx.taxes.total)} paid across ${ctx.taxes.paymentMonths} month(s). They swing with income and are planned separately.`
 }
 
 export function buildBudgetPlanPrompt(ctx: BudgetContext): string {
-  return `You are a personal finance coach building a realistic MONTHLY budget from the user's real data.
+  return `You are a personal finance coach building a realistic MONTHLY LIFESTYLE budget from the user's real data.
+A budget here means the day-to-day cost of the user's lifestyle: housing, food, transport, shopping, travel, fun and so on.
+It is NOT a savings plan and NOT sized to income.
 Respond ONLY with valid JSON matching the schema below. No markdown, no explanation, just JSON.
 
 SCHEMA:
 {
-  "summary": "string (2-3 sentences: the strategy, total budgeted, and how much this leaves for savings)",
-  "monthlyIncome": number (the monthly income you planned around),
-  "savingsTarget": number (monthly amount left unbudgeted for savings; can be 0),
-  "categories": [{ "category": "string (one of the allowed categories)", "amount": number (whole dollars per month), "reason": "string (under ${MAX_REASON} chars, cite real numbers)" }]
+  "summary": "string (2-3 sentences: what a normal month of this lifestyle costs, the total budgeted, and the key trade-offs)",
+  "categories": [{ "category": "string (one of the allowed categories)", "amount": number (whole dollars per month), "reason": "string (under ${MAX_REASON} chars, cite real numbers and the subcategories driving it)" }]
 }
 
-ALLOWED CATEGORIES: ${getBudgetableCategories().join(", ")}
+ALLOWED CATEGORIES: ${getLifestyleCategories().join(", ")}
 
 ${formatContext(ctx)}
 
 RULES:
-- Budget every category with meaningful recurring spending; skip one-off spikes unless they recur.
-- Large irregular payments (e.g. estimated/annual tax payments) are not monthly spending: leave them out of the budget unless they recur monthly, and mention them in the summary.
-- Prefer the median over the mean when a category has spikes.
-- Weigh recent months more heavily when spending has clearly shifted, but use the longer history to catch annual and seasonal costs (spread them monthly).
-- Fixed costs (Housing, Bills & Utilities, Insurance, subscriptions) should cover what the user actually pays.
-- Trim discretionary categories where history shows room, but stay achievable (not below ~80% of the average without reason).
-- If income is known, total budget + savingsTarget should not exceed income; aim for 10-20% savings when feasible.
+- Read the subcategories: they show what actually drives each category (e.g. Restaurants vs Groceries vs Bars, Hotels vs Flights, Rideshare vs Transit).
+  Build each category's amount from its recurring subcategories, and name them in the reason.
+- Budget every category with meaningful recurring spending. A subcategory active in only 1-2 months is a one-off: exclude it, or spread it thinly if it is plausibly annual.
+- Prefer the median over the mean when a category or subcategory has spikes.
+- Weigh recent months more heavily when spending has clearly shifted (e.g. a rent change), but use the longer history for annual and seasonal costs (spread them monthly).
+- Fixed costs (rent, utilities, insurance, subscriptions) should cover what the user actually pays now.
+- Trim discretionary subcategories where history shows room, but stay achievable (not below ~80% of the typical month without reason).
+- Never budget taxes, and never cap or scale the budget by income.
 - Respect current budgets where they already fit the data; change them only with a clear reason.
 - Round amounts to the nearest $5.`
 }
@@ -89,7 +92,7 @@ export function parseBudgetPlanResponse(rawText: string): BudgetPlanProposal {
   if (!jsonMatch) throw new Error("AI response contained no JSON")
   const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>
 
-  const allowed = new Set(getBudgetableCategories())
+  const allowed = new Set(getLifestyleCategories())
   const seen = new Set<string>()
   const categories = (Array.isArray(parsed.categories) ? parsed.categories : [])
     .map((c: Record<string, unknown>) => ({
@@ -107,8 +110,6 @@ export function parseBudgetPlanResponse(rawText: string): BudgetPlanProposal {
 
   return {
     summary: String(parsed.summary ?? "").slice(0, MAX_SUMMARY),
-    monthlyIncome: Math.max(0, Math.round(num(parsed.monthlyIncome) ?? 0)),
-    savingsTarget: Math.max(0, Math.round(num(parsed.savingsTarget) ?? 0)),
     categories,
   }
 }
