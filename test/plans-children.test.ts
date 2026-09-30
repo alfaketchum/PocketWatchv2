@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { childIds, childMilestones, newChild } from "@/lib/plans/plan-children"
 import { allMilestones } from "@/lib/plans/plan-milestones"
+import { renameChild } from "@/lib/plans/plan-edits"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { planDocumentSchema, parsePlanDocument } from "@/lib/plans/plan-schema"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
@@ -114,4 +115,14 @@ test("children validate, and plans saved before children existed still load", ()
   assert.ok(planDocumentSchema.safeParse(d).success)
   const { children: _c, ...old } = blankPlanDocument(NOW)
   assert.deepEqual(parsePlanDocument(old, blankPlanDocument(NOW))?.children, [])
+})
+
+test("renaming a child renames their 529 unless it was given its own name", () => {
+  const child = sam({ plan529: { enabled: true, accountId: "sam529", annualContribution: 5_000 } })
+  const d = plan(child, { accounts: [acct("brk", "taxable", 0), { ...acct("sam529", "education", 0), name: "Sam's 529" }] })
+  const renamed = renameChild(d, "sam", "Jaime")
+  assert.equal(renamed.children[0].name, "Jaime")
+  assert.equal(renamed.accounts.find((a) => a.id === "sam529")!.name, "Jaime's 529")
+  const custom = { ...d, accounts: d.accounts.map((a) => (a.id === "sam529" ? { ...a, name: "College fund" } : a)) }
+  assert.equal(renameChild(custom, "sam", "Jaime").accounts.find((a) => a.id === "sam529")!.name, "College fund")
 })

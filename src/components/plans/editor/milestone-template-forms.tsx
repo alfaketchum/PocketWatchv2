@@ -23,7 +23,10 @@ import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { newItemId } from "../plans-helpers"
 import { emptyPart, InheritanceFields } from "./inheritance-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
+import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { TimingPicker } from "./timing-picker"
+
+const SAME_STATE = "same"
 
 /** Everything the template forms can edit; each template reads the fields it needs. */
 export interface TemplateDraft {
@@ -50,6 +53,8 @@ export interface TemplateDraft {
   parts: InheritedPart[]
   relationship: Relationship
   decedentState: string | null
+  /** Move: the new state code, NO_STATE, or SAME_STATE. */
+  moveTo: string
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
@@ -93,6 +98,7 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     parts: [emptyPart("cash")],
     relationship: "child",
     decedentState: doc.settings.state ?? null,
+    moveTo: SAME_STATE,
   }
 }
 
@@ -124,7 +130,7 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
     case "break":
       return applyBreak(doc, { incomeId: d.incomeId, startYear: d.startYear, years: d.years }, newItemId)
     case "move":
-      return applyMove(doc, { name, when: d.when, percent: d.percent }, newItemId)
+      return applyMove(doc, { name, when: d.when, percent: d.percent, state: d.moveTo === SAME_STATE ? undefined : d.moveTo === NO_STATE ? null : d.moveTo }, newItemId)
     case "inheritance":
       return applyInheritance(doc, { name, when: d.when, parts: d.parts, relationship: d.relationship, decedentState: d.decedentState }, newItemId)
     case "windfall":
@@ -246,6 +252,10 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
             hint="Negative for a cheaper place (−10 = 10% less). Kids' costs aren't affected."
             onChange={(percent) => set({ percent })}
           />
+          <SelectField label="Moving to" value={d.moveTo} options={[{ value: SAME_STATE, label: "Same state" }, ...STATE_OPTIONS]} onChange={(moveTo) => set({ moveTo })} />
+          {doc.settings.taxMode !== "brackets" && d.moveTo !== SAME_STATE && (
+            <p className="text-[11px] text-foreground-muted">State tax applies with tax brackets (Assumptions).</p>
+          )}
         </>
       )
     case "inheritance":

@@ -28,6 +28,18 @@ export function removeChild(doc: PlanDocument, childId: string): PlanDocument {
   return accountId && !sharedWithAnother ? removeAccount(next, accountId) : next
 }
 
+/** Rename a child; their 529 follows if it still has the default "<name>'s 529" name. */
+export function renameChild(doc: PlanDocument, childId: string, name: string): PlanDocument {
+  const child = doc.children.find((c) => c.id === childId)
+  if (!child) return doc
+  const oldDefault = `${child.name}'s 529`
+  return {
+    ...doc,
+    children: doc.children.map((c) => (c.id === childId ? { ...c, name } : c)),
+    accounts: doc.accounts.map((a) => (a.id === child.plan529.accountId && a.name === oldDefault ? { ...a, name: `${name}'s 529` } : a)),
+  }
+}
+
 /** Apply `fn` to every timing in the plan. */
 export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDocument {
   return {

@@ -104,6 +104,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const doc = tax.doc
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
     capitalGainsRate: doc.settings.capitalGainsRate,
+    incomeTaxRate: doc.settings.incomeTaxRate,
     joint: doc.people.length > 1,
   })
   const debts = payDebts(plan.debts, events.debtBalances, index)
@@ -164,7 +165,9 @@ function settleTax(plan: Plan, state: State, index: number, flows: Flows): { mov
   for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
     const diff = taxTrueUp(flows.tax, {
       ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
-      gains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains,
+      shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains,
+      longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains,
+      realEstateGains: flows.events.saleRealEstateGains,
       charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax,
     })
     if (Math.abs(diff) < TRUE_UP_MIN) break

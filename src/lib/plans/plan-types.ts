@@ -71,6 +71,8 @@ export interface PlanAccount {
   source: PlanSource | null
   /** Inherited retirement accounts must be emptied by the end of this year (10-year rule); drawn evenly. */
   drainByYear?: number | null
+  /** Taxable accounts: share of gains from holdings kept a year or less (taxed as ordinary income). */
+  shortTermShare?: number
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }
@@ -234,6 +236,8 @@ export type PlanAdjustment =
       origin?: string
     }
   | { id: string; kind: "filingStatus"; timing: Timing; status: "single" | "joint"; origin?: string }
+  /** Where you live from then on (state tax under brackets); null = no state income tax. */
+  | { id: string; kind: "state"; timing: Timing; state: string | null; origin?: string }
 
 export interface PlanDocument {
   settings: PlanSettings

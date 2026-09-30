@@ -4,9 +4,10 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { ChoiceChips, InputBlock } from "@/components/fire/fire-input-controls"
 import type { PlanSettings } from "@/lib/plans/plan-types"
 import { STATE_CODES, STATE_TAX } from "@/lib/plans/tax/state-2026"
+import { stateGainsNote } from "@/lib/plans/tax/state-gains-2026"
 import { SelectField } from "./plan-editor-controls"
 
-const NO_STATE = "none"
+export const NO_STATE = "none"
 
 export const STATE_OPTIONS = [
   { value: NO_STATE, label: "None / outside the US" },
@@ -23,12 +24,18 @@ const STATUSES: { value: PlanSettings["filingStatus"]; label: string }[] = [
   { value: "joint", label: "Married filing jointly" },
 ]
 
-/** How the state is taxed, in a few words. */
+/** How the state taxes income and gains, in a few words. */
 function stateNote(state: string | null): string {
   const table = state ? STATE_TAX[state] : undefined
-  if (!table || table.kind === "none") return "No state income tax."
-  if (table.kind === "flat") return `Flat ${((table.rate ?? 0) * 100).toFixed(2).replace(/\.?0+$/, "")}% state tax.`
-  return "Progressive state brackets."
+  const gains = stateGainsNote(state)
+  if (gains && table?.kind === "none") return gains
+  const income =
+    !table || table.kind === "none"
+      ? "No state income tax."
+      : table.kind === "flat"
+        ? `Flat ${+((table.rate ?? 0) * 100).toFixed(2)}% state tax.`
+        : "Progressive state brackets."
+  return gains ? `${income} ${gains}` : income
 }
 
 /** Assumptions → Taxes: real 2026 brackets for a state and filing status, or flat effective rates. */
@@ -39,8 +46,8 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
       title="Taxes"
       description={
         brackets
-          ? "2026 federal and state brackets, standard deduction, rising with inflation. Gains at 0/15/20%; 85% of Social Security taxed."
-          : "One effective rate for income and one for gains."
+          ? "2026 federal and state brackets and standard deduction, rising with inflation. Long-term gains at 0/15/20%, short-term as income, plus 3.8% NIIT on high incomes. 85% of Social Security taxed."
+          : "One effective rate for income (and short-term gains) and one for long-term gains."
       }
     >
       <ChoiceChips label="Tax model" options={MODES} value={s.taxMode} onChange={(taxMode) => set({ taxMode })} />
@@ -64,7 +71,7 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
             hint="Also applies to traditional withdrawals."
             onChange={(incomeTaxRate) => set({ incomeTaxRate })}
           />
-          <FireNumberField label="Capital gains tax" suffix="%" scale={100} min={0} max={1} value={s.capitalGainsRate} onChange={(capitalGainsRate) => set({ capitalGainsRate })} />
+          <FireNumberField label="Long-term gains tax" suffix="%" scale={100} min={0} max={1} value={s.capitalGainsRate} onChange={(capitalGainsRate) => set({ capitalGainsRate })} />
         </div>
       )}
     </InputBlock>

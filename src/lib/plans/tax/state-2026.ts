@@ -3,7 +3,7 @@ import type { Brackets, FilingStatus } from "./federal-2026"
 /**
  * 2026 state individual income tax (Tax Foundation, "2026 State Income Tax Rates and Brackets").
  * Simplified: deductions and exemptions are subtracted when they're deductions (credits are ignored),
- * capital gains are taxed like other income, and retirement-income or Social Security exclusions,
+ * capital gains follow state-gains-2026.ts, and retirement-income or Social Security exclusions,
  * local taxes and credits are not modeled.
  */
 export interface StateTax {

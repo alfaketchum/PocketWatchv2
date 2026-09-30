@@ -1,6 +1,6 @@
-import { filingStatusAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
+import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
-import { marginalRates, thresholdIndex, totalTax, type TaxSituation } from "../tax/tax-calc"
+import { marginalRates, taxBase, thresholdIndex, totalTax, type TaxSituation } from "../tax/tax-calc"
 import type { PlanDocument } from "../plan-types"
 import type { IncomeYear } from "./engine-flows"
 
@@ -34,15 +34,17 @@ export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index
   }
   const situation: TaxSituation = {
     status: filingStatusAt(adjustments, settings, index),
-    state: settings.state,
+    state: stateAt(adjustments, settings, index),
     index: thresholdIndex(settings.startYear + index, settings.inflation),
   }
   const earnedOrdinary = earnedOrdinaryIncome(doc, income, true)
-  const marginal = marginalRates(earnedOrdinary, 0, situation)
+  const earned = taxBase({ ordinary: earnedOrdinary })
+  const marginal = marginalRates(earned, situation)
   return {
-    doc: { ...doc, settings: { ...settings, incomeTaxRate: marginal.ordinary, capitalGainsRate: marginal.gains } },
+    // Withdrawals are grossed up at these; short-term gains use the ordinary rate. The true-up settles the rest.
+    doc: { ...doc, settings: { ...settings, incomeTaxRate: marginal.ordinary, capitalGainsRate: marginal.longGains } },
     situation,
-    incomeTax: totalTax(earnedOrdinary, 0, situation),
+    incomeTax: totalTax(earned, situation),
     earnedOrdinary,
   }
 }
@@ -50,8 +52,11 @@ export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index
 export interface TaxedAmounts {
   /** Ordinary income from withdrawals (traditional accounts, inherited IRAs). */
   ordinaryWithdrawn: number
-  /** Realized gains from taxable withdrawals and asset sales. */
-  gains: number
+  /** Realized gains from taxable withdrawals and asset sales, by holding period. */
+  shortGains: number
+  longGains: number
+  /** Of `longGains`: from selling real estate. */
+  realEstateGains: number
   /** Tax already charged this year. */
   charged: number
 }
@@ -59,5 +64,11 @@ export interface TaxedAmounts {
 /** Exact tax on the year's totals minus what was charged along the way (positive = still owed). */
 export function taxTrueUp(tax: YearTax, amounts: TaxedAmounts): number {
   if (!tax.situation) return 0
-  return totalTax(tax.earnedOrdinary + amounts.ordinaryWithdrawn, amounts.gains, tax.situation) - amounts.charged
+  const base = taxBase({
+    ordinary: tax.earnedOrdinary + amounts.ordinaryWithdrawn,
+    shortGains: amounts.shortGains,
+    longGains: amounts.longGains,
+    realEstateGains: amounts.realEstateGains,
+  })
+  return totalTax(base, tax.situation) - amounts.charged
 }

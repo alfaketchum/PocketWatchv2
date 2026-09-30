@@ -1,11 +1,14 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { bracketTax, federalTax, marginalRates, stateTax, thresholdIndex, type TaxSituation } from "@/lib/plans/tax/tax-calc"
+import { bracketTax, federalTax as fedBase, marginalRates, stateTax as stateBase, taxBase, thresholdIndex, type TaxBase, type TaxSituation } from "@/lib/plans/tax/tax-calc"
 import { FEDERAL_ORDINARY } from "@/lib/plans/tax/federal-2026"
 
 const close = (a: number, b: number, tol = 0.01) => assert.ok(Math.abs(a - b) < tol, `${a} ≈ ${b}`)
 const single: TaxSituation = { status: "single", state: null, index: 1 }
 const joint: TaxSituation = { status: "joint", state: null, index: 1 }
+/** Ordinary income and long-term gains (the common case). */
+const federalTax = (ordinary: number, longGains: number, s: TaxSituation) => fedBase(taxBase({ ordinary, longGains }), s)
+const stateTax = (ordinary: number, s: TaxSituation, more: Partial<TaxBase> = {}) => stateBase(taxBase({ ordinary, ...more }), s)
 
 test("federal ordinary brackets (2026, single): $100k wages", () => {
   // Taxable 83,900: 10% of 12,400 + 12% of 38,000 + 22% of 33,500
@@ -41,7 +44,7 @@ test("brackets grow with inflation", () => {
 })
 
 test("marginal rates: 22% federal + 4.95% Illinois on the next dollar at $100k", () => {
-  const m = marginalRates(100_000, 0, { ...single, state: "IL" })
+  const m = marginalRates(taxBase({ ordinary: 100_000 }), { ...single, state: "IL" })
   close(m.ordinary, 0.22 + 0.0495, 1e-9)
 })
 
@@ -75,7 +78,7 @@ test("brackets: a retiree's traditional withdrawals are taxed exactly on the yea
   const r = simulatePlan(d).rows[0]
   const withdrawn = r.withdrawalsBy.ira
   const taxes = r.incomeTax + r.withdrawalTax
-  close(taxes, totalTax(withdrawn, 0, { status: "single", state: null, index: 1 }), 1)
+  close(taxes, totalTax(taxBase({ ordinary: withdrawn }), { status: "single", state: null, index: 1 }), 1)
   // What's left after tax covers the spending (the true-up is funded too).
   close(withdrawn - taxes, 60_000, 5)
   assert.equal(r.shortfall, 0)
@@ -105,4 +108,58 @@ test("brackets: selling stocks under the 0% capital-gains line costs no federal 
   })
   const r = simulatePlan(d).rows[0]
   close(r.incomeTax + r.withdrawalTax, 0, 1)
+})
+
+test("short-term gains are taxed as ordinary income, long-term at 0/15/20%", () => {
+  const short = fedBase(taxBase({ ordinary: 100_000, shortGains: 20_000 }), single) - federalTax(100_000, 0, single)
+  const long = federalTax(100_000, 20_000, single) - federalTax(100_000, 0, single)
+  close(short, 20_000 * 0.22) // taxable 83.9k → 103.9k, all in the 22% bracket
+  close(long, 20_000 * 0.15)
+})
+
+test("3.8% NIIT on gains above $200k MAGI (single), not on wages", () => {
+  close(federalTax(300_000, 0, single) - fedBase(taxBase({ ordinary: 300_000 }), single), 0)
+  const withGains = federalTax(150_000, 100_000, single) - federalTax(150_000, 0, single)
+  // 100k of gains: 15% federal; NIIT on the 50k above 200k.
+  close(withGains, 100_000 * 0.15 + 50_000 * 0.038)
+})
+
+test("state gains rules: exclusions, caps, MA short-term, WA gains-only", () => {
+  const s = (state: string) => ({ ...single, state })
+  // Wisconsin excludes 30% of long-term gains; short-term gains are fully taxed.
+  assert.ok(stateTax(50_000, s("WI"), { longGains: 100_000 }) < stateTax(50_000, s("WI"), { shortGains: 100_000 }))
+  close(stateTax(50_000, s("WI"), { longGains: 100_000 }), stateTax(120_000, s("WI")))
+  // Arkansas: half of long-term gains.
+  close(stateTax(0, s("AR"), { longGains: 100_000 }), stateTax(50_000, s("AR")))
+  // Massachusetts: short-term at 8.5%, long-term at 5%.
+  close(stateTax(100_000, s("MA"), { shortGains: 10_000 }) - stateTax(100_000, s("MA")), 850)
+  close(stateTax(100_000, s("MA"), { longGains: 10_000 }) - stateTax(100_000, s("MA")), 500)
+  // Hawaii caps long-term gains at 7.25%.
+  close(stateTax(500_000, s("HI"), { longGains: 100_000 }) - stateTax(500_000, s("HI")), 7_250)
+  // Montana: long-term gains at 4.1% above its threshold, not 5.65%.
+  close(stateTax(200_000, s("MT"), { longGains: 10_000 }) - stateTax(200_000, s("MT")), 410)
+  // Washington: no income tax; 7% on long-term gains over $278k, real estate exempt.
+  close(stateTax(500_000, s("WA")), 0)
+  close(stateTax(0, s("WA"), { longGains: 378_000 }), 7_000)
+  close(stateTax(0, s("WA"), { longGains: 378_000, realEstateGains: 378_000 }), 0)
+  close(stateTax(0, s("WA"), { shortGains: 378_000 }), 0)
+})
+
+test("brackets: a trading account's short-term gains are taxed as income", () => {
+  const brk = (shortTermShare: number): PlanAccount => ({ ...acct("brk", "taxable", 1_000_000), costBasis: 0, shortTermShare })
+  const living = { id: "e", name: "Living", category: null, amount: 100_000, growth: 0, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, oneTime: false }
+  const taxes = (share: number) => {
+    const r = simulatePlan(plan({ accounts: [brk(share)], expenses: [living] })).rows[0]
+    return r.incomeTax + r.withdrawalTax
+  }
+  assert.ok(taxes(1) > taxes(0) + 5_000, `${taxes(0)} → ${taxes(1)}`)
+})
+
+test("brackets: moving to another state changes state tax from then on", () => {
+  const d = plan(
+    { incomes: [pay(150_000)], adjustments: [{ id: "m", kind: "state", timing: { type: "year", year: 2028 }, state: "TX" }] },
+    { state: "CA" },
+  )
+  const rows = simulatePlan(d).rows
+  close(rows[0].incomeTax - rows[2].incomeTax, stateTax(150_000, { ...single, state: "CA" }), 1)
 })

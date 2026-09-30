@@ -8,7 +8,7 @@ import { INHERITANCE_TAX_STATES, RELATIONSHIP_LABELS, type Relationship } from "
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { RowButton } from "./plan-table"
 import { SelectField, TextField } from "./plan-editor-controls"
-import { STATE_OPTIONS } from "./plan-tax-settings"
+import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 
 const KINDS: { value: InheritedKind; label: string }[] = [
   { value: "cash", label: "Cash" },
@@ -34,7 +34,6 @@ function taxNote(part: InheritedPart): string {
 }
 
 const NEW_ACCOUNT = "new"
-const NO_STATE = "none"
 
 export const emptyPart = (kind: InheritedKind = "cash"): InheritedPart => ({ kind, amount: 0, label: "", accountId: null, roth: false })
 

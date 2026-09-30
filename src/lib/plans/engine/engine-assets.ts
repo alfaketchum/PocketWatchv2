@@ -50,8 +50,12 @@ export interface AssetEvents {
   sales: number
   /** Capital-gains tax on this year's sales. */
   saleTax: number
-  /** Taxable gain from this year's sales (after the home exclusion). */
+  /** Taxable gain from this year's sales (after the home exclusion): held over a year… */
   saleGains: number
+  /** …of which from real estate… */
+  saleRealEstateGains: number
+  /** …and held a year or less (taxed as ordinary income). */
+  saleShortGains: number
 }
 
 /** Home-sale exclusion (not inflation-indexed): single / married filing jointly. */
@@ -61,6 +65,8 @@ const EXCLUSION_MIN_YEARS = 2
 
 export interface SaleTaxRules {
   capitalGainsRate: number
+  /** Short-term gains are taxed at this (ordinary income) rate. */
+  incomeTaxRate: number
   /** Two people in the plan: the joint home-sale exclusion applies. */
   joint: boolean
 }
@@ -83,9 +89,18 @@ export function saleGainFor(asset: PlanAsset, range: ResolvedRange, index: numbe
   return Math.max(0, gain - exclusion)
 }
 
+/**
+ * Sold within a year of buying it. Assets owned when the plan starts count as long-term, and
+ * inherited ones always are.
+ */
+export function isShortTermSale(asset: PlanAsset, range: ResolvedRange, index: number): boolean {
+  return range.start > 0 && asset.acquired !== "received" && index - range.start < 1
+}
+
 /** Capital-gains tax when an asset is sold in year `index`, after the home-sale exclusion. */
 export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
-  return saleGainFor(asset, range, index, rules) * rules.capitalGainsRate
+  const rate = isShortTermSale(asset, range, index) ? rules.incomeTaxRate : rules.capitalGainsRate
+  return saleGainFor(asset, range, index, rules) * rate
 }
 
 /**
@@ -108,6 +123,8 @@ export function applyAssetEvents(
   let sales = 0
   let saleTax = 0
   let saleGains = 0
+  let saleRealEstateGains = 0
+  let saleShortGains = 0
   for (const { asset, range } of assets) {
     const linked = debts.filter((d) => d.debt.assetId === asset.id)
     if (range.start > 0 && range.start === index && asset.acquired !== "received") {
@@ -118,12 +135,16 @@ export function applyAssetEvents(
       const owed = linked.reduce((s, d) => s + (balances[d.debt.id] ?? 0), 0)
       sales += assetValueAt(asset, index) - owed
       const gain = saleGainFor(asset, range, index, rules)
-      saleGains += gain
-      saleTax += gain * rules.capitalGainsRate
+      if (isShortTermSale(asset, range, index)) saleShortGains += gain
+      else {
+        saleGains += gain
+        if (asset.kind === "home") saleRealEstateGains += gain
+      }
+      saleTax += saleTaxFor(asset, range, index, rules)
       for (const d of linked) balances = { ...balances, [d.debt.id]: 0 }
     }
   }
-  return { debtBalances: balances, purchases, sales, saleTax, saleGains }
+  return { debtBalances: balances, purchases, sales, saleTax, saleGains, saleRealEstateGains, saleShortGains }
 }
 
 /** Pay every active debt for the year. */

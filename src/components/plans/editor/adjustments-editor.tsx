@@ -7,11 +7,12 @@ import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanAdjustment } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
 import { SelectField } from "./plan-editor-controls"
+import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { RowButton } from "./plan-table"
 import { TimingPicker } from "./timing-picker"
 
-const ICONS: Record<PlanAdjustment["kind"], string> = { taxRates: "percent", spending: "shopping_cart", filingStatus: "badge" }
-const LABELS: Record<PlanAdjustment["kind"], string> = { taxRates: "Tax rates", spending: "Spending", filingStatus: "Filing status" }
+const ICONS: Record<PlanAdjustment["kind"], string> = { taxRates: "percent", spending: "shopping_cart", filingStatus: "badge", state: "location_on" }
+const LABELS: Record<PlanAdjustment["kind"], string> = { taxRates: "Tax rates", spending: "Spending", filingStatus: "Filing status", state: "Living in" }
 
 const STATUS_OPTIONS: { value: "single" | "joint"; label: string }[] = [
   { value: "single", label: "Single" },
@@ -32,6 +33,14 @@ function AdjustmentFields({
     return (
       <div className="w-36">
         <FireNumberField label="Your spending changes" suffix="%" scale={100} min={-0.95} max={5} value={a.percent} onChange={(percent) => onChange({ percent })} />
+      </div>
+    )
+  }
+  if (a.kind === "state") {
+    return (
+      <div className="w-52">
+        <SelectField label="State" value={a.state ?? NO_STATE} options={STATE_OPTIONS} onChange={(v) => onChange({ state: v === NO_STATE ? null : v })} />
+        {!brackets && <p className="text-[10px] text-foreground-muted mt-1">Used with tax brackets</p>}
       </div>
     )
   }
@@ -67,6 +76,20 @@ export function AdjustmentsEditor({ doc, update }: PlanEditorProps) {
   const when = { type: "year" as const, year: doc.settings.startYear + 5 }
   const full = adjustments.length >= PLAN_LIMITS.adjustments
   const brackets = doc.settings.taxMode === "brackets"
+  const addOptions: { label: string; make: () => PlanAdjustment }[] = [
+    ...(brackets
+      ? [
+          { label: "Filing status change", make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "filingStatus", timing: when, status: "joint" }) },
+          { label: "State change", make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "state", timing: when, state: doc.settings.state }) },
+        ]
+      : [
+          {
+            label: "Tax rate change",
+            make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "taxRates", timing: when, incomeTaxRate: doc.settings.incomeTaxRate, capitalGainsRate: doc.settings.capitalGainsRate }),
+          },
+        ]),
+    { label: "Spending change", make: () => ({ id: newItemId("adj"), kind: "spending", timing: when, percent: -0.1 }) },
+  ]
 
   return (
     <InputBlock title="Changes over time" description="From a date on, the latest change wins. Marriage and Move milestones add these for you.">
@@ -85,35 +108,11 @@ export function AdjustmentsEditor({ doc, update }: PlanEditorProps) {
         </div>
       ))}
       <div className="flex flex-wrap gap-3">
-        {brackets ? (
-          <button
-            type="button"
-            disabled={full}
-            onClick={() => set([...adjustments, { id: newItemId("adj"), kind: "filingStatus", timing: when, status: "joint" }])}
-            className="text-[11px] text-primary hover:underline disabled:opacity-50"
-          >
-            + Filing status change
+        {addOptions.map((o) => (
+          <button key={o.label} type="button" disabled={full} onClick={() => set([...adjustments, o.make()])} className="text-[11px] text-primary hover:underline disabled:opacity-50">
+            + {o.label}
           </button>
-        ) : (
-          <button
-            type="button"
-            disabled={full}
-            onClick={() =>
-              set([...adjustments, { id: newItemId("adj"), kind: "taxRates", timing: when, incomeTaxRate: doc.settings.incomeTaxRate, capitalGainsRate: doc.settings.capitalGainsRate }])
-            }
-            className="text-[11px] text-primary hover:underline disabled:opacity-50"
-          >
-            + Tax rate change
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={full}
-          onClick={() => set([...adjustments, { id: newItemId("adj"), kind: "spending", timing: when, percent: -0.1 }])}
-          className="text-[11px] text-primary hover:underline disabled:opacity-50"
-        >
-          + Spending change
-        </button>
+        ))}
       </div>
     </InputBlock>
   )

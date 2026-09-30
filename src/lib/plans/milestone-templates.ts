@@ -2,7 +2,7 @@ import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { resolveTiming, timingContext } from "./plan-timing"
 import { stateInheritanceTax, type Relationship } from "./tax/inheritance-tax"
-import type { PlanAccount, PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
+import type { PlanAccount, PlanAdjustment, PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
 
 export type TemplateKey =
   | "retire"
@@ -31,7 +31,7 @@ export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts" },
   { key: "career", label: "Career change", icon: "work", creates: "Ends a salary and starts a new one" },
   { key: "break", label: "Career break", icon: "luggage", creates: "Pauses a salary for a few years" },
-  { key: "move", label: "Move", icon: "moving", creates: "Changes your spending from then on" },
+  { key: "move", label: "Move", icon: "moving", creates: "Changes your spending and state taxes from then on" },
   { key: "inheritance", label: "Inheritance", icon: "volunteer_activism", creates: "Cash, stocks, property or retirement accounts" },
   { key: "windfall", label: "Windfall", icon: "redeem", creates: "A one-time income (bonus, sale)" },
   { key: "custom", label: "Custom", icon: "flag", creates: "Just a named date" },
@@ -175,10 +175,19 @@ export function applyBreak(doc: PlanDocument, input: { incomeId: string; startYe
 }
 
 /** Move: from the milestone on, your own spending changes by `percent`. */
-export function applyMove(doc: PlanDocument, input: { name: string; when: Timing; percent: number }, newId: IdMaker): PlanDocument {
+/** A move: spending changes by `percent`, and with `state` (null = no state tax) your state tax changes too. */
+export function applyMove(
+  doc: PlanDocument,
+  input: { name: string; when: Timing; percent: number; state?: string | null },
+  newId: IdMaker,
+): PlanDocument {
   const msId = newId("ms-move")
   const next = addMilestone(doc, { id: msId, name: input.name, kind: "custom", icon: ICONS.move, timing: input.when })
-  return { ...next, adjustments: [...(next.adjustments ?? []), { id: newId("adj"), kind: "spending", timing: at(msId), percent: input.percent, origin: msId }] }
+  const changes: PlanAdjustment[] = [
+    ...(input.percent !== 0 ? [{ id: newId("adj"), kind: "spending" as const, timing: at(msId), percent: input.percent, origin: msId }] : []),
+    ...(input.state !== undefined ? [{ id: newId("adj"), kind: "state" as const, timing: at(msId), state: input.state, origin: msId }] : []),
+  ]
+  return { ...next, adjustments: [...(next.adjustments ?? []), ...changes] }
 }
 
 export function applyWindfall(doc: PlanDocument, input: { name: string; when: Timing; amount: number; taxable: boolean }, newId: IdMaker): PlanDocument {

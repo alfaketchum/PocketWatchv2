@@ -36,6 +36,15 @@ export function filingStatusAt(entries: AdjustmentEntry[], settings: PlanSetting
   return status
 }
 
+/** State you live in during year `index` (null = no state income tax). */
+export function stateAt(entries: AdjustmentEntry[], settings: PlanSettings, index: number): string | null {
+  let state = settings.state
+  for (const { adjustment, index: from } of entries) {
+    if (adjustment.kind === "state" && from !== null && from <= index) state = adjustment.state
+  }
+  return state
+}
+
 /** Multiplier on your own expenses in year `index`: every spending change so far, compounded. */
 export function spendingFactorAt(entries: AdjustmentEntry[], index: number): number {
   return entries.reduce(

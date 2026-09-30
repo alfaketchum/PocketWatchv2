@@ -6,6 +6,7 @@ const ADJUSTMENT_LABELS: Record<PlanAdjustment["kind"], string> = {
   taxRates: "Tax rates change",
   spending: "Spending changes",
   filingStatus: "Filing status changes",
+  state: "State changes",
 }
 
 export type MilestoneSource = "yours" | "kids" | "assets"

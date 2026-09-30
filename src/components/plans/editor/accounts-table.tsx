@@ -15,6 +15,7 @@ const COLUMNS = [
   { label: "Balance today", align: "right" as const, width: "w-36" },
   { label: "Return / yr", align: "right" as const, width: "w-28" },
   { label: "Cost basis", align: "right" as const, width: "w-36" },
+  { label: "Short-term gains", align: "right" as const, width: "w-28" },
   { label: "", width: "w-10" },
 ]
 
@@ -31,7 +32,7 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
             {doc.accounts.length} accounts
           </td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(total)}</td>
-          <td colSpan={3} />
+          <td colSpan={4} />
         </tr>
       }
     >
@@ -52,6 +53,21 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
           <Cell align="right">
             {a.taxTreatment === "taxable" ? (
               <CellNumber label="Cost basis" prefix="$" min={0} value={a.costBasis ?? a.balance} onChange={(costBasis) => patch(a.id, { costBasis })} />
+            ) : (
+              <span className="px-2 text-foreground-muted">—</span>
+            )}
+          </Cell>
+          <Cell align="right">
+            {a.taxTreatment === "taxable" ? (
+              <CellNumber
+                label="Short-term gains"
+                suffix="%"
+                scale={100}
+                min={0}
+                max={1}
+                value={a.shortTermShare ?? 0}
+                onChange={(shortTermShare) => patch(a.id, { shortTermShare })}
+              />
             ) : (
               <span className="px-2 text-foreground-muted">—</span>
             )}

@@ -9,6 +9,7 @@ const money = z.number().min(0).max(1e10)
 const rate = z.number().min(-0.5).max(1)
 const share = z.number().min(0).max(1)
 const year = z.number().int().min(1900).max(2200)
+const stateCode = z.string().regex(/^[A-Z]{2}$/)
 const month = z.number().int().min(1).max(12)
 
 const timing = z.discriminatedUnion("type", [
@@ -34,7 +35,7 @@ const settings = z.object({
   protectBuffer: z.boolean().default(true),
   // Older plans keep flat rates until switched.
   taxMode: z.enum(["flat", "brackets"]).default("flat"),
-  state: z.string().regex(/^[A-Z]{2}$/).nullable().default(null),
+  state: stateCode.nullable().default(null),
   filingStatus: z.enum(["single", "joint"]).default("single"),
 })
 
@@ -50,6 +51,7 @@ const account = z.object({
   owner: id.nullable(),
   source,
   drainByYear: year.nullable().optional(),
+  shortTermShare: share.optional(),
   origin,
 })
 
@@ -127,6 +129,7 @@ const adjustment = z.discriminatedUnion("kind", [
   z.object({ id, kind: z.literal("taxRates"), timing, incomeTaxRate: share, capitalGainsRate: share, origin }),
   z.object({ id, kind: z.literal("spending"), timing, percent: z.number().min(-0.95).max(5), origin }),
   z.object({ id, kind: z.literal("filingStatus"), timing, status: z.enum(["single", "joint"]), origin }),
+  z.object({ id, kind: z.literal("state"), timing, state: stateCode.nullable(), origin }),
 ])
 
 const child = z.object({

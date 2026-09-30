@@ -108,9 +108,15 @@ function taxableShare(account: PlanAccount, holdings: Holdings): number {
   return Math.max(0, 1 - (holdings.basis[account.id] ?? 0) / balance)
 }
 
+/** Tax rate on this account's gains: short-term gains are taxed as ordinary income. */
+function gainsRate(account: PlanAccount, doc: PlanDocument): number {
+  const short = account.shortTermShare ?? 0
+  return (1 - short) * doc.settings.capitalGainsRate + short * doc.settings.incomeTaxRate
+}
+
 /** Share of a withdrawal lost to tax for this account right now. */
 function withdrawalTaxRate(account: PlanAccount, holdings: Holdings, doc: PlanDocument): number {
-  const rate = account.taxTreatment === "traditional" ? doc.settings.incomeTaxRate : doc.settings.capitalGainsRate
+  const rate = account.taxTreatment === "traditional" ? doc.settings.incomeTaxRate : gainsRate(account, doc)
   return taxableShare(account, holdings) * rate
 }
 
@@ -130,9 +136,10 @@ export interface DeficitResult {
   tax: number
   /** Traditional withdrawals plus realized gains: the part of withdrawals that is taxable income. */
   taxableWithdrawn: number
-  /** Of that: traditional withdrawals (ordinary income) and realized gains (capital gains). */
+  /** Of that: traditional withdrawals (ordinary income) and realized gains, long- and short-term. */
   ordinaryWithdrawn: number
   gainsRealized: number
+  shortGainsRealized: number
   shortfall: number
 }
 
@@ -154,6 +161,7 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
   let tax = 0
   let ordinaryWithdrawn = 0
   let gainsRealized = 0
+  let shortGainsRealized = 0
   for (const { account, keep } of passes) {
     if (left <= 0) break
     const balance = (current.balances[account.id] ?? 0) - keep
@@ -163,7 +171,11 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     const gross = net / (1 - rate)
     const taxablePart = gross * taxableShare(account, current)
     if (account.taxTreatment === "traditional") ordinaryWithdrawn += taxablePart
-    else gainsRealized += taxablePart
+    else {
+      const short = account.shortTermShare ?? 0
+      shortGainsRealized += taxablePart * short
+      gainsRealized += taxablePart * (1 - short)
+    }
     current = withdraw(current, account, gross)
     withdrawalsBy = add(withdrawalsBy, account.id, gross)
     tax += gross - net
@@ -173,9 +185,10 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     holdings: current,
     withdrawalsBy,
     tax,
-    taxableWithdrawn: ordinaryWithdrawn + gainsRealized,
+    taxableWithdrawn: ordinaryWithdrawn + gainsRealized + shortGainsRealized,
     ordinaryWithdrawn,
     gainsRealized,
+    shortGainsRealized,
     shortfall: Math.max(0, left),
   }
 }

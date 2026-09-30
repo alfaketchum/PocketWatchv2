@@ -114,3 +114,12 @@ test("plans saved before adjustments existed still load", () => {
   const { adjustments: _a, ...old } = blankPlanDocument(NOW)
   assert.deepEqual(parsePlanDocument(old, blankPlanDocument(NOW))?.adjustments, [])
 })
+
+test("move: a new state is a change tied to the move; staying adds none", () => {
+  const moved = applyMove(plan(), { name: "Move", when: { type: "year", year: 2030 }, percent: -0.1, state: "TX" }, newId)
+  const ms = moved.milestones.find((m) => m.name === "Move")!
+  assert.deepEqual(milestoneUses(moved, ms.id).sort(), ["Spending changes", "State changes"])
+  assert.ok(planDocumentSchema.safeParse(moved).success)
+  const stayed = applyMove(plan(), { name: "Move", when: { type: "year", year: 2030 }, percent: -0.1 }, newId)
+  assert.deepEqual((stayed.adjustments ?? []).map((a) => a.kind), ["spending"])
+})

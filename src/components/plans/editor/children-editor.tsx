@@ -5,7 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { childMilestones, newChild, supportStartAge } from "@/lib/plans/plan-children"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanChild, PlanDocument, Timing } from "@/lib/plans/plan-types"
-import { removeChild } from "@/lib/plans/plan-edits"
+import { removeChild, renameChild } from "@/lib/plans/plan-edits"
 import { newItemId, patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Child529Fields, ChildCollegeFields } from "./child-college-fields"
 import { ChildSection } from "./child-section"
@@ -40,7 +40,7 @@ function ChildCard({ child, doc, update }: { child: PlanChild } & PlanEditorProp
       onRemove={() => update((d) => removeChild(d, child.id))}
     >
       <div className="grid grid-cols-2 gap-2 items-end">
-        <TextField label="Name" value={child.name} maxLength={40} onChange={(name) => patch({ name })} />
+        <TextField label="Name" value={child.name} maxLength={40} onChange={(name) => update((d) => renameChild(d, child.id, name))} />
         <FireNumberField
           label="Birth year (past or future)"
           min={1900}

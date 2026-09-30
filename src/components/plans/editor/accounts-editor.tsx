@@ -88,14 +88,26 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
               </p>
             )}
             {a.taxTreatment === "taxable" && (
-              <FireNumberField
-                label="Cost basis"
-                prefix="$"
-                min={0}
-                value={a.costBasis ?? a.balance}
-                hint="What you paid in; gains above it pay capital-gains tax when withdrawn."
-                onChange={(costBasis) => patch(a.id, { costBasis })}
-              />
+              <>
+                <FireNumberField
+                  label="Cost basis"
+                  prefix="$"
+                  min={0}
+                  value={a.costBasis ?? a.balance}
+                  hint="What you paid in; gains above it pay capital-gains tax when withdrawn."
+                  onChange={(costBasis) => patch(a.id, { costBasis })}
+                />
+                <FireNumberField
+                  label="Short-term gains"
+                  suffix="%"
+                  scale={100}
+                  min={0}
+                  max={1}
+                  value={a.shortTermShare ?? 0}
+                  hint="Share of gains held a year or less (active trading). Taxed as income."
+                  onChange={(shortTermShare) => patch(a.id, { shortTermShare })}
+                />
+              </>
             )}
           </div>
         </ItemCard>
