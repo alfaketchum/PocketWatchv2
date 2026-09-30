@@ -7,6 +7,8 @@ export interface NavItem {
   label: string
   href: string
   icon: string
+  /** false = reachable from its section's tabs and the command palette, but not listed in the sidebar */
+  sidebar?: boolean
 }
 
 export interface CategoryPrefs {
@@ -48,15 +50,15 @@ export const NET_WORTH_NAV_ITEMS: NavItem[] = [
 
 export const FIRE_NAV_ITEMS: NavItem[] = [
   { id: "fire-plan", label: "FIRE Plan", href: "/fire", icon: "local_fire_department" },
-  { id: "fire-portfolio", label: "FIRE Portfolio", href: "/fire/portfolio", icon: "donut_small" },
-  { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science" },
-  { id: "fire-compare", label: "How You Compare", href: "/fire/compare", icon: "groups" },
+  { id: "fire-portfolio", label: "FIRE Portfolio", href: "/fire/portfolio", icon: "donut_small", sidebar: false },
+  { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science", sidebar: false },
+  { id: "fire-compare", label: "How You Compare", href: "/fire/compare", icon: "groups", sidebar: false },
 ]
 
 export const PLANS_NAV_ITEMS: NavItem[] = [
   { id: "plans-list", label: "Plans", href: "/plans", icon: "route" },
-  { id: "plans-compare", label: "Compare Plans", href: "/plans/compare", icon: "compare_arrows" },
-  { id: "plans-progress", label: "Plan vs Actual", href: "/plans/progress", icon: "track_changes" },
+  { id: "plans-compare", label: "Compare Plans", href: "/plans/compare", icon: "compare_arrows", sidebar: false },
+  { id: "plans-progress", label: "Plan vs Actual", href: "/plans/progress", icon: "track_changes", sidebar: false },
 ]
 
 export const TRAVEL_NAV_ITEMS: NavItem[] = [
@@ -73,11 +75,13 @@ export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
   { id: "accounts-directory", label: "Directory", href: "/accounts", icon: "alternate_email" },
 ]
 
+const inSidebar = (items: NavItem[]) => items.filter((i) => i.sidebar !== false)
+
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
-  fire:      { label: "FIRE",          items: FIRE_NAV_ITEMS },
-  plans:     { label: "Plans",         items: PLANS_NAV_ITEMS },
+  fire:      { label: "FIRE",          items: inSidebar(FIRE_NAV_ITEMS) },
+  plans:     { label: "Plans",         items: inSidebar(PLANS_NAV_ITEMS) },
   accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },

@@ -36,10 +36,11 @@ export function SidebarNavSection({ label, items, pathname, baseHref, onClose, b
     </div>
   ) : null
 
+  const matches = (href: string) => pathname === href || (href !== baseHref && pathname.startsWith(href))
+  // A section page not listed in the sidebar (e.g. /fire/compare) lights up the section's main item
+  const unlisted = pathname.startsWith(`${baseHref}/`) && !items.some((i) => matches(i.href))
   const navItems = items.map((item) => {
-    const isActive =
-      pathname === item.href ||
-      (item.href !== baseHref && pathname.startsWith(item.href))
+    const isActive = matches(item.href) || (unlisted && item.href === baseHref)
 
     return (
       <Link

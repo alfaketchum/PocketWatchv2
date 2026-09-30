@@ -217,7 +217,7 @@ export async function GET(request: Request) {
 
     // Past 1D, Total is the same day-by-day series the breakdown views stack (live snapshot, else that
     // day's wallet history + exchanges + venues) rather than Zerion history rescaled to today's value.
-    const useDaily = effectiveScope === "total" && range !== "1D"
+    const useDaily = scope === "total" && range !== "1D"
     const since = range === "ALL" ? new Date(0) : new Date((nowSec - RANGE_SECONDS[range]) * 1000)
     const latestLiveTotal = rawSnapshots.filter((s) => s.source === "live_refresh").at(-1)?.totalValue ?? 0
     strictPoints = useDaily
