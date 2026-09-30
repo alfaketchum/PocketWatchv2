@@ -31,6 +31,7 @@ import {
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
+import { PlanBarTooltip } from "./plan-bar-tooltip"
 import { PlanYearPanel } from "./plan-year-panel"
 import { usePlanColors } from "./use-plan-colors"
 
@@ -292,7 +293,12 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                   tickLine={false}
                   width={56}
                 />
-                <Tooltip content={() => null} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
+                <Tooltip
+                  content={<PlanBarTooltip series={series} mode={mode} />}
+                  cursor={{ fill: foreground, fillOpacity: 0.06 }}
+                  allowEscapeViewBox={{ x: false, y: true }}
+                  wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}
+                />
                 <ReferenceLine y={0} stroke={border} />
                 {series.map(bars)}
                 {/* Net worth only differs from the bar tops when there's debt; mark it with a light dot then. */}

@@ -61,7 +61,8 @@ export function usePlanColors(): PlanColors {
       wdTaxFree: netWorth.taxFree,
       wdTaxFree529: netWorth.taxFree529,
       assetSales: netWorth.realAssetEquity,
-      unfunded: error,
+      // Darker than spending's red so the gap reads differently from the spending it covers.
+      unfunded: mix(error, foreground, 0.4),
       spending: error,
       taxes: mix(warning, card, LIGHTER),
       debtPayments: mix(error, card, LIGHTER),
