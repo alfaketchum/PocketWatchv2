@@ -9,6 +9,8 @@ import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-e
 import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
+import { AssetRunningCostsFields } from "./asset-running-costs-fields"
+import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
@@ -43,6 +45,18 @@ function newAsset(): PlanAsset {
     appreciation: 0.03,
     start: { type: "planStart" },
     end: { type: "planEnd" },
+    runningCosts: TYPICAL_RUNNING_COSTS.home,
+  }
+}
+
+/** Switching kind swaps in the new kind's typical costs, unless the costs were already changed by hand. */
+function kindChange(a: PlanAsset, kind: AssetKind): Partial<PlanAsset> {
+  const costs = a.runningCosts ?? []
+  const untouched = costs.length === 0 || JSON.stringify(costs) === JSON.stringify(TYPICAL_RUNNING_COSTS[a.kind])
+  return {
+    kind,
+    ...(kind === "vehicle" && a.appreciation >= 0 ? { appreciation: VEHICLE_DEPRECIATION } : {}),
+    ...(untouched ? { runningCosts: TYPICAL_RUNNING_COSTS[kind] } : {}),
   }
 }
 
@@ -80,9 +94,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               label="Type"
               value={a.kind}
               options={ASSET_KINDS}
-              onChange={(kind) =>
-                patch(a.id, kind === "vehicle" && a.appreciation >= 0 ? { kind, appreciation: VEHICLE_DEPRECIATION } : { kind })
-              }
+              onChange={(kind) => patch(a.id, kindChange(a, kind))}
             />
             <FireNumberField label="Value today" prefix="$" min={0} value={a.value} onChange={(value) => patch(a.id, { value })} />
             <FireNumberField
@@ -122,6 +134,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
             />
           </div>
           <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
+          <AssetRunningCostsFields asset={a} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
         </ItemCard>
       ))}
       <AddButton

@@ -140,6 +140,13 @@ export interface AssetFinancing {
   termYears: number
 }
 
+/** A yearly cost of owning an asset: dollars a year (today's, rising with inflation) or a share of its value. */
+export interface AssetRunningCost {
+  name: string
+  amount: number
+  basis: "dollars" | "percentOfValue"
+}
+
 export interface PlanAsset {
   id: string
   name: string
@@ -156,6 +163,8 @@ export interface PlanAsset {
   costBasis?: number | null
   /** How a future purchase is paid. Missing = cash, unless a debt is linked to it. A linked debt always wins. */
   financing?: AssetFinancing
+  /** Insurance, maintenance, property tax…: charged every year it's owned. */
+  runningCosts?: AssetRunningCost[]
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }

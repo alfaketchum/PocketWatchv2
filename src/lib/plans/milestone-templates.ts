@@ -2,6 +2,7 @@ import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { resolveTiming, timingContext } from "./plan-timing"
 import { stateInheritanceTax, type Relationship } from "./tax/inheritance-tax"
+import { TYPICAL_RUNNING_COSTS } from "./plan-asset-costs"
 import { monthlyPayment } from "./plan-financing"
 import type { AssetKind, PaymentMode, PlanAccount, PlanAdjustment, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
 
@@ -148,6 +149,7 @@ function applyPurchase(doc: PlanDocument, kind: AssetKind, input: PurchaseInput,
         start: input.when,
         end: { type: "planEnd" },
         financing: { mode: input.payWith, downShare, rate: input.rate, termYears: input.termYears },
+        runningCosts: TYPICAL_RUNNING_COSTS[kind],
       },
     ],
   }

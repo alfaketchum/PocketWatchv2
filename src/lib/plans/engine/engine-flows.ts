@@ -1,4 +1,5 @@
 import { isActive, resolveRange, type ResolvedRange, type TimingContext } from "../plan-timing"
+import { ASSET_COSTS_CATEGORY } from "../plan-asset-costs"
 import type { PlanAccount, PlanExpense, PlanIncome } from "../plan-types"
 
 export interface IncomeEntry {
@@ -95,14 +96,14 @@ export interface ExpenseYear {
   byId: Record<string, number>
 }
 
-/** Kids' generated costs; spending-level changes (moving, etc.) don't scale them. */
-const KIDS_CATEGORY = "Kids"
+/** Generated costs that spending-level changes (moving, etc.) don't scale: kids, and owning a home or car. */
+const FIXED_CATEGORIES = new Set(["Kids", ASSET_COSTS_CATEGORY])
 
 export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: number, spendingFactor = 1): ExpenseYear {
   return entries.reduce<ExpenseYear>(
     (acc, { expense, range }) => {
       if (!isActive(range, index, expense.oneTime)) return acc
-      const factor = expense.category === KIDS_CATEGORY || expense.oneTime ? 1 : spendingFactor
+      const factor = (expense.category !== null && FIXED_CATEGORIES.has(expense.category)) || expense.oneTime ? 1 : spendingFactor
       const amount = grown(expense.amount, expense.growth, inflation, index) * factor
       return { total: acc.total + amount, byId: { ...acc.byId, [expense.id]: amount } }
     },
