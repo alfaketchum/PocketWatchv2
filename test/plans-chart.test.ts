@@ -50,6 +50,19 @@ test("chartMilestones places retirement by age", () => {
   assert.deepEqual(marks.map((m) => [m.name, m.age]), [["Retirement", 65]])
 })
 
+test("chartMilestones marks the year each loan is paid off", () => {
+  const loan = (id: string, name: string, balance: number) =>
+    ({ id, name, kind: "auto" as const, balance, rate: 0, monthlyPayment: 1_000, start: { type: "planStart" as const }, assetId: null, source: null })
+  const later = { ...loan("c", "RV", 12_000), start: { type: "age" as const, personId: doc.people[0].id, age: 50 } }
+  const plan: PlanDocument = { ...doc, debts: [loan("a", "Car", 12_000), loan("b", "Boat", 24_000), later] }
+  const payoffs = chartMilestones(plan, simulatePlan(plan)).filter((m) => m.kind === "payoff")
+  assert.deepEqual(payoffs.map((m) => [m.name, m.age, m.icon]), [
+    ["Car paid off", 40, "credit_score"],
+    ["Boat paid off", 41, "credit_score"],
+    ["RV paid off", 50, "credit_score"],
+  ], "a loan taken out later isn't paid off before it starts")
+})
+
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 
 test("yearMetrics reads a working year like a P&L", () => {

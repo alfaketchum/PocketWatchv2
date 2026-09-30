@@ -59,13 +59,34 @@ export interface ChartMilestone {
   /** The milestone's id; empty for "money runs out". */
   id: string
   name: string
-  kind: "retirement" | "custom" | "child" | "asset" | "depleted"
+  kind: "retirement" | "custom" | "child" | "asset" | "payoff" | "depleted"
   icon?: string
   age: number
   year: number
 }
 
 /** Milestones (and the year money runs out) positioned by age. */
+/** Balances at or below this count as paid off. */
+const PAID_OFF = 0.5
+
+/** The year each loan is cleared (by its payments, or early when what it's for is sold). */
+function payoffMarks(doc: PlanDocument, projection: PlanProjection, age0: number): ChartMilestone[] {
+  const ctx = timingContext(doc)
+  const rows = projection.rows
+  return doc.debts.flatMap((debt) => {
+    const start = Math.max(0, resolveTiming(debt.start, ctx) ?? 0)
+    // Paid off this year: owed something at the start of the year (the loan's amount in its first year) and nothing now.
+    const index = rows.findIndex((r, i) => {
+      if (i < start) return false
+      const before = i === start ? debt.balance : rows[i - 1].debtBalances[debt.id] ?? 0
+      return (r.debtBalances[debt.id] ?? 0) <= PAID_OFF && before > PAID_OFF
+    })
+    if (index < 0) return []
+    const row = rows[index]
+    return [{ id: `payoff-${debt.id}`, name: `${debt.name} paid off`, kind: "payoff" as const, icon: "credit_score", age: age0 + row.index, year: row.year }]
+  })
+}
+
 export function chartMilestones(doc: PlanDocument, projection: PlanProjection): ChartMilestone[] {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
@@ -75,6 +96,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
     if (index === null || index < 0 || index >= ctx.length) return []
     return [{ id: m.id, name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
   })
+  marks.push(...payoffMarks(doc, projection, age0))
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
   if (depleted) marks.push({ id: "", name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   return marks
@@ -186,6 +208,7 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
 export function milestoneGroup(m: Pick<ChartMilestone, "kind" | "icon">): MilestoneGroup {
   if (m.kind === "depleted") return "alert"
   if (m.kind === "retirement") return "work"
+  if (m.kind === "payoff") return "money"
   const byIcon = m.icon ? GROUP_BY_ICON[m.icon] : undefined
   if (m.kind === "child") return byIcon === "education" ? "education" : "family"
   return byIcon ?? (m.kind === "asset" ? "property" : "life")

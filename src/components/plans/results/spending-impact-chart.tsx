@@ -7,7 +7,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { spendingImpact, type ImpactPoint } from "@/lib/plans/plan-spending-impact"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
-const HEIGHT = 220
+const HEIGHT = 200
 const LATE_AGE = 80
 
 function Stat({ label, value, steady }: { label: string; value: number; steady: number }) {
@@ -50,12 +50,9 @@ export function SpendingImpactChart({ doc, isHidden }: { doc: PlanDocument; isHi
   const late = at(LATE_AGE)
 
   return (
-    <div
-      className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-3"
-      style={{ boxShadow: "var(--shadow-sm)", filter: isHidden ? "blur(8px)" : undefined }}
-    >
+    <div className="rounded-xl border border-card-border p-4 space-y-3" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-foreground">
+        <p className="text-xs font-semibold text-foreground">
           Recurring spending over your life <span className="font-normal text-foreground-muted">(today&apos;s dollars, one-time costs left out)</span>
         </p>
         <p className="text-[11px] text-foreground-muted">Solid: with your patterns · dashed: all steady</p>
