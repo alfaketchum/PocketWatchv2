@@ -39,7 +39,6 @@ export const FINANCE_NAV_ITEMS: NavItem[] = [
   { id: "fin-transactions",  label: "Transactions",   href: "/finance/transactions",   icon: "receipt_long" },
   { id: "fin-budgets",       label: "Budgets",        href: "/finance/budgets",        icon: "savings" },
   { id: "fin-investments",   label: "Investments",    href: "/finance/investments",    icon: "show_chart" },
-  { id: "fin-real-assets",   label: "Homes & Vehicles", href: "/finance/real-assets",  icon: "home" },
   { id: "fin-cards",         label: "Cards & Bills",  href: "/finance/cards",          icon: "credit_card" },
   { id: "fin-subscriptions", label: "Subscriptions",  href: "/finance/subscriptions",  icon: "subscriptions" },
 ]
@@ -146,13 +145,6 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     const cardsIdx = financeCat.order.indexOf("fin-cards")
     if (cardsIdx >= 0) financeCat.order.splice(cardsIdx + 1, 0, "fin-subscriptions")
     else financeCat.order.push("fin-subscriptions")
-    savePrefs(prefs)
-  }
-  // Inject fin-real-assets item if missing (Homes & Vehicles page, after Investments).
-  if (financeCat && !financeCat.order.includes("fin-real-assets")) {
-    const invIdx = financeCat.order.indexOf("fin-investments")
-    if (invIdx >= 0) financeCat.order.splice(invIdx + 1, 0, "fin-real-assets")
-    else financeCat.order.push("fin-real-assets")
     savePrefs(prefs)
   }
   // Inject roi item if missing (ROI page, after Staking).

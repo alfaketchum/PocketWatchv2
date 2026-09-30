@@ -7,6 +7,9 @@ export const ACCOUNT_TYPES = [
   { key: "loan", label: "Loans" },
 ] as const
 
+/** Last tab on the Accounts page: homes, vehicles and other things valued by hand. */
+export const HOMES_TAB = { key: "homes", label: "Homes & Vehicles" } as const
+
 export const TYPE_ICONS: Record<string, string> = {
   checking: "account_balance",
   savings: "savings",

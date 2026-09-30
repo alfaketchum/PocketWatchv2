@@ -1,7 +1,6 @@
-"use client"
+import { redirect } from "next/navigation"
 
-import { RealAssetsView } from "@/components/finance/real-assets/real-assets-view"
-
+/** Homes & Vehicles now live on the Accounts page. */
 export default function RealAssetsPage() {
-  return <RealAssetsView />
+  redirect("/finance/accounts?tab=homes")
 }

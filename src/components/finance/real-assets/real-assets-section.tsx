@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
-import { FinancePageHeader } from "@/components/finance/finance-page-header"
 import { useDeleteRealAsset, useRealAssets, useSaveRealAsset, type RealAssetInput } from "@/hooks/finance/use-real-assets"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { formatCurrency } from "@/lib/utils"
@@ -13,8 +12,8 @@ import { AddRealAssetDialog } from "./add-real-asset-dialog"
 /** Editing: an asset id, "new", or nothing open. */
 type Editing = string | "new" | null
 
-/** Homes, vehicles and other things you own, valued by hand; they count in net worth. */
-export function RealAssetsView() {
+/** Homes, vehicles and other things you own, valued by hand; they count in net worth. A section of the Accounts page. */
+export function RealAssetsSection() {
   const { data, isLoading, isError } = useRealAssets()
   const save = useSaveRealAsset()
   const remove = useDeleteRealAsset()
@@ -30,18 +29,18 @@ export function RealAssetsView() {
     save.mutate({ ...input, id }, { onSuccess: () => setEditing(null) })
 
   return (
-    <div className="space-y-5">
-      <FinancePageHeader
-        title="Homes & Vehicles"
-        subtitle="Valued by you and counted in your net worth"
-        actions={
-          editing !== "new" && (
-            <button type="button" onClick={() => setEditing("new")} className="btn-primary text-xs">
-              + Add
-            </button>
-          )
-        }
-      />
+    <section id="homes" className="space-y-4 scroll-mt-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-foreground">Homes &amp; Vehicles</h2>
+          <p className="text-xs text-foreground-muted">Valued by you and counted in your net worth</p>
+        </div>
+        {editing !== "new" && (
+          <button type="button" onClick={() => setEditing("new")} className="btn-primary text-xs">
+            + Add
+          </button>
+        )}
+      </div>
       {isError && <p className="text-sm text-error">Couldn&apos;t load your homes and vehicles.</p>}
       {isLoading ? (
         <div className="h-32 animate-shimmer rounded-2xl" />
@@ -83,6 +82,6 @@ export function RealAssetsView() {
           </div>
         </>
       )}
-    </div>
+    </section>
   )
 }

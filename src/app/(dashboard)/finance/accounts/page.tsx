@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import {
   useFinanceAccounts, useFinanceTransactions, useExchangePlaidToken,
@@ -15,7 +15,9 @@ import { FinanceCardSkeleton } from "@/components/finance/finance-loading"
 import { PlaidLinkButton } from "@/components/finance/plaid-link-button"
 import { SimpleFINConnect } from "@/components/finance/simplefin-connect"
 import { ConfirmDialog } from "@/components/finance/confirm-dialog"
-import { ACCOUNT_TYPES, normalizeType } from "@/components/finance/accounts/accounts-constants"
+import { ACCOUNT_TYPES, HOMES_TAB, normalizeType } from "@/components/finance/accounts/accounts-constants"
+import { RealAssetsSection } from "@/components/finance/real-assets/real-assets-section"
+import { useRealAssets } from "@/hooks/finance/use-real-assets"
 import { InstitutionAccordion } from "@/components/finance/accounts/institution-accordion"
 import { ReconnectBanner } from "@/components/finance/accounts/reconnect-banner"
 import { AccountTransactions } from "@/components/finance/accounts/account-transactions"
@@ -28,7 +30,9 @@ const TYPE_ORDER = ["checking", "savings", "credit", "business_credit", "investm
 
 export default function FinanceAccountsPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("all")
+  const searchParams = useSearchParams()
+  // ?tab=homes (the old Homes & Vehicles page redirects here) opens a tab directly.
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") ?? "all")
   const [expandedInst, setExpandedInst] = useState<Set<string>>(new Set())
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null)
   const [txPage, setTxPage] = useState(1)
@@ -43,6 +47,9 @@ export default function FinanceAccountsPage() {
   const updateAccount = useUpdateAccount()
   const updateCategory = useUpdateTransactionCategory()
   const { data: liabilities } = useLiabilities()
+  const { data: realAssets } = useRealAssets()
+  const homesCount = realAssets?.assets.length ?? 0
+  const showHomes = activeTab === "all" || activeTab === HOMES_TAB.key
 
   const { data: txData, isLoading: txLoading } = useFinanceTransactions({
     accountId: selectedAccount ?? undefined,
@@ -77,7 +84,7 @@ export default function FinanceAccountsPage() {
     return counts
   }, [canonical])
 
-  const visibleTabs = ACCOUNT_TYPES.filter((t) => t.key === "all" || (typeCounts[t.key]?.count ?? 0) > 0)
+  const visibleTabs = [...ACCOUNT_TYPES.filter((t) => t.key === "all" || (typeCounts[t.key]?.count ?? 0) > 0), HOMES_TAB]
 
   const filteredInstitutions = useMemo(() => {
     if (!institutions) return []
@@ -172,6 +179,7 @@ export default function FinanceAccountsPage() {
           ]}
           linkTo={{ label: "Go to Settings", href: "/settings?tab=finance" }}
         />
+        <RealAssetsSection />
       </div>
     )
   }
@@ -213,7 +221,8 @@ export default function FinanceAccountsPage() {
       {/* Account Type Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {visibleTabs.map((tab) => {
-          const stats = tab.key === "all" ? { count: canonical.length, total: netBalance } : typeCounts[tab.key]
+          const stats = tab.key === "all" ? { count: canonical.length, total: netBalance }
+            : tab.key === HOMES_TAB.key ? { count: homesCount, total: 0 } : typeCounts[tab.key]
           return (
             <button
               key={tab.key}
@@ -265,6 +274,8 @@ export default function FinanceAccountsPage() {
           ))}
         </div>
       )}
+
+      {showHomes && <RealAssetsSection />}
 
       {selectedAccount && (
         <AccountTransactions
