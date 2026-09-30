@@ -416,13 +416,19 @@ interface LowConfidenceParams {
   settingsObject: Record<string, unknown>
   transactionCount: number
   usableReconstructed: boolean
+  /**
+   * Zerion only ended too early. Its stored history is still right for the days it covers, so keep it:
+   * wiping it doesn't help (the next rebuild writes the same rows) and leaves the net-worth chart,
+   * which reads this cache, without crypto history until then.
+   */
+  keepCache?: boolean
 }
 
 export async function handleLowConfidenceZerion(params: LowConfidenceParams): Promise<ChartPoint[]> {
-  const { userId, walletFingerprint, settingsObject, transactionCount, usableReconstructed } = params
+  const { userId, walletFingerprint, settingsObject, transactionCount, usableReconstructed, keepCache } = params
 
   await db.$transaction(async (tx) => {
-    await tx.chartCache.deleteMany({ where: { userId } })
+    if (!keepCache) await tx.chartCache.deleteMany({ where: { userId } })
     const chartFields = JSON.stringify({ chartWalletFingerprint: walletFingerprint })
     const settingId = crypto.randomUUID()
     await tx.$executeRaw`

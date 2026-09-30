@@ -9,7 +9,7 @@ import {
   MAX_FUTURE_SKEW_SEC,
   normalizeRange, normalizeScope, normalizeFormat, toIso,
   sanitizeZerionSeries, getSnapshotWalletFingerprint,
-  onchainValueFromSnapshot, applyRange, isZerionLowConfidence,
+  onchainValueFromSnapshot, applyRange, isZerionLowConfidence, isZerionStaleOnly,
   hasUsableReconstructedHistory, interpolateSparseGaps,
   buildWalletFingerprint, getNormalizedAddresses,
   safeScaleReference, isProjectedChartFlat, zerionMatchesLive,
@@ -182,9 +182,11 @@ export async function GET(request: Request) {
       // No projected data — fall back to confidence-based handling
       const confidenceRef = onchainRefPoint ?? latestLiveSnapshot ?? (reconstructedPoints.length > 0 ? reconstructedPoints[reconstructedPoints.length - 1] : undefined)
       const zerionLowConfidence = isZerionLowConfidence(zerionPoints, confidenceRef)
+      const zerionStaleOnly = isZerionStaleOnly(zerionPoints, confidenceRef)
       zerionPoints = normalizeZerionToRef({ zerionPoints, rangeSpecificZerionPoints: rangeSpecific, onchainRefPoint, zerionLowConfidence })
       if (zerionLowConfidence) {
         zerionPoints = await handleLowConfidenceZerion({
+          keepCache: zerionStaleOnly,
           userId: user.id, walletFingerprint, settingsObject, transactionCount,
           usableReconstructed: hasUsableReconstructedHistory(reconstructedPoints, latestLiveSnapshot),
         })

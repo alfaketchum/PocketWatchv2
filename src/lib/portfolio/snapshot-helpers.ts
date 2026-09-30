@@ -193,6 +193,18 @@ export function pruneDivergentZerionTail(
   return { points: zerionPoints, removedTimestamps: [] }
 }
 
+/** Zerion's history just ends too early (its values aren't in question): past days are still right. */
+export function isZerionStaleOnly(zerionPoints: ChartPoint[], livePoint: ChartPoint | undefined): boolean {
+  if (!livePoint || zerionPoints.length === 0 || livePoint.value <= 0) return false
+  const last = zerionPoints[zerionPoints.length - 1]
+  const endRatio = last.value / livePoint.value
+  return (
+    livePoint.timestamp - last.timestamp > ZERION_STALE_WINDOW_SEC &&
+    endRatio >= ZERION_LIVE_RATIO_MIN &&
+    endRatio <= ZERION_LIVE_RATIO_MAX
+  )
+}
+
 export function isZerionLowConfidence(
   zerionPoints: ChartPoint[],
   livePoint: ChartPoint | undefined
