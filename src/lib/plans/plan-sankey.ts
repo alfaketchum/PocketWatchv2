@@ -48,7 +48,7 @@ function withdrawalGroup(doc: PlanDocument, accountId: string): CashFlowLayer {
   if (treatment === "cash") return "wdCash"
   if (treatment === "taxable") return "wdTaxable"
   if (treatment === "traditional") return "wdTaxDeferred"
-  return "wdTaxFree"
+  return treatment === "education" ? "wdTaxFree529" : "wdTaxFree"
 }
 
 /** Where money came from, as sources feeding the hub. */

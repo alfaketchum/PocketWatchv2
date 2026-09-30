@@ -28,7 +28,7 @@ test("layers split accounts by tax treatment; home equity nets its mortgage; oth
     assets: { home: 300 },
     debts: { mtg: 200, cc: 7 },
   })
-  assert.deepEqual(layers, { cash: 10, taxable: 20, taxDeferred: 30, taxFree: 10, realAssetEquity: 100, debt: -7 })
+  assert.deepEqual(layers, { cash: 10, taxable: 20, taxDeferred: 30, taxFree: 10, taxFree529: 0, realAssetEquity: 100, debt: -7 })
 })
 
 test("an underwater loan shows zero equity and the excess as debt", () => {
@@ -127,4 +127,14 @@ test("cash flow: money in equals money out every year, and retirement shows with
   const retired = points.find((p) => p.age === 55)!
   assert.equal(retired.income, 0)
   assert.ok(retired.wdCash + retired.wdTaxable + retired.wdTaxDeferred + retired.wdTaxFree > 50_000)
+})
+
+test("529 balances sit in their own tax-free band", () => {
+  const plan: PlanDocument = {
+    ...doc,
+    accounts: [...doc.accounts, { id: "m529", name: "Maya's 529", taxTreatment: "education", balance: 40, costBasis: null, returnRate: 0, owner: null, source: null }],
+  }
+  const layers = layersFor(plan, { accounts: { r: 5, h: 5, m529: 40 }, assets: {}, debts: {} })
+  assert.equal(layers.taxFree, 10)
+  assert.equal(layers.taxFree529, 40)
 })

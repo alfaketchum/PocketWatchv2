@@ -97,7 +97,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     employerMatch: row.employerMatch,
     withdrawals: row.withdrawals,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
-    taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree },
+    taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree + layers.taxFree529 },
     allocations: allocations(doc, row),
     incomeSources: incomeSources(doc, row),
     investmentGrowth: row.growth,

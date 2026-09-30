@@ -46,6 +46,8 @@ export function usePlanColors(): PlanColors {
     taxable: primary,
     taxDeferred: warning,
     taxFree: mix(primary, card, LIGHTER),
+    // A lighter band of tax-free, so 529 money reads as tax-free but earmarked.
+    taxFree529: mix(primary, card, 0.72),
     realAssetEquity: mix(foreground, card, 0.75),
     debt: error,
   }
@@ -57,6 +59,7 @@ export function usePlanColors(): PlanColors {
       wdTaxable: netWorth.taxable,
       wdTaxDeferred: netWorth.taxDeferred,
       wdTaxFree: netWorth.taxFree,
+      wdTaxFree529: netWorth.taxFree529,
       assetSales: netWorth.realAssetEquity,
       unfunded: error,
       spending: error,

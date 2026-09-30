@@ -2,7 +2,8 @@ import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 
 /** Stack order, bottom to top. Debt is drawn below zero. */
-export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "realAssetEquity"] as const
+/** Stack order, bottom to top. 529s are a band of tax-free, drawn right above it. */
+export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssetEquity"] as const
 
 export type NetWorthLayer = (typeof NET_WORTH_LAYERS)[number]
 
@@ -11,6 +12,7 @@ export const NET_WORTH_LAYER_LABELS: Record<NetWorthLayer | "debt", string> = {
   taxable: "Taxable",
   taxDeferred: "Tax-deferred",
   taxFree: "Tax-free",
+  taxFree529: "Tax-free (529)",
   realAssetEquity: "Real-asset equity",
   debt: "Debt",
 }
@@ -21,7 +23,7 @@ const LAYER_FOR: Record<TaxTreatment, NetWorthLayer> = {
   traditional: "taxDeferred",
   roth: "taxFree",
   hsa: "taxFree",
-  education: "taxFree",
+  education: "taxFree529",
 }
 
 export type NetWorthPoint = { age: number; year: number; netWorth: number; debt: number } & Record<NetWorthLayer, number>
@@ -37,7 +39,7 @@ interface Balances {
  * the asset's value (underwater) and unlinked debts make up the debt layer (negative).
  */
 export function layersFor(doc: PlanDocument, balances: Balances): Record<NetWorthLayer, number> & { debt: number } {
-  const layers = { cash: 0, taxable: 0, taxDeferred: 0, taxFree: 0, realAssetEquity: 0, debt: 0 }
+  const layers = { cash: 0, taxable: 0, taxDeferred: 0, taxFree: 0, taxFree529: 0, realAssetEquity: 0, debt: 0 }
   for (const account of doc.accounts) layers[LAYER_FOR[account.taxTreatment]] += balances.accounts[account.id] ?? 0
   const linked = new Set<string>()
   for (const asset of doc.assets) {
@@ -94,7 +96,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
 }
 
 /** Money in (above zero) and out (below zero) per year. They balance: in = out. */
-export const CASH_IN_LAYERS = ["income", "wdCash", "wdTaxable", "wdTaxDeferred", "wdTaxFree", "assetSales", "unfunded"] as const
+export const CASH_IN_LAYERS = ["income", "wdCash", "wdTaxable", "wdTaxDeferred", "wdTaxFree", "wdTaxFree529", "assetSales", "unfunded"] as const
 export const CASH_OUT_LAYERS = ["spending", "taxes", "debtPayments", "assetPurchases", "saved"] as const
 
 export type CashFlowLayer = (typeof CASH_IN_LAYERS)[number] | (typeof CASH_OUT_LAYERS)[number]
@@ -105,6 +107,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   wdTaxable: "Withdrawals · taxable",
   wdTaxDeferred: "Withdrawals · tax-deferred",
   wdTaxFree: "Withdrawals · tax-free",
+  wdTaxFree529: "Withdrawals · tax-free (529)",
   assetSales: "Asset sales",
   unfunded: "Unfunded (money ran out)",
   spending: "Spending",
@@ -119,6 +122,7 @@ const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
   taxable: "wdTaxable",
   taxDeferred: "wdTaxDeferred",
   taxFree: "wdTaxFree",
+  taxFree529: "wdTaxFree529",
   realAssetEquity: null,
 }
 
@@ -138,6 +142,7 @@ export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashF
     wdTaxable: 0,
     wdTaxDeferred: 0,
     wdTaxFree: 0,
+    wdTaxFree529: 0,
     assetSales: Math.max(0, row.assetSales),
     unfunded: row.shortfall,
     spending: -row.expenses,
