@@ -9,11 +9,22 @@ import { useCreatePlan, useDeletePlan, usePlansList, useUpdatePlanMeta } from "@
 import type { PlanListItem } from "@/hooks/plans/shared"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { MAX_PLANS_PER_USER } from "@/lib/plans/plan-constants"
+import { ChoiceChips } from "@/components/fire/fire-input-controls"
+import type { PlanDocument } from "@/lib/plans/plan-types"
+import { ImportPreviewDialog } from "./import-preview-dialog"
 import { PlanCard, type PlanCardAction } from "./plan-card"
 import { PlanNameDialog } from "./plan-name-dialog"
 
+type NewSource = "import" | "blank"
+
+const SOURCE_OPTIONS: { value: NewSource; label: string }[] = [
+  { value: "import", label: "Start from my data" },
+  { value: "blank", label: "Blank" },
+]
+
 type Dialog =
   | { kind: "new" }
+  | { kind: "import"; name: string }
   | { kind: "duplicate"; plan: PlanListItem }
   | { kind: "rename"; plan: PlanListItem }
   | { kind: "delete"; plan: PlanListItem }
@@ -38,6 +49,7 @@ export function PlansList() {
   const updateMeta = useUpdatePlanMeta()
   const remove = useDeletePlan()
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [source, setSource] = useState<NewSource>("import")
   const plans = list.data?.plans ?? []
   const atLimit = plans.length >= MAX_PLANS_PER_USER
 
@@ -46,12 +58,20 @@ export function PlansList() {
     else setDialog({ kind: action, plan })
   }
 
-  const createBlank = (name: string) =>
+  const createNew = (name: string) => {
+    if (source === "import") {
+      setDialog({ kind: "import", name })
+      return
+    }
     create.mutate({ from: "blank", name }, { onSuccess: ({ plan }) => router.push(`/plans/${plan.id}?tab=settings`) })
+  }
 
-  const duplicate = (source: PlanListItem, name: string) =>
+  const createImported = (name: string, document: PlanDocument) =>
+    create.mutate({ from: "import", name, document }, { onSuccess: ({ plan }) => router.push(`/plans/${plan.id}`) })
+
+  const duplicate = (original: PlanListItem, name: string) =>
     create.mutate(
-      { from: "duplicate", name, sourcePlanId: source.id },
+      { from: "duplicate", name, sourcePlanId: original.id },
       {
         onSuccess: () => {
           toast.success(`Created "${name}"`)
@@ -96,9 +116,27 @@ export function PlansList() {
         <PlanNameDialog
           title="New plan"
           initialName={plans.length === 0 ? "My plan" : `Plan ${plans.length + 1}`}
-          submitLabel="Create"
+          submitLabel={source === "import" ? "Next" : "Create"}
           isPending={create.isPending}
-          onSubmit={createBlank}
+          onSubmit={createNew}
+          onClose={() => setDialog(null)}
+        >
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-foreground-muted">Start with</p>
+            <ChoiceChips label="Start with" options={SOURCE_OPTIONS} value={source} onChange={setSource} />
+            <p className="text-[11px] text-foreground-muted">
+              {source === "import"
+                ? "Copies today's balances, debts, income and spending from your linked accounts, once."
+                : "An empty plan you fill in by hand."}
+            </p>
+          </div>
+        </PlanNameDialog>
+      )}
+      {dialog?.kind === "import" && (
+        <ImportPreviewDialog
+          initialName={dialog.name}
+          isPending={create.isPending}
+          onCreate={createImported}
           onClose={() => setDialog(null)}
         />
       )}

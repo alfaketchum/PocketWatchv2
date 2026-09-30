@@ -5,6 +5,7 @@ import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/pl
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, removeAccount, type PlanEditorProps } from "../plans-helpers"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { RefreshBalancesButton } from "./refresh-balances-button"
 
 const TREATMENT_OPTIONS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({
   value,
@@ -31,6 +32,7 @@ export function AccountsEditor({ doc, update }: PlanEditorProps) {
 
   return (
     <div className="space-y-3">
+      <RefreshBalancesButton doc={doc} update={update} />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
       {doc.accounts.map((a) => (
         <ItemCard
