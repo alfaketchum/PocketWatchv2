@@ -10,6 +10,7 @@ import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
 import { AssetRunningCostsFields } from "./asset-running-costs-fields"
+import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 
@@ -208,6 +209,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
   if (props.view === "compact") {
     return (
       <div className="space-y-3">
+        <PlanLoanSuggestions doc={doc} update={update} />
         <AssetsDebtsTable {...props} />
         <div className="flex flex-wrap gap-2">
           <AddButton
@@ -226,6 +228,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
   }
   return (
     <div className="space-y-6">
+      <PlanLoanSuggestions doc={doc} update={update} />
       <AssetsList {...props} />
       <DebtsList {...props} />
     </div>

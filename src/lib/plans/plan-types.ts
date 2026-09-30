@@ -277,6 +277,8 @@ export interface PlanDocument {
   children: PlanChild[]
   adjustments: PlanAdjustment[]
   deposits: PlanDeposit[]
+  /** Linked accounts (finance account ids) the user chose not to bring into this plan. */
+  ignoredSources?: string[]
 }
 
 /** One simulated year. Flows are for the year; balances are at year end. */

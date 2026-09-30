@@ -88,8 +88,8 @@ export function financingDebts(doc: PlanDocument): PlanDebt[] {
 /** Short "paid with" label for a list: the linked debt, the payment choice, or how it was acquired. */
 export function paidWithLabel(asset: PlanAsset, doc: PlanDocument): string {
   if (asset.acquired === "received") return "Inherited"
-  if (asset.start.type === "planStart") return "Owned"
   const linked = doc.debts.find((d) => d.assetId === asset.id)
   if (linked) return linked.name
+  if (asset.start.type === "planStart") return "Owned"
   return PAYMENT_MODE_LABELS[asset.financing?.mode ?? "cash"]
 }

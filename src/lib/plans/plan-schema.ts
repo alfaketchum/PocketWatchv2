@@ -178,6 +178,7 @@ export const planDocumentSchema = z.object({
   children: z.array(child).max(PLAN_LIMITS.children),
   adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
   deposits: z.array(z.object({ id, name, accountId: id, amount: money, timing, origin })).max(PLAN_LIMITS.deposits),
+  ignoredSources: z.array(z.string().max(100)).max(200).optional(),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

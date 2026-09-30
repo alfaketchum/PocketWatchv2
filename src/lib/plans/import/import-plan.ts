@@ -3,7 +3,7 @@ import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { blankPlanForUser } from "../plan-records"
 import type { SourceBalances } from "../plan-refresh"
-import type { PlanDocument } from "../plan-types"
+import type { PlanDebt, PlanDocument } from "../plan-types"
 import { withDetectedTrading } from "../trading-detect"
 import {
   accountsFromRows,
@@ -130,12 +130,20 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
   return { document, uncheckedIds: debts.filter((d) => d.kind === "credit").map((d) => d.id) }
 }
 
-/** Current balances of everything a plan can link back to, plus brokerage trading activity, for "Refresh balances". */
+/** Mortgages and auto loans in the user's linked accounts, as plan debts (for matching to homes and cars). */
+export async function loadLinkedLoans(userId: string, rows?: ImportAccountRow[]): Promise<PlanDebt[]> {
+  const [accounts, liabilities] = await Promise.all([rows ?? loadImportAccounts(userId), loadLiabilities(userId)])
+  return debtsFromRows(accounts, liabilities).filter((d) => d.kind === "mortgage" || d.kind === "auto")
+}
+
+/** Current balances of everything a plan can link back to, plus brokerage trading and loans, for "Refresh balances". */
 export async function loadSourceBalances(userId: string): Promise<SourceBalances> {
   const [rows, crypto] = await Promise.all([loadImportAccounts(userId), loadCryptoValue(userId)])
+  const [trading, loans] = await Promise.all([loadTradingActivity(userId, rows), loadLinkedLoans(userId, rows)])
   return {
     accounts: Object.fromEntries(rows.map((r) => [r.id, Math.abs(r.currentBalance ?? 0)])),
     crypto,
-    trading: await loadTradingActivity(userId, rows),
+    trading,
+    loans,
   }
 }

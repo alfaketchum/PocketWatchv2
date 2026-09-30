@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { fetchSourceBalances } from "@/hooks/plans/use-plan-import"
 import { applySourceBalances } from "@/lib/plans/plan-refresh"
+import { loanSuggestions } from "@/lib/plans/plan-loan-matching"
 import { pendingSuggestions } from "@/lib/plans/trading-detect"
 import type { PlanEditorProps } from "../plans-helpers"
 
@@ -27,6 +28,12 @@ export function RefreshBalancesButton({ doc, update }: PlanEditorProps) {
       if (traded.length > 0) {
         toast.info(`${traded.map((p) => p.account.name).join(", ")}: trading looks different from what the plan assumes`, {
           action: { label: "Review", onClick: () => router.push(`${pathname}/trading`) },
+        })
+      }
+      const loans = balances.loans ? loanSuggestions(doc, balances.loans) : []
+      if (loans.length > 0) {
+        toast.info(`New in your linked accounts: ${loans.map((s) => s.debt.name).join(", ")}`, {
+          action: { label: "Review", onClick: () => router.push(`${pathname}?tab=assets`) },
         })
       }
     } catch (err) {
