@@ -40,12 +40,20 @@ export function PlanEditorHeader({
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-          <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-            account_tree
-          </span>
-          Money flow
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              account_tree
+            </span>
+            Money flow
+          </Link>
+          <Link href={`/plans/${planId}/trading`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              candlestick_chart
+            </span>
+            Trading
+          </Link>
+        </div>
         <DollarsToggle value={basis} onChange={onBasisChange} />
       </div>
     </div>

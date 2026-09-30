@@ -22,7 +22,8 @@ const SLEEVE_LABELS: Record<number, string> = { 1: "Trade all", 0.5: "Trade half
 /** The grid re-runs the whole plan a few dozen times, so wait for edits to settle. */
 const COMPARE_DELAY_MS = 300
 
-const pts = (edge: number) => `+${Math.round(edge * 1000) / 10} pts`
+/** An edge as extra percent a year over holding: 0.05 → "+5%". */
+const pct = (edge: number) => `+${Math.round(edge * 1000) / 10}%`
 
 function Cell({ outcome, best }: { outcome: TradingOutcome; best: boolean }) {
   return (
@@ -48,7 +49,7 @@ function Grid({ result, yourEdge, isHidden }: { result: TradingComparison; yourE
       <table className="w-full text-sm">
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
-            <th className="px-3 py-2 font-semibold text-left whitespace-nowrap">Trading beats holding by</th>
+            <th className="px-3 py-2 font-semibold text-left whitespace-nowrap">Trading beats holding by (per yr)</th>
             {result.sleeves.map((s) => (
               <th key={s} className="px-3 py-2 font-semibold text-right whitespace-nowrap">{SLEEVE_LABELS[s] ?? `${s * 100}%`}</th>
             ))}
@@ -60,7 +61,7 @@ function Grid({ result, yourEdge, isHidden }: { result: TradingComparison; yourE
             return (
               <tr key={edge} className={cn("border-t border-card-border", edge === yourEdge && "font-medium")}>
                 <td className="px-3 py-2 whitespace-nowrap">
-                  {pts(edge)}
+                  {pct(edge)}
                   {edge === yourEdge && <span className="ml-1.5 text-[10px] text-foreground-muted">yours</span>}
                 </td>
                 {result.outcomes[i].map((o, j) => <Cell key={result.sleeves[j]} outcome={o} best={j === best} />)}
@@ -99,23 +100,24 @@ export const PlanTradingCard = memo(function PlanTradingCard({ doc, isHidden }: 
           {result === null ? (
             "Comparing…"
           ) : breakEven === null || breakEven === undefined ? (
-            "Trading everything never catches up with buy and hold here, even at a 200-point edge."
+            "Trading everything never catches up with buy and hold here, even at 200% a year above it."
           ) : (
             <>
-              Trading everything pays off only if it beats buy and hold by more than{" "}
-              <b className="tabular-nums">{pts(breakEven)}</b> a year before tax. Below that, taxes eat the edge.
+              Trading everything pays off only if it earns more than{" "}
+              <b className="tabular-nums">{Math.round(breakEven * 1000) / 10}%</b> a year above buy and hold, before tax. Below that,
+              taxes eat the extra return.
             </>
           )}
         </p>
         <div className="w-44">
           <FireNumberField
             label="Your edge / yr"
-            suffix="pts"
+            suffix="%"
             scale={100}
             min={0}
             max={5}
             value={yourEdge ?? 0}
-            hint="Extra return over holding, before tax"
+            hint="Extra % a year over holding, before tax: 5 turns 8% into 13%"
             onChange={(v) => setYourEdge(v > 0 ? v : null)}
           />
         </div>
