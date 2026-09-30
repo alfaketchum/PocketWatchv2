@@ -242,6 +242,22 @@ export function PortfolioDashboard() {
         chartStats={chartStats} historyWarning={historyWarning} syncStatus={syncStatus}
       />
 
+      {Object.keys(locationData).length > 0 && (
+        <FadeIn delay={0.15}>
+          <ChainAllocationDonut locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
+        </FadeIn>
+      )}
+
+      <FadeIn delay={0.25}>
+        <ExpandableAssetTable
+        assets={aggregatedAssets} totalValue={effectiveTotalValue} iconMap={iconMap} pricesMap={pricesMap}
+        assetMappings={assetMappings} wallets={walletInfoList} isLoading={bothSourcesLoading}
+        isResolvingNames={isResolvingNames} overview={overview} blockchainData={blockchainData}
+        trackedAccounts={trackedAccounts} balancesError={balancesError} overviewError={overviewError}
+        onRefresh={handleRefresh} isRefreshing={!!isRefreshing} refreshCooldown={refreshCooldown} isHidden={isHidden}
+      />
+      </FadeIn>
+
       <StaggerChildren className="grid grid-cols-2 lg:grid-cols-4 gap-3" staggerMs={60}>
         <StaggerItem>
           <OverviewStatCard label="Total Value" value={formatFiatValue(effectiveTotalValue)} icon="account_balance" isLoading={headlineLoading} accentColor="#ffffff" isHidden={isHidden} beam />
@@ -263,22 +279,6 @@ export function PortfolioDashboard() {
           <OverviewStatCard label="Active Chains" value={bothSourcesLoading ? "..." : String(activeChains)} icon="device_hub" isLoading={bothSourcesLoading} />
         </StaggerItem>
       </StaggerChildren>
-
-      {Object.keys(locationData).length > 0 && (
-        <FadeIn delay={0.15}>
-          <ChainAllocationDonut locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
-        </FadeIn>
-      )}
-
-      <FadeIn delay={0.25}>
-        <ExpandableAssetTable
-        assets={aggregatedAssets} totalValue={effectiveTotalValue} iconMap={iconMap} pricesMap={pricesMap}
-        assetMappings={assetMappings} wallets={walletInfoList} isLoading={bothSourcesLoading}
-        isResolvingNames={isResolvingNames} overview={overview} blockchainData={blockchainData}
-        trackedAccounts={trackedAccounts} balancesError={balancesError} overviewError={overviewError}
-        onRefresh={handleRefresh} isRefreshing={!!isRefreshing} refreshCooldown={refreshCooldown} isHidden={isHidden}
-      />
-      </FadeIn>
 
       {clickedPoint && (
         <ChartPointDetail
