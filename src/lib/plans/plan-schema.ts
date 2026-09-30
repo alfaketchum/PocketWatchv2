@@ -37,6 +37,7 @@ const settings = z.object({
   taxMode: z.enum(["flat", "brackets"]).default("flat"),
   state: stateCode.nullable().default(null),
   filingStatus: z.enum(["single", "joint"]).default("single"),
+  spendingProfile: z.enum(["typical", "frontload", "conservative", "frugal", "reset"]).optional(),
 })
 
 const person = z.object({ id, name, birthYear: year, birthMonth: month, origin })

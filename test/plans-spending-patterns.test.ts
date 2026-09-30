@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
 import { planDocumentSchema } from "@/lib/plans/plan-schema"
-import { applyProfile, overlapWarning, patternFactor, retirementAge, switchAge } from "@/lib/plans/plan-spending-patterns"
+import { applyProfile, overlapWarning, patternFactor, patternForNewLine, profileStatus, retirementAge, switchAge } from "@/lib/plans/plan-spending-patterns"
 import type { PlanDocument, PlanExpense, SpendingPattern } from "@/lib/plans/plan-types"
 
 const close = (a: number, b: number, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} ≈ ${b}`)
@@ -87,4 +87,16 @@ test("warns when a line's own growth and Rising both push it up", () => {
   assert.equal(overlapWarning({ growth: null, pattern: rising }, 0.03), null)
   assert.equal(overlapWarning({ growth: 0.05, pattern: { preset: "gogo" } }, 0.03), null)
   assert.equal(overlapWarning({ growth: 0.02, pattern: rising }, 0.03), null)
+})
+
+test("the picked profile is remembered: shown as edited after a change, and new lines follow it", () => {
+  const applied = applyProfile(plan([line("Travel"), line("Housing")]), "frugal").doc
+  assert.equal(applied.settings.spendingProfile, "frugal")
+  assert.deepEqual(profileStatus(applied), { profile: "frugal", edited: false })
+  const changed = { ...applied, expenses: applied.expenses.map((e) => (e.id === "Travel" ? { ...e, pattern: { preset: "gogo" as const } } : e)) }
+  assert.deepEqual(profileStatus(changed), { profile: "frugal", edited: true })
+  assert.equal(patternForNewLine(applied, { name: "Hobbies", category: "Hobbies" })?.then?.preset, "tapering")
+  assert.equal(patternForNewLine(plan([]), { name: "Hobbies", category: "Hobbies" }), undefined)
+  assert.deepEqual(profileStatus(plan([line("Travel")])), { profile: null, edited: false })
+  assert.ok(planDocumentSchema.safeParse(applied).success)
 })

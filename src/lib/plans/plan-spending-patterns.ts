@@ -1,6 +1,8 @@
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
-import type { PatternPreset, PlanDocument, PlanExpense, SpendingPattern, SpendingStage } from "./plan-types"
+import type { PatternPreset, PatternProfile, PlanDocument, PlanExpense, SpendingPattern, SpendingStage } from "./plan-types"
+
+export type { PatternProfile }
 
 export const PATTERN_LABELS: Record<PatternPreset, string> = {
   steady: "Steady",
@@ -101,8 +103,6 @@ function kindOf(expense: Pick<PlanExpense, "name" | "category">): SpendKind {
 /** Healthcare costs climb with age rather than with retirement. */
 const RISING_FROM_AGE = 65
 
-export type PatternProfile = "typical" | "frontload" | "conservative" | "frugal" | "reset"
-
 export const PATTERN_PROFILES: { key: PatternProfile; label: string; hint: string }[] = [
   {
     key: "typical",
@@ -147,17 +147,33 @@ export function profilePattern(profile: PatternProfile, expense: Pick<PlanExpens
   }
 }
 
-/** Applies a profile to every recurring line; returns how many changed. */
+const samePattern = (a: SpendingPattern | undefined, b: SpendingPattern | undefined) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+
+/** Applies a profile to every recurring line and remembers it on the plan; returns how many lines changed. */
 export function applyProfile(doc: PlanDocument, profile: PatternProfile): { doc: PlanDocument; changed: number } {
   let changed = 0
   const expenses = doc.expenses.map((e) => {
     if (e.oneTime) return e
     const pattern = profilePattern(profile, e)
-    if (JSON.stringify(pattern) === JSON.stringify(e.pattern)) return e
+    if (samePattern(pattern, e.pattern)) return e
     changed++
     return { ...e, pattern }
   })
-  return { doc: { ...doc, expenses }, changed }
+  return { doc: { ...doc, settings: { ...doc.settings, spendingProfile: profile }, expenses }, changed }
+}
+
+/** The plan's profile, and whether any line has since been changed away from it. */
+export function profileStatus(doc: PlanDocument): { profile: PatternProfile | null; edited: boolean } {
+  const profile = doc.settings.spendingProfile ?? null
+  if (!profile) return { profile: null, edited: false }
+  const edited = doc.expenses.some((e) => !e.oneTime && !samePattern(profilePattern(profile, e), e.pattern))
+  return { profile, edited }
+}
+
+/** The pattern a new line starts with: the plan's profile applied to its category (none when no profile). */
+export function patternForNewLine(doc: PlanDocument, expense: Pick<PlanExpense, "name" | "category">): SpendingPattern | undefined {
+  const profile = doc.settings.spendingProfile
+  return profile ? profilePattern(profile, expense) : undefined
 }
 
 /** A custom growth rate above inflation plus Rising counts the extra growth twice. */

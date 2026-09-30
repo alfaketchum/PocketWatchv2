@@ -55,6 +55,8 @@ export interface PlanSettings {
   /** Two-letter state of residence for state income tax; null for none. */
   state: string | null
   filingStatus: "single" | "joint"
+  /** The spending profile last applied to every line; new lines follow it. Missing = none picked. */
+  spendingProfile?: PatternProfile
 }
 
 export interface PlanAccount {
@@ -116,6 +118,9 @@ export interface PlanIncome {
  * tapering (a little less each year), rising (faster than inflation, e.g. healthcare) or custom phases.
  */
 export type PatternPreset = "steady" | "gogo" | "tapering" | "rising" | "custom"
+
+/** Sets of patterns applied to every spending line at once. */
+export type PatternProfile = "typical" | "frontload" | "conservative" | "frugal" | "reset"
 
 export interface SpendingStage {
   preset: PatternPreset

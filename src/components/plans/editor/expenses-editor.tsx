@@ -7,7 +7,7 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
-import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { overlapWarning, patternForNewLine, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { PatternProfileMenu } from "./pattern-profile-menu"
 
 const SpendingImpactChart = dynamic(() => import("./spending-impact-chart").then((m) => m.SpendingImpactChart), {
@@ -129,7 +129,12 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
         <AddButton
           label="Add expense"
           disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
-          onClick={() => update((d) => ({ ...d, expenses: [...d.expenses, newExpense()] }))}
+          onClick={() =>
+            update((d) => {
+              const line = newExpense()
+              return { ...d, expenses: [...d.expenses, { ...line, pattern: patternForNewLine(d, line) }] }
+            })
+          }
         />
       </div>
     </div>
