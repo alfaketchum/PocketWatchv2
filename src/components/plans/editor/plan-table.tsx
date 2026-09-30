@@ -160,7 +160,7 @@ export type PlanEditorView = "list" | "table"
 
 const VIEW_KEY = "plan-editor-view"
 
-/** List/table preference for the plan editor tabs, remembered in this browser. */
+/** List/table preference for the plan editor tabs: List until you pick Table, then remembered in this browser. */
 export function usePlanEditorView(): [PlanEditorView, (view: PlanEditorView) => void] {
   const [view, setView] = useState<PlanEditorView>("list")
   useEffect(() => {
