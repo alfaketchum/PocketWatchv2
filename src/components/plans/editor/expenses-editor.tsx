@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import { useMemo } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
@@ -8,6 +9,11 @@ import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { PatternProfileMenu } from "./pattern-profile-menu"
+
+const SpendingImpactChart = dynamic(() => import("./spending-impact-chart").then((m) => m.SpendingImpactChart), {
+  ssr: false,
+  loading: () => <div className="h-[260px] animate-shimmer rounded-xl" />,
+})
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
@@ -64,6 +70,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             <PatternProfileMenu doc={doc} update={update} />
           </div>
         )}
+        {doc.expenses.length > 0 && <SpendingImpactChart doc={doc} />}
         {view === "compact" ? (
         <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.expenses.map((e) => (
