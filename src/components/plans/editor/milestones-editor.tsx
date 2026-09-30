@@ -5,9 +5,11 @@ import Link from "next/link"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
+import { milestoneGroup } from "@/lib/plans/plan-chart"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
+import { usePlanColors } from "../results/use-plan-colors"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
 import { DeleteMilestoneDialog } from "./delete-milestone-dialog"
 import { AddButton, EditorToolbar, ItemCard, TextField } from "./plan-editor-controls"
@@ -32,6 +34,7 @@ function whenLabel(doc: PlanDocument, milestone: PlanMilestone): string {
 
 /** Milestones created by kids and by assets bought or sold; edited where they come from. */
 function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
+  const { milestones: groupColors } = usePlanColors()
   const marks = generatedMilestones(doc)
   if (marks.length === 0) return null
   return (
@@ -45,7 +48,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
           scroll={false}
           className="flex items-center gap-2 text-xs rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/5"
         >
-          <span className={`material-symbols-rounded ${m.kind === "child" ? "text-success" : "text-primary"}`} style={{ fontSize: 15 }}>
+          <span className="material-symbols-rounded" style={{ fontSize: 15, color: groupColors[milestoneGroup(m)] }}>
             {m.icon ?? "flag"}
           </span>
           <span className="text-foreground">{m.name}</span>
@@ -62,6 +65,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
 export function MilestonesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const { milestones: groupColors } = usePlanColors()
   const patch = (id: string, change: Partial<PlanMilestone>) =>
     update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
 
@@ -81,7 +85,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem, viewToggle }: 
           key={m.id} anchorId={planItemAnchor(m.id)}
           title={
             <span className="flex items-center gap-1.5">
-              <span className="material-symbols-rounded text-primary" style={{ fontSize: 16 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 16, color: groupColors[milestoneGroup(m)] }}>
                 {m.icon ?? (m.kind === "retirement" ? "beach_access" : "flag")}
               </span>
               {m.name || "Untitled milestone"}

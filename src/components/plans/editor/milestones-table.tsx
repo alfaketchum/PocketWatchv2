@@ -2,9 +2,11 @@
 
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
+import { milestoneGroup } from "@/lib/plans/plan-chart"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanMilestone } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
+import { usePlanColors } from "../results/use-plan-colors"
 import { Badge, Cell, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 
@@ -20,6 +22,7 @@ const COLUMNS = [
 
 /** Milestones as a table: yours editable, generated ones (kids, assets) read-only, all in date order. */
 export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEditorProps & { onDelete: (id: string) => void }) {
+  const { milestones: groupColors } = usePlanColors()
   const ctx = timingContext(doc)
   const age0 = primaryAge(doc)
   const patch = (id: string, change: Partial<PlanMilestone>) => update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
@@ -37,8 +40,8 @@ export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEdito
           <Cell>
             <span className="flex items-center">
               <span
-                className={`material-symbols-rounded ml-2 mr-1 shrink-0 ${m.kind === "child" ? "text-success" : "text-primary"}`}
-                style={{ fontSize: 15 }}
+                className="material-symbols-rounded ml-2 mr-1 shrink-0"
+                style={{ fontSize: 15, color: groupColors[milestoneGroup(m)] }}
               >
                 {m.icon ?? (m.kind === "retirement" ? "beach_access" : "flag")}
               </span>

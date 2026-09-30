@@ -17,7 +17,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { cn } from "@/lib/utils"
-import { chartMilestones, type ChartMilestone } from "@/lib/plans/plan-chart"
+import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
@@ -346,7 +346,6 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, error, success } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
   const [detail, setDetailState] = useState(false)
   useEffect(() => setDetailState(readDetail()), [])
@@ -361,11 +360,9 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
   const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
-  // Kids' stages stand out in green; "money runs out" is red; everything else is the accent.
-  const markColor = useCallback(
-    (m: ChartMilestone) => (m.kind === "depleted" ? error : m.kind === "child" ? success : primary),
-    [error, success, primary],
-  )
+  // Colored by what a milestone is about: work life, family, money in, property, other changes, trouble.
+  const { milestones: groupColors } = usePlanColors()
+  const markColor = useCallback((m: ChartMilestone) => groupColors[milestoneGroup(m)], [groupColors])
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)

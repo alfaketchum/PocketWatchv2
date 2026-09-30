@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { useChartTheme } from "@/hooks/use-chart-theme"
-import type { CashFlowLayer, NetWorthLayer } from "@/lib/plans/plan-chart"
+import type { CashFlowLayer, MilestoneGroup, NetWorthLayer } from "@/lib/plans/plan-chart"
 
 export interface PlanColors {
   netWorth: Record<NetWorthLayer | "debt", string>
@@ -10,6 +10,8 @@ export interface PlanColors {
   hub: string
   /** Up to four distinct plan lines (Compare). */
   series: string[]
+  /** Milestone icons by what they're about. */
+  milestones: Record<MilestoneGroup, string>
 }
 
 /** [r, g, b] from #rgb, #rrggbb or rgb()/rgba(); null for anything else. */
@@ -95,6 +97,8 @@ function buildPlanColors(t: {
     },
     hub: primary,
     series: [primary, warning, accentHead, mix(primary, card, LIGHTER)],
+    // Work life indigo, family green, school teal (between the two), money in gold, property slate (like its band), other changes dark neutral.
+    milestones: { work: primary, family: success, education: mix(success, primary, 0.5), money: warning, property: accentHead, life: foreground, alert: error },
   }
 }
 

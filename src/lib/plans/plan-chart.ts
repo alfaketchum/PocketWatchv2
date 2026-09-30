@@ -161,3 +161,32 @@ export function debtPoints(doc: PlanDocument, rows: YearRow[]): DebtPoint[] {
     return { ...byDebt, age: age0 + r.index, year: r.year, owed }
   })
 }
+
+/** What a milestone is about, for its color: work life, family, school, money coming in, property, other life changes, or trouble. */
+export type MilestoneGroup = "work" | "family" | "education" | "money" | "property" | "life" | "alert"
+
+const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
+  beach_access: "work",
+  work: "work",
+  luggage: "work",
+  favorite: "family",
+  child_care: "family",
+  savings: "education",
+  backpack: "education",
+  school: "education",
+  volunteer_activism: "money",
+  redeem: "money",
+  home: "property",
+  directions_car: "property",
+  shopping_bag: "property",
+  autorenew: "property",
+  sell: "property",
+}
+
+export function milestoneGroup(m: Pick<ChartMilestone, "kind" | "icon">): MilestoneGroup {
+  if (m.kind === "depleted") return "alert"
+  if (m.kind === "retirement") return "work"
+  const byIcon = m.icon ? GROUP_BY_ICON[m.icon] : undefined
+  if (m.kind === "child") return byIcon === "education" ? "education" : "family"
+  return byIcon ?? (m.kind === "asset" ? "property" : "life")
+}
