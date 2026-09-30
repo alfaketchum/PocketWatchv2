@@ -83,8 +83,8 @@ export function ProgressView() {
       <ProgressChart actual={actual} plan={path} now={now} isHidden={isHidden} />
       {doc.assets.length > 0 && (
         <p className="text-[11px] text-foreground-muted">
-          This plan includes a home or other assets. Their value isn&apos;t in either line (your history doesn&apos;t track it), so the
-          plan line dips when a purchase or its loan starts.
+          This plan includes a home or other assets. Both lines leave their value out (financial net worth only, even for homes and
+          vehicles on Homes &amp; Vehicles), so the plan line dips when a purchase or its loan starts.
         </p>
       )}
       {netWorth.error && <p className="text-xs text-error">Couldn&apos;t load your net-worth history: {netWorth.error.message}</p>}
