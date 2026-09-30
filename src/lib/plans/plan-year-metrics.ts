@@ -36,6 +36,10 @@ export interface YearMetrics {
   /** Share of after-tax income kept; null without income. */
   savingsRate: number | null
   contributions: number
+  /** Gross withdrawals from accounts (taxes on them included). */
+  withdrawals: number
+  /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
+  withdrawalRate: number | null
   taxBalance: TaxBalance
   allocations: Allocation[]
   incomeSources: { label: string; value: number }[]
@@ -70,6 +74,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
   const taxes = row.incomeTax + row.withdrawalTax
   const afterTaxIncome = row.income - row.incomeTax
   const kept = afterTaxIncome - row.expenses - row.debtPayments
+  const startBalance = index > 0 ? rows[index - 1].accountsTotal : doc.accounts.reduce((sum, a) => sum + a.balance, 0)
   return {
     netWorth: row.netWorth,
     netWorthChange: row.netWorth - previous,
@@ -82,6 +87,8 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     expenses: row.expenses + row.debtPayments + taxes + row.assetPurchases,
     savingsRate: afterTaxIncome > 0.5 ? kept / afterTaxIncome : null,
     contributions: row.contributions,
+    withdrawals: row.withdrawals,
+    withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree },
     allocations: allocations(doc, row),
     incomeSources: incomeSources(doc, row),

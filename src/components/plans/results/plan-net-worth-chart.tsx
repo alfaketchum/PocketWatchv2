@@ -16,11 +16,17 @@ import {
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
+import { cn } from "@/lib/utils"
 import {
+  CASH_FLOW_LABELS,
+  CASH_IN_LAYERS,
+  CASH_OUT_LAYERS,
+  cashFlowPoints,
   chartMilestones,
   NET_WORTH_LAYER_LABELS,
   NET_WORTH_LAYERS,
   netWorthPoints,
+  type CashFlowLayer,
   type ChartMilestone,
   type NetWorthLayer,
 } from "@/lib/plans/plan-chart"
@@ -62,6 +68,70 @@ function MilestoneMarker({ viewBox, mark, color }: { viewBox?: { x: number; y: n
   )
 }
 
+type ChartMode = "networth" | "cashflow"
+
+const MODES: { value: ChartMode; label: string }[] = [
+  { value: "networth", label: "Net worth" },
+  { value: "cashflow", label: "Cash flow" },
+]
+
+interface Series {
+  key: string
+  label: string
+  color: string
+}
+
+type ChartRow = { age: number; year: number } & Record<string, number>
+
+function ModeToggle({ value, onChange }: { value: ChartMode; onChange: (mode: ChartMode) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Chart view" className="inline-flex rounded-lg border border-card-border p-0.5">
+      {MODES.map((m) => (
+        <button
+          key={m.value}
+          type="button"
+          role="radio"
+          aria-checked={value === m.value}
+          onClick={() => onChange(m.value)}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+            value === m.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
+          )}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+const TICK_INTERVALS = 6
+
+/** 1, 2, 2.5 or 5 × a power of ten: a round step near `raw`. */
+function roundStep(raw: number): number {
+  if (raw <= 0) return 1
+  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)))
+  const step = [1, 2, 2.5, 5, 10].find((m) => m * magnitude >= raw) ?? 10
+  return step * magnitude
+}
+
+/** Round ticks that hug the stacked bars, so the tallest one nearly fills the plot. */
+function fitAxis(rows: ChartRow[], series: Series[]): { domain: [number, number]; ticks: number[] } {
+  let top = 0
+  let bottom = 0
+  for (const row of rows) {
+    const values = series.map((s) => row[s.key] ?? 0)
+    top = Math.max(top, values.reduce((sum, v) => sum + Math.max(0, v), 0))
+    bottom = Math.min(bottom, values.reduce((sum, v) => sum + Math.min(0, v), 0))
+  }
+  const step = roundStep(((top - bottom) * Y_HEADROOM) / TICK_INTERVALS)
+  const lo = Math.floor((bottom * Y_HEADROOM) / step) * step
+  const hi = Math.ceil((top * Y_HEADROOM) / step) * step
+  const ticks: number[] = []
+  for (let t = lo; t <= hi + step / 2; t += step) ticks.push(Math.round(t))
+  return { domain: [lo, hi], ticks }
+}
+
 interface Props {
   doc: PlanDocument
   projection: PlanProjection
@@ -70,14 +140,19 @@ interface Props {
   isHidden: boolean
 }
 
-/** Year-end net worth as stacked bars by tax treatment, real-asset equity and debt; click a bar for that year. */
+/**
+ * One stacked bar per plan year: net worth by tax treatment (with real-asset equity and debt), or
+ * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
+ */
 export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
   const { primary, palette, error, foregroundMuted, border, warning, success, foreground } = useChartTheme()
-  const points = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
+  const [mode, setMode] = useState<ChartMode>("networth")
+  const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
+  const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  const colors: Record<NetWorthLayer | "debt", string> = {
+  const nwColors: Record<NetWorthLayer | "debt", string> = {
     cash: palette[2] ?? success,
     taxable: primary,
     taxDeferred: palette[1] ?? warning,
@@ -85,16 +160,29 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
     realAssetEquity: foregroundMuted,
     debt: error,
   }
-  const shownLayers = NET_WORTH_LAYERS.filter((k) => points.some((p) => p[k] > 0.5))
-  const hasDebt = points.some((p) => p.debt < -0.5)
-  // Fit the axis to the data so the tallest bar nearly fills the plot.
-  const yDomain = useMemo(() => {
-    const top = Math.max(0, ...points.map((p) => NET_WORTH_LAYERS.reduce((s, k) => s + Math.max(0, p[k]), 0)))
-    const bottom = Math.min(0, ...points.map((p) => p.debt))
-    return [bottom * Y_HEADROOM, top * Y_HEADROOM] as [number, number]
-  }, [points])
+  const cfColors: Record<CashFlowLayer, string> = {
+    income: foreground,
+    wdCash: nwColors.cash,
+    wdTaxable: nwColors.taxable,
+    wdTaxDeferred: nwColors.taxDeferred,
+    wdTaxFree: nwColors.taxFree,
+    assetSales: foregroundMuted,
+    unfunded: error,
+    spending: palette[4] ?? error,
+    taxes: warning,
+    debtPayments: palette[5] ?? primary,
+    assetPurchases: foregroundMuted,
+    saved: palette[7] ?? success,
+  }
+  const points: ChartRow[] = mode === "networth" ? nwPoints : cfPoints
+  const allSeries: Series[] =
+    mode === "networth"
+      ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
+      : [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
+  const series = allSeries.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
+  const yAxis = fitAxis(points, series)
   const active = selected ?? hovered ?? 0
-  const activePoint = points[active] ?? null
+  const activePoint = nwPoints[active] ?? null
   const metrics = useMemo(
     () => yearMetrics(doc, rows, active, projection.startNetWorth),
     [doc, rows, active, projection.startNetWorth],
@@ -104,8 +192,8 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
     return Number.isInteger(index) && index >= 0 ? index : null
   }
 
-  const bars = (key: NetWorthLayer | "debt") => (
-    <Bar key={key} dataKey={key} stackId="nw" fill={colors[key]} isAnimationActive={false} cursor="pointer">
+  const bars = ({ key, color }: Series) => (
+    <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
       {points.map((_, i) => (
         <Cell key={i} fillOpacity={selected === null || selected === i ? 0.85 : DIMMED} />
       ))}
@@ -114,9 +202,14 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
 
   return (
     <FireSectionCard
-      eyebrow="Net worth"
+      eyebrow={mode === "networth" ? "Net worth" : "Cash flow"}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
-      info="Year-end balances by tax treatment. Real-asset equity is what your home and other assets are worth minus the loans on them; other debt shows below zero. Hover a bar to see that year; click to pin it."
+      info={
+        mode === "networth"
+          ? "Year-end balances by tax treatment. Real-asset equity is what your home and other assets are worth minus the loans on them; other debt shows below zero. Hover a bar to see that year; click to pin it."
+          : "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out."
+      }
+      right={<ModeToggle value={mode} onChange={setMode} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
@@ -143,7 +236,8 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                   minTickGap={16}
                 />
                 <YAxis
-                  domain={yDomain}
+                  domain={yAxis.domain}
+                  ticks={yAxis.ticks}
                   allowDataOverflow
                   tick={{ fontSize: 10, fill: foregroundMuted }}
                   tickFormatter={fmtCompact}
@@ -153,16 +247,17 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                 />
                 <Tooltip content={() => null} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
                 <ReferenceLine y={0} stroke={border} />
-                {shownLayers.map(bars)}
-                {hasDebt && bars("debt")}
-                <Line
-                  type="monotone"
-                  dataKey="netWorth"
-                  stroke={foreground}
-                  strokeWidth={1.5}
-                  dot={false}
-                  isAnimationActive={false}
-                />
+                {series.map(bars)}
+                {mode === "networth" && (
+                  <Line
+                    type="monotone"
+                    dataKey="netWorth"
+                    stroke={foreground}
+                    strokeWidth={1.5}
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                )}
                 {marks.map((m) => (
                   <ReferenceLine
                     key={`${m.name}-${m.age}`}
@@ -177,10 +272,10 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-            {[...shownLayers, ...(hasDebt ? (["debt"] as const) : [])].map((k) => (
-              <span key={k} className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
-                <span className="h-2 w-2 rounded-sm" style={{ background: colors[k] }} />
-                {NET_WORTH_LAYER_LABELS[k]}
+            {series.map((s) => (
+              <span key={s.key} className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
+                <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
+                {s.label}
               </span>
             ))}
             {marks.map((m) => (
@@ -207,7 +302,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
               year={activePoint.year}
               pinned={selected !== null}
               onUnpin={() => setSelected(null)}
-              colors={{ cash: colors.cash, taxable: colors.taxable, taxDeferred: colors.taxDeferred, taxFree: colors.taxFree }}
+              colors={{ cash: nwColors.cash, taxable: nwColors.taxable, taxDeferred: nwColors.taxDeferred, taxFree: nwColors.taxFree }}
             />
           </div>
         )}

@@ -88,3 +88,68 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   if (depleted) marks.push({ name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   return marks
 }
+
+/** Money in (above zero) and out (below zero) per year. They balance: in = out. */
+export const CASH_IN_LAYERS = ["income", "wdCash", "wdTaxable", "wdTaxDeferred", "wdTaxFree", "assetSales", "unfunded"] as const
+export const CASH_OUT_LAYERS = ["spending", "taxes", "debtPayments", "assetPurchases", "saved"] as const
+
+export type CashFlowLayer = (typeof CASH_IN_LAYERS)[number] | (typeof CASH_OUT_LAYERS)[number]
+
+export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
+  income: "Income",
+  wdCash: "Withdrawals · cash",
+  wdTaxable: "Withdrawals · taxable",
+  wdTaxDeferred: "Withdrawals · tax-deferred",
+  wdTaxFree: "Withdrawals · tax-free",
+  assetSales: "Asset sales",
+  unfunded: "Unfunded (money ran out)",
+  spending: "Spending",
+  taxes: "Taxes",
+  debtPayments: "Debt payments",
+  assetPurchases: "Asset purchases",
+  saved: "Saved",
+}
+
+const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
+  cash: "wdCash",
+  taxable: "wdTaxable",
+  taxDeferred: "wdTaxDeferred",
+  taxFree: "wdTaxFree",
+  realAssetEquity: null,
+}
+
+export type CashFlowPoint = { age: number; year: number } & Record<CashFlowLayer, number>
+
+/**
+ * Cash flow for one year. Employer match is left out on both sides (it never passes through your
+ * hands); "saved" is payroll contributions you made plus surplus deposited. Outflows are negative.
+ */
+export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashFlowPoint {
+  const point: CashFlowPoint = {
+    age,
+    year: row.year,
+    income: row.income,
+    wdCash: 0,
+    wdTaxable: 0,
+    wdTaxDeferred: 0,
+    wdTaxFree: 0,
+    assetSales: Math.max(0, row.assetSales),
+    unfunded: row.shortfall,
+    spending: -row.expenses,
+    taxes: -(row.incomeTax + row.withdrawalTax),
+    debtPayments: -row.debtPayments,
+    assetPurchases: -(row.assetPurchases + Math.max(0, -row.assetSales)),
+    saved: -(row.contributions - row.employerMatch),
+  }
+  for (const account of doc.accounts) {
+    const layer = WITHDRAWAL_LAYER[LAYER_FOR[account.taxTreatment]]
+    if (layer) point[layer] += row.withdrawalsBy[account.id] ?? 0
+  }
+  return point
+}
+
+export function cashFlowPoints(doc: PlanDocument, rows: YearRow[]): CashFlowPoint[] {
+  const person = doc.people[0]
+  const age0 = person ? ageAtStart(person, doc.settings) : 0
+  return rows.map((r) => cashFlowFor(doc, r, age0 + r.index))
+}

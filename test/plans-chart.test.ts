@@ -97,3 +97,30 @@ test("assets report appreciation and depreciation separately", () => {
   assert.ok(Math.abs(row.assetAppreciation - 5_000) < 1e-6)
   assert.ok(Math.abs(row.assetDepreciation - 2_000) < 1e-6)
 })
+
+import { CASH_IN_LAYERS, CASH_OUT_LAYERS, cashFlowPoints } from "@/lib/plans/plan-chart"
+
+test("cash flow: money in equals money out every year, and retirement shows withdrawals", () => {
+  const plan: PlanDocument = {
+    ...doc,
+    settings: { ...doc.settings, incomeTaxRate: 0.2, capitalGainsRate: 0.15 },
+    incomes: [
+      {
+        id: "sal", name: "Salary", kind: "salary", amount: 120_000, growth: null, start: { type: "planStart" },
+        end: { type: "age", personId: doc.people[0].id, age: 50 }, taxable: true, oneTime: false,
+        contributions: [{ id: "c", accountId: "k", percent: 0.1, employerMatchPercent: 0.05, preTax: true }],
+      },
+    ],
+    expenses: [{ id: "e", name: "Living", category: null, amount: 50_000, growth: null, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
+  }
+  const rows = simulatePlan(plan).rows
+  const points = cashFlowPoints(plan, rows)
+  for (const p of points) {
+    const inflow = CASH_IN_LAYERS.reduce((s, k) => s + p[k], 0)
+    const outflow = CASH_OUT_LAYERS.reduce((s, k) => s - p[k], 0)
+    assert.ok(Math.abs(inflow - outflow) < 1e-6, `year ${p.year}: in ${inflow} vs out ${outflow}`)
+  }
+  const retired = points.find((p) => p.age === 55)!
+  assert.equal(retired.income, 0)
+  assert.ok(retired.wdCash + retired.wdTaxable + retired.wdTaxDeferred + retired.wdTaxFree > 50_000)
+})

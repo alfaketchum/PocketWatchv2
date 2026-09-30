@@ -108,6 +108,12 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         <Line label="Expenses" value={fmtMoney(m.expenses)} hint="Spending + debt payments + taxes + asset purchases" />
         <Line label="Savings rate" value={m.savingsRate === null ? "—" : fmtPct(m.savingsRate)} hint="Share of after-tax income not spent (pre-tax 401k/HSA counts as saved)" />
         <Line label="Contributions" value={fmtMoney(m.contributions)} hint="Payroll contributions, employer match and surplus saved" />
+        <Line label="Withdrawals" value={fmtMoney(m.withdrawals)} hint="Taken from your accounts to cover spending, including the tax on those withdrawals" />
+        <Line
+          label="Withdrawal rate"
+          value={m.withdrawalRate === null ? "—" : fmtPct(m.withdrawalRate)}
+          hint="Withdrawals ÷ account balances at the start of the year"
+        />
       </Section>
       <Section>
         <TaxBalanceBar balance={m.taxBalance} colors={colors} />
