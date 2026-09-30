@@ -1,6 +1,8 @@
 "use client"
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { fmtPct } from "@/components/fire/fire-helpers"
+import { nominalRate, realRate } from "@/lib/plans/plan-dollars"
 import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
@@ -63,6 +65,7 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
               min={-0.5}
               max={1}
               value={a.returnRate}
+              hint={`Nominal. ≈ ${fmtPct(realRate(a.returnRate, doc.settings.inflation), 1)} real`}
               onChange={(returnRate) => patch(a.id, { returnRate })}
             />
             {a.drainByYear != null && (
@@ -118,7 +121,9 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
         onClick={() => update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))}
       />
       <p className="text-[11px] text-foreground-muted">
-        Returns are nominal (before inflation). A 7% stock return with 3% inflation is about 4% real.
+        Returns are nominal (before inflation); the plan adds {fmtPct(doc.settings.inflation, 1)} inflation on top. To use a real
+        return, enter (1 + real) × (1 + inflation) − 1: 5% real is{" "}
+        {fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} here.
       </p>
     </div>
   )

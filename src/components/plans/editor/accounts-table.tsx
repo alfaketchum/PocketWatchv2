@@ -1,9 +1,10 @@
 "use client"
 
-import { fmtMoney } from "@/components/fire/fire-helpers"
+import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
+import { realRate } from "@/lib/plans/plan-dollars"
 import { patchItem, type PlanEditorProps } from "../plans-helpers"
 import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 
@@ -13,7 +14,7 @@ const COLUMNS = [
   { label: "Account" },
   { label: "Tax type", width: "w-44" },
   { label: "Balance today", align: "right" as const, width: "w-36" },
-  { label: "Return / yr", align: "right" as const, width: "w-28" },
+  { label: "Return / yr (nominal)", align: "right" as const, width: "w-28" },
   { label: "Cost basis", align: "right" as const, width: "w-36" },
   { label: "Short-term gains", align: "right" as const, width: "w-28" },
   { label: "", width: "w-10" },
@@ -49,6 +50,7 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
           </Cell>
           <Cell align="right">
             <CellNumber label="Return" suffix="%" scale={100} min={-0.5} max={1} value={a.returnRate} onChange={(returnRate) => patch(a.id, { returnRate })} />
+            <span className="block px-2 text-[10px] text-foreground-muted">≈ {fmtPct(realRate(a.returnRate, doc.settings.inflation), 1)} real</span>
           </Cell>
           <Cell align="right">
             {a.taxTreatment === "taxable" ? (

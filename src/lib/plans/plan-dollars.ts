@@ -60,3 +60,13 @@ export function rowInTodaysDollars(row: YearRow, inflation: number): YearRow {
 export function rowsForBasis(rows: YearRow[], basis: DollarBasis, inflation: number): YearRow[] {
   return basis === "future" ? rows : rows.map((r) => rowInTodaysDollars(r, inflation))
 }
+
+/** Real return implied by a nominal return: (1 + nominal) / (1 + inflation) − 1. */
+export function realRate(nominal: number, inflation: number): number {
+  return (1 + nominal) / (1 + inflation) - 1
+}
+
+/** Nominal return that gives `real` after inflation: (1 + real) × (1 + inflation) − 1. */
+export function nominalRate(real: number, inflation: number): number {
+  return (1 + real) * (1 + inflation) - 1
+}
