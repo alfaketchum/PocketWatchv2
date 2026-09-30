@@ -23,6 +23,8 @@ const DEBT_KINDS: { value: DebtKind; label: string }[] = [
 ]
 
 const NO_ASSET = "none"
+/** Typical yearly value loss for a car, applied when an asset is switched to "Vehicle". */
+const VEHICLE_DEPRECIATION = -0.15
 
 function newAsset(): PlanAsset {
   return {
@@ -70,10 +72,17 @@ function AssetsList({ doc, update }: PlanEditorProps) {
             <div className="col-span-2 lg:col-span-1">
               <TextField label="Name" value={a.name} onChange={(name) => patch(a.id, { name })} />
             </div>
-            <SelectField label="Type" value={a.kind} options={ASSET_KINDS} onChange={(kind) => patch(a.id, { kind })} />
+            <SelectField
+              label="Type"
+              value={a.kind}
+              options={ASSET_KINDS}
+              onChange={(kind) =>
+                patch(a.id, kind === "vehicle" && a.appreciation >= 0 ? { kind, appreciation: VEHICLE_DEPRECIATION } : { kind })
+              }
+            />
             <FireNumberField label="Value today" prefix="$" min={0} value={a.value} onChange={(value) => patch(a.id, { value })} />
             <FireNumberField
-              label="Appreciation / yr"
+              label="Value change / yr"
               suffix="%"
               scale={100}
               min={-0.5}

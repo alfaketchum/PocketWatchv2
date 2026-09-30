@@ -49,3 +49,51 @@ test("chartMilestones places retirement by age", () => {
   const marks = chartMilestones(doc, simulatePlan(doc))
   assert.deepEqual(marks.map((m) => [m.name, m.age]), [["Retirement", 65]])
 })
+
+import { yearMetrics } from "@/lib/plans/plan-year-metrics"
+
+test("yearMetrics reads a working year like a P&L", () => {
+  const plan: PlanDocument = {
+    ...doc,
+    settings: { ...doc.settings, inflation: 0, incomeTaxRate: 0.2, cashBuffer: 0 },
+    accounts: [{ ...doc.accounts[0], balance: 0 }, { ...doc.accounts[2], balance: 0 }],
+    assets: [],
+    debts: [],
+    incomes: [
+      {
+        id: "sal", name: "Salary", kind: "salary", amount: 100_000, growth: 0, start: { type: "planStart" }, end: { type: "planEnd" },
+        taxable: true, oneTime: false,
+        contributions: [{ id: "c", accountId: "k", percent: 0.1, employerMatchPercent: 0.05, preTax: true }],
+      },
+    ],
+    expenses: [{ id: "e", name: "Living", category: null, amount: 40_000, growth: 0, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
+  }
+  const projection = simulatePlan(plan)
+  const m = yearMetrics(plan, projection.rows, 0, projection.startNetWorth)!
+  assert.equal(m.income, 100_000)
+  assert.equal(m.taxableIncome, 90_000)
+  assert.equal(m.taxes, 18_000)
+  assert.equal(m.effectiveTaxRate, 0.2)
+  assert.equal(m.spending, 40_000)
+  assert.equal(m.expenses, 58_000)
+  // After-tax income 82k, spending 40k → 51.2% kept (the 10% pre-tax 401k counts as kept).
+  assert.ok(Math.abs((m.savingsRate ?? 0) - 42_000 / 82_000) < 1e-9)
+  assert.equal(m.contributions, 15_000 + 32_000)
+  assert.equal(m.netWorthChange, 47_000)
+  assert.equal(m.liquidNetWorth, 32_000)
+  assert.deepEqual(m.incomeSources.map((s) => s.label), ["Salary", "Employer match"])
+})
+
+test("assets report appreciation and depreciation separately", () => {
+  const plan: PlanDocument = {
+    ...doc,
+    debts: [],
+    assets: [
+      { id: "home", name: "Home", kind: "home", value: 100_000, appreciation: 0.05, start: { type: "planStart" }, end: { type: "planEnd" } },
+      { id: "car", name: "Car", kind: "vehicle", value: 20_000, appreciation: -0.1, start: { type: "planStart" }, end: { type: "planEnd" } },
+    ],
+  }
+  const row = simulatePlan(plan).rows[0]
+  assert.ok(Math.abs(row.assetAppreciation - 5_000) < 1e-6)
+  assert.ok(Math.abs(row.assetDepreciation - 2_000) < 1e-6)
+})

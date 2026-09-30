@@ -4,6 +4,7 @@ import {
   applyAssetEvents,
   assetEntries,
   assetValueAt,
+  assetValueChange,
   debtEntries,
   isOwned,
   payDebts,
@@ -103,6 +104,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
 
   const contributionsBy = mergeSums(income.deposits, surplus?.depositsBy ?? {})
   const assetValues = assetValuesAtEnd(plan, index)
+  const valueChange = assetValueChange(plan.assets, index)
   const accountsTotal = sum(holdings.balances)
   const assetsTotal = sum(assetValues)
   const debtsTotal = sum(debts.debtBalances)
@@ -115,6 +117,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     employerMatch: income.employerMatch,
     incomeTax,
     withdrawalTax: deficit?.tax ?? 0,
+    taxableIncome: income.taxableIncome + (deficit?.taxableWithdrawn ?? 0),
     expenses: expenses.total,
     expensesBy: expenses.byId,
     debtPayments: debts.paid,
@@ -125,6 +128,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     withdrawals: sum(deficit?.withdrawalsBy ?? {}),
     withdrawalsBy: deficit?.withdrawalsBy ?? {},
     growth: grownState.growth,
+    assetAppreciation: valueChange.appreciation,
+    assetDepreciation: valueChange.depreciation,
     balances: holdings.balances,
     assetValues,
     debtBalances: debts.debtBalances,

@@ -85,14 +85,19 @@ export function withdrawalSequence(doc: PlanDocument): PlanAccount[] {
   return [...explicit, ...rest]
 }
 
-/** Share of a withdrawal lost to tax for this account right now. */
-function withdrawalTaxRate(account: PlanAccount, holdings: Holdings, doc: PlanDocument): number {
-  if (account.taxTreatment === "traditional") return doc.settings.incomeTaxRate
+/** Share of a withdrawal that counts as taxable income: all of it (traditional) or the gains (taxable). */
+function taxableShare(account: PlanAccount, holdings: Holdings): number {
+  if (account.taxTreatment === "traditional") return 1
   if (account.taxTreatment !== "taxable") return 0
   const balance = holdings.balances[account.id] ?? 0
   if (balance <= 0) return 0
-  const gainShare = Math.max(0, 1 - (holdings.basis[account.id] ?? 0) / balance)
-  return gainShare * doc.settings.capitalGainsRate
+  return Math.max(0, 1 - (holdings.basis[account.id] ?? 0) / balance)
+}
+
+/** Share of a withdrawal lost to tax for this account right now. */
+function withdrawalTaxRate(account: PlanAccount, holdings: Holdings, doc: PlanDocument): number {
+  const rate = account.taxTreatment === "traditional" ? doc.settings.incomeTaxRate : doc.settings.capitalGainsRate
+  return taxableShare(account, holdings) * rate
 }
 
 function withdraw(holdings: Holdings, account: PlanAccount, gross: number): Holdings {
@@ -109,6 +114,8 @@ export interface DeficitResult {
   holdings: Holdings
   withdrawalsBy: Record<string, number>
   tax: number
+  /** Traditional withdrawals plus realized gains: the part of withdrawals that is taxable income. */
+  taxableWithdrawn: number
   shortfall: number
 }
 
@@ -118,6 +125,7 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
   let current = holdings
   let withdrawalsBy: Record<string, number> = {}
   let tax = 0
+  let taxableWithdrawn = 0
   for (const account of withdrawalSequence(doc)) {
     if (left <= 0) break
     const balance = current.balances[account.id] ?? 0
@@ -125,10 +133,11 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     if (balance <= 0 || rate >= 1) continue
     const net = Math.min(left, balance * (1 - rate))
     const gross = net / (1 - rate)
+    taxableWithdrawn += gross * taxableShare(account, current)
     current = withdraw(current, account, gross)
     withdrawalsBy = add(withdrawalsBy, account.id, gross)
     tax += gross - net
     left -= net
   }
-  return { holdings: current, withdrawalsBy, tax, shortfall: Math.max(0, left) }
+  return { holdings: current, withdrawalsBy, tax, taxableWithdrawn, shortfall: Math.max(0, left) }
 }

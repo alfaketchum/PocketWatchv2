@@ -168,6 +168,8 @@ export interface YearRow {
   employerMatch: number
   incomeTax: number
   withdrawalTax: number
+  /** Taxable earned income after pre-tax contributions, plus traditional withdrawals and realized gains. */
+  taxableIncome: number
   expenses: number
   expensesBy: Record<string, number>
   debtPayments: number
@@ -178,6 +180,9 @@ export interface YearRow {
   withdrawals: number
   withdrawalsBy: Record<string, number>
   growth: number
+  /** Value gained / lost this year by assets held all year (depreciation is positive). */
+  assetAppreciation: number
+  assetDepreciation: number
   balances: Record<string, number>
   assetValues: Record<string, number>
   debtBalances: Record<string, number>

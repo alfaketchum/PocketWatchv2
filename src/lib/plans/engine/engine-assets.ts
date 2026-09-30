@@ -98,3 +98,16 @@ export function payDebts(
   }
   return { debtBalances: balances, paid }
 }
+
+/** Change in value this year of assets held all year, split into gains and losses. */
+export function assetValueChange(assets: AssetEntry[], index: number): { appreciation: number; depreciation: number } {
+  let appreciation = 0
+  let depreciation = 0
+  for (const { asset, range } of assets) {
+    if (!isOwned(range, index)) continue
+    const change = assetValueAt(asset, index + 1) - assetValueAt(asset, index)
+    if (change >= 0) appreciation += change
+    else depreciation -= change
+  }
+  return { appreciation, depreciation }
+}
