@@ -135,6 +135,15 @@ function buildJobs(): readonly JobConfig[] {
       headers: bearerHeader(process.env.FINANCE_DIGEST_SECRET),
     },
     {
+      // Daily at 06:20 — top up each wallet's Zerion value history (last month) and rebuild chart caches.
+      name: "wallet-history-refresh",
+      schedule: "20 20 6 * * *",
+      endpoint: "/api/internal/wallet-history-refresh",
+      method: "POST",
+      headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
+    {
       // Daily at 03:10 — downsample old high-frequency snapshots to daily.
       name: "snapshot-compaction",
       schedule: "10 10 3 * * *",

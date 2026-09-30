@@ -287,6 +287,11 @@ export async function fetchWalletHistory(
   }
 }
 
+/** The last month of one wallet's value history (1 request): tops up stored history without re-fetching all of it. */
+export async function fetchRecentWalletHistory(apiKey: string, address: string, fungibleIds?: string[]): Promise<[number, number][]> {
+  return fetchWalletChartResilient(apiKey, address, "month", fungibleIds)
+}
+
 /**
  * Sum per-wallet charts into one series. Each wallet forward-fills its last
  * known value between its own points (no cliffs when wallets' timestamps differ)

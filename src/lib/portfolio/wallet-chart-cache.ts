@@ -1,10 +1,11 @@
 /**
  * Per-wallet Zerion history, fetched ONCE per wallet and kept (WalletChartCache).
  *
- * Past values don't change, so there is no periodic re-fetch: recent days come
- * from live_refresh snapshots, which the chart already prefers per day. Zerion is
- * only called for wallets with no stored history yet (a newly added wallet, or
- * everything after a forced rebuild) — 2 requests per wallet per series.
+ * Recent days also come from live_refresh snapshots, which the chart prefers per
+ * day. Zerion is called in full (2 requests per wallet per series) only for
+ * wallets with no stored history yet (a newly added wallet, or everything after a
+ * forced rebuild); a daily job tops up the last month (1 request) once a wallet's
+ * history ends more than a day ago (wallet-history-refresh.ts).
  *
  * Two series per wallet:
  *   "total"      → summed into ChartCache (the value history)
@@ -15,7 +16,7 @@
 
 import { createHash } from "node:crypto"
 import { db } from "@/lib/db"
-import { fetchWalletHistory, sumWalletCharts } from "./zerion-client"
+import { fetchRecentWalletHistory, fetchWalletHistory, sumWalletCharts } from "./zerion-client"
 import { withProviderPermit } from "./provider-governor"
 import { filterValidPoints } from "./snapshot-validation"
 import { normalizeWalletAddress } from "./utils"
@@ -29,7 +30,7 @@ const MAX_ROWS = 200_000
 const INSERT_BATCH = 1_000
 
 /** "total", "stablecoin", or "asset:<zerion fungible id>" (one token's history) */
-type Series = "total" | "stablecoin" | `asset:${string}`
+export type Series = "total" | "stablecoin" | `asset:${string}`
 
 function seriesFilter(series: Series): string[] | undefined {
   if (series === "total") return undefined
@@ -103,6 +104,42 @@ async function storeWalletHistory(userId: string, address: string, series: Serie
       await tx.walletChartCache.createMany({ data: rows.slice(i, i + INSERT_BATCH), skipDuplicates: true })
     }
   })
+}
+
+const DAY_SEC = 86_400
+
+/** One point per UTC day: the day's last value. */
+function dailyPoints(points: Array<[number, number]>): Array<[number, number]> {
+  const byDay = new Map<number, [number, number]>()
+  for (const [ts, value] of [...points].sort((a, b) => a[0] - b[0])) byDay.set(Math.floor(ts / DAY_SEC), [Math.floor(ts), value])
+  return [...byDay.values()]
+}
+
+/** Wallets whose stored `series` history ends before `before` (seconds), or that have none. */
+export async function walletsEndingBefore(userId: string, addresses: string[], series: Series, before: number): Promise<string[]> {
+  const latest = await db.walletChartCache.groupBy({ by: ["address"], where: { userId, series }, _max: { timestamp: true } })
+  const end = new Map(latest.map((r) => [r.address, r._max.timestamp ?? 0]))
+  return addresses.filter((a) => (end.get(normalizeWalletAddress(a)) ?? 0) < before)
+}
+
+/**
+ * Tops up one wallet's stored history with Zerion's last month (1 request): stored days from the first
+ * fetched day on are replaced, one point per day; older history is untouched. Returns days stored.
+ * Throws on a failed fetch, leaving what was stored.
+ */
+export async function refreshRecentWalletHistory(userId: string, zerionKey: string, address: string, series: Series): Promise<number> {
+  const points = dailyPoints(await fetchRecentWalletHistory(zerionKey, address, seriesFilter(series)))
+  if (points.length === 0) return 0
+  const normalized = normalizeWalletAddress(address)
+  const from = Math.floor(points[0][0] / DAY_SEC) * DAY_SEC
+  await db.$transaction(async (tx) => {
+    await tx.walletChartCache.deleteMany({ where: { userId, address: normalized, series, timestamp: { gte: from } } })
+    await tx.walletChartCache.createMany({
+      data: points.map(([timestamp, value]) => ({ userId, address: normalized, series, timestamp, value })),
+      skipDuplicates: true,
+    })
+  })
+  return points.length
 }
 
 async function sumStoredSeries(userId: string, addresses: string[], series: Series): Promise<[number, number][]> {
@@ -194,7 +231,7 @@ const stableRunning = (g.__pwStableSyncRunning ??= new Set())
  * Cheap when current (two small queries); fetches only wallets missing it.
  * Never throws — the net-worth split falls back until it succeeds.
  */
-export async function syncStablecoinCharts(userId: string): Promise<void> {
+export async function syncStablecoinCharts(userId: string, rebuild = false): Promise<void> {
   if (stableRunning.has(userId)) return
   stableRunning.add(userId)
   try {
@@ -211,7 +248,7 @@ export async function syncStablecoinCharts(userId: string): Promise<void> {
     const zerionKey = await getServiceKey(userId, "zerion")
 
     const changed = await syncSeriesRows(userId, zerionKey, addresses, "stablecoin", walletFingerprint)
-    if (!changed && cached > 0 && previous === walletFingerprint) return
+    if (!rebuild && !changed && cached > 0 && previous === walletFingerprint) return
 
     const points = (await sumStoredSeries(userId, addresses, "stablecoin")).filter(([, v]) => Number.isFinite(v) && v >= 0)
     await db.$transaction(async (tx) => {
