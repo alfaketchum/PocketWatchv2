@@ -31,6 +31,8 @@ const SAME_STATE = "same"
 /** Typical yearly value change once owned. */
 const VEHICLE_DEPRECIATION = -0.15
 const HOME_APPRECIATION = 0.03
+/** Typical years a car is kept before the next one. */
+const VEHICLE_REPLACE_YEARS = 10
 
 /** Everything the template forms can edit; each template reads the fields it needs. */
 export interface TemplateDraft {
@@ -55,6 +57,8 @@ export interface TemplateDraft {
   rate: number
   termYears: number
   appreciation: number
+  /** Buy a vehicle: replace it every this many years (0 = keep it). */
+  replaceEvery: number
   parts: InheritedPart[]
   relationship: Relationship
   decedentState: string | null
@@ -77,7 +81,9 @@ const DEFAULT_NAMES: Record<TemplateKey, string> = {
 }
 
 /** Starting price and loan for a purchase template; other templates ignore these. */
-function purchaseDefaults(key: TemplateKey): Pick<TemplateDraft, "price" | "payWith" | "downPayment" | "rate" | "termYears" | "appreciation"> {
+function purchaseDefaults(
+  key: TemplateKey,
+): Pick<TemplateDraft, "price" | "payWith" | "downPayment" | "rate" | "termYears" | "appreciation" | "replaceEvery"> {
   const vehicle = key === "vehicle"
   const price = vehicle ? 40_000 : 500_000
   const terms = TYPICAL_FINANCING[vehicle ? "vehicle" : "home"]
@@ -88,6 +94,7 @@ function purchaseDefaults(key: TemplateKey): Pick<TemplateDraft, "price" | "payW
     rate: terms.rate,
     termYears: terms.termYears,
     appreciation: vehicle ? VEHICLE_DEPRECIATION : HOME_APPRECIATION,
+    replaceEvery: vehicle ? VEHICLE_REPLACE_YEARS : 0,
   }
 }
 
@@ -142,7 +149,10 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
       return applyChild(doc, name, d.startYear, newItemId)
     case "home":
     case "vehicle": {
-      const input = { name, when: d.when, price: d.price, payWith: d.payWith, downPayment: d.downPayment, rate: d.rate, termYears: d.termYears, appreciation: d.appreciation }
+      const input = {
+        name, when: d.when, price: d.price, payWith: d.payWith, downPayment: d.downPayment, rate: d.rate, termYears: d.termYears,
+        appreciation: d.appreciation, replaceEveryYears: key === "vehicle" && d.replaceEvery >= 1 ? Math.round(d.replaceEvery) : null,
+      }
       return key === "home" ? applyHome(doc, input, newItemId) : applyVehicle(doc, input, newItemId)
     }
     case "career":
@@ -215,6 +225,16 @@ function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: SetDraft
         <FireNumberField label="Price (today's $)" prefix="$" min={0} value={d.price} onChange={(price) => set({ price })} />
         <SelectField label="How you'll pay" value={d.payWith} options={PAY_OPTIONS} onChange={(payWith) => set({ payWith })} />
       </div>
+      {kind === "vehicle" && (
+        <FireNumberField
+          label="Replace every (years)"
+          min={0}
+          max={50}
+          value={d.replaceEvery}
+          hint="0 = keep it. Each time, it's sold at its value and a like one bought at today's price plus inflation."
+          onChange={(replaceEvery) => set({ replaceEvery })}
+        />
+      )}
       {d.payWith === "loan" && (
         <div className="grid grid-cols-3 gap-2">
           <FireNumberField label="Down payment" prefix="$" min={0} value={d.downPayment} onChange={(downPayment) => set({ downPayment })} />

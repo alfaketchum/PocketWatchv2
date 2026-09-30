@@ -90,7 +90,11 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <TimingCell timing={a.start} doc={doc} />
             </Cell>
             <Cell>
-              <TimingCell timing={a.end} doc={doc} />
+              {a.replaceEveryYears ? (
+                <span className="block truncate px-2 text-xs text-foreground-muted">Replaced every {a.replaceEveryYears} yrs</span>
+              ) : (
+                <TimingCell timing={a.end} doc={doc} />
+              )}
             </Cell>
             <Cell>
               <span className="block truncate px-2 text-xs text-foreground-muted">{paidWithLabel(a, doc)}</span>

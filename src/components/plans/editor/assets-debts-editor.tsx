@@ -124,6 +124,18 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               onChange={(costBasis) => patch(a.id, { costBasis })}
             />
           </div>
+          {a.kind === "vehicle" && (
+            <div className="grid grid-cols-2 gap-2 items-end">
+              <FireNumberField
+                label="Replace every (years)"
+                min={0}
+                max={50}
+                value={a.replaceEveryYears ?? 0}
+                hint="0 = keep it. Sold at its value then, and a like one bought at today's price plus inflation."
+                onChange={(years) => patch(a.id, { replaceEveryYears: years >= 1 ? Math.round(years) : null })}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <TimingPicker label="Owned from" value={a.start} doc={doc} onChange={(start) => patch(a.id, { start })} />
             <TimingPicker

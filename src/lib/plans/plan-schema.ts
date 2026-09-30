@@ -113,6 +113,7 @@ const asset = z.object({
     .array(z.object({ name, amount: z.number().min(0).max(1e8), basis: z.enum(["dollars", "percentOfValue"]) }))
     .max(10)
     .optional(),
+  replaceEveryYears: z.number().int().min(1).max(50).nullable().optional(),
   origin,
 })
 

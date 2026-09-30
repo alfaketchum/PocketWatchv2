@@ -3,11 +3,13 @@ import type { AssetKind, PlanDocument, PlanMilestone } from "./plan-types"
 
 const BUY_ICONS: Record<AssetKind, string> = { home: "home", vehicle: "directions_car", other: "shopping_bag" }
 
-/** "Buy the house" / "Sell the car" milestones for assets bought or sold during the plan. */
+/** "Buy the house" / "Replace the car" / "Sell the car" milestones for assets bought or sold during the plan. */
 export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
   return doc.assets.flatMap((asset) => {
     const marks: PlanMilestone[] = []
-    if (asset.start.type !== "planStart") {
+    if (asset.replacementOf) {
+      marks.push({ id: `asset-${asset.id}-buy`, name: `Replace ${asset.name}`, kind: "asset", icon: "autorenew", timing: asset.start })
+    } else if (asset.start.type !== "planStart") {
       const received = asset.acquired === "received"
       marks.push({
         id: `asset-${asset.id}-buy`,
@@ -17,7 +19,7 @@ export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
         timing: asset.start,
       })
     }
-    if (asset.end.type !== "planEnd") {
+    if (asset.end.type !== "planEnd" && !asset.replaced) {
       marks.push({ id: `asset-${asset.id}-sell`, name: `Sell ${asset.name}`, kind: "asset", icon: "sell", timing: asset.end })
     }
     return marks

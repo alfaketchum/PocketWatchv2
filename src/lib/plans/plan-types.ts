@@ -165,6 +165,12 @@ export interface PlanAsset {
   financing?: AssetFinancing
   /** Insurance, maintenance, property tax…: charged every year it's owned. */
   runningCosts?: AssetRunningCost[]
+  /** Sell it and buy another like it every this many years (a car), until it's sold. Null or missing = keep it. */
+  replaceEveryYears?: number | null
+  /** Generated only: the asset this one replaces (a later car in a replacement cycle). */
+  replacementOf?: string
+  /** Generated only: sold because a replacement takes over, not sold outright. */
+  replaced?: boolean
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }

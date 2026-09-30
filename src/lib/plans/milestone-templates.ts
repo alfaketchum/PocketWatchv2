@@ -131,6 +131,8 @@ export interface PurchaseInput {
   termYears: number
   /** Yearly value change once owned (negative for a car). */
   appreciation: number
+  /** Replace it every this many years; null keeps it. */
+  replaceEveryYears?: number | null
 }
 
 /** A future purchase (home, vehicle): the asset with how it's paid; its loan and "Buy …" milestone are generated. */
@@ -150,6 +152,7 @@ function applyPurchase(doc: PlanDocument, kind: AssetKind, input: PurchaseInput,
         end: { type: "planEnd" },
         financing: { mode: input.payWith, downShare, rate: input.rate, termYears: input.termYears },
         runningCosts: TYPICAL_RUNNING_COSTS[kind],
+        ...(input.replaceEveryYears ? { replaceEveryYears: input.replaceEveryYears } : {}),
       },
     ],
   }
