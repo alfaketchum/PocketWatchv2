@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
@@ -36,16 +37,22 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
   return (
     <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">
       <p className="text-xs font-semibold text-foreground">From your kids and assets</p>
-      <p className="text-[11px] text-foreground-muted">Edit them where they come from: Expenses → Kids, or Assets &amp; debts.</p>
+      <p className="text-[11px] text-foreground-muted">Edit them where they come from.</p>
       {marks.map((m) => (
-        <div key={m.id} className="flex items-center gap-2 text-xs">
+        <Link
+          key={m.id}
+          href={m.kind === "child" ? "?tab=expenses" : "?tab=assets"}
+          scroll={false}
+          className="flex items-center gap-2 text-xs rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/5"
+        >
           <span className={`material-symbols-rounded ${m.kind === "child" ? "text-success" : "text-primary"}`} style={{ fontSize: 15 }}>
             {m.icon ?? "flag"}
           </span>
           <span className="text-foreground">{m.name}</span>
           <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
           <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
-        </div>
+          <span className="ml-auto text-[11px] text-primary">Edit on {m.kind === "child" ? "Expenses" : "Assets & debts"} →</span>
+        </Link>
       ))}
     </div>
   )
@@ -60,7 +67,10 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-foreground-muted">Life events on one timeline. Move a milestone and everything tied to it moves too.</p>
+      <p className="text-xs text-foreground-muted">
+        Your plan&apos;s timeline. Life events that change several things at once are added here; homes, cars, kids and income changes
+        are added on their own tabs and show up here too. Move a milestone and everything tied to it moves with it.
+      </p>
       {view === "compact" ? (
         <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} onDelete={setDeleting} />
       ) : doc.milestones.map((m) => (

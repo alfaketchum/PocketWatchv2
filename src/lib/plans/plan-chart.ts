@@ -1,9 +1,8 @@
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 
-/** Stack order, bottom to top. Debt is drawn below zero. */
-/** Stack order, bottom to top. 529s are a band of tax-free, drawn right above it. */
-export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssetEquity"] as const
+/** Stack order, bottom to top; debt (mortgages and car loans included) is drawn below zero. 529s sit right above tax-free. */
+export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssets"] as const
 
 export type NetWorthLayer = (typeof NET_WORTH_LAYERS)[number]
 
@@ -13,7 +12,7 @@ export const NET_WORTH_LAYER_LABELS: Record<NetWorthLayer | "debt", string> = {
   taxDeferred: "Tax-deferred",
   taxFree: "Tax-free",
   taxFree529: "Tax-free (529)",
-  realAssetEquity: "Real-asset equity",
+  realAssets: "Homes & assets",
   debt: "Debt",
 }
 
@@ -34,26 +33,12 @@ interface Balances {
   debts: Record<string, number>
 }
 
-/**
- * One point's layers. Each asset's equity is its value minus the loans linked to it; loans beyond
- * the asset's value (underwater) and unlinked debts make up the debt layer (negative).
- */
+/** One point's layers: accounts by tax treatment, homes and other assets at full value, and every debt (negative). */
 export function layersFor(doc: PlanDocument, balances: Balances): Record<NetWorthLayer, number> & { debt: number } {
-  const layers = { cash: 0, taxable: 0, taxDeferred: 0, taxFree: 0, taxFree529: 0, realAssetEquity: 0, debt: 0 }
+  const layers = { cash: 0, taxable: 0, taxDeferred: 0, taxFree: 0, taxFree529: 0, realAssets: 0, debt: 0 }
   for (const account of doc.accounts) layers[LAYER_FOR[account.taxTreatment]] += balances.accounts[account.id] ?? 0
-  const linked = new Set<string>()
-  for (const asset of doc.assets) {
-    const value = balances.assets[asset.id]
-    if (value === undefined) continue
-    const loans = doc.debts.filter((d) => d.assetId === asset.id)
-    loans.forEach((d) => linked.add(d.id))
-    const owed = loans.reduce((s, d) => s + (balances.debts[d.id] ?? 0), 0)
-    layers.realAssetEquity += Math.max(0, value - owed)
-    layers.debt -= Math.max(0, owed - value)
-  }
-  for (const debt of doc.debts) {
-    if (!linked.has(debt.id)) layers.debt -= balances.debts[debt.id] ?? 0
-  }
+  for (const asset of doc.assets) layers.realAssets += balances.assets[asset.id] ?? 0
+  for (const debt of doc.debts) layers.debt -= balances.debts[debt.id] ?? 0
   return layers
 }
 
@@ -123,7 +108,7 @@ const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
   taxDeferred: "wdTaxDeferred",
   taxFree: "wdTaxFree",
   taxFree529: "wdTaxFree529",
-  realAssetEquity: null,
+  realAssets: null,
 }
 
 export type CashFlowPoint = { age: number; year: number } & Record<CashFlowLayer, number>

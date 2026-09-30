@@ -22,19 +22,19 @@ const doc: PlanDocument = {
   ],
 }
 
-test("layers split accounts by tax treatment; home equity nets its mortgage; other debt goes below zero", () => {
+test("layers split accounts by tax treatment; homes at full value; every debt, the mortgage too, below zero", () => {
   const layers = layersFor(doc, {
     accounts: { "acct-cash": 10, "acct-brokerage": 20, k: 30, r: 5, h: 5 },
     assets: { home: 300 },
     debts: { mtg: 200, cc: 7 },
   })
-  assert.deepEqual(layers, { cash: 10, taxable: 20, taxDeferred: 30, taxFree: 10, taxFree529: 0, realAssetEquity: 100, debt: -7 })
+  assert.deepEqual(layers, { cash: 10, taxable: 20, taxDeferred: 30, taxFree: 10, taxFree529: 0, realAssets: 300, debt: -207 })
 })
 
-test("an underwater loan shows zero equity and the excess as debt", () => {
+test("an underwater home: the full loan shows as debt, the home at its value", () => {
   const layers = layersFor(doc, { accounts: {}, assets: { home: 150 }, debts: { mtg: 200, cc: 0 } })
-  assert.equal(layers.realAssetEquity, 0)
-  assert.equal(layers.debt, -50)
+  assert.equal(layers.realAssets, 150)
+  assert.equal(layers.debt, -200)
 })
 
 test("netWorthPoints: one bar per year whose total matches the year's net worth", () => {

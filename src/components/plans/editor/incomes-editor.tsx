@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
@@ -11,6 +12,8 @@ import { IncomeContributionsEditor } from "./income-contributions-editor"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { IncomesTable } from "./incomes-table"
+import { AddMilestoneDialog } from "./add-milestone-dialog"
+import type { TemplateKey } from "@/lib/plans/milestone-templates"
 
 const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
   { value: "salary", label: "Salary" },
@@ -23,6 +26,9 @@ const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
 
 /** Income types that usually come with a workplace plan. */
 const PAYROLL_KINDS = new Set<IncomeKind>(["salary", "business"])
+
+/** Income changes offered from Add income (they also add a milestone to the timeline). */
+const INCOME_TEMPLATES: TemplateKey[] = ["career", "break", "windfall"]
 
 function newIncome(hasRetirement: boolean): PlanIncome {
   const end: Timing = hasRetirement ? { type: "milestone", milestoneId: RETIREMENT_MILESTONE_ID } : { type: "planEnd" }
@@ -45,6 +51,7 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
   const patch = (id: string, change: Partial<PlanIncome>) =>
     update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
+  const [adding, setAdding] = useState(false)
 
   return (
     <div className="space-y-3">
@@ -97,11 +104,27 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
           )}
         </ItemCard>
       ))}
-      <AddButton
-        label="Add income"
-        disabled={doc.incomes.length >= PLAN_LIMITS.incomes}
-        onClick={() => update((d) => ({ ...d, incomes: [...d.incomes, newIncome(hasRetirement)] }))}
-      />
+      <AddButton label="Add income" disabled={doc.incomes.length >= PLAN_LIMITS.incomes} onClick={() => setAdding(true)} />
+      {adding && (
+        <AddMilestoneDialog
+          doc={doc}
+          update={update}
+          title="Add income"
+          keys={INCOME_TEMPLATES}
+          instant={[
+            {
+              label: "Salary or other income",
+              icon: "payments",
+              detail: "A regular income you set up yourself",
+              onPick: () => {
+                update((d) => ({ ...d, incomes: [...d.incomes, newIncome(hasRetirement)] }))
+                setAdding(false)
+              },
+            },
+          ]}
+          onClose={() => setAdding(false)}
+        />
+      )}
       <DepositsEditor doc={doc} update={update} />
     </div>
   )

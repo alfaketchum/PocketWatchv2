@@ -11,33 +11,63 @@ import { applyTemplate, draftProblem, initialDraft, TemplateFields, type Templat
 const LANDS_ON: Partial<Record<TemplateKey, string>> = {
   child: "Added to Expenses → Kids",
   home: "Added to Assets & debts",
+  vehicle: "Added to Assets & debts",
+  career: "Added to Income, with a milestone for the change",
+  break: "Added to Income, with milestones for the break",
+  windfall: "Added to Income",
   retire: "Retirement date updated",
   inheritance: "Inheritance added: see Income, Accounts and Assets",
 }
 
-function TemplateGrid({ onPick }: { onPick: (key: TemplateKey) => void }) {
+/** Life events that change several parts of the plan at once; single items are added on their own tab. */
+export const MILESTONE_TAB_TEMPLATES: TemplateKey[] = ["retire", "married", "move", "inheritance", "custom"]
+
+/** A choice that acts right away instead of opening a template form (e.g. a plain new income). */
+export interface InstantChoice {
+  label: string
+  icon: string
+  detail: string
+  onPick: () => void
+}
+
+function ChoiceButton({ icon, label, detail, onClick }: { icon: string; label: string; detail: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-start gap-1 rounded-xl border border-card-border p-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+    >
+      <span className="material-symbols-rounded text-primary" style={{ fontSize: 22 }}>
+        {icon}
+      </span>
+      <span className="text-sm font-medium text-foreground">{label}</span>
+      <span className="text-[11px] leading-snug text-foreground-muted">{detail}</span>
+    </button>
+  )
+}
+
+function TemplateGrid({ keys, instant, onPick }: { keys: TemplateKey[]; instant: InstantChoice[]; onPick: (key: TemplateKey) => void }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-      {MILESTONE_TEMPLATES.map((t) => (
-        <button
-          key={t.key}
-          type="button"
-          onClick={() => onPick(t.key)}
-          className="flex flex-col items-start gap-1 rounded-xl border border-card-border p-3 text-left hover:border-primary hover:bg-primary/5 transition-colors"
-        >
-          <span className="material-symbols-rounded text-primary" style={{ fontSize: 22 }}>
-            {t.icon}
-          </span>
-          <span className="text-sm font-medium text-foreground">{t.label}</span>
-          <span className="text-[11px] leading-snug text-foreground-muted">{t.creates}</span>
-        </button>
+      {instant.map((c) => (
+        <ChoiceButton key={c.label} icon={c.icon} label={c.label} detail={c.detail} onClick={c.onPick} />
+      ))}
+      {MILESTONE_TEMPLATES.filter((t) => keys.includes(t.key)).map((t) => (
+        <ChoiceButton key={t.key} icon={t.icon} label={t.label} detail={t.creates} onClick={() => onPick(t.key)} />
       ))}
     </div>
   )
 }
 
-/** Pop-out for adding a life event: pick a template, fill in a few details, create. */
-export function AddMilestoneDialog({ doc, update, onClose }: PlanEditorProps & { onClose: () => void }) {
+/** Pop-out for adding from templates: pick one (of `keys`, plus any instant choices), fill in a few details, create. */
+export function AddMilestoneDialog({
+  doc,
+  update,
+  onClose,
+  keys = MILESTONE_TAB_TEMPLATES,
+  instant = [],
+  title = "Add a milestone",
+}: PlanEditorProps & { onClose: () => void; keys?: TemplateKey[]; instant?: InstantChoice[]; title?: string }) {
   const [template, setTemplate] = useState<TemplateKey | null>(null)
   const [draft, setDraft] = useState<TemplateDraft | null>(null)
   const meta = MILESTONE_TEMPLATES.find((t) => t.key === template)
@@ -56,7 +86,7 @@ export function AddMilestoneDialog({ doc, update, onClose }: PlanEditorProps & {
 
   return (
     <AccountsModalShell
-      title={meta ? meta.label : "Add a milestone"}
+      title={meta ? meta.label : title}
       onClose={onClose}
       footer={
         template ? (
@@ -82,7 +112,7 @@ export function AddMilestoneDialog({ doc, update, onClose }: PlanEditorProps & {
           <TemplateFields template={template} d={draft} set={(change) => setDraft({ ...draft, ...change })} doc={doc} />
         </div>
       ) : (
-        <TemplateGrid onPick={pick} />
+        <TemplateGrid keys={keys} instant={instant} onPick={pick} />
       )}
     </AccountsModalShell>
   )

@@ -72,7 +72,7 @@ function buildPlanColors(t: {
     taxFree: mix(primary, card, LIGHTER),
     // A lighter band of tax-free, so 529 money reads as tax-free but earmarked.
     taxFree529: mix(primary, card, 0.72),
-    realAssetEquity: mix(foreground, card, 0.75),
+    realAssets: mix(foreground, card, 0.75),
     debt: error,
   }
   return {
@@ -84,13 +84,13 @@ function buildPlanColors(t: {
       wdTaxDeferred: netWorth.taxDeferred,
       wdTaxFree: netWorth.taxFree,
       wdTaxFree529: netWorth.taxFree529,
-      assetSales: netWorth.realAssetEquity,
+      assetSales: netWorth.realAssets,
       // Darker than spending's red so the gap reads differently from the spending it covers.
       unfunded: mix(error, foreground, 0.4),
       spending: error,
       taxes: mix(warning, card, LIGHTER),
       debtPayments: mix(error, card, LIGHTER),
-      assetPurchases: netWorth.realAssetEquity,
+      assetPurchases: netWorth.realAssets,
       saved: primary,
     },
     hub: primary,

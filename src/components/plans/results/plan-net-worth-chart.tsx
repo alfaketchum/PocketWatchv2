@@ -314,7 +314,7 @@ interface Props {
 }
 
 /**
- * One stacked bar per plan year: net worth by tax treatment (with real-asset equity and debt), or
+ * One stacked bar per plan year: net worth by tax treatment (with homes and other assets, and debt below zero), or
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
@@ -358,7 +358,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={
         mode === "networth"
-          ? "Year-end balances by tax treatment. Real-asset equity is what your home and other assets are worth minus the loans on them; other debt shows below zero. Hover a bar to see that year; click to pin it."
+          ? "Year-end balances by tax treatment, plus homes and other assets at what they're worth. Every debt, mortgages and car loans included, shows below zero, so you can watch it shrink; net worth is the dot. Hover a bar to see that year; click to pin it."
           : "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out."
       }
       center={<ModeToggle value={mode} onChange={setMode} />}
