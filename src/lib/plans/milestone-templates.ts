@@ -62,7 +62,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
   let next = addMilestone(doc, { id: msId, name: "Get married", kind: "custom", icon: ICONS.married, timing: input.when })
   if (input.partner && next.people.length < 2) {
     const personId = newId("person")
-    next = { ...next, people: [...next.people, { id: personId, name: input.partner.name, birthYear: input.partner.birthYear, birthMonth: 1 }] }
+    next = { ...next, people: [...next.people, { id: personId, name: input.partner.name, birthYear: input.partner.birthYear, birthMonth: 1, origin: msId }] }
     if (input.partnerIncome > 0) {
       const income: PlanIncome = {
         id: newId("inc"),
@@ -75,6 +75,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
         taxable: true,
         oneTime: false,
         contributions: [],
+        origin: msId,
       }
       next = { ...next, incomes: [...next.incomes, income] }
     }
@@ -83,7 +84,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
     ...next,
     adjustments: [
       ...(next.adjustments ?? []),
-      { id: newId("adj"), kind: "taxRates", timing: at(msId), incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate },
+      { id: newId("adj"), kind: "taxRates", timing: at(msId), incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
     ],
   }
   if (input.weddingCost > 0) {
@@ -91,7 +92,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
       ...next,
       expenses: [
         ...next.expenses,
-        { id: newId("exp"), name: "Wedding", category: null, amount: input.weddingCost, growth: null, start: at(msId), end: at(msId), oneTime: true },
+        { id: newId("exp"), name: "Wedding", category: null, amount: input.weddingCost, growth: null, start: at(msId), end: at(msId), oneTime: true, origin: msId },
       ],
     }
   }
@@ -155,7 +156,7 @@ export function applyCareer(doc: PlanDocument, input: { incomeId: string; when: 
   if (!old) return doc
   const msId = newId("ms-career")
   const next = addMilestone(doc, { id: msId, name: input.name, kind: "custom", icon: ICONS.career, timing: input.when })
-  const replacement: PlanIncome = { ...old, id: newId("inc"), name: input.name, amount: input.amount, start: at(msId), end: old.end }
+  const replacement: PlanIncome = { ...old, id: newId("inc"), name: input.name, amount: input.amount, start: at(msId), end: old.end, origin: msId, continues: old.id }
   return { ...next, incomes: [...next.incomes.map((i) => (i.id === old.id ? { ...i, end: at(msId) } : i)), replacement] }
 }
 
@@ -166,8 +167,8 @@ export function applyBreak(doc: PlanDocument, input: { incomeId: string; startYe
   const startId = newId("ms-break")
   const backId = newId("ms-back")
   let next = addMilestone(doc, { id: startId, name: "Career break", kind: "custom", icon: ICONS.break, timing: { type: "year", year: input.startYear } })
-  next = addMilestone(next, { id: backId, name: "Back to work", kind: "custom", icon: ICONS.career, timing: { type: "year", year: input.startYear + input.years } })
-  const resumed: PlanIncome = { ...old, id: newId("inc"), start: at(backId), end: old.end }
+  next = addMilestone(next, { id: backId, name: "Back to work", kind: "custom", icon: ICONS.career, timing: { type: "year", year: input.startYear + input.years }, origin: startId })
+  const resumed: PlanIncome = { ...old, id: newId("inc"), start: at(backId), end: old.end, origin: startId, continues: old.id }
   return { ...next, incomes: [...next.incomes.map((i) => (i.id === old.id ? { ...i, end: at(startId) } : i)), resumed] }
 }
 
@@ -175,7 +176,7 @@ export function applyBreak(doc: PlanDocument, input: { incomeId: string; startYe
 export function applyMove(doc: PlanDocument, input: { name: string; when: Timing; percent: number }, newId: IdMaker): PlanDocument {
   const msId = newId("ms-move")
   const next = addMilestone(doc, { id: msId, name: input.name, kind: "custom", icon: ICONS.move, timing: input.when })
-  return { ...next, adjustments: [...(next.adjustments ?? []), { id: newId("adj"), kind: "spending", timing: at(msId), percent: input.percent }] }
+  return { ...next, adjustments: [...(next.adjustments ?? []), { id: newId("adj"), kind: "spending", timing: at(msId), percent: input.percent, origin: msId }] }
 }
 
 export function applyWindfall(doc: PlanDocument, input: { name: string; when: Timing; amount: number; taxable: boolean }, newId: IdMaker): PlanDocument {
@@ -192,6 +193,7 @@ export function applyWindfall(doc: PlanDocument, input: { name: string; when: Ti
     taxable: input.taxable,
     oneTime: true,
     contributions: [],
+    origin: msId,
   }
   return { ...next, incomes: [...next.incomes, income] }
 }
@@ -247,22 +249,23 @@ export function applyInheritance(doc: PlanDocument, input: InheritanceInput, new
   let next = addMilestone(doc, { id: msId, name: input.name, kind: "custom", icon: ICONS.inheritance, timing: input.when })
   const when = at(msId)
   const year = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
-  for (const part of input.parts.filter((p) => p.amount > 0)) next = addInheritedPart(next, part, when, year, newId)
+  for (const part of input.parts.filter((p) => p.amount > 0)) next = addInheritedPart(next, part, msId, year, newId)
   const total = input.parts.reduce((s, p) => s + Math.max(0, p.amount), 0)
   if (input.stateTaxRate > 0 && total > 0) {
     next = {
       ...next,
       expenses: [
         ...next.expenses,
-        { id: newId("exp"), name: "State inheritance tax", category: null, amount: total * input.stateTaxRate, growth: null, start: when, end: when, oneTime: true },
+        { id: newId("exp"), name: "State inheritance tax", category: null, amount: total * input.stateTaxRate, growth: null, start: when, end: when, oneTime: true, origin: msId },
       ],
     }
   }
   return next
 }
 
-function addInheritedPart(doc: PlanDocument, part: InheritedPart, when: Timing, year: number, newId: IdMaker): PlanDocument {
+function addInheritedPart(doc: PlanDocument, part: InheritedPart, msId: string, year: number, newId: IdMaker): PlanDocument {
   const label = part.label.trim()
+  const when = at(msId)
   if (part.kind === "cash") {
     const income: PlanIncome = {
       id: newId("inc"),
@@ -275,6 +278,7 @@ function addInheritedPart(doc: PlanDocument, part: InheritedPart, when: Timing, 
       taxable: false,
       oneTime: true,
       contributions: [],
+      origin: msId,
     }
     return { ...doc, incomes: [...doc.incomes, income] }
   }
@@ -283,7 +287,7 @@ function addInheritedPart(doc: PlanDocument, part: InheritedPart, when: Timing, 
       ...doc,
       assets: [
         ...doc.assets,
-        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: { type: "planEnd" }, acquired: "received", costBasis: null },
+        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: { type: "planEnd" }, acquired: "received", costBasis: null, origin: msId },
       ],
     }
   }
@@ -291,12 +295,16 @@ function addInheritedPart(doc: PlanDocument, part: InheritedPart, when: Timing, 
   const account =
     existing ??
     (part.kind === "stocks"
-      ? newAccount(newId("acct"), label || "Inherited brokerage", "taxable", 0.07)
-      : { ...newAccount(newId("acct"), label || (part.roth ? "Inherited Roth IRA" : "Inherited IRA"), part.roth ? "roth" : "traditional", 0.07), drainByYear: year + INHERITED_IRA_YEARS })
+      ? { ...newAccount(newId("acct"), label || "Inherited brokerage", "taxable", 0.07), origin: msId }
+      : {
+          ...newAccount(newId("acct"), label || (part.roth ? "Inherited Roth IRA" : "Inherited IRA"), part.roth ? "roth" : "traditional", 0.07),
+          drainByYear: year + INHERITED_IRA_YEARS,
+          origin: msId,
+        })
   const accounts = existing ? doc.accounts : [...doc.accounts, account]
   return {
     ...doc,
     accounts,
-    deposits: [...(doc.deposits ?? []), { id: newId("dep"), name: label || account.name, accountId: account.id, amount: part.amount, timing: when }],
+    deposits: [...(doc.deposits ?? []), { id: newId("dep"), name: label || account.name, accountId: account.id, amount: part.amount, timing: when, origin: msId }],
   }
 }

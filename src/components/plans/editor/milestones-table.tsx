@@ -1,6 +1,6 @@
 "use client"
 
-import { detachMilestone, milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
+import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanMilestone } from "@/lib/plans/plan-types"
@@ -19,7 +19,7 @@ const COLUMNS = [
 ]
 
 /** Milestones as a table: yours editable, generated ones (kids, assets) read-only, all in date order. */
-export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
+export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEditorProps & { onDelete: (id: string) => void }) {
   const ctx = timingContext(doc)
   const age0 = primaryAge(doc)
   const patch = (id: string, change: Partial<PlanMilestone>) => update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
@@ -75,7 +75,7 @@ export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
                     icon="delete"
                     label={`Remove ${m.name}`}
                     danger
-                    onClick={() => update((d) => detachMilestone(d, m.id))}
+                    onClick={() => onDelete(m.id)}
                   />
                 )}
               </span>

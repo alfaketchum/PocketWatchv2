@@ -1,3 +1,4 @@
+import { removeAccount, removeAsset, removePerson } from "./plan-edits"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanMilestone, Timing } from "./plan-types"
 
@@ -59,4 +60,50 @@ export function detachMilestone(doc: PlanDocument, id: string): PlanDocument {
     deposits: (doc.deposits ?? []).map((d) => ({ ...d, timing: fix(d.timing) })),
     milestones: doc.milestones.filter((m) => m.id !== id).map((m) => ({ ...m, timing: fix(m.timing) })),
   }
+}
+
+const fromMilestone = (id: string) => (item: { origin?: string }) => item.origin === id
+
+/** Everything a template created for this milestone, e.g. ["Wedding (expense)", "Sam (person)"]. */
+export function milestoneCreations(doc: PlanDocument, id: string): string[] {
+  const own = fromMilestone(id)
+  return [
+    ...doc.incomes.filter(own).map((i) => `${i.name} (income)`),
+    ...doc.expenses.filter(own).map((e) => `${e.name} (expense)`),
+    ...(doc.deposits ?? []).filter(own).map((d) => `${d.name} (received)`),
+    ...doc.accounts.filter(own).map((a) => `${a.name} (account)`),
+    ...doc.assets.filter(own).map((a) => `${a.name} (asset)`),
+    ...doc.debts.filter(own).map((d) => `${d.name} (debt)`),
+    ...(doc.adjustments ?? []).filter(own).map((a) => (a.kind === "taxRates" ? "Tax rate change" : "Spending change")),
+    ...doc.people.filter(own).map((p) => `${p.name} (person)`),
+    ...doc.milestones.filter(own).map((m) => `${m.name} (milestone)`),
+  ]
+}
+
+/**
+ * Delete a milestone and undo what its template added: those items go away (incomes that picked up
+ * from another restore its original end), then anything else still pointing at it is pinned to its year.
+ */
+export function removeMilestoneWithItems(doc: PlanDocument, id: string): PlanDocument {
+  const own = fromMilestone(id)
+  let next = doc
+  for (const child of doc.milestones.filter(own)) next = removeMilestoneWithItems(next, child.id)
+  const removedIncomes = next.incomes.filter(own)
+  next = {
+    ...next,
+    incomes: next.incomes
+      .filter((i) => !own(i))
+      .map((i) => {
+        const continuation = removedIncomes.find((r) => r.continues === i.id)
+        return continuation ? { ...i, end: continuation.end } : i
+      }),
+    expenses: next.expenses.filter((e) => !own(e)),
+    deposits: (next.deposits ?? []).filter((d) => !own(d)),
+    adjustments: (next.adjustments ?? []).filter((a) => !own(a)),
+  }
+  for (const asset of next.assets.filter(own)) next = removeAsset(next, asset.id)
+  next = { ...next, debts: next.debts.filter((d) => !own(d)) }
+  for (const account of next.accounts.filter(own)) next = removeAccount(next, account.id)
+  for (const person of next.people.filter(own)) next = removePerson(next, person.id)
+  return detachMilestone(next, id)
 }

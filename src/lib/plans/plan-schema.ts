@@ -3,6 +3,7 @@ import { PLAN_LIMITS } from "./plan-constants"
 import type { PlanDocument } from "./plan-types"
 
 const id = z.string().min(1).max(64)
+const origin = id.optional()
 const name = z.string().max(80)
 const money = z.number().min(0).max(1e10)
 const rate = z.number().min(-0.5).max(1)
@@ -33,7 +34,7 @@ const settings = z.object({
   protectBuffer: z.boolean().default(true),
 })
 
-const person = z.object({ id, name, birthYear: year, birthMonth: month })
+const person = z.object({ id, name, birthYear: year, birthMonth: month, origin })
 
 const account = z.object({
   id,
@@ -45,6 +46,7 @@ const account = z.object({
   owner: id.nullable(),
   source,
   drainByYear: year.nullable().optional(),
+  origin,
 })
 
 const contribution = z.object({
@@ -66,6 +68,8 @@ const income = z.object({
   taxable: z.boolean(),
   oneTime: z.boolean(),
   contributions: z.array(contribution).max(PLAN_LIMITS.contributionsPerIncome),
+  continues: id.optional(),
+  origin,
 })
 
 const expense = z.object({
@@ -77,6 +81,7 @@ const expense = z.object({
   start: timing,
   end: timing,
   oneTime: z.boolean(),
+  origin,
 })
 
 const asset = z.object({
@@ -89,6 +94,7 @@ const asset = z.object({
   end: timing,
   acquired: z.enum(["purchase", "received"]).optional(),
   costBasis: money.nullable().optional(),
+  origin,
 })
 
 const debt = z.object({
@@ -101,6 +107,7 @@ const debt = z.object({
   start: timing,
   assetId: id.nullable(),
   source,
+  origin,
 })
 
 const milestone = z.object({
@@ -109,11 +116,12 @@ const milestone = z.object({
   kind: z.enum(["retirement", "custom"]),
   timing,
   icon: z.string().max(40).optional(),
+  origin,
 })
 
 const adjustment = z.discriminatedUnion("kind", [
-  z.object({ id, kind: z.literal("taxRates"), timing, incomeTaxRate: share, capitalGainsRate: share }),
-  z.object({ id, kind: z.literal("spending"), timing, percent: z.number().min(-0.95).max(5) }),
+  z.object({ id, kind: z.literal("taxRates"), timing, incomeTaxRate: share, capitalGainsRate: share, origin }),
+  z.object({ id, kind: z.literal("spending"), timing, percent: z.number().min(-0.95).max(5), origin }),
 ])
 
 const child = z.object({
@@ -148,7 +156,7 @@ export const planDocumentSchema = z.object({
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
   children: z.array(child).max(PLAN_LIMITS.children),
   adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
-  deposits: z.array(z.object({ id, name, accountId: id, amount: money, timing })).max(PLAN_LIMITS.deposits),
+  deposits: z.array(z.object({ id, name, accountId: id, amount: money, timing, origin })).max(PLAN_LIMITS.deposits),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

@@ -1,7 +1,8 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument, PRIMARY_PERSON_ID } from "@/lib/plans/plan-constants"
-import { removeAccount, removePerson, timingLabel } from "@/components/plans/plans-helpers"
+import { removeAccount, removePerson } from "@/lib/plans/plan-edits"
+import { timingLabel } from "@/components/plans/plans-helpers"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
 const base = blankPlanDocument(new Date(2026, 0, 1), 40)
@@ -41,7 +42,7 @@ test("timingLabel names milestones and ages", () => {
   assert.equal(timingLabel({ type: "age", personId: PRIMARY_PERSON_ID, age: 50 }, base), "age 50")
 })
 
-import { removeChild } from "@/components/plans/plans-helpers"
+import { removeChild } from "@/lib/plans/plan-edits"
 import { newChild } from "@/lib/plans/plan-children"
 
 test("removing a child also removes the 529 account created for them, and references to it", () => {

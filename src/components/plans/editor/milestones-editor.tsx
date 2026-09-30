@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
-import { detachMilestone, milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
+import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
+import { DeleteMilestoneDialog } from "./delete-milestone-dialog"
 import { AddButton, ItemCard, TextField } from "./plan-editor-controls"
 import { Badge } from "./plan-table"
 import { TimingPicker } from "./timing-picker"
@@ -53,6 +54,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
 /** Named points in time that income, spending and assets can start or stop at. */
 export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
   const [adding, setAdding] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const patch = (id: string, change: Partial<PlanMilestone>) =>
     update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
 
@@ -60,7 +62,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
     <div className="space-y-3">
       <p className="text-xs text-foreground-muted">Life events on one timeline. Move a milestone and everything tied to it moves too.</p>
       {view === "compact" ? (
-        <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} />
+        <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} onDelete={setDeleting} />
       ) : doc.milestones.map((m) => (
         <ItemCard
           key={m.id} anchorId={planItemAnchor(m.id)}
@@ -77,7 +79,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
           onRemove={
             m.kind === "retirement"
               ? undefined
-              : () => update((d) => detachMilestone(d, m.id))
+              : () => setDeleting(m.id)
           }
         >
           <UsedBy uses={milestoneUses(doc, m.id)} />
@@ -96,6 +98,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
       {view !== "compact" && <GeneratedMilestones doc={doc} />}
       <AddButton label="Add milestone" disabled={doc.milestones.length >= PLAN_LIMITS.milestones} onClick={() => setAdding(true)} />
       {adding && <AddMilestoneDialog doc={doc} update={update} onClose={() => setAdding(false)} />}
+      {deleting && <DeleteMilestoneDialog doc={doc} update={update} id={deleting} onClose={() => setDeleting(null)} />}
     </div>
   )
 }

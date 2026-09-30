@@ -3,7 +3,8 @@
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
-import { patchItem, removeAccount, type PlanEditorProps } from "../plans-helpers"
+import { removeAccount } from "@/lib/plans/plan-edits"
+import { patchItem, type PlanEditorProps } from "../plans-helpers"
 import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 
 const TREATMENTS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({ value, label: TAX_TREATMENT_LABELS[value] }))

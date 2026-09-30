@@ -8,6 +8,7 @@ import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../p
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
+import { removeAsset } from "@/lib/plans/plan-edits"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -61,11 +62,7 @@ function newDebt(): PlanDebt {
 function AssetsList({ doc, update }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
   const remove = (id: string) =>
-    update((d) => ({
-      ...d,
-      assets: d.assets.filter((a) => a.id !== id),
-      debts: d.debts.map((debt) => (debt.assetId === id ? { ...debt, assetId: null } : debt)),
-    }))
+    update((d) => removeAsset(d, id))
   return (
     <InputBlock
       title="Assets"

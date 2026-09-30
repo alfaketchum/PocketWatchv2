@@ -5,6 +5,7 @@ import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
+import { removeAsset } from "@/lib/plans/plan-edits"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -94,13 +95,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
                 name={a.name}
                 anchor={planItemAnchor(a.id)}
                 onEditItem={onEditItem}
-                onRemove={() =>
-                  update((d) => ({
-                    ...d,
-                    assets: d.assets.filter((x) => x.id !== a.id),
-                    debts: d.debts.map((debt) => (debt.assetId === a.id ? { ...debt, assetId: null } : debt)),
-                  }))
-                }
+                onRemove={() => update((d) => removeAsset(d, a.id))}
               />
             </Cell>
           </Row>

@@ -29,6 +29,8 @@ export interface PlanPerson {
   birthYear: number
   /** 1–12. */
   birthMonth: number
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export interface PlanSettings {
@@ -64,6 +66,8 @@ export interface PlanAccount {
   source: PlanSource | null
   /** Inherited retirement accounts must be emptied by the end of this year (10-year rule); drawn evenly. */
   drainByYear?: number | null
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 /** Payroll contribution from an income stream into an account. */
@@ -92,6 +96,10 @@ export interface PlanIncome {
   /** Paid once, in the start year. */
   oneTime: boolean
   contributions: PlanContribution[]
+  /** Set on an income that picks up where another left off (career change/break); removing it restores that one's end. */
+  continues?: string
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export interface PlanExpense {
@@ -107,6 +115,8 @@ export interface PlanExpense {
   oneTime: boolean
   /** Paid from this account first (tax-free), e.g. college from a 529. Set on generated child expenses. */
   fundedBy?: string | null
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export interface PlanAsset {
@@ -123,6 +133,8 @@ export interface PlanAsset {
   acquired?: "purchase" | "received"
   /** For capital-gains tax on sale; null = value when acquired (purchase price, or stepped-up value). */
   costBasis?: number | null
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export interface PlanDebt {
@@ -138,6 +150,8 @@ export interface PlanDebt {
   /** The asset this debt finances; it is paid off when the asset is sold. */
   assetId: string | null
   source: PlanSource | null
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export interface SurplusTarget {
@@ -158,6 +172,8 @@ export interface PlanMilestone {
   timing: Timing
   /** Material Symbols icon for generated milestones (children). */
   icon?: string
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 export type CollegePreset = "public_in_state" | "public_out_of_state" | "private" | "custom"
@@ -197,17 +213,20 @@ export interface PlanDeposit {
   /** Today's dollars. */
   amount: number
   timing: Timing
+  /** The milestone that created this (templates); deleting that milestone can remove it too. */
+  origin?: string
 }
 
 /** A change that applies from a point in time onward (the latest one in effect wins). */
 export type PlanAdjustment =
-  | { id: string; kind: "taxRates"; timing: Timing; incomeTaxRate: number; capitalGainsRate: number }
+  | { id: string; kind: "taxRates"; timing: Timing; incomeTaxRate: number; capitalGainsRate: number; origin?: string }
   | {
       id: string
       kind: "spending"
       timing: Timing
       /** Your own expenses change by this share from then on (−0.2 = 20% less). Kids' costs are unaffected. */
       percent: number
+      origin?: string
     }
 
 export interface PlanDocument {
