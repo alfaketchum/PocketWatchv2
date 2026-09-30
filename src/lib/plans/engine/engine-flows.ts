@@ -1,5 +1,6 @@
-import { isActive, resolveRange, type ResolvedRange, type TimingContext } from "../plan-timing"
+import { ageAtStart, isActive, resolveRange, type ResolvedRange, type TimingContext } from "../plan-timing"
 import { ASSET_COSTS_CATEGORY } from "../plan-asset-costs"
+import { patternFactor, retirementAge } from "../plan-spending-patterns"
 import type { PlanAccount, PlanExpense, PlanIncome } from "../plan-types"
 
 export interface IncomeEntry {
@@ -10,6 +11,8 @@ export interface IncomeEntry {
 export interface ExpenseEntry {
   expense: PlanExpense
   range: ResolvedRange
+  /** Share of today's amount in year `index` from the line's spending pattern (1 = steady). */
+  pattern: (index: number) => number
 }
 
 export function incomeEntries(incomes: PlanIncome[], ctx: TimingContext): IncomeEntry[] {
@@ -17,7 +20,14 @@ export function incomeEntries(incomes: PlanIncome[], ctx: TimingContext): Income
 }
 
 export function expenseEntries(expenses: PlanExpense[], ctx: TimingContext): ExpenseEntry[] {
-  return expenses.map((expense) => ({ expense, range: resolveRange(expense.start, expense.end, ctx) }))
+  const person = ctx.doc.people[0]
+  const age0 = person ? ageAtStart(person, ctx.doc.settings) : 0
+  const retireAge = retirementAge(ctx.doc)
+  return expenses.map((expense) => ({
+    expense,
+    range: resolveRange(expense.start, expense.end, ctx),
+    pattern: (index: number) => (expense.oneTime ? 1 : patternFactor(expense.pattern, age0 + index, retireAge)),
+  }))
 }
 
 /** Nominal amount in year `index` for a today's-dollars amount growing at `growth` (null = inflation). */
@@ -101,10 +111,10 @@ const FIXED_CATEGORIES = new Set(["Kids", ASSET_COSTS_CATEGORY])
 
 export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: number, spendingFactor = 1): ExpenseYear {
   return entries.reduce<ExpenseYear>(
-    (acc, { expense, range }) => {
+    (acc, { expense, range, pattern }) => {
       if (!isActive(range, index, expense.oneTime)) return acc
       const factor = (expense.category !== null && FIXED_CATEGORIES.has(expense.category)) || expense.oneTime ? 1 : spendingFactor
-      const amount = grown(expense.amount, expense.growth, inflation, index) * factor
+      const amount = grown(expense.amount, expense.growth, inflation, index) * factor * pattern(index)
       return { total: acc.total + amount, byId: { ...acc.byId, [expense.id]: amount } }
     },
     { total: 0, byId: {} },

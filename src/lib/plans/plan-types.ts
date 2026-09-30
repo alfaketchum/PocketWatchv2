@@ -111,6 +111,19 @@ export interface PlanIncome {
   origin?: string
 }
 
+/**
+ * How a spending line changes with age, on top of inflation: steady, go-go (more in the first years of
+ * retirement, then less), tapering (a little less each year of retirement), rising (healthcare, faster
+ * than inflation later in life) or custom phases.
+ */
+export type PatternPreset = "steady" | "gogo" | "tapering" | "rising" | "custom"
+
+export interface SpendingPattern {
+  preset: PatternPreset
+  /** Custom only: from each age on, spend this share of today's amount (1 = 100%). */
+  phases?: { fromAge: number; factor: number }[]
+}
+
 export interface PlanExpense {
   id: string
   name: string
@@ -124,6 +137,8 @@ export interface PlanExpense {
   oneTime: boolean
   /** Paid from this account first (tax-free), e.g. college from a 529. Set on generated child expenses. */
   fundedBy?: string | null
+  /** How it changes with age; missing = steady. */
+  pattern?: SpendingPattern
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }

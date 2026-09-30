@@ -1,12 +1,15 @@
 "use client"
 
 import { useMemo } from "react"
+import { toast } from "sonner"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { applyTypicalPatterns, retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { newItemId, patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
+import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
 import { ChildrenEditor } from "./children-editor"
 import { AddButton, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
@@ -34,6 +37,12 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
     () => doc.expenses.filter((e) => !e.oneTime && e.start.type === "planStart").reduce((s, e) => s + e.amount, 0),
     [doc.expenses],
   )
+  const ages = useMemo(() => ({ from: primaryAge(doc), to: doc.settings.endAge, retire: retirementAge(doc) }), [doc])
+  const applyTypical = () => {
+    const { changed } = applyTypicalPatterns(doc)
+    update((d) => applyTypicalPatterns(d).doc)
+    toast.success(changed > 0 ? `Set a typical retirement pattern on ${changed} line${changed === 1 ? "" : "s"}` : "Already set to the typical pattern")
+  }
 
   return (
     <div className="space-y-8">
@@ -52,9 +61,22 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
         {doc.expenses.length === 0 ? (
           <EmptyNote>No expenses yet. Start with one line for everyday living costs; split it up later if you want.</EmptyNote>
         ) : (
-          <p className="text-xs text-foreground-muted">
-            Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-foreground-muted">
+              Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
+            </p>
+            <button
+              type="button"
+              onClick={applyTypical}
+              title="Travel, dining and fun: go-go. Shopping, transport, personal care: tapering. Healthcare: rising. Everything else: steady."
+              className="btn-secondary text-xs"
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                elderly
+              </span>
+              Use a typical retirement pattern
+            </button>
+          </div>
         )}
         {view === "compact" ? (
         <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
@@ -96,6 +118,15 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
               )}
             </div>
             <Toggle label="One-time" checked={e.oneTime} onChange={(oneTime) => patch(e.id, { oneTime })} />
+            {!e.oneTime && (
+              <ExpensePatternField
+                pattern={e.pattern}
+                onChange={(pattern) => patch(e.id, { pattern })}
+                fromAge={ages.from}
+                toAge={ages.to}
+                retireAge={ages.retire}
+              />
+            )}
           </ItemCard>
         ))}
         <AddButton

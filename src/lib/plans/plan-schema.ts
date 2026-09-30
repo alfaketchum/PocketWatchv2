@@ -88,6 +88,12 @@ const expense = z.object({
   start: timing,
   end: timing,
   oneTime: z.boolean(),
+  pattern: z
+    .object({
+      preset: z.enum(["steady", "gogo", "tapering", "rising", "custom"]),
+      phases: z.array(z.object({ fromAge: z.number().int().min(0).max(120), factor: z.number().min(0).max(5) })).max(10).optional(),
+    })
+    .optional(),
   origin,
 })
 
