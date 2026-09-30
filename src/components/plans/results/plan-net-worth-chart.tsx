@@ -225,6 +225,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
       ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
       : [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
   const series = allSeries.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
+  const hasDebt = nwPoints.some((p) => p.debt < -0.5)
   const yAxis = fitAxis(points, series)
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
@@ -294,13 +295,13 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                 <Tooltip content={() => null} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
                 <ReferenceLine y={0} stroke={border} />
                 {series.map(bars)}
-                {mode === "networth" && (
+                {/* Net worth only differs from the bar tops when there's debt; mark it with a light dot then. */}
+                {mode === "networth" && hasDebt && (
                   <Line
-                    type="monotone"
                     dataKey="netWorth"
-                    stroke={foreground}
-                    strokeWidth={1.5}
-                    dot={false}
+                    stroke="none"
+                    dot={{ r: 2.5, fill: foregroundMuted, stroke: "none" }}
+                    activeDot={false}
                     isAnimationActive={false}
                   />
                 )}
