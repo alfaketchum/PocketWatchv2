@@ -52,6 +52,10 @@ export const FIRE_NAV_ITEMS: NavItem[] = [
   { id: "fire-compare", label: "How You Compare", href: "/fire/compare", icon: "groups" },
 ]
 
+export const PLANS_NAV_ITEMS: NavItem[] = [
+  { id: "plans-list", label: "Plans", href: "/plans", icon: "route" },
+]
+
 export const TRAVEL_NAV_ITEMS: NavItem[] = [
   { id: "travel-flights", label: "Flight Search", href: "/travel", icon: "flight" },
   { id: "travel-hotels", label: "Hotel Search", href: "/travel/hotels", icon: "hotel" },
@@ -70,6 +74,7 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
   fire:      { label: "FIRE",          items: FIRE_NAV_ITEMS },
+  plans:     { label: "Plans",         items: PLANS_NAV_ITEMS },
   accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
@@ -78,11 +83,12 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
 
 function buildDefaultPrefs(): SidebarPrefs {
   return {
-    categoryOrder: ["netWorth", "finance", "fire", "accounts", "portfolio", "travel", "ai"],
+    categoryOrder: ["netWorth", "finance", "fire", "plans", "accounts", "portfolio", "travel", "ai"],
     categories: {
       netWorth:  { order: NET_WORTH_NAV_ITEMS.map((i) => i.id), hidden: [] },
       finance:   { order: FINANCE_NAV_ITEMS.map((i) => i.id),   hidden: [] },
       fire:      { order: FIRE_NAV_ITEMS.map((i) => i.id),      hidden: [] },
+      plans:     { order: PLANS_NAV_ITEMS.map((i) => i.id),     hidden: [] },
       accounts:  { order: ACCOUNTS_NAV_ITEMS.map((i) => i.id),  hidden: [] },
       portfolio: { order: PORTFOLIO_NAV_ITEMS.map((i) => i.id), hidden: [] },
       travel:    { order: TRAVEL_NAV_ITEMS.map((i) => i.id),    hidden: [] },
@@ -178,6 +184,13 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
   if (fireCat && !fireCat.order.includes("fire-portfolio")) {
     const planIdx = fireCat.order.indexOf("fire-plan")
     fireCat.order.splice(planIdx >= 0 ? planIdx + 1 : fireCat.order.length, 0, "fire-portfolio")
+    savePrefs(prefs)
+  }
+  // Inject plans category if missing (manual Plans, placed right after FIRE)
+  if (!prefs.categoryOrder.includes("plans")) {
+    const fireIdx = prefs.categoryOrder.indexOf("fire")
+    prefs.categoryOrder.splice(fireIdx >= 0 ? fireIdx + 1 : prefs.categoryOrder.length, 0, "plans")
+    prefs.categories.plans = { order: PLANS_NAV_ITEMS.map((i) => i.id), hidden: [] }
     savePrefs(prefs)
   }
   // Remove domain settings items (consolidated to /settings)
