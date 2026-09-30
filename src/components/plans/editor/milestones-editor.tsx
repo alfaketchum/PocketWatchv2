@@ -10,7 +10,7 @@ import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
 import { DeleteMilestoneDialog } from "./delete-milestone-dialog"
-import { AddButton, ItemCard, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, ItemCard, TextField } from "./plan-editor-controls"
 import { Badge } from "./plan-table"
 import { TimingPicker } from "./timing-picker"
 import { MilestonesTable } from "./milestones-table"
@@ -59,7 +59,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
 }
 
 /** Named points in time that income, spending and assets can start or stop at. */
-export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
+export function MilestonesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const patch = (id: string, change: Partial<PlanMilestone>) =>
@@ -67,6 +67,9 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
 
   return (
     <div className="space-y-3">
+      <EditorToolbar toggle={viewToggle}>
+        <AddButton label="Add milestone" disabled={doc.milestones.length >= PLAN_LIMITS.milestones} onClick={() => setAdding(true)} />
+      </EditorToolbar>
       <p className="text-xs text-foreground-muted">
         Your plan&apos;s timeline. Life events that change several things at once are added here; homes, cars, kids and income changes
         are added on their own tabs and show up here too. Move a milestone and everything tied to it moves with it.
@@ -106,7 +109,6 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
         </ItemCard>
       ))}
       {view !== "compact" && <GeneratedMilestones doc={doc} />}
-      <AddButton label="Add milestone" disabled={doc.milestones.length >= PLAN_LIMITS.milestones} onClick={() => setAdding(true)} />
       {adding && <AddMilestoneDialog doc={doc} update={update} onClose={() => setAdding(false)} />}
       {deleting && <DeleteMilestoneDialog doc={doc} update={update} id={deleting} onClose={() => setDeleting(null)} />}
     </div>

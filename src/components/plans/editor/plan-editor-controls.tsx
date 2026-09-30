@@ -105,6 +105,16 @@ export function AddButton({ label, onClick, disabled }: { label: string; onClick
   )
 }
 
+/** Top of a list tab: its Add buttons on the left, the Compact / Detailed switch on the right. */
+export function EditorToolbar({ children, toggle }: { children?: ReactNode; toggle?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
+      {toggle}
+    </div>
+  )
+}
+
 export function EmptyNote({ children }: { children: ReactNode }) {
   return <p className="text-xs text-foreground-muted">{children}</p>
 }

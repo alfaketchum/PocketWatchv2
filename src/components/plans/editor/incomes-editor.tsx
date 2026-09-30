@@ -9,7 +9,7 @@ import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../p
 import { DepositsEditor } from "./deposits-editor"
 import { GrowthField } from "./growth-field"
 import { IncomeContributionsEditor } from "./income-contributions-editor"
-import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { IncomesTable } from "./incomes-table"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
@@ -47,7 +47,7 @@ function newIncome(hasRetirement: boolean): PlanIncome {
 }
 
 /** Income streams: salary until retirement, Social Security later, one-time windfalls. */
-export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
+export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanIncome>) =>
     update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
@@ -55,6 +55,9 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
 
   return (
     <div className="space-y-3">
+      <EditorToolbar toggle={viewToggle}>
+        <AddButton label="Add income" disabled={doc.incomes.length >= PLAN_LIMITS.incomes} onClick={() => setAdding(true)} />
+      </EditorToolbar>
       {doc.incomes.length === 0 && <EmptyNote>No income yet. Add your salary, and later Social Security or a pension.</EmptyNote>}
       {view === "compact" ? (
         <IncomesTable doc={doc} update={update} onEditItem={onEditItem} />
@@ -104,7 +107,6 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
           )}
         </ItemCard>
       ))}
-      <AddButton label="Add income" disabled={doc.incomes.length >= PLAN_LIMITS.incomes} onClick={() => setAdding(true)} />
       {adding && (
         <AddMilestoneDialog
           doc={doc}

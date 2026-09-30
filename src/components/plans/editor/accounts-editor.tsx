@@ -7,7 +7,7 @@ import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/pl
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
-import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { RefreshBalancesButton } from "./refresh-balances-button"
 import { AccountsTable } from "./accounts-table"
 
@@ -30,12 +30,19 @@ function newAccount(): PlanAccount {
 }
 
 /** Accounts: balances at plan start, tax bucket, and expected return. */
-export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
+export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
   return (
     <div className="space-y-3">
+      <EditorToolbar toggle={viewToggle}>
+        <AddButton
+          label="Add account"
+          disabled={doc.accounts.length >= PLAN_LIMITS.accounts}
+          onClick={() => update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))}
+        />
+      </EditorToolbar>
       <RefreshBalancesButton doc={doc} update={update} />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
       {view === "compact" ? (
@@ -125,11 +132,6 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
           </div>
         </ItemCard>
       ))}
-      <AddButton
-        label="Add account"
-        disabled={doc.accounts.length >= PLAN_LIMITS.accounts}
-        onClick={() => update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))}
-      />
       <p className="text-[11px] text-foreground-muted">
         Returns are nominal (before inflation); the plan adds {fmtPct(doc.settings.inflation, 1)} inflation on top. To use a real
         return, enter (1 + real) × (1 + inflation) − 1: 5% real is{" "}

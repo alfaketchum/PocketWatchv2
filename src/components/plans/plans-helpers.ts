@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { allMilestones } from "@/lib/plans/plan-milestones"
 import { ageAtStart } from "@/lib/plans/plan-timing"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
@@ -49,6 +50,8 @@ export interface PlanEditorProps {
   view?: "compact" | "detailed"
   /** From the compact table: open an item's full editor in the detailed view. */
   onEditItem?: (id: string) => void
+  /** The Compact / Detailed switch, shown at the right of the tab's toolbar. */
+  viewToggle?: ReactNode
 }
 
 /** DOM id of an item's card in detailed view, so the table can jump to it. */

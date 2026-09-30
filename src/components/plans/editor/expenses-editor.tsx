@@ -18,7 +18,7 @@ import { newItemId, patchItem, type PlanEditorProps, planItemAnchor, primaryAge 
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
 import { ChildrenEditor } from "./children-editor"
-import { AddButton, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { ExpensesTable } from "./expenses-table"
 
@@ -36,7 +36,7 @@ function newExpense(): PlanExpense {
 }
 
 /** Spending streams: everyday living costs, kids, travel, a one-time wedding or car. */
-export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
+export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanExpense>) =>
     update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const recurringTotal = useMemo(
@@ -48,6 +48,18 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
 
   return (
     <div className="space-y-8">
+      <EditorToolbar toggle={viewToggle}>
+        <AddButton
+          label="Add expense"
+          disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
+          onClick={() =>
+            update((d) => {
+              const line = newExpense()
+              return { ...d, expenses: [...d.expenses, { ...line, pattern: patternForNewLine(d, line) }] }
+            })
+          }
+        />
+      </EditorToolbar>
       {view === "compact" ? (
         <p className="text-xs text-foreground-muted">
           Kids&apos; costs are listed below as read-only lines.{" "}
@@ -126,16 +138,6 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             )}
           </ItemCard>
         ))}
-        <AddButton
-          label="Add expense"
-          disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
-          onClick={() =>
-            update((d) => {
-              const line = newExpense()
-              return { ...d, expenses: [...d.expenses, { ...line, pattern: patternForNewLine(d, line) }] }
-            })
-          }
-        />
       </div>
     </div>
   )

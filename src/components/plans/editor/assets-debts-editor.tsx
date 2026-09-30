@@ -6,7 +6,7 @@ import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
-import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
@@ -150,7 +150,6 @@ function AssetsList({ doc, update }: PlanEditorProps) {
           <AssetRunningCostsFields asset={a} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
         </ItemCard>
       ))}
-      <AddAssetButton doc={doc} update={update} />
     </InputBlock>
   )
 }
@@ -202,11 +201,6 @@ function DebtsList({ doc, update }: PlanEditorProps) {
           )}
         </ItemCard>
       ))}
-      <AddButton
-        label="Add debt"
-        disabled={doc.debts.length >= PLAN_LIMITS.debts}
-        onClick={() => update((d) => ({ ...d, debts: [...d.debts, newDebt()] }))}
-      />
     </InputBlock>
   )
 }
@@ -214,24 +208,28 @@ function DebtsList({ doc, update }: PlanEditorProps) {
 /** Homes, vehicles and the loans against them. */
 export function AssetsDebtsEditor(props: PlanEditorProps) {
   const { doc, update } = props
+  const toolbar = (
+    <EditorToolbar toggle={props.viewToggle}>
+      <AddAssetButton doc={doc} update={update} />
+      <AddButton
+        label="Add debt"
+        disabled={doc.debts.length >= PLAN_LIMITS.debts}
+        onClick={() => update((d) => ({ ...d, debts: [...d.debts, newDebt()] }))}
+      />
+    </EditorToolbar>
+  )
   if (props.view === "compact") {
     return (
       <div className="space-y-3">
+        {toolbar}
         <PlanLoanSuggestions doc={doc} update={update} />
         <AssetsDebtsTable {...props} />
-        <div className="flex flex-wrap gap-2">
-          <AddAssetButton doc={doc} update={update} />
-          <AddButton
-            label="Add debt"
-            disabled={doc.debts.length >= PLAN_LIMITS.debts}
-            onClick={() => update((d) => ({ ...d, debts: [...d.debts, newDebt()] }))}
-          />
-        </div>
       </div>
     )
   }
   return (
     <div className="space-y-6">
+      {toolbar}
       <PlanLoanSuggestions doc={doc} update={update} />
       <AssetsList {...props} />
       <DebtsList {...props} />

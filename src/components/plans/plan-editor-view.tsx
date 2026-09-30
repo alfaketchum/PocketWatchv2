@@ -101,12 +101,13 @@ export function PlanEditorView({ planId }: { planId: string }) {
       <PlanEditorTabs value={tab} onChange={setTab} />
       {Editor ? (
         <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
-          {TABLE_TABS.has(tab) && (
-            <div className="flex justify-end">
-              <ViewToggle value={listView} onChange={setListView} />
-            </div>
-          )}
-          <Editor doc={document} update={update} view={TABLE_TABS.has(tab) ? listView : "detailed"} onEditItem={editInList} />
+          <Editor
+            doc={document}
+            update={update}
+            view={TABLE_TABS.has(tab) ? listView : "detailed"}
+            onEditItem={editInList}
+            viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
+          />
         </div>
       ) : (
         <>
