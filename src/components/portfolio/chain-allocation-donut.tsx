@@ -12,6 +12,8 @@ interface ChainAllocationDonutProps {
 }
 
 const FALLBACK_COLOR = "#86868B"
+/** Dust chains below this aren't shown */
+const MIN_CHAIN_USD = 5
 
 /** Where the portfolio sits, by chain / ecosystem. */
 export function ChainAllocationDonut({ locations, totalValue, isHidden }: ChainAllocationDonutProps) {
@@ -19,7 +21,7 @@ export function ChainAllocationDonut({ locations, totalValue, isHidden }: ChainA
     if (!locations || totalValue <= 0) return []
     return Object.entries(locations)
       .map(([key, val]) => ({ key, value: typeof val === "string" ? parseFloat(val) || 0 : val }))
-      .filter((s) => s.value > 0)
+      .filter((s) => s.value >= MIN_CHAIN_USD)
       .sort((a, b) => b.value - a.value)
       .map((s) => {
         const meta = getChainMeta(s.key)

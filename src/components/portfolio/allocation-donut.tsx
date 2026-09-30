@@ -23,15 +23,18 @@ interface AllocationDonutProps {
   isHidden?: boolean
 }
 
-const SIZE = 168
-const RADIUS = 64
-const STROKE = 18
-const ACTIVE_GROW = 4
+const SIZE = 248
+const RADIUS = 96
+const STROKE = 28
+const ACTIVE_GROW = 6
 /** Gap between slices, in px along the ring */
-const GAP = 2
+const GAP = 3
 /** Smallest arc drawn, so tiny slices stay visible and hoverable */
-const MIN_ARC = 2
+const MIN_ARC = 3
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+
+const fmtLegend = (v: number) =>
+  v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
 
 const fmtCenter = (v: number) =>
   v.toLocaleString("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 2 })
@@ -86,16 +89,16 @@ function Ring({ slices, sum, active, onActive, totalValue, caption, isHidden }: 
           </circle>
         ))}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-6">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-foreground-muted truncate max-w-full">
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-10">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-foreground-muted truncate max-w-full">
           {current ? current.label : caption}
         </span>
         <BlurredValue isHidden={!!isHidden}>
-          <span className="font-data text-base font-semibold tabular-nums text-foreground">
+          <span className="font-data text-2xl font-semibold tabular-nums text-foreground">
             {fmtCenter(current ? current.value : totalValue)}
           </span>
         </BlurredValue>
-        {current && <span className="font-data text-[11px] tabular-nums text-foreground-muted">{pct(current.value).toFixed(1)}%</span>}
+        {current && <span className="font-data text-xs tabular-nums text-foreground-muted">{pct(current.value).toFixed(1)}%</span>}
       </div>
     </div>
   )
@@ -119,7 +122,7 @@ function LegendRow({ slice, percentage, active, onActive, isHidden }: {
       <span className="flex-shrink-0 w-4 flex items-center justify-center">{slice.icon}</span>
       <span className="min-w-0 flex-1 truncate font-data text-[11px] font-medium text-foreground">{slice.label}</span>
       <BlurredValue isHidden={!!isHidden}>
-        <span className="whitespace-nowrap font-data text-[11px] tabular-nums text-foreground-muted">{formatFiatValue(slice.value)}</span>
+        <span className="whitespace-nowrap font-data text-[11px] tabular-nums text-foreground-muted">{fmtLegend(slice.value)}</span>
       </BlurredValue>
       <span
         className="w-12 text-right whitespace-nowrap font-data text-[10px] tabular-nums"
@@ -140,9 +143,9 @@ export function AllocationDonut({ title, slices, totalValue, caption, isHidden }
   return (
     <div className="h-full bg-card border border-card-border rounded-xl p-5">
       <p className="text-xs font-medium text-foreground-muted mb-4">{title}</p>
-      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-center gap-6">
         <Ring slices={slices} sum={sum} active={active} onActive={setActive} totalValue={totalValue} caption={caption} isHidden={isHidden} />
-        <div className="w-full min-w-0 flex-1 space-y-0.5">
+        <div className="grid w-full min-w-0 grid-cols-1 gap-x-6 gap-y-0.5 sm:grid-cols-2">
           {slices.map((slice) => (
             <LegendRow
               key={slice.key}
