@@ -43,6 +43,8 @@ export function rowInTodaysDollars(row: YearRow, inflation: number): YearRow {
     contributionsBy: scaleRecord(row.contributionsBy, flow),
     employerMatchBy: scaleRecord(row.employerMatchBy, flow),
     withdrawalsBy: scaleRecord(row.withdrawalsBy, flow),
+    surplusBy: scaleRecord(row.surplusBy, flow),
+    shortfallBy: scaleRecord(row.shortfallBy, flow),
     balances: scaleRecord(row.balances, balance),
     assetValues: scaleRecord(row.assetValues, balance),
     debtBalances: scaleRecord(row.debtBalances, balance),

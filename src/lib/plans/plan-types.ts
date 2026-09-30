@@ -219,6 +219,10 @@ export interface YearRow {
   contributionsBy: Record<string, number>
   withdrawals: number
   withdrawalsBy: Record<string, number>
+  /** Leftover cash flow deposited per account by the cash-flow rules (buffer top-up included). */
+  surplusBy: Record<string, number>
+  /** Withdrawals per account made to cover a shortfall (not earmarked 529 draws). */
+  shortfallBy: Record<string, number>
   growth: number
   /** Value gained / lost this year by assets held all year (depreciation is positive). */
   assetAppreciation: number

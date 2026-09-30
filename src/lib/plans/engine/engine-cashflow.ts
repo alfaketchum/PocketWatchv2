@@ -33,6 +33,11 @@ export function bufferAccount(doc: PlanDocument): PlanAccount | null {
   return cash.find((a) => a.id === doc.settings.bufferAccountId) ?? cash[0] ?? null
 }
 
+/** Where surplus lands when no listed target is uncapped: the first taxable (then cash, …) account. */
+export function surplusOverflowAccount(doc: PlanDocument): PlanAccount | null {
+  return firstByTreatment(doc.accounts, SURPLUS_OVERFLOW_ORDER)
+}
+
 export interface SurplusResult {
   holdings: Holdings
   depositsBy: Record<string, number>
@@ -75,7 +80,7 @@ export function depositSurplus(
       put(account, Math.min(left, target.annualCap * inflationFactor))
     }
   }
-  const fallback = overflow ?? firstByTreatment(doc.accounts, SURPLUS_OVERFLOW_ORDER)
+  const fallback = overflow ?? surplusOverflowAccount(doc)
   if (fallback) put(fallback, left)
   return { holdings: current, depositsBy }
 }

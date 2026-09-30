@@ -71,9 +71,9 @@ export function CashBufferEditor({ doc, update }: PlanEditorProps) {
   return (
     <InputBlock
       title="Cash buffer (emergency fund)"
-      description="Cash you keep on hand. Each year, leftover money refills it before anything is invested."
+      description="Cash you keep on hand: the first thing leftover money refills, and (when protected) the last thing a shortfall touches."
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr_auto] gap-3 items-end">
         <FireNumberField label="Amount (today's $)" prefix="$" min={0} value={doc.settings.cashBuffer} onChange={(cashBuffer) => set({ cashBuffer })} />
         {cashAccounts.length > 0 && holder && (
           <SelectField
@@ -83,8 +83,10 @@ export function CashBufferEditor({ doc, update }: PlanEditorProps) {
             onChange={(bufferAccountId) => set({ bufferAccountId })}
           />
         )}
+        <div className="pb-1.5">
+          <ProtectSwitch checked={doc.settings.protectBuffer} disabled={!holder} onChange={(protectBuffer) => set({ protectBuffer })} />
+        </div>
       </div>
-      <ProtectSwitch checked={doc.settings.protectBuffer} disabled={!holder} onChange={(protectBuffer) => set({ protectBuffer })} />
       <p
         className={cn(
           "rounded-lg px-3 py-2 text-xs",

@@ -125,6 +125,8 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
     growth: grownState.growth,
     contributionsBy: mergeSums(mergeSums(income.deposits, transfers.byAccount), surplus?.depositsBy ?? {}),
     withdrawalsBy: mergeSums(earmarked.byAccount, deficit?.withdrawalsBy ?? {}),
+    surplusBy: surplus?.depositsBy ?? {},
+    shortfallBy: deficit?.withdrawalsBy ?? {},
     deficit,
   }
 }
@@ -159,6 +161,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     contributionsBy: moved.contributionsBy,
     withdrawals: sum(moved.withdrawalsBy),
     withdrawalsBy: moved.withdrawalsBy,
+    surplusBy: moved.surplusBy,
+    shortfallBy: moved.shortfallBy,
     growth: moved.growth,
     assetAppreciation: valueChange.appreciation,
     assetDepreciation: valueChange.depreciation,
