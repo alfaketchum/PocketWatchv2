@@ -3,43 +3,35 @@
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { customFrom, PATTERN_HINTS, PATTERN_LABELS, patternFactor, switchAge } from "@/lib/plans/plan-spending-patterns"
 import type { PatternPreset, SpendingPattern, SpendingStage } from "@/lib/plans/plan-types"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
+import { ChipMenu, type ChipOption, type ChipTone } from "./chip-menu"
 
-const PRESET_OPTIONS = (Object.keys(PATTERN_LABELS) as PatternPreset[]).map((value) => ({ value, label: PATTERN_LABELS[value] }))
 type Switch = "none" | "retirement" | "age"
-const SWITCH_OPTIONS: { value: Switch; label: string }[] = [
-  { value: "none", label: "no change" },
-  { value: "retirement", label: "at retirement" },
-  { value: "age", label: "at age" },
-]
-const MAX_PHASES = 10
-/** Inline so the global (unlayered) form styles don't blow the chips up to full-size fields. */
-const CHIP_STYLE = { fontSize: 11, lineHeight: "16px", height: "auto", minHeight: 0, padding: "2px 22px 2px 10px", borderRadius: 9999 } as const
-const AGE_STYLE = { ...CHIP_STYLE, width: 52, padding: "2px 8px" } as const
-const SPARK = { width: 140, height: 32, pad: 3 }
 
-/** A compact dropdown styled as a chip. */
-function ChipSelect<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
-  return (
-    <label className="relative inline-flex items-center">
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as T)}
-        style={CHIP_STYLE}
-        className="appearance-none border border-primary/40 bg-primary/5 font-medium text-foreground hover:border-primary focus:outline-none"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <span className="material-symbols-rounded pointer-events-none absolute right-1.5 text-foreground-muted" style={{ fontSize: 14 }}>
-        expand_more
-      </span>
-    </label>
-  )
+/** Colors: steady neutral, go-go green (more), tapering amber (less), rising red (costs climb), custom accent. */
+const PATTERN_TONE: Record<PatternPreset, ChipTone> = { steady: "neutral", gogo: "success", tapering: "warning", rising: "error", custom: "primary" }
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+const PRESET_OPTIONS: ChipOption<PatternPreset>[] = (Object.keys(PATTERN_LABELS) as PatternPreset[]).map((value) => ({
+  value,
+  label: PATTERN_LABELS[value],
+  hint: `${capitalize(PATTERN_HINTS[value])}.`,
+  tone: PATTERN_TONE[value],
+}))
+
+function switchOptions(retireAge: number | null): ChipOption<Switch>[] {
+  return [
+    { value: "none", label: "no change", hint: "Keeps the first pattern to the end of the plan." },
+    { value: "retirement", label: "at retirement", hint: `Switches at your plan's retirement date${retireAge !== null ? ` (age ${retireAge})` : " (none set yet)"}.` },
+    { value: "age", label: "at age", hint: "Switches at an age you choose, whenever you retire." },
+  ]
 }
+
+const MAX_PHASES = 10
+/** Inline so the global (unlayered) form styles don't blow the age box up to a full-size field. */
+const AGE_STYLE = { fontSize: 11, lineHeight: "16px", height: "auto", minHeight: 0, width: 52, padding: "2px 8px", borderRadius: 9999 } as const
+const SPARK = { width: 140, height: 32, pad: 3 }
 
 /** Tiny curve of the share of today's spending from now to the plan's end, with the switch marked. */
 function Sparkline({ pattern, fromAge, toAge, retireAge }: { pattern: SpendingPattern | undefined; fromAge: number; toAge: number; retireAge: number | null }) {
@@ -96,6 +88,7 @@ export function PatternChips({
   fromAge,
   retireAge,
   nowrap = false,
+  warning,
 }: {
   pattern: SpendingPattern | undefined
   onChange: (pattern: SpendingPattern) => void
@@ -103,6 +96,8 @@ export function PatternChips({
   retireAge: number | null
   /** Keep on one line (table rows). */
   nowrap?: boolean
+  /** Shown as a warning icon at the end (hover for the text). */
+  warning?: string | null
 }) {
   const current: SpendingPattern = pattern ?? { preset: "steady" }
   const then = current.then
@@ -117,9 +112,9 @@ export function PatternChips({
   return (
     <div className={`flex items-center gap-1 text-[11px] text-foreground-muted whitespace-nowrap ${nowrap ? "" : "flex-wrap"}`}>
       <span>From now</span>
-      <ChipSelect label="Pattern from now" value={current.preset} options={PRESET_OPTIONS} onChange={(p) => onChange(withPreset(current, p, fromAge))} />
+      <ChipMenu label="Pattern from now" value={current.preset} options={PRESET_OPTIONS} onChange={(p) => onChange(withPreset(current, p, fromAge))} />
       <span>then</span>
-      <ChipSelect label="When it changes" value={switchKind} options={SWITCH_OPTIONS} onChange={setSwitch} />
+      <ChipMenu label="When it changes" value={switchKind} options={switchOptions(retireAge)} onChange={setSwitch} />
       {then?.at === "age" && (
         <input
           type="number"
@@ -135,8 +130,15 @@ export function PatternChips({
       {then && (
         <>
           <span>→</span>
-          <ChipSelect label="Pattern after it changes" value={then.preset} options={PRESET_OPTIONS} onChange={(p) => onChange({ ...current, then: withPreset(then, p, thenStart) })} />
+          <ChipMenu label="Pattern after it changes" value={then.preset} options={PRESET_OPTIONS} onChange={(p) => onChange({ ...current, then: withPreset(then, p, thenStart) })} />
         </>
+      )}
+      {warning && (
+        <InfoTooltip content={warning}>
+          <span role="img" aria-label={warning} className="material-symbols-rounded cursor-help text-warning" style={{ fontSize: 16 }}>
+            warning
+          </span>
+        </InfoTooltip>
       )}
     </div>
   )
@@ -152,12 +154,14 @@ export function ExpensePatternField({
   fromAge,
   toAge,
   retireAge,
+  warning,
 }: {
   pattern: SpendingPattern | undefined
   onChange: (pattern: SpendingPattern) => void
   fromAge: number
   toAge: number
   retireAge: number | null
+  warning?: string | null
 }) {
   const current: SpendingPattern = pattern ?? { preset: "steady" }
   const then = current.then
@@ -168,7 +172,7 @@ export function ExpensePatternField({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <PatternChips pattern={current} onChange={onChange} fromAge={fromAge} retireAge={retireAge} />
+        <PatternChips pattern={current} onChange={onChange} fromAge={fromAge} retireAge={retireAge} warning={warning} />
         <Sparkline pattern={current} fromAge={fromAge} toAge={toAge} retireAge={retireAge} />
       </div>
       <p className="text-[11px] text-foreground-muted">
@@ -182,6 +186,7 @@ export function ExpensePatternField({
           </>
         )}
       </p>
+      {warning && <p className="text-[11px] text-warning">{warning}</p>}
       {current.preset === "custom" && (
         <PhasesEditor title="Custom phases (from now)" phases={current.phases ?? []} startAge={fromAge} onChange={(phases) => onChange({ ...current, phases })} />
       )}

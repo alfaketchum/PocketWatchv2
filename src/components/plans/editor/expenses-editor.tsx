@@ -1,13 +1,13 @@
 "use client"
 
 import { useMemo } from "react"
-import { toast } from "sonner"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
-import { applyTypicalPatterns, retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { PatternProfileMenu } from "./pattern-profile-menu"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
@@ -38,11 +38,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
     [doc.expenses],
   )
   const ages = useMemo(() => ({ from: primaryAge(doc), to: doc.settings.endAge, retire: retirementAge(doc) }), [doc])
-  const applyTypical = () => {
-    const { changed } = applyTypicalPatterns(doc)
-    update((d) => applyTypicalPatterns(d).doc)
-    toast.success(changed > 0 ? `Set a typical retirement pattern on ${changed} line${changed === 1 ? "" : "s"}` : "Already set to the typical pattern")
-  }
+
 
   return (
     <div className="space-y-8">
@@ -65,17 +61,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             <p className="text-xs text-foreground-muted">
               Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
             </p>
-            <button
-              type="button"
-              onClick={applyTypical}
-              title="Steady now, then from retirement: travel, dining and fun go-go; shopping, transport, personal care tapering. Healthcare rising from 65. Everything else steady."
-              className="btn-secondary text-xs"
-            >
-              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-                elderly
-              </span>
-              Use a typical retirement pattern
-            </button>
+            <PatternProfileMenu doc={doc} update={update} />
           </div>
         )}
         {view === "compact" ? (
@@ -128,6 +114,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
                 fromAge={ages.from}
                 toAge={ages.to}
                 retireAge={ages.retire}
+                warning={overlapWarning(e, doc.settings.inflation)}
               />
             )}
           </ItemCard>

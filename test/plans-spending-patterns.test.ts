@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
 import { planDocumentSchema } from "@/lib/plans/plan-schema"
-import { applyTypicalPatterns, patternFactor, retirementAge, switchAge, typicalPattern } from "@/lib/plans/plan-spending-patterns"
+import { applyProfile, overlapWarning, patternFactor, retirementAge, switchAge } from "@/lib/plans/plan-spending-patterns"
 import type { PlanDocument, PlanExpense, SpendingPattern } from "@/lib/plans/plan-types"
 
 const close = (a: number, b: number, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} ≈ ${b}`)
@@ -66,15 +66,25 @@ test("the engine spends by the pattern; one-time lines and plain lines are uncha
   assert.ok(planDocumentSchema.safeParse(d).success)
 })
 
-test("typical retirement pattern: steady now, then by category; healthcare rises from 65", () => {
-  assert.deepEqual(typicalPattern({ name: "Travel", category: "Travel" }), { preset: "steady", then: { preset: "gogo", at: "retirement" } })
-  assert.deepEqual(typicalPattern({ name: "Healthcare", category: "Healthcare" }), { preset: "steady", then: { preset: "rising", at: "age", age: 65 } })
-  assert.equal(typicalPattern({ name: "Housing", category: "Housing" }), undefined)
-  assert.deepEqual(
-    ["Food & Dining", "Shopping", "Transportation", "Bills & Utilities"].map((c) => typicalPattern({ name: c, category: c })?.then?.preset),
-    ["gogo", "tapering", "tapering", undefined],
-  )
-  const { doc, changed } = applyTypicalPatterns(plan([line("Travel"), line("Housing"), line("Shopping", { oneTime: true })]))
+test("profiles: typical, front-load the fun, conservative, frugal later, all steady", () => {
+  const cats = ["Travel", "Healthcare", "Shopping", "Housing", "Software"]
+  const shape = (profile: Parameters<typeof applyProfile>[1]) =>
+    applyProfile(plan(cats.map((c) => line(c))), profile).doc.expenses.map((e) =>
+      e.pattern ? `${e.pattern.preset}${e.pattern.then ? `>${e.pattern.then.preset}@${e.pattern.then.at === "age" ? e.pattern.then.age : "ret"}` : ""}` : "steady",
+    )
+  assert.deepEqual(shape("typical"), ["steady>gogo@ret", "steady>rising@65", "steady>tapering@ret", "steady", "steady"])
+  assert.deepEqual(shape("frontload"), ["gogo", "steady>rising@65", "steady>tapering@ret", "steady", "steady"])
+  assert.deepEqual(shape("conservative"), ["steady", "steady>rising@65", "steady", "steady", "steady"])
+  assert.deepEqual(shape("frugal"), ["steady>tapering@ret", "steady>rising@65", "steady>tapering@ret", "steady", "steady>tapering@ret"])
+  assert.deepEqual(shape("reset"), ["steady", "steady", "steady", "steady", "steady"])
+  const { changed } = applyProfile(plan([line("Travel"), line("Wedding", { oneTime: true })]), "typical")
   assert.equal(changed, 1)
-  assert.deepEqual(doc.expenses.map((e) => e.pattern?.then?.preset), ["gogo", undefined, undefined])
+})
+
+test("warns when a line's own growth and Rising both push it up", () => {
+  const rising: SpendingPattern = { preset: "steady", then: { preset: "rising", at: "age", age: 65 } }
+  assert.ok(overlapWarning({ growth: 0.05, pattern: rising }, 0.03)?.includes("5.0%"))
+  assert.equal(overlapWarning({ growth: null, pattern: rising }, 0.03), null)
+  assert.equal(overlapWarning({ growth: 0.05, pattern: { preset: "gogo" } }, 0.03), null)
+  assert.equal(overlapWarning({ growth: 0.02, pattern: rising }, 0.03), null)
 })

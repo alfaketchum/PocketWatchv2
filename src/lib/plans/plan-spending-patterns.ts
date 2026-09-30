@@ -80,34 +80,95 @@ export function customFrom(start: number): { fromAge: number; factor: number }[]
   return GOGO_PHASES.map((p) => ({ fromAge: Math.round(start + p.afterYears), factor: p.factor }))
 }
 
-/** Which pattern suits a spending category after retirement. */
-const TYPICAL: { preset: PatternPreset; words: string[] }[] = [
-  { preset: "gogo", words: ["travel", "vacation", "entertainment", "dining", "restaurant", "recreation", "hobbies", "leisure"] },
-  { preset: "rising", words: ["health", "medical", "doctor", "pharmacy", "dental"] },
-  { preset: "tapering", words: ["shopping", "clothing", "transport", "personal care", "gifts", "electronics"] },
-]
+/** Category words for each kind of spending. */
+const FUN = ["travel", "vacation", "entertainment", "dining", "restaurant", "recreation", "hobbies", "leisure"]
+const HEALTH = ["health", "medical", "doctor", "pharmacy", "dental"]
+const DISCRETIONARY = ["shopping", "clothing", "transport", "personal care", "gifts", "electronics"]
+const ESSENTIAL = ["housing", "rent", "mortgage", "utilities", "bills", "groceries", "insurance"]
+
+type SpendKind = "fun" | "health" | "discretionary" | "essential" | "other"
+
+function kindOf(expense: Pick<PlanExpense, "name" | "category">): SpendKind {
+  const text = `${expense.category ?? ""} ${expense.name}`.toLowerCase()
+  const has = (words: string[]) => words.some((w) => text.includes(w))
+  if (has(HEALTH)) return "health"
+  if (has(FUN)) return "fun"
+  if (has(DISCRETIONARY)) return "discretionary"
+  if (has(ESSENTIAL)) return "essential"
+  return "other"
+}
 
 /** Healthcare costs climb with age rather than with retirement. */
 const RISING_FROM_AGE = 65
 
-export function typicalPattern(expense: Pick<PlanExpense, "name" | "category">): SpendingPattern | undefined {
-  const text = `${expense.category ?? ""} ${expense.name}`.toLowerCase()
-  const preset = TYPICAL.find((t) => t.words.some((w) => text.includes(w)))?.preset
-  if (!preset) return undefined
-  return preset === "rising"
-    ? { preset: "steady", then: { preset, at: "age", age: RISING_FROM_AGE } }
-    : { preset: "steady", then: { preset, at: "retirement" } }
+export type PatternProfile = "typical" | "frontload" | "conservative" | "frugal" | "reset"
+
+export const PATTERN_PROFILES: { key: PatternProfile; label: string; hint: string }[] = [
+  {
+    key: "typical",
+    label: "Typical retirement",
+    hint: "Steady until you retire; then travel, dining and fun go-go, everyday extras taper, healthcare rises from 65",
+  },
+  {
+    key: "frontload",
+    label: "Front-load the fun",
+    hint: "Travel, dining and fun go-go from today (do it while you can); extras taper after retiring; healthcare rises from 65",
+  },
+  {
+    key: "conservative",
+    label: "Conservative",
+    hint: "Assume nothing gets cheaper: everything steady, healthcare rises from 65",
+  },
+  {
+    key: "frugal",
+    label: "Frugal later",
+    hint: "Housing, bills and groceries hold; everything else tapers after retiring; healthcare rises from 65",
+  },
+  { key: "reset", label: "All steady", hint: "Clear every pattern: each line rises only with inflation" },
+]
+
+const STEADY_THEN = (preset: PatternPreset): SpendingPattern => ({ preset: "steady", then: { preset, at: "retirement" } })
+const HEALTH_RISING: SpendingPattern = { preset: "steady", then: { preset: "rising", at: "age", age: RISING_FROM_AGE } }
+
+/** The pattern a profile gives a line (undefined = steady). */
+export function profilePattern(profile: PatternProfile, expense: Pick<PlanExpense, "name" | "category">): SpendingPattern | undefined {
+  if (profile === "reset") return undefined
+  const kind = kindOf(expense)
+  if (kind === "health") return HEALTH_RISING
+  switch (profile) {
+    case "typical":
+      return kind === "fun" ? STEADY_THEN("gogo") : kind === "discretionary" ? STEADY_THEN("tapering") : undefined
+    case "frontload":
+      return kind === "fun" ? { preset: "gogo" } : kind === "discretionary" ? STEADY_THEN("tapering") : undefined
+    case "conservative":
+      return undefined
+    case "frugal":
+      return kind === "essential" ? undefined : STEADY_THEN("tapering")
+  }
 }
 
-/** Sets every recurring line to the pattern its category typically follows (steady until the switch). */
-export function applyTypicalPatterns(doc: PlanDocument): { doc: PlanDocument; changed: number } {
+/** Applies a profile to every recurring line; returns how many changed. */
+export function applyProfile(doc: PlanDocument, profile: PatternProfile): { doc: PlanDocument; changed: number } {
   let changed = 0
   const expenses = doc.expenses.map((e) => {
     if (e.oneTime) return e
-    const pattern = typicalPattern(e)
+    const pattern = profilePattern(profile, e)
     if (JSON.stringify(pattern) === JSON.stringify(e.pattern)) return e
     changed++
-    return pattern ? { ...e, pattern } : { ...e, pattern: undefined }
+    return { ...e, pattern }
   })
   return { doc: { ...doc, expenses }, changed }
+}
+
+/** A custom growth rate above inflation plus Rising counts the extra growth twice. */
+export function growthOverlapsRising(expense: Pick<PlanExpense, "growth" | "pattern">, inflation: number): boolean {
+  const rising = expense.pattern?.preset === "rising" || expense.pattern?.then?.preset === "rising"
+  return rising && expense.growth !== null && expense.growth > inflation
+}
+
+/** The warning for a line whose own growth and Rising both push it up, or null. */
+export function overlapWarning(expense: Pick<PlanExpense, "growth" | "pattern">, inflation: number): string | null {
+  if (!growthOverlapsRising(expense, inflation) || expense.growth === null) return null
+  const growth = `${(expense.growth * 100).toFixed(1)}%`
+  return `Growth is set to ${growth} and this line also uses Rising, so its extra growth counts twice. Set growth back to inflation, or pick another pattern.`
 }

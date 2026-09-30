@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { childExpenses } from "@/lib/plans/plan-children"
-import { retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
 import { PatternChips } from "./expense-pattern-field"
@@ -57,7 +57,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
               <Dash />
             ) : (
               <span className="block px-2">
-                <PatternChips pattern={e.pattern} onChange={(pattern) => patch(e.id, { pattern })} fromAge={ages.now} retireAge={ages.retire} nowrap />
+                <PatternChips pattern={e.pattern} onChange={(pattern) => patch(e.id, { pattern })} fromAge={ages.now} retireAge={ages.retire} nowrap warning={overlapWarning(e, doc.settings.inflation)} />
               </span>
             )}
           </Cell>
