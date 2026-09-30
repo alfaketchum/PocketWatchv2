@@ -17,6 +17,7 @@ import {
 import { formatFiatValue } from "@/lib/portfolio/utils"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { ChainAllocationDonut } from "@/components/portfolio/chain-allocation-donut"
+import { AssetAllocationDonut } from "@/components/portfolio/asset-allocation-donut"
 import { ApiKeysBanner } from "@/components/portfolio/api-keys-banner"
 import { OverviewStatCard } from "@/components/portfolio/overview-stat-card"
 import { SyncButton } from "@/components/portfolio/sync-button"
@@ -242,11 +243,12 @@ export function PortfolioDashboard() {
         chartStats={chartStats} historyWarning={historyWarning} syncStatus={syncStatus}
       />
 
-      {Object.keys(locationData).length > 0 && (
-        <FadeIn delay={0.15}>
+      <FadeIn delay={0.15}>
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           <ChainAllocationDonut locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
-        </FadeIn>
-      )}
+          <AssetAllocationDonut assets={aggregatedAssets} iconMap={iconMap} totalValue={effectiveTotalValue} isHidden={isHidden} />
+        </div>
+      </FadeIn>
 
       <FadeIn delay={0.25}>
         <ExpandableAssetTable
