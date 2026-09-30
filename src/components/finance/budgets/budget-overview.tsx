@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useMemo, useState } from "react"
 import { formatCurrency, cn } from "@/lib/utils"
 import { getCategoryMeta } from "@/lib/finance/categories"
 import { useUpdateTransactionCategory, useBulkCategorize, useUpdateTransaction, useMarkSubscription } from "@/hooks/use-finance"
@@ -59,8 +59,6 @@ interface BudgetOverviewProps {
   budgets: Array<{ category: string; monthlyLimit: number }>
   totalBudgeted: number
   periodLabel: string
-  /** Rendered between the spending chart card and the transactions table. */
-  belowChart?: ReactNode
 }
 
 /**
@@ -68,7 +66,7 @@ interface BudgetOverviewProps {
  * a category's transactions on click, a category spending list, a daily bar
  * chart, and a filterable transactions table.
  */
-export function BudgetOverview({ transactions, budgets, totalBudgeted, periodLabel, belowChart }: BudgetOverviewProps) {
+export function BudgetOverview({ transactions, budgets, totalBudgeted, periodLabel }: BudgetOverviewProps) {
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const updateCat = useUpdateTransactionCategory()
@@ -188,8 +186,6 @@ export function BudgetOverview({ transactions, budgets, totalBudgeted, periodLab
           </div>
         </div>
       </div>
-
-      {belowChart}
 
       <BudgetTransactionsTable
         transactions={tableRows}

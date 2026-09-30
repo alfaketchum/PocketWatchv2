@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo } from "react"
 import {
   useFinanceBudgets, useCreateBudget, useUpdateBudget, useDeleteBudget,
   useFinanceDeepInsights, useFinanceTransactions,
@@ -17,14 +17,13 @@ import { BudgetCategoryList } from "@/components/finance/budgets/budget-category
 import { BudgetCreateModal } from "@/components/finance/budgets/budget-create-modal"
 import { BudgetSubscriptionsImpact } from "@/components/finance/budgets/budget-subscriptions-impact"
 import { BudgetInlineInsights } from "@/components/finance/budgets/budget-inline-insights"
-import { BudgetDataDriven } from "@/components/finance/budgets/budget-data-driven"
 import { BudgetLookbackSelector } from "@/components/finance/budgets/budget-lookback-selector"
 import { BudgetOverview } from "@/components/finance/budgets/budget-overview"
 import { BorderBeam } from "@/components/ui/border-beam"
 import { computeBudgetSummary, computePaceMetrics, buildCategoryData, buildInsights, getBudgetLookbackRange } from "@/components/finance/budgets/budget-helpers"
 import type { BudgetInsight, BudgetRange } from "@/components/finance/budgets/budget-helpers"
 
-// Recharts pace chart — load lazily (budget-data-driven already does the same).
+// Recharts pace chart — load lazily.
 const BudgetPaceChart = dynamic(
   () => import("@/components/finance/budgets/budget-pace-chart").then((m) => m.BudgetPaceChart),
   { ssr: false },
@@ -43,7 +42,7 @@ import { motion, useReducedMotion } from "motion/react"
 import { indicatorSpring } from "@/lib/motion-transitions"
 import { FadeIn } from "@/components/motion/fade-in"
 
-type BudgetTab = "my-budget" | "data-driven"
+type BudgetTab = "overview" | "comparison" | "budgeting"
 
 export default function FinanceBudgetsPage() {
   const [range, setRange] = useState<BudgetRange>(() => getBudgetLookbackRange("this-month"))
@@ -68,44 +67,12 @@ export default function FinanceBudgetsPage() {
   const generateAI = useGenerateBudgetAI()
 
   const hasBudgets = (budgets?.length ?? 0) > 0
-  const [activeTab, setActiveTab] = useState<BudgetTab>("data-driven")
+  const [activeTab, setActiveTab] = useState<BudgetTab>("overview")
   const [showModal, setShowModal] = useState(false)
   const [showBuilder, setShowBuilder] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [compare, setCompare] = useState(true)
-
-  // Persisted toggle for the secondary analysis panels (pace, stats, subs,
-  // insights, untracked). Core ring + category list always show.
-  const [showDetails, setShowDetails] = useState(true)
-  useEffect(() => {
-    try {
-      const v = localStorage.getItem("pw-budget-show-details")
-      if (v !== null) setShowDetails(v === "1")
-    } catch { /* ignore */ }
-  }, [])
-  const toggleDetails = () => setShowDetails((s) => {
-    const next = !s
-    try { localStorage.setItem("pw-budget-show-details", next ? "1" : "0") } catch { /* ignore */ }
-    return next
-  })
-
-  // Default to "my-budget" once budgets load (first load only)
-  const hasInitialized = useRef(false)
-  useEffect(() => {
-    if (!hasInitialized.current && hasBudgets) {
-      setActiveTab("my-budget")
-      hasInitialized.current = true
-    }
-  }, [hasBudgets])
-
-  // Switch to "my-budget" tab when user creates their first budget
   const handleCreateBudget = (category: string, monthlyLimit: number) => {
-    createBudget.mutate({ category, monthlyLimit }, {
-      onSuccess: () => {
-        setShowModal(false)
-        setActiveTab("my-budget")
-      },
-    })
+    createBudget.mutate({ category, monthlyLimit }, { onSuccess: () => setShowModal(false) })
   }
 
   const isThisMonth = range.isThisMonth
@@ -122,8 +89,8 @@ export default function FinanceBudgetsPage() {
     isThisMonth ? dayOfMonth : windowDays,
     isThisMonth ? daysInMonth : windowDays,
   )
-  // Pace chart/stats only apply to the in-progress month AND when details are on.
-  const showPace = isThisMonth && showDetails
+  // Pace chart/stats only apply to the in-progress month.
+  const showPace = isThisMonth
 
   const categoryData = useMemo(() => buildCategoryData(budgets, trendsData, subsData), [budgets, trendsData, subsData])
   const segments = useMemo(() => (budgets ?? []).map((b) => ({ category: b.category, spent: b.spent, monthlyLimit: b.monthlyLimit })), [budgets])
@@ -195,29 +162,37 @@ export default function FinanceBudgetsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Budgets / {isThisMonth ? currentMonth : range.label}</h1>
-          {activeTab === "my-budget" && summary.budgetCount > 0 && (
+          {summary.budgetCount > 0 && (
             <p className={cn("text-xs font-medium mt-0.5", isOverBudget ? "text-error" : "text-success")}>
               {isOverBudget ? `Over Budget · ${summary.overBudgetCount} of ${summary.budgetCount} categories` : "On Track"}
             </p>
           )}
         </div>
-        {activeTab === "my-budget" && (
-          <button onClick={() => setShowBuilder(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors">
-            <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span>
-            Create Budget
-          </button>
-        )}
+        <button onClick={() => setShowBuilder(true)} className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors">
+          <span className="material-symbols-rounded" style={{ fontSize: 14 }}>add</span>
+          Create Budget
+        </button>
       </div>
 
+      <BudgetLookbackSelector value={range} onChange={setRange} />
+      {!isThisMonth && (
+        <p className="text-xs text-foreground-muted -mt-1">
+          Showing {range.label === "Custom" ? "custom range" : range.label} · budget targets pro-rated to the period. Editing is available in the This Month view.
+        </p>
+      )}
+
       {/* ── Tab Bar ── */}
-      <div role="tablist" className="flex items-center gap-0.5 bg-background-secondary border border-card-border rounded-xl p-1 w-fit">
-        <TabButton active={activeTab === "data-driven"} onClick={() => setActiveTab("data-driven")} icon="auto_graph">
-          Data-Driven
+      <div role="tablist" className="flex items-center gap-0.5 bg-background-secondary border border-card-border rounded-xl p-1 w-fit max-w-full overflow-x-auto">
+        <TabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} icon="donut_large">
+          Overview
         </TabButton>
-        <TabButton active={activeTab === "my-budget"} onClick={() => setActiveTab("my-budget")} icon="tune">
-          My Budget
+        <TabButton active={activeTab === "comparison"} onClick={() => setActiveTab("comparison")} icon="compare_arrows">
+          Comparison
+        </TabButton>
+        <TabButton active={activeTab === "budgeting"} onClick={() => setActiveTab("budgeting")} icon="tune">
+          Budgeting
           {hasBudgets && (
-            <span className={cn("ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full tabular-nums", activeTab === "my-budget" ? "bg-white/30 text-white" : "bg-primary/15 text-primary")}>
+            <span className={cn("ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full tabular-nums", activeTab === "budgeting" ? "bg-white/30 text-white" : "bg-primary/15 text-primary")}>
               {budgets!.length}
             </span>
           )}
@@ -225,19 +200,22 @@ export default function FinanceBudgetsPage() {
       </div>
 
       {/* ── Content ── */}
-      {isLoading ? <FinanceCardSkeleton /> : activeTab === "data-driven" ? (
-        <BudgetDataDriven
-          suggestions={defaultSuggestions}
-          topCategories={deep?.topCategories ?? []}
-          trendsData={trendsData}
-          dailySpending={deep?.dailySpending ?? []}
-          txByCategory={txByCategory}
-          currentMonth={currentMonth}
-          hasBudgets={hasBudgets}
-          onCreateBudget={() => setShowBuilder(true)}
-        />
+      {isLoading ? <FinanceCardSkeleton /> : activeTab === "overview" ? (
+        /* Spending overview — click a category to decompose the ring into that
+           category's transactions (Personal Capital style). */
+        <FadeIn>
+          <BudgetOverview
+            transactions={txData?.transactions ?? []}
+            budgets={segments}
+            totalBudgeted={summary.totalBudgeted}
+            periodLabel={isThisMonth ? currentMonth : range.label}
+          />
+        </FadeIn>
+      ) : activeTab === "comparison" ? (
+        <FadeIn>
+          <BudgetPeriodComparison range={range} budgets={segments} />
+        </FadeIn>
       ) : summary.budgetCount === 0 ? (
-        /* ── My Budget empty state ── */
         <div className="bg-card rounded-2xl p-12 text-center" style={{ boxShadow: "var(--shadow-sm)" }}>
           <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-rounded text-primary" style={{ fontSize: 24 }}>savings</span>
@@ -250,96 +228,46 @@ export default function FinanceBudgetsPage() {
           </button>
         </div>
       ) : (
-        /* ── My Budget with data ── */
         <>
-          <BudgetLookbackSelector value={range} onChange={setRange} />
-          {!isThisMonth && (
-            <p className="text-xs text-foreground-muted -mt-1">
-              Showing {range.label === "Custom" ? "custom range" : range.label} · budget targets pro-rated to the period. Editing is available in the This Month view.
-            </p>
-          )}
-
-          {/* Period-over-period comparison toggle (panel renders below the donut) */}
-          <button
-            onClick={() => setCompare((c) => !c)}
-            className="inline-flex items-center gap-2.5 px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
-            aria-pressed={compare}
-          >
-            <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }} aria-hidden="true">compare_arrows</span>
-            <span className="text-xs font-medium text-foreground-muted">Compare to prior period</span>
-            <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", compare ? "bg-primary" : "bg-card-border")}>
-              <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", compare ? "translate-x-[18px]" : "translate-x-0.5")} />
-            </span>
-          </button>
-          {/* Spending overview — click a category to decompose the ring into
-              that category's transactions (Personal Capital style). */}
           <FadeIn>
-            <BudgetOverview
-              transactions={txData?.transactions ?? []}
-              budgets={segments}
-              totalBudgeted={summary.totalBudgeted}
-              periodLabel={isThisMonth ? currentMonth : range.label}
-              belowChart={compare ? <BudgetPeriodComparison range={range} budgets={segments} /> : null}
-            />
+            <div className="flex flex-col md:flex-row md:items-stretch gap-4">
+              <div className={cn("flex-shrink-0", showPace ? "md:w-[280px]" : "w-full")}>
+                <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
+              </div>
+              {showPace && (
+                <div className="flex-1 min-w-0">
+                  <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
+                </div>
+              )}
+            </div>
           </FadeIn>
 
-          {/* Toggle the budget-management panels (ring, pace, category edit, etc.) */}
-          <button
-            onClick={toggleDetails}
-            className="inline-flex items-center gap-4 px-3 py-2 rounded-lg bg-background-secondary border border-card-border hover:border-card-border-hover transition-colors"
-            aria-pressed={showDetails}
-          >
-            <span className="text-xs font-medium text-foreground-muted">
-              {showDetails ? "Hide budget panels" : "Show budget panels"}
-            </span>
-            <span className={cn("relative inline-flex h-5 w-9 rounded-full transition-colors flex-shrink-0", showDetails ? "bg-primary" : "bg-card-border")}>
-              <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", showDetails ? "translate-x-[18px]" : "translate-x-0.5")} />
-            </span>
-          </button>
+          {showPace && (
+            <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
+          )}
 
-          {showDetails && (
-            <>
-              <FadeIn>
-                <div className="flex flex-col md:flex-row md:items-stretch gap-4">
-                  <div className={cn("flex-shrink-0", showPace ? "md:w-[280px]" : "w-full")}>
-                    <BudgetHeroSummary totalBudgeted={summary.totalBudgeted} totalSpent={summary.totalSpent} remaining={summary.remaining} percentUsed={summary.percentUsed} daysRemaining={pace.daysRemaining} safeDailySpend={pace.safeDailySpend} isOnTrack={pace.isOnTrack} budgetCount={summary.budgetCount} overBudgetCount={summary.overBudgetCount} segments={segments} />
-                  </div>
-                  {showPace && (
-                    <div className="flex-1 min-w-0">
-                      <BudgetPaceChart dailySpending={deep?.dailySpending ?? []} totalBudgeted={summary.totalBudgeted} projectedTotal={pace.projectedTotal} daysInMonth={daysInMonth} dayOfMonth={dayOfMonth} />
-                    </div>
-                  )}
-                </div>
-              </FadeIn>
+          <FadeIn delay={0.1}>
+            <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
+          </FadeIn>
 
-              {showPace && (
-                <BudgetStatStrip dailyAvg={pace.dailyAvg} projectedTotal={pace.projectedTotal} totalBudgeted={summary.totalBudgeted} worstCategory={worstCategory} onTrackCount={summary.budgetCount - summary.overBudgetCount} totalCount={summary.budgetCount} />
-              )}
+          <FadeIn delay={0.15}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
+              <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
+            </div>
+          </FadeIn>
 
-              <FadeIn delay={0.1}>
-                <BudgetCategoryList categories={categoryData} txByCategory={txByCategory} onEditBudget={(id, limit) => updateBudget.mutate({ budgetId: id, monthlyLimit: limit })} onToggleRollover={(id, rollover) => updateBudget.mutate({ budgetId: id, rollover })} onDeleteBudget={(id) => setDeletingId(id)} onAddBudget={() => setShowModal(true)} readOnly={!isThisMonth} />
-              </FadeIn>
-
-              <FadeIn delay={0.15}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <BudgetSubscriptionsImpact subscriptions={activeSubs} monthlyTotal={subsMonthlyTotal} totalBudgeted={summary.totalBudgeted} />
-                  <BudgetInlineInsights insights={insights} isGenerating={generateAI.isPending} onGenerate={() => generateAI.mutate(undefined, { onSuccess: () => toast.success("AI analysis generated"), onError: (e) => toast.error(e.message) })} />
-                </div>
-              </FadeIn>
-
-              {untrackedCategories.length > 0 && (
-                <FadeIn delay={0.2}>
-                  <BudgetUntrackedSection untrackedCategories={untrackedCategories} txByCategory={txByCategory} onAddBudget={(cat, limit) => createBudget.mutate({ category: cat, monthlyLimit: limit })} onBudgetAll={() => { for (const c of untrackedCategories) createBudget.mutate({ category: c.category, monthlyLimit: c.suggested }) }} />
-                </FadeIn>
-              )}
-            </>
+          {untrackedCategories.length > 0 && (
+            <FadeIn delay={0.2}>
+              <BudgetUntrackedSection untrackedCategories={untrackedCategories} txByCategory={txByCategory} onAddBudget={(cat, limit) => createBudget.mutate({ category: cat, monthlyLimit: limit })} onBudgetAll={() => { for (const c of untrackedCategories) createBudget.mutate({ category: c.category, monthlyLimit: c.suggested }) }} />
+            </FadeIn>
           )}
         </>
       )}
 
       {/* ── Modals ── */}
       <BudgetCreateModal isOpen={showModal} onClose={() => setShowModal(false)} existingBudgets={budgets} suggestions={defaultSuggestions} trendsData={trendsData} onCreate={handleCreateBudget} isPending={createBudget.isPending} />
-      {showBuilder && <BudgetBuilderModal isOpen onClose={() => setShowBuilder(false)} onSaved={() => setActiveTab("my-budget")} />}
+      {showBuilder && <BudgetBuilderModal isOpen onClose={() => setShowBuilder(false)} onSaved={() => setActiveTab("budgeting")} />}
       <ConfirmDialog open={!!deletingId} onClose={() => setDeletingId(null)} onConfirm={() => { if (deletingId) deleteBudget.mutate(deletingId, { onSuccess: () => setDeletingId(null) }) }} title={`Delete ${deletingBudget?.category ?? ""} budget?`} description="This will permanently delete this budget." confirmLabel="Delete" variant="danger" isLoading={deleteBudget.isPending} />
     </div>
   )
