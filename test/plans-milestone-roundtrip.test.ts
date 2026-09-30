@@ -7,6 +7,7 @@ import {
   applyChild,
   applyCustom,
   applyHome,
+  applyVehicle,
   applyInheritance,
   applyMarried,
   applyMove,
@@ -17,6 +18,7 @@ import { removeAsset, removeChild } from "@/lib/plans/plan-edits"
 import { detachMilestone, milestoneCreations, removeMilestoneWithItems } from "@/lib/plans/plan-milestone-uses"
 import { planDocumentSchema } from "@/lib/plans/plan-schema"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
+import { expandPlan } from "@/lib/plans/plan-expand"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
 let n = 0
@@ -109,11 +111,16 @@ test("keeping the items instead pins them to the milestone's year", () => {
   assert.equal(kept.milestones.length, before.milestones.length)
 })
 
-test("Buy a home: deleting the home also removes its mortgage", () => {
+test("Buy a home / a vehicle: the loan comes from the asset, so deleting the asset removes both", () => {
   const before = base()
-  const after = applyHome(before, { name: "House", when, price: 500_000, downPayment: 100_000, rate: 0.06, termYears: 30, appreciation: 0.03 }, newId)
-  assert.equal(after.debts.length, 1)
-  assert.deepEqual(removeAsset(after, after.assets[0].id), before)
+  const input = { name: "House", when, price: 500_000, payWith: "loan" as const, downPayment: 100_000, rate: 0.06, termYears: 30, appreciation: 0.03 }
+  for (const apply of [applyHome, applyVehicle]) {
+    const after = apply(before, input, newId)
+    assert.equal(after.debts.length, 0)
+    assert.equal(expandPlan(after).debts.filter((d) => d.assetId === after.assets[0].id).length, 1)
+    assert.ok(planDocumentSchema.safeParse(after).success)
+    assert.deepEqual(removeAsset(after, after.assets[0].id), before)
+  }
 })
 
 test("Have a child: deleting the child restores the plan", () => {

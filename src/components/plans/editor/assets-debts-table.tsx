@@ -5,6 +5,7 @@ import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
+import { paidWithLabel } from "@/lib/plans/plan-financing"
 import { removeAsset } from "@/lib/plans/plan-edits"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
@@ -28,6 +29,7 @@ const ASSET_COLUMNS = [
   { label: "Change / yr", align: "right" as const, width: "w-28" },
   { label: "Owned from", width: "w-32" },
   { label: "Sold", width: "w-32" },
+  { label: "Paid with", width: "w-32" },
   { label: "", width: "w-16" },
 ]
 
@@ -66,7 +68,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               Assets
             </td>
             <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(doc.assets.reduce((s, a) => s + a.value, 0))}</td>
-            <td colSpan={4} />
+            <td colSpan={5} />
           </tr>
         }
       >
@@ -89,6 +91,9 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
             </Cell>
             <Cell>
               <TimingCell timing={a.end} doc={doc} />
+            </Cell>
+            <Cell>
+              <span className="block truncate px-2 text-xs text-foreground-muted">{paidWithLabel(a, doc)}</span>
             </Cell>
             <Cell align="center">
               <Actions

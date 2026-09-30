@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument, PRIMARY_PERSON_ID } from "@/lib/plans/plan-constants"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
+import { expandPlan } from "@/lib/plans/plan-expand"
 import {
   applyBreak,
   applyCareer,
@@ -75,11 +76,13 @@ test("get married: milestone, partner with income, new tax rates, wedding cost â
 
 test("buy a home: asset plus a linked mortgage with an amortized payment", () => {
   assert.ok(Math.abs(monthlyPayment(400_000, 0.06, 360) - 2398.2) < 0.1)
-  const d = applyHome(plan(), { name: "House", when: { type: "year", year: 2030 }, price: 500_000, downPayment: 100_000, rate: 0.06, termYears: 30, appreciation: 0.03 }, newId)
+  const d = applyHome(plan(), { name: "House", when: { type: "year", year: 2030 }, price: 500_000, payWith: "loan", downPayment: 100_000, rate: 0.06, termYears: 30, appreciation: 0.03 }, newId)
   assert.equal(d.assets[0].name, "House")
-  assert.equal(d.debts[0].balance, 400_000)
-  assert.equal(d.debts[0].assetId, d.assets[0].id)
-  assert.equal(d.debts[0].monthlyPayment, 2398)
+  const mortgage = expandPlan(d).debts[0]
+  assert.equal(mortgage.balance, 400_000)
+  assert.equal(mortgage.assetId, d.assets[0].id)
+  assert.equal(mortgage.kind, "mortgage")
+  assert.ok(Math.abs(mortgage.monthlyPayment - 2398.2) < 0.1)
 })
 
 test("career change ends the old salary and starts the new one at the milestone", () => {

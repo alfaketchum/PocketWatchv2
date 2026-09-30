@@ -52,8 +52,8 @@ test("inherited property costs nothing to receive; a later sale is taxed only on
   const house = d.assets[0]
   assert.equal(house.acquired, "received")
   assert.equal(row(d, 2030).assetPurchases, 0)
-  // "Value today" grows 3%/yr until it arrives in 2030 (4 years), like a purchase would.
-  const atReceipt = 400_000 * Math.pow(1.03, 4)
+  // "Value today" is in today's dollars: it grows with inflation (0% here) until it arrives, then 3%/yr.
+  const atReceipt = 400_000
   // Sell a year later (no exclusion yet): only that year's appreciation is a gain.
   const sold = { ...d, assets: [{ ...house, end: { type: "year" as const, year: 2031 } }] }
   assert.ok(Math.abs(row(sold, 2031).saleTax - atReceipt * 0.03 * 0.15) < 0.01)

@@ -128,6 +128,18 @@ export interface PlanExpense {
   origin?: string
 }
 
+/** How a purchase is paid: cash in full, a loan on the terms given, or not decided yet (typical terms). */
+export type PaymentMode = "cash" | "loan" | "undecided"
+
+export interface AssetFinancing {
+  mode: PaymentMode
+  /** Share of the price paid up front. */
+  downShare: number
+  /** Annual loan rate. */
+  rate: number
+  termYears: number
+}
+
 export interface PlanAsset {
   id: string
   name: string
@@ -142,6 +154,8 @@ export interface PlanAsset {
   acquired?: "purchase" | "received"
   /** For capital-gains tax on sale; null = value when acquired (purchase price, or stepped-up value). */
   costBasis?: number | null
+  /** How a future purchase is paid. Missing = cash, unless a debt is linked to it. A linked debt always wins. */
+  financing?: AssetFinancing
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }

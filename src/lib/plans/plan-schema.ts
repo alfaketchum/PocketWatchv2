@@ -101,6 +101,14 @@ const asset = z.object({
   end: timing,
   acquired: z.enum(["purchase", "received"]).optional(),
   costBasis: money.nullable().optional(),
+  financing: z
+    .object({
+      mode: z.enum(["cash", "loan", "undecided"]),
+      downShare: share,
+      rate: z.number().min(0).max(1),
+      termYears: z.number().int().min(1).max(50),
+    })
+    .optional(),
   origin,
 })
 

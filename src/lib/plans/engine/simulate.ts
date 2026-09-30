@@ -61,7 +61,7 @@ function preparePlan(original: PlanDocument): Plan {
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
     expenses: expenseEntries(doc.expenses, ctx),
-    assets: assetEntries(doc.assets, ctx),
+    assets: assetEntries(doc.assets, ctx, doc.settings.inflation),
     debts: debtEntries(doc.debts, ctx),
     milestoneYears: doc.milestones.map((m) => ({ name: m.name, index: resolveTiming(m.timing, ctx) })),
     transfers: transferEntries(childTransfers(original), ctx),
@@ -93,7 +93,7 @@ function growHoldings(holdings: Holdings, doc: PlanDocument): { holdings: Holdin
 
 function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
   return Object.fromEntries(
-    plan.assets.filter((a) => isOwned(a.range, index)).map((a) => [a.asset.id, assetValueAt(a.asset, index + 1)]),
+    plan.assets.filter((a) => isOwned(a.range, index)).map((a) => [a.asset.id, assetValueAt(a, index + 1)]),
   )
 }
 

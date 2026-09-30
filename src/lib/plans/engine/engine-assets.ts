@@ -6,6 +6,8 @@ const MONTHS = 12
 export interface AssetEntry {
   asset: PlanAsset
   range: ResolvedRange
+  /** The plan's inflation: a future purchase costs today's value grown by it. */
+  inflation: number
 }
 
 export interface DebtEntry {
@@ -14,17 +16,25 @@ export interface DebtEntry {
   start: number
 }
 
-export function assetEntries(assets: PlanAsset[], ctx: TimingContext): AssetEntry[] {
-  return assets.map((asset) => ({ asset, range: resolveRange(asset.start, asset.end, ctx) }))
+export function assetEntries(assets: PlanAsset[], ctx: TimingContext, inflation: number): AssetEntry[] {
+  return assets.map((asset) => ({ asset, range: resolveRange(asset.start, asset.end, ctx), inflation }))
 }
 
 export function debtEntries(debts: PlanDebt[], ctx: TimingContext): DebtEntry[] {
   return debts.map((debt) => ({ debt, start: Math.max(0, resolveTiming(debt.start, ctx) ?? 0) }))
 }
 
-/** Asset value at the start of year `index`. */
-export function assetValueAt(asset: PlanAsset, index: number): number {
-  return asset.value * Math.pow(1 + asset.appreciation, index)
+/**
+ * Value at the start of year `index` of an asset first owned in year `start`. `value` is in today's
+ * dollars: a future purchase costs it grown by inflation, and only then gains or loses its own rate.
+ */
+export function assetValue(asset: PlanAsset, start: number, index: number, inflation: number): number {
+  const bought = Math.max(0, start)
+  return asset.value * Math.pow(1 + inflation, bought) * Math.pow(1 + asset.appreciation, index - bought)
+}
+
+export function assetValueAt(entry: AssetEntry, index: number): number {
+  return assetValue(entry.asset, entry.range.start, index, entry.inflation)
 }
 
 export function isOwned(range: ResolvedRange, index: number): boolean {
@@ -72,13 +82,14 @@ export interface SaleTaxRules {
 }
 
 /** Cost basis when sold: set explicitly, else its value when acquired (purchase price or stepped-up value). */
-export function assetBasis(asset: PlanAsset, range: ResolvedRange): number {
-  return asset.costBasis ?? assetValueAt(asset, Math.max(0, range.start))
+export function assetBasis(entry: AssetEntry): number {
+  return entry.asset.costBasis ?? assetValueAt(entry, Math.max(0, entry.range.start))
 }
 
 /** Taxable gain when an asset is sold in year `index`, after the home-sale exclusion. */
-export function saleGainFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
-  const gain = assetValueAt(asset, index) - assetBasis(asset, range)
+export function saleGainFor(entry: AssetEntry, index: number, rules: SaleTaxRules): number {
+  const { asset, range } = entry
+  const gain = assetValueAt(entry, index) - assetBasis(entry)
   const ownedYears = index - Math.max(0, range.start)
   const exclusion =
     asset.kind === "home" && ownedYears >= EXCLUSION_MIN_YEARS
@@ -98,9 +109,9 @@ export function isShortTermSale(asset: PlanAsset, range: ResolvedRange, index: n
 }
 
 /** Capital-gains tax when an asset is sold in year `index`, after the home-sale exclusion. */
-export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
-  const rate = isShortTermSale(asset, range, index) ? rules.incomeTaxRate : rules.capitalGainsRate
-  return saleGainFor(asset, range, index, rules) * rate
+export function saleTaxFor(entry: AssetEntry, index: number, rules: SaleTaxRules): number {
+  const rate = isShortTermSale(entry.asset, entry.range, index) ? rules.incomeTaxRate : rules.capitalGainsRate
+  return saleGainFor(entry, index, rules) * rate
 }
 
 /**
@@ -125,22 +136,23 @@ export function applyAssetEvents(
   let saleGains = 0
   let saleRealEstateGains = 0
   let saleShortGains = 0
-  for (const { asset, range } of assets) {
+  for (const entry of assets) {
+    const { asset, range } = entry
     const linked = debts.filter((d) => d.debt.assetId === asset.id)
     if (range.start > 0 && range.start === index && asset.acquired !== "received") {
       const financed = linked.filter((d) => d.start === index).reduce((s, d) => s + d.debt.balance, 0)
-      purchases += Math.max(0, assetValueAt(asset, index) - financed)
+      purchases += Math.max(0, assetValueAt(entry, index) - financed)
     }
     if (range.end === index && range.end > Math.max(0, range.start)) {
       const owed = linked.reduce((s, d) => s + (balances[d.debt.id] ?? 0), 0)
-      sales += assetValueAt(asset, index) - owed
-      const gain = saleGainFor(asset, range, index, rules)
+      sales += assetValueAt(entry, index) - owed
+      const gain = saleGainFor(entry, index, rules)
       if (isShortTermSale(asset, range, index)) saleShortGains += gain
       else {
         saleGains += gain
         if (asset.kind === "home") saleRealEstateGains += gain
       }
-      saleTax += saleTaxFor(asset, range, index, rules)
+      saleTax += saleTaxFor(entry, index, rules)
       for (const d of linked) balances = { ...balances, [d.debt.id]: 0 }
     }
   }
@@ -169,9 +181,9 @@ export function payDebts(
 export function assetValueChange(assets: AssetEntry[], index: number): { appreciation: number; depreciation: number } {
   let appreciation = 0
   let depreciation = 0
-  for (const { asset, range } of assets) {
-    if (!isOwned(range, index)) continue
-    const change = assetValueAt(asset, index + 1) - assetValueAt(asset, index)
+  for (const entry of assets) {
+    if (!isOwned(entry.range, index)) continue
+    const change = assetValueAt(entry, index + 1) - assetValueAt(entry, index)
     if (change >= 0) appreciation += change
     else depreciation -= change
   }

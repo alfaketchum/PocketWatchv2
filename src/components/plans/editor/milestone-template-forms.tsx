@@ -9,16 +9,17 @@ import {
   applyChild,
   applyCustom,
   applyHome,
+  applyVehicle,
   applyMarried,
   applyMove,
   applyRetire,
   applyWindfall,
   applyInheritance,
   type InheritedPart,
-  monthlyPayment,
   type TemplateKey,
 } from "@/lib/plans/milestone-templates"
-import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
+import { loanSummary, PAYMENT_MODE_LABELS, TYPICAL_FINANCING } from "@/lib/plans/plan-financing"
+import type { PaymentMode, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { newItemId } from "../plans-helpers"
 import { emptyPart, InheritanceFields } from "./inheritance-fields"
@@ -27,6 +28,9 @@ import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { TimingPicker } from "./timing-picker"
 
 const SAME_STATE = "same"
+/** Typical yearly value change once owned. */
+const VEHICLE_DEPRECIATION = -0.15
+const HOME_APPRECIATION = 0.03
 
 /** Everything the template forms can edit; each template reads the fields it needs. */
 export interface TemplateDraft {
@@ -46,6 +50,7 @@ export interface TemplateDraft {
   capitalGainsRate: number
   weddingCost: number
   price: number
+  payWith: PaymentMode
   downPayment: number
   rate: number
   termYears: number
@@ -62,12 +67,28 @@ const DEFAULT_NAMES: Record<TemplateKey, string> = {
   married: "Get married",
   child: "New baby",
   home: "Home",
+  vehicle: "Car",
   career: "New job",
   break: "Career break",
   move: "Move",
   inheritance: "Inheritance",
   windfall: "Windfall",
   custom: "",
+}
+
+/** Starting price and loan for a purchase template; other templates ignore these. */
+function purchaseDefaults(key: TemplateKey): Pick<TemplateDraft, "price" | "payWith" | "downPayment" | "rate" | "termYears" | "appreciation"> {
+  const vehicle = key === "vehicle"
+  const price = vehicle ? 40_000 : 500_000
+  const terms = TYPICAL_FINANCING[vehicle ? "vehicle" : "home"]
+  return {
+    price,
+    payWith: "loan",
+    downPayment: price * terms.downShare,
+    rate: terms.rate,
+    termYears: terms.termYears,
+    appreciation: vehicle ? VEHICLE_DEPRECIATION : HOME_APPRECIATION,
+  }
 }
 
 export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft {
@@ -90,11 +111,7 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     incomeTaxRate: doc.settings.incomeTaxRate,
     capitalGainsRate: doc.settings.capitalGainsRate,
     weddingCost: 30_000,
-    price: 500_000,
-    downPayment: 100_000,
-    rate: 0.065,
-    termYears: 30,
-    appreciation: 0.03,
+    ...purchaseDefaults(key),
     parts: [emptyPart("cash")],
     relationship: "child",
     decedentState: doc.settings.state ?? null,
@@ -124,7 +141,10 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
     case "child":
       return applyChild(doc, name, d.startYear, newItemId)
     case "home":
-      return applyHome(doc, { name, when: d.when, price: d.price, downPayment: d.downPayment, rate: d.rate, termYears: d.termYears, appreciation: d.appreciation }, newItemId)
+    case "vehicle": {
+      const input = { name, when: d.when, price: d.price, payWith: d.payWith, downPayment: d.downPayment, rate: d.rate, termYears: d.termYears, appreciation: d.appreciation }
+      return key === "home" ? applyHome(doc, input, newItemId) : applyVehicle(doc, input, newItemId)
+    }
     case "career":
       return applyCareer(doc, { incomeId: d.incomeId, when: d.when, name, amount: d.amount }, newItemId)
     case "break":
@@ -181,20 +201,37 @@ function MarriedFields({ d, set, doc }: { d: TemplateDraft; set: SetDraft; doc: 
   )
 }
 
-function HomeFields({ d, set, doc }: { d: TemplateDraft; set: SetDraft; doc: PlanDocument }) {
-  const payment = monthlyPayment(Math.max(0, d.price - d.downPayment), d.rate, d.termYears * 12)
+const PAY_OPTIONS = (Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[]).map((value) => ({ value, label: PAYMENT_MODE_LABELS[value] }))
+
+function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: SetDraft; doc: PlanDocument; kind: "home" | "vehicle" }) {
+  const typical = TYPICAL_FINANCING[kind]
+  const terms = d.payWith === "undecided" ? typical : { downShare: d.price > 0 ? d.downPayment / d.price : 0, rate: d.rate, termYears: d.termYears }
+  const loan = loanSummary(d.price, terms)
   return (
     <>
       <TextField label="Name" value={d.name} onChange={(name) => set({ name })} />
       <TimingPicker label="Buy" value={d.when} doc={doc} allow={WHEN_TYPES} onChange={(when) => set({ when })} />
       <div className="grid grid-cols-2 gap-2">
         <FireNumberField label="Price (today's $)" prefix="$" min={0} value={d.price} onChange={(price) => set({ price })} />
-        <FireNumberField label="Down payment" prefix="$" min={0} value={d.downPayment} onChange={(downPayment) => set({ downPayment })} />
-        <FireNumberField label="Mortgage rate" suffix="%" scale={100} min={0} max={1} value={d.rate} onChange={(rate) => set({ rate })} />
-        <FireNumberField label="Term (years)" min={1} max={50} value={d.termYears} onChange={(termYears) => set({ termYears })} />
+        <SelectField label="How you'll pay" value={d.payWith} options={PAY_OPTIONS} onChange={(payWith) => set({ payWith })} />
       </div>
+      {d.payWith === "loan" && (
+        <div className="grid grid-cols-3 gap-2">
+          <FireNumberField label="Down payment" prefix="$" min={0} value={d.downPayment} onChange={(downPayment) => set({ downPayment })} />
+          <FireNumberField label={kind === "home" ? "Mortgage rate" : "Loan rate"} suffix="%" scale={100} min={0} max={1} value={d.rate} onChange={(rate) => set({ rate })} />
+          <FireNumberField label="Term (years)" min={1} max={50} value={d.termYears} onChange={(termYears) => set({ termYears })} />
+        </div>
+      )}
       <p className="text-xs text-foreground-muted">
-        Payment about <span className="font-medium text-foreground">{fmtMoney(payment)}/mo</span>. The down payment comes out of your cash flow that year.
+        {d.payWith === "cash" ? (
+          <>The full {fmtMoney(d.price)} comes out of your cash flow that year.</>
+        ) : (
+          <>
+            {d.payWith === "undecided" && <>Estimated with typical terms ({Math.round(typical.downShare * 100)}% down, {(typical.rate * 100).toFixed(1)}%, {typical.termYears} years). </>}
+            {fmtMoney(loan.down)} down, then about <span className="font-medium text-foreground">{fmtMoney(loan.monthly)}/mo</span> for {terms.termYears} years
+            ({fmtMoney(loan.totalInterest)} interest in total). Paying cash instead: {fmtMoney(d.price)} that year.
+          </>
+        )}
       </p>
     </>
   )
@@ -217,7 +254,8 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
         </div>
       )
     case "home":
-      return <HomeFields d={d} set={set} doc={doc} />
+    case "vehicle":
+      return <PurchaseFields d={d} set={set} doc={doc} kind={template} />
     case "career":
       return (
         <>

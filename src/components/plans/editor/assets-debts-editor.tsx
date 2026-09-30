@@ -8,6 +8,7 @@ import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../p
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
+import { AssetFinancingFields } from "./asset-financing-fields"
 import { removeAsset } from "@/lib/plans/plan-edits"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
@@ -120,6 +121,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               onChange={(end) => patch(a.id, { end })}
             />
           </div>
+          <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
         </ItemCard>
       ))}
       <AddButton

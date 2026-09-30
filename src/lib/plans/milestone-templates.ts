@@ -2,13 +2,17 @@ import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { resolveTiming, timingContext } from "./plan-timing"
 import { stateInheritanceTax, type Relationship } from "./tax/inheritance-tax"
-import type { PlanAccount, PlanAdjustment, PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
+import { monthlyPayment } from "./plan-financing"
+import type { AssetKind, PaymentMode, PlanAccount, PlanAdjustment, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
+
+export { monthlyPayment }
 
 export type TemplateKey =
   | "retire"
   | "married"
   | "child"
   | "home"
+  | "vehicle"
   | "career"
   | "break"
   | "move"
@@ -29,6 +33,7 @@ export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates" },
   { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids" },
   { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts" },
+  { key: "vehicle", label: "Buy a vehicle", icon: "directions_car", creates: "A vehicle and its loan on Assets & debts" },
   { key: "career", label: "Career change", icon: "work", creates: "Ends a salary and starts a new one" },
   { key: "break", label: "Career break", icon: "luggage", creates: "Pauses a salary for a few years" },
   { key: "move", label: "Move", icon: "moving", creates: "Changes your spending and state taxes from then on" },
@@ -112,44 +117,48 @@ export function applyChild(doc: PlanDocument, name: string, birthYear: number, n
   return { ...doc, children: [...(doc.children ?? []), newChild(newId("kid"), name, birthYear)] }
 }
 
-export interface HomeInput {
+export interface PurchaseInput {
   name: string
   when: Timing
+  /** Today's dollars. */
   price: number
+  payWith: PaymentMode
+  /** Today's dollars; used when paying with a loan. */
   downPayment: number
-  /** Annual mortgage rate. */
+  /** Annual loan rate. */
   rate: number
   termYears: number
+  /** Yearly value change once owned (negative for a car). */
   appreciation: number
 }
 
-/** Level monthly payment that pays `loan` off over `months` at `annualRate`. */
-export function monthlyPayment(loan: number, annualRate: number, months: number): number {
-  if (loan <= 0 || months <= 0) return 0
-  const r = annualRate / 12
-  return r === 0 ? loan / months : (loan * r) / (1 - Math.pow(1 + r, -months))
-}
-
-/** Buy a home: the asset plus a linked mortgage; its "Buy …" milestone is generated from the asset. */
-export function applyHome(doc: PlanDocument, input: HomeInput, newId: IdMaker): PlanDocument {
-  const assetId = newId("asset")
-  const loan = Math.max(0, input.price - input.downPayment)
-  const mortgage: PlanDebt = {
-    id: newId("debt"),
-    name: `${input.name} mortgage`,
-    kind: "mortgage",
-    balance: loan,
-    rate: input.rate,
-    monthlyPayment: Math.round(monthlyPayment(loan, input.rate, input.termYears * 12)),
-    start: input.when,
-    assetId,
-    source: null,
-  }
+/** A future purchase (home, vehicle): the asset with how it's paid; its loan and "Buy …" milestone are generated. */
+function applyPurchase(doc: PlanDocument, kind: AssetKind, input: PurchaseInput, newId: IdMaker): PlanDocument {
+  const downShare = input.price > 0 ? Math.min(1, Math.max(0, input.downPayment / input.price)) : 0
   return {
     ...doc,
-    assets: [...doc.assets, { id: assetId, name: input.name, kind: "home", value: input.price, appreciation: input.appreciation, start: input.when, end: { type: "planEnd" } }],
-    debts: loan > 0 ? [...doc.debts, mortgage] : doc.debts,
+    assets: [
+      ...doc.assets,
+      {
+        id: newId("asset"),
+        name: input.name,
+        kind,
+        value: input.price,
+        appreciation: input.appreciation,
+        start: input.when,
+        end: { type: "planEnd" },
+        financing: { mode: input.payWith, downShare, rate: input.rate, termYears: input.termYears },
+      },
+    ],
   }
+}
+
+export function applyHome(doc: PlanDocument, input: PurchaseInput, newId: IdMaker): PlanDocument {
+  return applyPurchase(doc, "home", input, newId)
+}
+
+export function applyVehicle(doc: PlanDocument, input: PurchaseInput, newId: IdMaker): PlanDocument {
+  return applyPurchase(doc, "vehicle", input, newId)
 }
 
 /** Career change: the salary stops at the milestone and a new one (same settings, new amount) starts. */
