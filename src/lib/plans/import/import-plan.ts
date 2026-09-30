@@ -3,13 +3,12 @@ import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { blankPlanForUser } from "../plan-records"
 import type { SourceBalances } from "../plan-refresh"
-import type { PlanDebt, PlanDocument } from "../plan-types"
+import type { PlanDebt, PlanDocument, PlanExpense } from "../plan-types"
 import { withDetectedTrading } from "../trading-detect"
 import {
   accountsFromRows,
   cryptoAccount,
   debtsFromRows,
-  expensesFromCategories,
   incomeFromMonthly,
   type ImportAccountRow,
   type ImportLiability,
@@ -17,12 +16,16 @@ import {
 import { loadTradingActivity } from "./trading-activity"
 import { valueAt } from "@/lib/finance/real-assets"
 import { loadRealAssets } from "@/lib/finance/real-assets-store"
-import { assetsFromRealAssets, type ImportRealAsset } from "./import-mapping"
+import { assetsFromRealAssets, spendingOptions, type ImportRealAsset, type SpendingBasis } from "./import-mapping"
 
 const PERCENT = 100
 
 export interface ImportDraft {
+  /** Spending in `document` is the 12-month average; `spending` has each way of measuring it. */
   document: PlanDocument
+  spending: Record<SpendingBasis, PlanExpense[]>
+  /** Categories with a budget set (used by the "budget" option). */
+  budgetedCategories: string[]
   /** Items the preview leaves unticked: card balances are usually paid in full each month. */
   uncheckedIds: string[]
 }
@@ -132,15 +135,21 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
   const owned = assetsFromRealAssets(realAssets, debtsFromRows(rows, liabilities))
   const debts = owned.debts
   const income = incomeFromMonthly(budget.income.monthly)
+  const spending = spendingOptions(budget.categories, budget.currentBudgets)
   const document: PlanDocument = {
     ...base,
     accounts,
     assets: owned.assets,
     debts,
     incomes: income ? [income] : [],
-    expenses: expensesFromCategories(budget.categories),
+    expenses: spending.average,
   }
-  return { document, uncheckedIds: debts.filter((d) => d.kind === "credit").map((d) => d.id) }
+  return {
+    document,
+    spending,
+    budgetedCategories: budget.currentBudgets.filter((b) => b.monthlyLimit > 0).map((b) => b.category),
+    uncheckedIds: debts.filter((d) => d.kind === "credit").map((d) => d.id),
+  }
 }
 
 /** Mortgages and auto loans in the user's linked accounts, as plan debts (for matching to homes and cars). */

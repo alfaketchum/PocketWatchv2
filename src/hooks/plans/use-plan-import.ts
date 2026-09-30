@@ -2,11 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query"
 import type { SourceBalances } from "@/lib/plans/plan-refresh"
-import type { PlanDocument } from "@/lib/plans/plan-types"
+import type { SpendingBasis } from "@/lib/plans/import/import-mapping"
+import type { PlanDocument, PlanExpense } from "@/lib/plans/plan-types"
 import { plansFetch, plansKeys } from "./shared"
 
 export interface ImportDraftResponse {
   document: PlanDocument
+  /** Spending measured each way: 12-month average, typical (median) month, or budgets. */
+  spending: Record<SpendingBasis, PlanExpense[]>
+  budgetedCategories: string[]
   uncheckedIds: string[]
 }
 

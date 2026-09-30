@@ -4,6 +4,7 @@ import {
   accountsFromRows,
   debtsFromRows,
   expensesFromCategories,
+  spendingOptions,
   taxTreatmentFor,
   type ImportAccountRow,
 } from "@/lib/plans/import/import-mapping"
@@ -80,4 +81,25 @@ test("applySourceBalances updates linked balances only and restarts the plan now
   assert.equal(out.accounts[1].balance, 0)
   assert.equal(out.settings.startYear, 2026)
   assert.equal(out.settings.startMonth, 9)
+})
+
+test("spending three ways: average, typical month, or budgets (average where there's no budget)", () => {
+  const categories = [
+    { category: "Housing", avgMonthly: 2_000, medianMonthly: 1_800 },
+    { category: "Travel", avgMonthly: 700, medianMonthly: 0 },
+    { category: "Dining", avgMonthly: 400, medianMonthly: 350 },
+  ]
+  const opts = spendingOptions(categories, [
+    { category: "Dining", monthlyLimit: 300 },
+    { category: "Gifts", monthlyLimit: 100 },
+    { category: "Housing", monthlyLimit: 0 },
+  ])
+  const yearly = (list: { name: string; amount: number }[]) => Object.fromEntries(list.map((e) => [e.name, e.amount]))
+  assert.deepEqual(yearly(opts.average), { Housing: 24_000, Travel: 8_400, Dining: 4_800 })
+  assert.deepEqual(yearly(opts.median), { Housing: 21_600, Dining: 4_200 })
+  assert.deepEqual(yearly(opts.budget), { Housing: 24_000, Travel: 8_400, Dining: 3_600, Gifts: 1_200 })
+  // The same category keeps its id whichever way it's measured.
+  const id = (list: { name: string; id: string }[], name: string) => list.find((e) => e.name === name)?.id
+  assert.equal(id(opts.average, "Dining"), id(opts.budget, "Dining"))
+  assert.equal(id(opts.average, "Dining"), id(opts.median, "Dining"))
 })

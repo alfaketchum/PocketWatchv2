@@ -155,10 +155,50 @@ export function expensesFromCategories(categories: { category: string; avgMonthl
   const large = categories.filter((c) => c.avgMonthly >= MIN_CATEGORY_MONTHLY)
   const other = categories.filter((c) => c.avgMonthly > 0 && c.avgMonthly < MIN_CATEGORY_MONTHLY)
   const otherMonthly = other.reduce((s, c) => s + c.avgMonthly, 0)
+  // Ids follow the category (not its position), so switching how spending is measured keeps ticks in place.
+  const used = new Set<string>()
+  const idFor = (category: string) => {
+    const base = `exp-${slug(category)}`
+    let id = base
+    for (let n = 2; used.has(id); n++) id = `${base}-${n}`
+    used.add(id)
+    return id
+  }
   return [
-    ...large.map((c, i) => stream(`exp-${i}-${slug(c.category)}`, c.category, c.category, c.avgMonthly)),
+    ...large.map((c) => stream(idFor(c.category), c.category, c.category, c.avgMonthly)),
     ...(otherMonthly > 0 ? [stream("exp-other", "Other spending", null, otherMonthly)] : []),
   ]
+}
+
+/** How a new plan's spending is measured: the 12-month average, a typical (median) month, or your budgets. */
+export type SpendingBasis = "average" | "median" | "budget"
+
+export interface CategorySpending {
+  category: string
+  avgMonthly: number
+  medianMonthly: number
+}
+
+/**
+ * Spending streams for each basis. "budget" uses a category's budget where one is set and its average
+ * otherwise, plus budgeted categories with no spending yet.
+ */
+export function spendingOptions(
+  categories: CategorySpending[],
+  budgets: { category: string; monthlyLimit: number }[],
+): Record<SpendingBasis, PlanExpense[]> {
+  const limit = new Map(budgets.filter((b) => b.monthlyLimit > 0).map((b) => [b.category, b.monthlyLimit]))
+  const seen = new Set(categories.map((c) => c.category))
+  const byMonthly = (list: { category: string; avgMonthly: number }[]) => [...list].sort((a, b) => b.avgMonthly - a.avgMonthly)
+  const budgeted = [
+    ...categories.map((c) => ({ category: c.category, avgMonthly: limit.get(c.category) ?? c.avgMonthly })),
+    ...[...limit.entries()].filter(([cat]) => !seen.has(cat)).map(([category, avgMonthly]) => ({ category, avgMonthly })),
+  ]
+  return {
+    average: expensesFromCategories(byMonthly(categories)),
+    median: expensesFromCategories(byMonthly(categories.map((c) => ({ category: c.category, avgMonthly: c.medianMonthly })))),
+    budget: expensesFromCategories(byMonthly(budgeted)),
+  }
 }
 
 /** A home, vehicle or other asset from Finance › Homes & Vehicles, valued today. */
