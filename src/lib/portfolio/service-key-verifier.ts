@@ -1,6 +1,7 @@
 import { ALCHEMY_CHAIN_SLUGS, CHAIN_CONFIGS } from "@/lib/tracker/chains"
 import type { TrackerChain } from "@/lib/tracker/types"
 import { meteredZerionFetch } from "./zerion-request-meter"
+import { postJsonIPv4 } from "@/lib/fire/bls-oews"
 
 export type ServiceVerifyCode =
   | "ok"
@@ -343,14 +344,11 @@ async function verifyMoralisKey(apiKey: string): Promise<ServiceVerifyResult> {
 /** BLS API v2 rejects bad registration keys with status REQUEST_NOT_PROCESSED. */
 async function verifyBlsKey(apiKey: string): Promise<ServiceVerifyResult> {
   try {
-    const res = await fetch("https://api.bls.gov/publicAPI/v2/timeseries/data/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seriesid: ["OEUN000000000000015125213"], registrationkey: apiKey, latest: true }),
-      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
-    })
-    if (!res.ok) return fail("upstream_error", `BLS API returned ${res.status}`)
-    const json = (await res.json()) as { status?: string; message?: string[] }
+    // IPv4 explicitly: see postJsonIPv4 (api.bls.gov's IPv6 addresses time out from this server).
+    const json = await postJsonIPv4<{ status?: string; message?: string[] }>(
+      "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+      { seriesid: ["OEUN000000000000015125213"], registrationkey: apiKey, latest: true },
+    )
     if (json.status === "REQUEST_SUCCEEDED") return ok("BLS key verified")
     return fail("invalid_key", json.message?.[0] ?? "BLS rejected the key")
   } catch {

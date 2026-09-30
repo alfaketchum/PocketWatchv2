@@ -4,6 +4,7 @@
  *            + SOC occupation (6, no dash) + datatype (11–15 = annual 10th/25th/median/75th/90th).
  * Uses API v2 with a registration key when available, else keyless v1 (25 queries/day).
  */
+import { request } from "node:https"
 import type { PayPercentiles } from "./compare-income"
 
 const V2_URL = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
@@ -50,6 +51,35 @@ function seriesIds(soc: string, state: string | null): { area: "national" | "sta
   return out
 }
 
+/**
+ * POST JSON over IPv4. api.bls.gov publishes IPv6 (Akamai) addresses and this server has no
+ * IPv6 route; Node's fetch tries IPv6 and times out instead of falling back like curl does.
+ */
+export function postJsonIPv4<T>(url: string, body: unknown): Promise<T> {
+  const payload = JSON.stringify(body)
+  return new Promise((resolve, reject) => {
+    const req = request(
+      url,
+      { method: "POST", family: 4, timeout: TIMEOUT_MS, headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) } },
+      (res) => {
+        const chunks: Buffer[] = []
+        res.on("data", (c: Buffer) => chunks.push(c))
+        res.on("end", () => {
+          if ((res.statusCode ?? 0) >= 400) return reject(new Error(`BLS API ${res.statusCode}`))
+          try {
+            resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as T)
+          } catch (err) {
+            reject(err)
+          }
+        })
+      },
+    )
+    req.on("timeout", () => req.destroy(new Error("BLS API timed out")))
+    req.on("error", reject)
+    req.end(payload)
+  })
+}
+
 interface BlsResponse {
   status: string
   message?: string[]
@@ -62,14 +92,7 @@ export async function fetchOewsPercentiles(soc: string, state: string | null, ap
   const ids = seriesIds(soc, state)
   const body: Record<string, unknown> = { seriesid: ids.map((s) => s.id) }
   if (apiKey) body.registrationkey = apiKey
-  const res = await fetch(apiKey ? V2_URL : V1_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
-  if (!res.ok) throw new Error(`BLS API ${res.status}`)
-  const json = (await res.json()) as BlsResponse
+  const json = await postJsonIPv4<BlsResponse>(apiKey ? V2_URL : V1_URL, body)
   if (json.status !== "REQUEST_SUCCEEDED") throw new Error(`BLS API: ${json.message?.[0] ?? json.status}`)
   const latest = new Map<string, { year: string; value: number }>()
   for (const s of json.Results?.series ?? []) {

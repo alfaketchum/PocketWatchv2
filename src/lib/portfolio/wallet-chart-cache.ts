@@ -141,8 +141,26 @@ interface SyncParams {
   force?: boolean
 }
 
-/** Returns the rebuilt summed series, or null when ChartCache is already current. */
+// On globalThis so the lock holds even if Next loads this module in more than one server chunk
+const chartLock = globalThis as unknown as { __pwChartSyncRunning?: Set<string> }
+const chartRunning = (chartLock.__pwChartSyncRunning ??= new Set())
+
+/**
+ * Returns the rebuilt summed series, or null when ChartCache is already current or another
+ * rebuild for this user is in flight (two concurrent delete-then-insert rebuilds collide).
+ */
 export async function syncWalletCharts(params: SyncParams): Promise<ChartPoint[] | null> {
+  const { userId } = params
+  if (chartRunning.has(userId)) return null
+  chartRunning.add(userId)
+  try {
+    return await rebuildWalletCharts(params)
+  } finally {
+    chartRunning.delete(userId)
+  }
+}
+
+async function rebuildWalletCharts(params: SyncParams): Promise<ChartPoint[] | null> {
   const { userId, zerionKey, addresses, walletFingerprint, previousFingerprint, hasChartCache, nowSec, force } = params
   if (force) {
     await db.walletChartCache.deleteMany({ where: { userId } })
@@ -158,6 +176,7 @@ export async function syncWalletCharts(params: SyncParams): Promise<ChartPoint[]
     for (let i = 0; i < points.length; i += INSERT_BATCH) {
       await tx.chartCache.createMany({
         data: points.slice(i, i + INSERT_BATCH).map((p) => ({ userId, timestamp: p.timestamp, value: p.value })),
+        skipDuplicates: true,
       })
     }
     await mergeSettings(tx, userId, { chartWalletFingerprint: walletFingerprint, chartCacheUpdatedAt: new Date().toISOString() })
