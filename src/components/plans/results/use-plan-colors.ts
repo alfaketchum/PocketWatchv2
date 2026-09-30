@@ -97,3 +97,16 @@ function buildPlanColors(t: {
     series: [primary, warning, accentHead, mix(primary, card, LIGHTER)],
   }
 }
+
+/** How far the darkest and lightest subcategory shades move from their parent's color. */
+const SHADE_DARKEST = 0.3
+const SHADE_LIGHTEST = 0.55
+
+/** `n` shades of `base` for subcategories: slightly darker through lighter, so neighbors stay distinct. */
+export function shades(base: string, n: number, t: { card: string; foreground: string }): string[] {
+  if (n <= 1) return [base]
+  return Array.from({ length: n }, (_, i) => {
+    const pos = -SHADE_DARKEST + ((SHADE_DARKEST + SHADE_LIGHTEST) * i) / (n - 1)
+    return pos < 0 ? mix(base, t.foreground, -pos) : mix(base, t.card, pos)
+  })
+}

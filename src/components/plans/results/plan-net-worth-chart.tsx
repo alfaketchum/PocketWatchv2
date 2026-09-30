@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import {
   Bar,
   CartesianGrid,
@@ -17,24 +17,14 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { cn } from "@/lib/utils"
-import {
-  CASH_FLOW_LABELS,
-  CASH_IN_LAYERS,
-  CASH_OUT_LAYERS,
-  cashFlowPoints,
-  debtPoints,
-  chartMilestones,
-  NET_WORTH_LAYER_LABELS,
-  NET_WORTH_LAYERS,
-  netWorthPoints,
-  type ChartMilestone,
-} from "@/lib/plans/plan-chart"
+import { chartMilestones, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanBarTooltip } from "./plan-bar-tooltip"
 import { PlanYearPanel } from "./plan-year-panel"
-import { mix, usePlanColors } from "./use-plan-colors"
+import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
+import { usePlanColors } from "./use-plan-colors"
 
 const DIMMED = 0.35
 const Y_HEADROOM = 1.03
@@ -105,8 +95,6 @@ function MilestoneMarker({
   )
 }
 
-type ChartMode = "networth" | "cashflow" | "debt"
-
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
   { value: "cashflow", label: "Cash flow" },
@@ -123,17 +111,34 @@ const INFO: Record<ChartMode, string> = {
   debt: "What's still owed on each loan at the end of each year, on its own scale so even a small loan is easy to follow. It shrinks with the plan's payments and is paid off early if what it's for is sold.",
 }
 
-/** Shades of the debt red for each loan, darkest first. */
-const DEBT_SHADE_STEP = 0.2
-const DEBT_SHADE_MAX = 0.7
+/** Remembered per browser: whether the chart shows subcategories. */
+const DETAIL_KEY = "pw-plan-chart-detail"
 
-interface Series {
-  key: string
-  label: string
-  color: string
+function readDetail(): boolean {
+  try {
+    return localStorage.getItem(DETAIL_KEY) === "1"
+  } catch {
+    return false
+  }
 }
 
-type ChartRow = { age: number; year: number } & Record<string, number>
+/** Right-aligned switch: split each band into its accounts, assets, loans, incomes, spending lines… */
+function DetailToggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="inline-flex items-center gap-2 text-[11px] font-medium text-foreground-muted hover:text-foreground"
+    >
+      Subcategories
+      <span className={cn("relative inline-block h-4 w-7 rounded-full transition-colors", checked ? "bg-primary" : "bg-foreground/15")}>
+        <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all", checked ? "left-3.5" : "left-0.5")} />
+      </span>
+    </button>
+  )
+}
 
 function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
   return (
@@ -158,6 +163,8 @@ function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (m
 }
 
 const TICK_INTERVALS = 6
+/** Room below zero, relative to the deepest negative bar, when that's less than a tick step. */
+const NEG_ROOM = 1.25
 
 /** 1, 2, 2.5 or 5 × a power of ten: a round step near `raw`. */
 function roundStep(raw: number): number {
@@ -183,10 +190,12 @@ function fitAxis(rows: ChartRow[], series: Series[]): { domain: [number, number]
     )
   }
   const step = roundStep(((top - bottom) * Y_HEADROOM) / TICK_INTERVALS)
-  const lo = Math.floor((bottom * Y_HEADROOM) / step) * step
   const hi = Math.ceil((top * Y_HEADROOM) / step) * step
+  // Below zero, room for what's there (not a whole step for a small loan); ticks stay on round steps.
+  const stepped = -step * Math.ceil((-bottom * Y_HEADROOM) / step)
+  const lo = bottom >= 0 ? 0 : Math.max(stepped, bottom * NEG_ROOM)
   const ticks: number[] = []
-  for (let t = lo; t <= hi + step / 2; t += step) ticks.push(Math.round(t))
+  for (let t = Math.ceil(lo / step) * step; t <= hi + step / 2; t += step) ticks.push(Math.round(t))
   return { domain: [lo, hi], ticks }
 }
 
@@ -334,11 +343,18 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, error, success, card } = useChartTheme()
+  const { primary, error, success } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
-  const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
-  const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
-  const dPoints = useMemo(() => debtPoints(doc, rows), [doc, rows])
+  const [detail, setDetailState] = useState(false)
+  useEffect(() => setDetailState(readDetail()), [])
+  const setDetail = useCallback((on: boolean) => {
+    setDetailState(on)
+    try {
+      localStorage.setItem(DETAIL_KEY, on ? "1" : "0")
+    } catch {
+      /* private mode: stays for this visit */
+    }
+  }, [])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
   const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
@@ -350,20 +366,8 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  const { netWorth: nwColors, cashFlow: cfColors } = usePlanColors()
-  const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
-  // The Debt view only exists while the plan has debt; fall back if it's all gone.
-  const view: ChartMode = mode === "debt" && !hasDebt ? "networth" : mode
-  const points: ChartRow[] = view === "networth" ? nwPoints : view === "cashflow" ? cfPoints : dPoints
-  const series: Series[] = useMemo(() => {
-    const all: Series[] =
-      view === "networth"
-        ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
-        : view === "cashflow"
-          ? [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
-          : doc.debts.map((d, i) => ({ key: d.id, label: d.name, color: mix(nwColors.debt, card, Math.min(DEBT_SHADE_MAX, i * DEBT_SHADE_STEP)) }))
-    return all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
-  }, [view, points, nwColors, cfColors, doc.debts, card])
+  const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
+  const { netWorth: nwColors } = usePlanColors()
   const yAxis = useMemo(() => fitAxis(points, series), [points, series])
   const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
@@ -379,6 +383,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
       center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "debt"] : ["networth", "cashflow"]} />}
+      right={view === "debt" ? undefined : <DetailToggle checked={detail} onChange={setDetail} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">

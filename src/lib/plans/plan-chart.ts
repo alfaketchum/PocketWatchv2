@@ -16,7 +16,7 @@ export const NET_WORTH_LAYER_LABELS: Record<NetWorthLayer | "debt", string> = {
   debt: "Debt",
 }
 
-const LAYER_FOR: Record<TaxTreatment, NetWorthLayer> = {
+export const LAYER_FOR: Record<TaxTreatment, NetWorthLayer> = {
   cash: "cash",
   taxable: "taxable",
   traditional: "taxDeferred",
@@ -102,7 +102,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   saved: "Contributions",
 }
 
-const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
+export const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
   cash: "wdCash",
   taxable: "wdTaxable",
   taxDeferred: "wdTaxDeferred",
