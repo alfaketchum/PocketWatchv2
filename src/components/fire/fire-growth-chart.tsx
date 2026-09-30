@@ -6,6 +6,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { growthSplit } from "@/lib/fire/fire-growth"
 import type { FirePlanState } from "@/hooks/finance/use-fire-plan"
 import { fmtCompact, fmtMoney } from "./fire-helpers"
+import { FireSectionCard } from "./fire-section-card"
 
 /** Years past FI to keep showing, so the flywheel after FI is visible. */
 const YEARS_AFTER_FI = 3
@@ -31,8 +32,11 @@ export function FireGrowthChart({ state, isHidden }: { state: FirePlanState; isH
         : `From ${split.crossoverYear}, the market adds more each year than you invest.`
 
   return (
-    <div>
-      <p className="text-sm text-foreground mb-3">{headline}</p>
+    <FireSectionCard
+      eyebrow="Your savings vs. the market"
+      title={headline}
+      info={`Each bar is one year: what you invest (until FI) and what a ${(inputs.realReturn * 100).toFixed(1)}% real return adds on your balance. Once the green part is bigger, compounding is doing more of the work than your saving.`}
+    >
       <div style={{ filter: isHidden ? "blur(8px)" : undefined }}>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={split.years} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
@@ -49,6 +53,6 @@ export function FireGrowthChart({ state, isHidden }: { state: FirePlanState; isH
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </FireSectionCard>
   )
 }

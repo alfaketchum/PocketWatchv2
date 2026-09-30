@@ -13,6 +13,10 @@ const FirePathChart = dynamic(
   { ssr: false, loading: () => <div className="h-[330px] animate-shimmer rounded-2xl" /> },
 )
 
+const FireGrowthChart = dynamic(
+  () => import("@/components/fire/fire-growth-chart").then((m) => m.FireGrowthChart),
+  { ssr: false, loading: () => <div className="h-[340px] animate-shimmer rounded-2xl" /> },
+)
 const FireWhatMoves = dynamic(
   () => import("@/components/fire/fire-what-moves").then((m) => m.FireWhatMoves),
   { ssr: false, loading: () => <div className="h-[300px] animate-shimmer rounded-2xl" /> },
@@ -28,6 +32,7 @@ export default function FirePage() {
       <FireHero state={state} isHidden={isHidden} />
       <FireMilestones state={state} isHidden={isHidden} />
       <FirePathChart state={state} isHidden={isHidden} />
+      <FireGrowthChart state={state} isHidden={isHidden} />
       <FireWhatMoves state={state} />
       <FireSpendingCost state={state} isHidden={isHidden} />
       <FireSafetyCard state={state} isHidden={isHidden} />

@@ -74,10 +74,12 @@ test("% of portfolio never depletes; guardrails and CAPE adapt spending", () => 
   assert.ok(cape.spending[0] !== 1, "CAPE rule sets first-year spending from valuations")
 })
 
-test("sensitivity: spending less and investing more are sooner, lower returns later", () => {
-  const items = fiSensitivity({ investable: 400_000, annualSpend: 60_000, annualContribution: 40_000, swr: 0.04, realReturn: 0.05, windfalls: [] })
-  const by = Object.fromEntries(items.map((i) => [i.key, i.deltaYears]))
-  assert.ok((by.spend ?? 0) < 0)
-  assert.ok((by.invest ?? 0) < 0)
-  assert.ok((by.returns ?? 0) > 0)
+test("sensitivity: every lever's better side is sooner, worse side later; ranked by impact", () => {
+  const levers = fiSensitivity({ investable: 400_000, annualSpend: 60_000, annualContribution: 40_000, swr: 0.04, realReturn: 0.05, windfalls: [] })
+  assert.deepEqual(levers.map((l) => l.key).sort(), ["invest", "returns", "spend", "swr"])
+  for (const l of levers) {
+    assert.ok((l.better.deltaYears ?? 0) < 0, `${l.key} better`)
+    assert.ok((l.worse.deltaYears ?? 0) > 0, `${l.key} worse`)
+  }
+  for (let i = 1; i < levers.length; i++) assert.ok(levers[i].impact <= levers[i - 1].impact)
 })

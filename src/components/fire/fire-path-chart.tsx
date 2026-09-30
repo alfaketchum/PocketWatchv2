@@ -10,9 +10,8 @@ import { windfallsFor } from "@/lib/fire/fire-analysis"
 import { nowFractionalYear } from "@/lib/fire/fire-history"
 import { fmtCompact, fmtMoney, fmtPct } from "./fire-helpers"
 import { FireSectionCard } from "./fire-section-card"
-import { FireGrowthChart } from "./fire-growth-chart"
 
-type View = "nest" | "monthly" | "growth" | "fi"
+type View = "nest" | "monthly" | "fi"
 
 interface Point {
   x: number
@@ -26,7 +25,6 @@ interface Point {
 const VIEWS: { value: View; label: string; advancedOnly?: boolean }[] = [
   { value: "nest", label: "Nest egg" },
   { value: "monthly", label: "Monthly" },
-  { value: "growth", label: "Growth" },
   { value: "fi", label: "FI %", advancedOnly: true },
 ]
 
@@ -92,9 +90,7 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
       title={
         active === "monthly"
           ? "When your portfolio can pay your bills"
-          : active === "growth"
-            ? "What you invest vs what the market adds"
-            : "Where your investments are headed"
+          : "Where your investments are headed"
       }
       info={`Solid = your actual invested assets. Dashed = projected at ${fmtPct(inputs.realReturn, 1)} real return plus ${fmtMoney(plan.annualContribution)}/yr until FI (growth only after), in today's dollars. Monthly = what ${fmtPct(plan.swr, 2)} of your portfolio pays each month.`}
       right={
@@ -117,9 +113,6 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
         </div>
       }
     >
-      {active === "growth" ? (
-        <FireGrowthChart state={state} isHidden={isHidden} />
-      ) : (
       <div style={{ filter: isHidden && active !== "fi" ? "blur(8px)" : undefined }}>
         <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
@@ -142,8 +135,7 @@ export function FirePathChart({ state, isHidden }: { state: FirePlanState; isHid
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      )}
-      {advanced && fiRange && active !== "growth" && (
+      {advanced && fiRange && (
         <p className="text-[11px] text-foreground-muted mt-2">
           Shaded: your plan through every historical period since 1871 (darker = middle half, lighter = 80% of outcomes).
         </p>
