@@ -50,6 +50,8 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
       incomeTaxRate: 0.2,
       capitalGainsRate: 0.15,
       cashBuffer: 20_000,
+      bufferAccountId: null,
+      protectBuffer: true,
     },
     people: [{ id: PRIMARY_PERSON_ID, name: "Me", birthYear: startYear - age, birthMonth: 1 }],
     accounts: [

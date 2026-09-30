@@ -289,3 +289,50 @@ test("today's dollars deflates flows by year and balances by year end", () => {
   assertClose(real.income, 10_000)
   assertClose(real.balances.cash, rows[3].balances.cash / Math.pow(1.03, 4))
 })
+
+test("protected buffer: shortfalls come from other accounts first; the buffer is spent last", () => {
+  const d = doc({
+    settings: { ...doc().settings, cashBuffer: 10_000, protectBuffer: true },
+    accounts: [account("cash", "cash", 15_000), account("brk", "taxable", 20_000)],
+    expenses: [expense(12_000)],
+  })
+  const rows = simulatePlan(d).rows
+  // Year 1: 5k above the buffer, then 7k from the brokerage.
+  assert.equal(rows[0].balances.cash, 10_000)
+  assert.equal(rows[0].balances.brk, 13_000)
+  // Year 2: all 12k from the brokerage. Year 3: its last 1k, then the 10k buffer, still 1k short.
+  assert.equal(rows[1].balances.cash, 10_000)
+  assert.equal(rows[2].balances.cash, 0)
+  assert.equal(rows[2].shortfall, 1_000)
+})
+
+test("unprotected buffer is spent first (cash leads the default withdrawal order)", () => {
+  const d = doc({
+    settings: { ...doc().settings, cashBuffer: 10_000, protectBuffer: false },
+    accounts: [account("cash", "cash", 15_000), account("brk", "taxable", 20_000)],
+    expenses: [expense(12_000)],
+  })
+  const first = simulatePlan(d).rows[0]
+  assert.equal(first.balances.cash, 3_000)
+  assert.equal(first.balances.brk, 20_000)
+})
+
+test("the chosen buffer account is the one refilled from surplus", () => {
+  const d = doc({
+    settings: { ...doc().settings, cashBuffer: 5_000, bufferAccountId: "savings" },
+    accounts: [account("checking", "cash", 0), account("savings", "cash", 0), account("brk", "taxable", 0)],
+    incomes: [income(8_000)],
+  })
+  const first = simulatePlan(d).rows[0]
+  assert.equal(first.balances.savings, 5_000)
+  assert.equal(first.balances.checking, 0)
+  assert.equal(first.balances.brk, 3_000)
+})
+
+test("plans saved before the buffer settings existed still load, with protection on", () => {
+  const base = blankPlanDocument(NOW)
+  const { bufferAccountId: _a, protectBuffer: _p, ...oldSettings } = base.settings
+  const parsed = parsePlanDocument({ ...base, settings: oldSettings }, base)
+  assert.equal(parsed?.settings.protectBuffer, true)
+  assert.equal(parsed?.settings.bufferAccountId, null)
+})

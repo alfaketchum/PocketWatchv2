@@ -27,6 +27,12 @@ function firstByTreatment(accounts: PlanAccount[], order: TaxTreatment[]): PlanA
   return null
 }
 
+/** The cash account that holds the buffer: the chosen one, else the first cash account. */
+export function bufferAccount(doc: PlanDocument): PlanAccount | null {
+  const cash = doc.accounts.filter((a) => a.taxTreatment === "cash")
+  return cash.find((a) => a.id === doc.settings.bufferAccountId) ?? cash[0] ?? null
+}
+
 export interface SurplusResult {
   holdings: Holdings
   depositsBy: Record<string, number>
@@ -53,7 +59,7 @@ export function depositSurplus(
     left -= value
   }
 
-  const cash = doc.accounts.find((a) => a.taxTreatment === "cash")
+  const cash = bufferAccount(doc)
   if (cash) {
     const target = doc.settings.cashBuffer * inflationFactor
     put(cash, Math.min(left, Math.max(0, target - (current.balances[cash.id] ?? 0))))
@@ -119,16 +125,26 @@ export interface DeficitResult {
   shortfall: number
 }
 
-/** Cover `need` (after tax) by withdrawing in order, grossing each withdrawal up for its tax. */
-export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument): DeficitResult {
+/**
+ * Cover `need` (after tax) by withdrawing in order, grossing each withdrawal up for its tax.
+ * With a protected buffer, the buffer account first gives only what's above the buffer; the
+ * buffer itself is spent last, once every other account is empty.
+ */
+export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument, inflationFactor: number): DeficitResult {
+  const buffer = doc.settings.protectBuffer ? bufferAccount(doc) : null
+  const reserve = buffer ? doc.settings.cashBuffer * inflationFactor : 0
+  const passes: { account: PlanAccount; keep: number }[] = [
+    ...withdrawalSequence(doc).map((account) => ({ account, keep: account.id === buffer?.id ? reserve : 0 })),
+    ...(buffer && reserve > 0 ? [{ account: buffer, keep: 0 }] : []),
+  ]
   let left = need
   let current = holdings
   let withdrawalsBy: Record<string, number> = {}
   let tax = 0
   let taxableWithdrawn = 0
-  for (const account of withdrawalSequence(doc)) {
+  for (const { account, keep } of passes) {
     if (left <= 0) break
-    const balance = current.balances[account.id] ?? 0
+    const balance = (current.balances[account.id] ?? 0) - keep
     const rate = withdrawalTaxRate(account, current, doc)
     if (balance <= 0 || rate >= 1) continue
     const net = Math.min(left, balance * (1 - rate))

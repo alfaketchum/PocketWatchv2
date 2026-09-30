@@ -44,6 +44,10 @@ export interface PlanSettings {
   capitalGainsRate: number
   /** Cash kept on hand (today's dollars) before surplus flows to investments. */
   cashBuffer: number
+  /** Cash account holding the buffer; null uses the first cash account. */
+  bufferAccountId: string | null
+  /** When on, shortfalls leave the buffer alone until every other account is empty. */
+  protectBuffer: boolean
 }
 
 export interface PlanAccount {

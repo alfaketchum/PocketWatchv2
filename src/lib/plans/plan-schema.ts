@@ -28,6 +28,9 @@ const settings = z.object({
   incomeTaxRate: share,
   capitalGainsRate: share,
   cashBuffer: money,
+  // Added after launch; defaults keep older saved plans valid.
+  bufferAccountId: id.nullable().default(null),
+  protectBuffer: z.boolean().default(true),
 })
 
 const person = z.object({ id, name, birthYear: year, birthMonth: month })

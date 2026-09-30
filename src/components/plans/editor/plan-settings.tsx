@@ -81,8 +81,11 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
           <FireNumberField label="Plan until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
         </div>
       </InputBlock>
-      <InputBlock title="Assumptions" description="Flat effective rates; real tax brackets come later.">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <InputBlock
+        title="Assumptions"
+        description="Flat effective rates; real tax brackets come later. The cash buffer (emergency fund) is on the Cash flow tab."
+      >
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <FireNumberField label="Inflation" suffix="%" scale={100} min={-0.05} max={0.2} value={s.inflation} onChange={(inflation) => set({ inflation })} />
           <FireNumberField
             label="Income tax (effective)"
@@ -103,13 +106,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
             value={s.capitalGainsRate}
             onChange={(capitalGainsRate) => set({ capitalGainsRate })}
           />
-          <FireNumberField
-            label="Cash buffer (today's $)"
-            prefix="$"
-            min={0}
-            value={s.cashBuffer}
-            onChange={(cashBuffer) => set({ cashBuffer })}
-          />
+
         </div>
       </InputBlock>
     </div>

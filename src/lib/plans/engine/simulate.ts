@@ -99,7 +99,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     events.purchases + events.sales
   const inflationFactor = Math.pow(1 + inflation, index)
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
-  const deficit = net < 0 ? coverDeficit(-net, holdings, doc) : null
+  const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
   holdings = surplus?.holdings ?? deficit?.holdings ?? holdings
 
   const contributionsBy = mergeSums(income.deposits, surplus?.depositsBy ?? {})

@@ -3,10 +3,11 @@
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { InputBlock, Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
-import { withdrawalSequence } from "@/lib/plans/engine/engine-cashflow"
+import { bufferAccount, withdrawalSequence } from "@/lib/plans/engine/engine-cashflow"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, SurplusTarget } from "@/lib/plans/plan-types"
 import type { PlanEditorProps } from "../plans-helpers"
+import { CashBufferEditor } from "./cash-buffer-editor"
 import { EmptyNote } from "./plan-editor-controls"
 
 const DEFAULT_CAP = 7_000
@@ -98,7 +99,7 @@ function SurplusOrder({ doc, update }: PlanEditorProps) {
   return (
     <InputBlock
       title="Where extra money goes"
-      description={`First the cash account is topped up to your ${fmtMoney(doc.settings.cashBuffer)} buffer, then these in order. Anything left goes to the first taxable account.`}
+      description="After the cash buffer above is topped up, leftover money goes to these accounts in order. Anything left after that goes to the first taxable account."
     >
       {targets.length === 0 && <EmptyNote>No order set: after the buffer, everything goes to your first taxable account.</EmptyNote>}
       {targets.map((t, i) => (
@@ -137,11 +138,15 @@ function WithdrawalOrder({ doc, update }: PlanEditorProps) {
   const sequence = withdrawalSequence(doc)
   const setOrder = (withdrawalOrder: string[]) => update((d) => ({ ...d, cashFlow: { ...d.cashFlow, withdrawalOrder } }))
   const ids = sequence.map((a) => a.id)
+  const buffer = bufferAccount(doc)
+  const protectedBuffer = buffer && doc.settings.protectBuffer && doc.settings.cashBuffer > 0 ? buffer : null
 
   return (
     <InputBlock
       title="Where shortfalls come from"
-      description="When spending is more than income, accounts are drawn down in this order. Traditional withdrawals pay income tax; taxable ones pay capital-gains tax on the gains."
+      description={`When spending is more than income, accounts are drawn down in this order. Traditional withdrawals pay income tax; taxable ones pay capital-gains tax on the gains.${
+        protectedBuffer ? ` The protected cash buffer is skipped until every other account is empty (switch it off above to change that).` : ""
+      }`}
     >
       {sequence.length === 0 && <EmptyNote>Add accounts first.</EmptyNote>}
       {sequence.map((a, i) => (
@@ -149,7 +154,12 @@ function WithdrawalOrder({ doc, update }: PlanEditorProps) {
           <span className="text-xs tabular-nums text-foreground-muted">{i + 1}.</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
-            <p className="text-[10px] text-foreground-muted">{TAX_TREATMENT_LABELS[a.taxTreatment]}</p>
+            <p className="text-[10px] text-foreground-muted">
+              {TAX_TREATMENT_LABELS[a.taxTreatment]}
+              {protectedBuffer?.id === a.id && (
+                <span className="ml-1.5 text-primary">· keeps {fmtMoney(doc.settings.cashBuffer)} protected, spent last</span>
+              )}
+            </p>
           </div>
           <OrderButtons index={i} count={sequence.length} onMove={(delta) => setOrder(move(ids, i, delta))} />
         </div>
@@ -167,6 +177,7 @@ function WithdrawalOrder({ doc, update }: PlanEditorProps) {
 export function CashFlowEditor(props: PlanEditorProps) {
   return (
     <div className="space-y-6">
+      <CashBufferEditor {...props} />
       <SurplusOrder {...props} />
       <WithdrawalOrder {...props} />
     </div>
