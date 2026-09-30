@@ -3,6 +3,7 @@
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { cn } from "@/lib/utils"
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
+import { PlanYearDetail } from "./plan-year-detail"
 
 function Cell({ value, tone }: { value: number; tone?: "neg" | "pos" }) {
   const shown = Math.abs(value) < 0.5 ? "—" : fmtMoney(value)
@@ -17,26 +18,6 @@ function Cell({ value, tone }: { value: number; tone?: "neg" | "pos" }) {
       {shown}
     </td>
   )
-}
-
-function DetailList({ title, entries }: { title: string; entries: { label: string; value: number }[] }) {
-  const shown = entries.filter((e) => Math.abs(e.value) >= 0.5)
-  if (shown.length === 0) return null
-  return (
-    <div className="min-w-[12rem]">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-1">{title}</p>
-      {shown.map((e) => (
-        <p key={e.label} className="flex justify-between gap-4 text-xs">
-          <span className="text-foreground-muted truncate">{e.label}</span>
-          <span className="tabular-nums text-foreground">{fmtMoney(e.value)}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
-function named<T extends { id: string; name: string }>(items: T[], values: Record<string, number>) {
-  return items.map((i) => ({ label: i.name, value: values[i.id] ?? 0 }))
 }
 
 /** A ledger year; clicking it expands per-account and per-stream detail. */
@@ -80,26 +61,7 @@ export function PlanLedgerRow({
       {expanded && (
         <tr className="bg-background-secondary/40">
           <td colSpan={9} className="px-3 py-3">
-            <div className="flex flex-wrap gap-6">
-              <DetailList title="Year-end balances" entries={named(doc.accounts, row.balances)} />
-              <DetailList title="Income" entries={named(doc.incomes, row.incomeBy)} />
-              <DetailList title="Spending" entries={named(doc.expenses, row.expensesBy)} />
-              <DetailList title="Saved into" entries={named(doc.accounts, row.contributionsBy)} />
-              <DetailList title="Withdrawn from" entries={named(doc.accounts, row.withdrawalsBy)} />
-              <DetailList
-                title="Other"
-                entries={[
-                  { label: "Investment growth", value: row.growth },
-                  { label: "Employer match", value: row.employerMatch },
-                  { label: "Income tax", value: row.incomeTax },
-                  { label: "Tax on withdrawals", value: row.withdrawalTax },
-                  { label: "Asset purchases", value: row.assetPurchases },
-                  { label: "Asset sales", value: row.assetSales },
-                  { label: "Debt left", value: row.debtsTotal },
-                  { label: "Shortfall", value: row.shortfall },
-                ]}
-              />
-            </div>
+            <PlanYearDetail row={row} doc={doc} />
           </td>
         </tr>
       )}
