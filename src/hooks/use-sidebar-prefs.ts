@@ -54,6 +54,8 @@ export const FIRE_NAV_ITEMS: NavItem[] = [
 
 export const PLANS_NAV_ITEMS: NavItem[] = [
   { id: "plans-list", label: "Plans", href: "/plans", icon: "route" },
+  { id: "plans-compare", label: "Compare Plans", href: "/plans/compare", icon: "compare_arrows" },
+  { id: "plans-progress", label: "Plan vs Actual", href: "/plans/progress", icon: "track_changes" },
 ]
 
 export const TRAVEL_NAV_ITEMS: NavItem[] = [

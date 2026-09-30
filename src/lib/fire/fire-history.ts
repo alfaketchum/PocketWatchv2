@@ -13,7 +13,7 @@ export interface InvestablePoint {
   value: number
 }
 
-function fractionalYear(date: string): number {
+export function fractionalYear(date: string): number {
   const [y, m, d] = date.slice(0, 10).split("-").map(Number)
   return y + (m - 1) / 12 + ((d || 1) - 1) / 365
 }
