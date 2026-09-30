@@ -54,6 +54,8 @@ export function supportStartAge(child: PlanChild): number {
 /** Ids of a child's generated milestones and expenses, so other items can point at them. */
 export const childIds = (childId: string) => ({
   born: `child-${childId}-born`,
+  raisingEnds: `child-${childId}-raising-ends`,
+  plan529Ends: `child-${childId}-529-ends`,
   college: `child-${childId}-college`,
   graduates: `child-${childId}-graduates`,
   supportEnds: `child-${childId}-support-ends`,
@@ -62,33 +64,35 @@ export const childIds = (childId: string) => ({
   supportCost: `child-${childId}-support`,
 })
 
-/** Milestones each child brings: born, starts college, graduates, support ends. */
+/** Age when 529 contributions stop: college start, or 18 without college. */
+export function plan529EndAge(child: PlanChild): number {
+  return child.college.enabled ? child.college.startAge : 18
+}
+
+function mark(id: string, name: string, icon: string, child: PlanChild, age: number): PlanMilestone {
+  return { id, name, kind: "child", icon, timing: atAge(child, age) }
+}
+
+/** Each stage of a child's plan, in order: born, turns 18, 529 ends, college, graduates, on their own. */
 export function childMilestones(doc: PlanDocument): PlanMilestone[] {
   return (doc.children ?? []).flatMap((child) => {
     const ids = childIds(child.id)
-    const marks: PlanMilestone[] = [
-      { id: ids.born, name: `${child.name} born`, kind: "child", icon: "child_care", timing: atAge(child, 0) },
-    ]
-    if (child.college.enabled) {
+    const { name, college } = child
+    const marks: PlanMilestone[] = [mark(ids.born, `${name} born`, "child_friendly", child, 0)]
+    if (child.raising.enabled) {
+      marks.push(mark(ids.raisingEnds, `${name} turns ${child.raising.untilAge}`, "cake", child, child.raising.untilAge))
+    }
+    if (child.plan529.enabled) {
+      marks.push(mark(ids.plan529Ends, `${name}'s 529 contributions end`, "savings", child, plan529EndAge(child)))
+    }
+    if (college.enabled) {
       marks.push(
-        { id: ids.college, name: `${child.name} starts college`, kind: "child", icon: "school", timing: atAge(child, child.college.startAge) },
-        {
-          id: ids.graduates,
-          name: `${child.name} graduates`,
-          kind: "child",
-          icon: "workspace_premium",
-          timing: atAge(child, child.college.startAge + child.college.years),
-        },
+        mark(ids.college, `${name} starts college`, "backpack", child, college.startAge),
+        mark(ids.graduates, `${name} graduates`, "school", child, college.startAge + college.years),
       )
     }
     if (child.support.enabled) {
-      marks.push({
-        id: ids.supportEnds,
-        name: `${child.name}'s support ends`,
-        kind: "child",
-        icon: "family_restroom",
-        timing: atAge(child, supportStartAge(child) + child.support.years),
-      })
+      marks.push(mark(ids.supportEnds, `${name} is on their own`, "flight_takeoff", child, supportStartAge(child) + child.support.years))
     }
     return marks
   })
@@ -138,7 +142,7 @@ export function childTransfers(doc: PlanDocument): PlanTransfer[] {
     const { enabled, accountId, annualContribution } = child.plan529
     if (!enabled || !accountId || !accountIds.has(accountId) || annualContribution <= 0) return []
     const born = Math.max(child.birthYear, doc.settings.startYear)
-    const end = child.college.enabled ? child.birthYear + child.college.startAge : child.birthYear + 18
+    const end = child.birthYear + plan529EndAge(child)
     return [{ id: `child-${child.id}-529`, accountId, amount: annualContribution, start: { type: "year", year: born }, end: { type: "year", year: end } }]
   })
 }

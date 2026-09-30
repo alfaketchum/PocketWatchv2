@@ -34,7 +34,7 @@ test("a child adds milestones others can point at", () => {
   const d = plan(child)
   assert.deepEqual(
     childMilestones(d).map((m) => [m.name, (m.timing as { year: number }).year]),
-    [["Sam born", 2028], ["Sam starts college", 2046], ["Sam graduates", 2050], ["Sam's support ends", 2052]],
+    [["Sam born", 2028], ["Sam turns 18", 2046], ["Sam starts college", 2046], ["Sam graduates", 2050], ["Sam is on their own", 2052]],
   )
   assert.equal(resolveTiming({ type: "milestone", milestoneId: childIds("sam").college }, timingContext(d)), 20)
 })

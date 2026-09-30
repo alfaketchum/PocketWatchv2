@@ -37,6 +37,18 @@ const DIMMED = 0.35
 const Y_HEADROOM = 1.03
 /** Space above the plot for milestone icons. */
 const ICON_ROW = 30
+/** Vertical distance between icons that share a year. */
+const ICON_STACK = 22
+
+/** Stack position of each milestone among those in the same year (0 = lowest). */
+function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: number }[] {
+  const seen = new Map<number, number>()
+  return marks.map((mark) => {
+    const level = seen.get(mark.age) ?? 0
+    seen.set(mark.age, level + 1)
+    return { mark, level }
+  })
+}
 const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   retirement: "beach_access",
   custom: "flag",
@@ -46,10 +58,20 @@ const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
 }
 
 /** Small round icon at the top of a milestone's line; hover shows its name. */
-function MilestoneMarker({ viewBox, mark, color }: { viewBox?: { x: number; y: number }; mark: ChartMilestone; color: string }) {
+function MilestoneMarker({
+  viewBox,
+  mark,
+  color,
+  level,
+}: {
+  viewBox?: { x: number; y: number }
+  mark: ChartMilestone
+  color: string
+  level: number
+}) {
   if (!viewBox) return null
   const cx = viewBox.x
-  const cy = viewBox.y - ICON_ROW / 2
+  const cy = viewBox.y - ICON_ROW / 2 - level * ICON_STACK
   return (
     <g style={{ cursor: "default" }}>
       <title>{`${mark.name} · age ${mark.age} (${mark.year})`}</title>
@@ -151,6 +173,8 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
+  const stacked = useMemo(() => stackMarks(marks), [marks])
+  const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const { netWorth: nwColors, cashFlow: cfColors } = usePlanColors()
@@ -197,7 +221,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={points}
-                margin={{ top: ICON_ROW, right: 12, left: 4, bottom: 0 }}
+                margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
                 stackOffset="sign"
                 barCategoryGap="8%"
                 onMouseMove={(state) => setHovered(indexOf(state))}
@@ -238,14 +262,14 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                     isAnimationActive={false}
                   />
                 )}
-                {marks.map((m) => (
+                {stacked.map(({ mark: m, level }) => (
                   <ReferenceLine
                     key={`${m.name}-${m.age}`}
                     x={m.age}
                     stroke={m.kind === "depleted" ? error : foregroundMuted}
                     strokeDasharray="3 3"
                     strokeOpacity={0.6}
-                    label={<MilestoneMarker mark={m} color={m.kind === "depleted" ? error : primary} />}
+                    label={<MilestoneMarker mark={m} level={level} color={m.kind === "depleted" ? error : primary} />}
                   />
                 ))}
               </ComposedChart>
