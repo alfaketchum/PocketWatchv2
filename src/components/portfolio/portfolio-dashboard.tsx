@@ -244,7 +244,7 @@ export function PortfolioDashboard() {
       />
 
       <FadeIn delay={0.15}>
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <ChainAllocationDonut locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
           <AssetAllocationDonut assets={aggregatedAssets} iconMap={iconMap} totalValue={effectiveTotalValue} isHidden={isHidden} />
         </div>
