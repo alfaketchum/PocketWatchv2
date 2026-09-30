@@ -109,7 +109,7 @@ function taxableShare(account: PlanAccount, holdings: Holdings): number {
 }
 
 /** Tax rate on this account's gains: short-term gains are taxed as ordinary income. */
-function gainsRate(account: PlanAccount, doc: PlanDocument): number {
+export function gainsRate(account: PlanAccount, doc: PlanDocument): number {
   const short = account.shortTermShare ?? 0
   return (1 - short) * doc.settings.capitalGainsRate + short * doc.settings.incomeTaxRate
 }

@@ -52,6 +52,7 @@ const account = z.object({
   source,
   drainByYear: year.nullable().optional(),
   shortTermShare: share.optional(),
+  realizedShare: share.optional(),
   origin,
 })
 

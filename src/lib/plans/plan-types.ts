@@ -73,6 +73,8 @@ export interface PlanAccount {
   drainByYear?: number | null
   /** Taxable accounts: share of gains from holdings kept a year or less (taxed as ordinary income). */
   shortTermShare?: number
+  /** Taxable accounts: share of each year's growth sold that year (active trading), taxed yearly. */
+  realizedShare?: number
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }
@@ -267,6 +269,10 @@ export interface YearRow {
   withdrawalTax: number
   /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */
   saleTax: number
+  /** Tax on gains realized by trading inside taxable accounts. */
+  tradingTax: number
+  /** Gains realized by trading this year (short- and long-term). */
+  realizedGains: number
   /** One-time deposits straight into accounts (inheritance, gifts); not part of cash flow. */
   deposits: number
   depositsBy: Record<string, number>

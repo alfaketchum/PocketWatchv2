@@ -77,7 +77,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
   if (!row) return null
   const previous = index > 0 ? rows[index - 1].netWorth : startNetWorth
   const layers = layersFor(doc, { accounts: row.balances, assets: row.assetValues, debts: row.debtBalances })
-  const taxes = row.incomeTax + row.withdrawalTax + row.saleTax
+  const taxes = row.incomeTax + row.withdrawalTax + row.saleTax + row.tradingTax
   const afterTaxIncome = row.income - row.incomeTax
   const kept = afterTaxIncome - row.expenses - row.debtPayments
   const startBalance = index > 0 ? rows[index - 1].accountsTotal : doc.accounts.reduce((sum, a) => sum + a.balance, 0)

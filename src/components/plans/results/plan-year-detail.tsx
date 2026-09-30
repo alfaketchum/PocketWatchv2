@@ -43,6 +43,8 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Income tax", value: row.incomeTax },
           { label: "Tax on withdrawals", value: row.withdrawalTax },
           { label: "Tax on asset sales", value: row.saleTax },
+          { label: "Gains realized by trading", value: row.realizedGains },
+          { label: "Tax on trading gains", value: row.tradingTax },
           { label: "Debt payments", value: row.debtPayments },
           { label: "Asset purchases", value: row.assetPurchases },
           { label: "Asset sales", value: row.assetSales },

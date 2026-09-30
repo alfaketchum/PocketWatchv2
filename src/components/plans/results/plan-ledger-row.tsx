@@ -51,7 +51,7 @@ export function PlanLedgerRow({
           )}
         </td>
         <Cell value={row.income} />
-        <Cell value={-(row.incomeTax + row.withdrawalTax + row.saleTax)} tone="neg" />
+        <Cell value={-(row.incomeTax + row.withdrawalTax + row.saleTax + row.tradingTax)} tone="neg" />
         <Cell value={-row.expenses} tone="neg" />
         <Cell value={-row.debtPayments} tone="neg" />
         <Cell value={row.contributions - row.employerMatch} tone="pos" />

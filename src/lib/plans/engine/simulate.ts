@@ -15,6 +15,7 @@ import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
 import { taxTrueUp, yearTax } from "./engine-tax"
+import { realizeTrading } from "./engine-trading"
 
 /** Differences smaller than this (dollars) aren't worth another pass. */
 const TRUE_UP_MIN = 1
@@ -123,7 +124,8 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   const { doc } = flows
   const inflationFactor = Math.pow(1 + doc.settings.inflation, index)
   const grownState = growHoldings(state.holdings, doc)
-  let holdings = grownState.holdings
+  const trading = realizeTrading(state.holdings, grownState.holdings, doc)
+  let holdings = trading.holdings
   for (const account of doc.accounts) {
     const payroll = flows.income.deposits[account.id]
     if (payroll) holdings = deposit(holdings, account, payroll)
@@ -135,13 +137,14 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   holdings = drained.holdings
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
-    income.total - income.employeeContributions - incomeTax - extraTax - expenses.total - debts.paid -
+    income.total - income.employeeContributions - incomeTax - extraTax - trading.tax - expenses.total - debts.paid -
     events.purchases + events.sales - events.saleTax - transfers.total + earmarked.drawn + drained.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
   const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
   return {
     holdings: surplus?.holdings ?? deficit?.holdings ?? holdings,
     growth: grownState.growth,
+    trading,
     contributionsBy: mergeSums(mergeSums(income.deposits, transfers.byAccount), surplus?.depositsBy ?? {}),
     withdrawalsBy: mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), deficit?.withdrawalsBy ?? {}),
     deposits,
@@ -165,10 +168,10 @@ function settleTax(plan: Plan, state: State, index: number, flows: Flows): { mov
   for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
     const diff = taxTrueUp(flows.tax, {
       ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
-      shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains,
-      longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains,
+      shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains + moved.trading.shortGains,
+      longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains + moved.trading.longGains,
       realEstateGains: flows.events.saleRealEstateGains,
-      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax,
+      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax + moved.trading.tax,
     })
     if (Math.abs(diff) < TRUE_UP_MIN) break
     trueUp += diff
@@ -198,9 +201,13 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     incomeTax: incomeTax + trueUp,
     withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax,
     saleTax: events.saleTax,
+    tradingTax: moved.trading.tax,
+    realizedGains: moved.trading.shortGains + moved.trading.longGains,
     deposits: moved.deposits.total,
     depositsBy: moved.deposits.byAccount,
-    taxableIncome: income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable,
+    taxableIncome:
+      income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable +
+      moved.trading.shortGains + moved.trading.longGains,
     expenses: expenses.total,
     expensesBy: expenses.byId,
     debtPayments: debts.paid,

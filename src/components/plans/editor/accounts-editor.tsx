@@ -110,6 +110,16 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
                   hint="Share of gains held a year or less (active trading). Taxed as income."
                   onChange={(shortTermShare) => patch(a.id, { shortTermShare })}
                 />
+                <FireNumberField
+                  label="Realized each year"
+                  suffix="%"
+                  scale={100}
+                  min={0}
+                  max={1}
+                  value={a.realizedShare ?? 0}
+                  hint="Share of each year's growth you sell (trading). Taxed that year, not at withdrawal. 0% = buy and hold."
+                  onChange={(realizedShare) => patch(a.id, { realizedShare })}
+                />
               </>
             )}
           </div>

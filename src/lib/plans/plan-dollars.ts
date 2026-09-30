@@ -6,6 +6,8 @@ const FLOW_FIELDS = [
   "incomeTax",
   "withdrawalTax",
   "saleTax",
+  "tradingTax",
+  "realizedGains",
   "deposits",
   "taxableIncome",
   "assetAppreciation",
