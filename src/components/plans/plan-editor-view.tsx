@@ -17,6 +17,7 @@ import { MilestonesEditor } from "./editor/milestones-editor"
 import { isPlanTab, PlanEditorTabs, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { PlanEditorHeader } from "./plan-editor-header"
+import { PlanBacktestCard } from "./results/plan-backtest-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
 
@@ -85,7 +86,10 @@ export function PlanEditorView({ planId }: { planId: string }) {
           <Editor doc={document} update={update} />
         </div>
       ) : (
-        <PlanLedgerTable doc={document} rows={rows} basis={basis} isHidden={isHidden} />
+        <>
+          <PlanBacktestCard doc={document} projection={projection} isHidden={isHidden} />
+          <PlanLedgerTable doc={document} rows={rows} basis={basis} isHidden={isHidden} />
+        </>
       )}
     </div>
   )
