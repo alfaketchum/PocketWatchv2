@@ -40,6 +40,8 @@ const ICON_ROW = 30
 const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   retirement: "beach_access",
   custom: "flag",
+  child: "child_care",
+  asset: "home",
   depleted: "warning",
 }
 
@@ -61,7 +63,7 @@ function MilestoneMarker({ viewBox, mark, color }: { viewBox?: { x: number; y: n
         fontSize={13}
         fontFamily="Material Symbols Rounded"
       >
-        {MILESTONE_ICONS[mark.kind]}
+        {mark.icon ?? MILESTONE_ICONS[mark.kind]}
       </text>
     </g>
   )
@@ -265,7 +267,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                   className="material-symbols-rounded"
                   style={{ fontSize: 13, color: m.kind === "depleted" ? error : primary }}
                 >
-                  {MILESTONE_ICONS[m.kind]}
+                  {m.icon ?? MILESTONE_ICONS[m.kind]}
                 </span>
                 {m.name} ({m.age})
               </span>

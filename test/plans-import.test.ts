@@ -23,6 +23,7 @@ test("taxTreatmentFor maps account subtypes to tax buckets", () => {
   assert.equal(taxTreatmentFor("investment", "roth_ira"), "roth")
   assert.equal(taxTreatmentFor("investment", "roth 401k"), "roth")
   assert.equal(taxTreatmentFor("investment", "hsa"), "hsa")
+  assert.equal(taxTreatmentFor("investment", "529"), "education")
   assert.equal(taxTreatmentFor("investment", "brokerage"), "taxable")
   assert.equal(taxTreatmentFor("investment", "stock plan"), "taxable")
   assert.equal(taxTreatmentFor("credit", "credit card"), null)

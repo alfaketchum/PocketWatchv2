@@ -1,0 +1,29 @@
+import { childMilestones } from "./plan-children"
+import type { AssetKind, PlanDocument, PlanMilestone } from "./plan-types"
+
+const BUY_ICONS: Record<AssetKind, string> = { home: "home", vehicle: "directions_car", other: "shopping_bag" }
+
+/** "Buy the house" / "Sell the car" milestones for assets bought or sold during the plan. */
+export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
+  return doc.assets.flatMap((asset) => {
+    const marks: PlanMilestone[] = []
+    if (asset.start.type !== "planStart") {
+      marks.push({ id: `asset-${asset.id}-buy`, name: `Buy ${asset.name}`, kind: "asset", icon: BUY_ICONS[asset.kind], timing: asset.start })
+    }
+    if (asset.end.type !== "planEnd") {
+      marks.push({ id: `asset-${asset.id}-sell`, name: `Sell ${asset.name}`, kind: "asset", icon: "sell", timing: asset.end })
+    }
+    return marks
+  })
+}
+
+/** Generated milestones: from children and from assets bought or sold. Read-only; edit their source. */
+export function generatedMilestones(doc: PlanDocument): PlanMilestone[] {
+  return [...childMilestones(doc), ...assetMilestones(doc)]
+}
+
+/** The plan's own milestones plus generated ones. Safe on an already-expanded plan (no duplicates). */
+export function allMilestones(doc: PlanDocument): PlanMilestone[] {
+  const own = new Set(doc.milestones.map((m) => m.id))
+  return [...doc.milestones, ...generatedMilestones(doc).filter((m) => !own.has(m.id))]
+}

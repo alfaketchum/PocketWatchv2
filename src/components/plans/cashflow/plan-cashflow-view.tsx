@@ -83,8 +83,7 @@ function YearPicker({
 export function PlanCashflowView({ planId }: { planId: string }) {
   const detail = usePlanDetail(planId)
   const { isHidden } = usePrivacyMode()
-  const doc = detail.data?.document ?? null
-  const { rows, basis, setBasis } = usePlanProjection(doc)
+  const { rows, basis, setBasis, view: doc } = usePlanProjection(detail.data?.document ?? null)
   const [index, setIndex] = useState(0)
 
   const retireIndex = useMemo(() => {

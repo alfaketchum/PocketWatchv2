@@ -61,6 +61,12 @@ export function AccountsEditor({ doc, update }: PlanEditorProps) {
               value={a.returnRate}
               onChange={(returnRate) => patch(a.id, { returnRate })}
             />
+            {a.taxTreatment === "education" && (
+              <p className="col-span-2 lg:col-span-4 text-[11px] text-foreground-muted">
+                Education (529) accounts grow tax-free and only pay college costs from a child&apos;s 529 plan (Expenses → Kids). They&apos;re
+                never used for other spending.
+              </p>
+            )}
             {a.taxTreatment === "taxable" && (
               <FireNumberField
                 label="Cost basis"

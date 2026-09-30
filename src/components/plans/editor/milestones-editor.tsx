@@ -1,6 +1,7 @@
 "use client"
 
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
+import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, primaryAge, type PlanEditorProps } from "../plans-helpers"
@@ -21,6 +22,29 @@ function whenLabel(doc: PlanDocument, milestone: PlanMilestone): string {
   const index = resolveTiming(milestone.timing, timingContext(doc))
   if (index === null) return "Can't be placed (check what it points at)"
   return `${doc.settings.startYear + index} · age ${primaryAge(doc) + index}`
+}
+
+/** Milestones created by kids and by assets bought or sold; edited where they come from. */
+function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
+  const marks = generatedMilestones(doc)
+  if (marks.length === 0) return null
+  return (
+    <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">
+      <p className="text-xs font-semibold text-foreground">From your kids and assets</p>
+      <p className="text-[11px] text-foreground-muted">
+        Created automatically. Change them on the Expenses tab (kids) or the Assets &amp; debts tab (buying or selling).
+      </p>
+      {marks.map((m) => (
+        <div key={m.id} className="flex items-center gap-2 text-xs">
+          <span className="material-symbols-rounded text-primary" style={{ fontSize: 15 }}>
+            {m.icon ?? "flag"}
+          </span>
+          <span className="text-foreground">{m.name}</span>
+          <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /** Named points in time that income, spending and assets can start or stop at. */
@@ -61,6 +85,7 @@ export function MilestonesEditor({ doc, update }: PlanEditorProps) {
           </div>
         </ItemCard>
       ))}
+      <GeneratedMilestones doc={doc} />
       <AddButton
         label="Add milestone"
         disabled={doc.milestones.length >= PLAN_LIMITS.milestones}

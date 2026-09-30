@@ -8,6 +8,7 @@ import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
 import { GrowthField } from "./growth-field"
+import { ChildrenEditor } from "./children-editor"
 import { AddButton, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 
@@ -34,54 +35,63 @@ export function ExpensesEditor({ doc, update }: PlanEditorProps) {
   )
 
   return (
-    <div className="space-y-3">
-      {doc.expenses.length === 0 ? (
-        <EmptyNote>No expenses yet. Start with one line for everyday living costs; split it up later if you want.</EmptyNote>
-      ) : (
-        <p className="text-xs text-foreground-muted">
-          Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
-        </p>
-      )}
-      {doc.expenses.map((e) => (
-        <ItemCard
-          key={e.id}
-          title={e.name || "Untitled expense"}
-          removeLabel={`Remove ${e.name}`}
-          onRemove={() => update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== e.id) }))}
-        >
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
-            <div className="col-span-2 lg:col-span-1">
-              <TextField label="Name" value={e.name} onChange={(name) => patch(e.id, { name })} />
-            </div>
-            <FireNumberField
-              label={e.oneTime ? "Amount (today's $)" : "Per year (today's $)"}
-              prefix="$"
-              min={0}
-              value={e.amount}
-              onChange={(amount) => patch(e.id, { amount })}
-            />
-            <GrowthField value={e.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(e.id, { growth })} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <TimingPicker label={e.oneTime ? "When" : "Starts"} value={e.start} doc={doc} onChange={(start) => patch(e.id, { start })} />
-            {!e.oneTime && (
-              <TimingPicker
-                label="Stops"
-                value={e.end}
-                doc={doc}
-                allow={["planEnd", "age", "year", "milestone"]}
-                onChange={(end) => patch(e.id, { end })}
+    <div className="space-y-8">
+      <ChildrenEditor doc={doc} update={update} />
+      <div className="space-y-3">
+        <p className="text-sm font-semibold text-foreground">Other expenses</p>
+        {doc.expenses.length === 0 ? (
+          <EmptyNote>No expenses yet. Start with one line for everyday living costs; split it up later if you want.</EmptyNote>
+        ) : (
+          <p className="text-xs text-foreground-muted">
+            Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
+          </p>
+        )}
+        {doc.expenses.map((e) => (
+          <ItemCard
+            key={e.id}
+            title={e.name || "Untitled expense"}
+            removeLabel={`Remove ${e.name}`}
+            onRemove={() => update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== e.id) }))}
+          >
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
+              <div className="col-span-2 lg:col-span-1">
+                <TextField label="Name" value={e.name} onChange={(name) => patch(e.id, { name })} />
+              </div>
+              <FireNumberField
+                label={e.oneTime ? "Amount (today's $)" : "Per year (today's $)"}
+                prefix="$"
+                min={0}
+                value={e.amount}
+                onChange={(amount) => patch(e.id, { amount })}
               />
-            )}
-          </div>
-          <Toggle label="One-time" checked={e.oneTime} onChange={(oneTime) => patch(e.id, { oneTime })} />
-        </ItemCard>
-      ))}
-      <AddButton
-        label="Add expense"
-        disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
-        onClick={() => update((d) => ({ ...d, expenses: [...d.expenses, newExpense()] }))}
-      />
+              <GrowthField value={e.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(e.id, { growth })} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <TimingPicker
+                label={e.oneTime ? "When" : "Starts"}
+                value={e.start}
+                doc={doc}
+                onChange={(start) => patch(e.id, { start })}
+              />
+              {!e.oneTime && (
+                <TimingPicker
+                  label="Stops"
+                  value={e.end}
+                  doc={doc}
+                  allow={["planEnd", "age", "year", "milestone"]}
+                  onChange={(end) => patch(e.id, { end })}
+                />
+              )}
+            </div>
+            <Toggle label="One-time" checked={e.oneTime} onChange={(oneTime) => patch(e.id, { oneTime })} />
+          </ItemCard>
+        ))}
+        <AddButton
+          label="Add expense"
+          disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
+          onClick={() => update((d) => ({ ...d, expenses: [...d.expenses, newExpense()] }))}
+        />
+      </div>
     </div>
   )
 }

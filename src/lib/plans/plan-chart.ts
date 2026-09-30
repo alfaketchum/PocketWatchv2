@@ -21,6 +21,7 @@ const LAYER_FOR: Record<TaxTreatment, NetWorthLayer> = {
   traditional: "taxDeferred",
   roth: "taxFree",
   hsa: "taxFree",
+  education: "taxFree",
 }
 
 export type NetWorthPoint = { age: number; year: number; netWorth: number; debt: number } & Record<NetWorthLayer, number>
@@ -69,7 +70,8 @@ export function netWorthPoints(doc: PlanDocument, rows: YearRow[]): NetWorthPoin
 
 export interface ChartMilestone {
   name: string
-  kind: "retirement" | "custom" | "depleted"
+  kind: "retirement" | "custom" | "child" | "asset" | "depleted"
+  icon?: string
   age: number
   year: number
 }
@@ -82,7 +84,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   const marks: ChartMilestone[] = doc.milestones.flatMap((m) => {
     const index = resolveTiming(m.timing, ctx)
     if (index === null || index < 0 || index >= ctx.length) return []
-    return [{ name: m.name, kind: m.kind, age: age0 + index, year: doc.settings.startYear + index }]
+    return [{ name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
   })
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
   if (depleted) marks.push({ name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })

@@ -38,7 +38,7 @@ const person = z.object({ id, name, birthYear: year, birthMonth: month })
 const account = z.object({
   id,
   name,
-  taxTreatment: z.enum(["cash", "taxable", "traditional", "roth", "hsa"]),
+  taxTreatment: z.enum(["cash", "taxable", "traditional", "roth", "hsa", "education"]),
   balance: money,
   costBasis: money.nullable(),
   returnRate: rate,
@@ -102,6 +102,23 @@ const debt = z.object({
 
 const milestone = z.object({ id, name, kind: z.enum(["retirement", "custom"]), timing })
 
+const child = z.object({
+  id,
+  name,
+  birthYear: year,
+  raising: z.object({ enabled: z.boolean(), annualCost: money, untilAge: z.number().int().min(1).max(30) }),
+  college: z.object({
+    enabled: z.boolean(),
+    preset: z.enum(["public_in_state", "public_out_of_state", "private", "custom"]),
+    annualCost: money,
+    startAge: z.number().int().min(10).max(40),
+    years: z.number().int().min(1).max(10),
+    growth: rate,
+  }),
+  plan529: z.object({ enabled: z.boolean(), accountId: id.nullable(), annualContribution: money }),
+  support: z.object({ enabled: z.boolean(), annualAmount: money, years: z.number().int().min(1).max(40) }),
+})
+
 export const planDocumentSchema = z.object({
   settings,
   people: z.array(person).min(1).max(PLAN_LIMITS.people),
@@ -115,6 +132,7 @@ export const planDocumentSchema = z.object({
     withdrawalOrder: z.array(id).max(PLAN_LIMITS.accounts),
   }),
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
+  children: z.array(child).max(PLAN_LIMITS.children),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

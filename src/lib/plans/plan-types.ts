@@ -1,5 +1,5 @@
 /** Tax bucket of an account; decides how contributions and withdrawals are taxed. */
-export type TaxTreatment = "cash" | "taxable" | "traditional" | "roth" | "hsa"
+export type TaxTreatment = "cash" | "taxable" | "traditional" | "roth" | "hsa" | "education"
 
 export type IncomeKind = "salary" | "business" | "social_security" | "pension" | "rental" | "other"
 
@@ -7,7 +7,7 @@ export type AssetKind = "home" | "vehicle" | "other"
 
 export type DebtKind = "mortgage" | "student" | "auto" | "credit" | "other"
 
-export type MilestoneKind = "retirement" | "custom"
+export type MilestoneKind = "retirement" | "custom" | "child" | "asset"
 
 /** When something starts or ends. Ranges are [start, end): an item ending at a milestone stops that year. */
 export type Timing =
@@ -103,6 +103,8 @@ export interface PlanExpense {
   start: Timing
   end: Timing
   oneTime: boolean
+  /** Paid from this account first (tax-free), e.g. college from a 529. Set on generated child expenses. */
+  fundedBy?: string | null
 }
 
 export interface PlanAsset {
@@ -148,6 +150,37 @@ export interface PlanMilestone {
   name: string
   kind: MilestoneKind
   timing: Timing
+  /** Material Symbols icon for generated milestones (children). */
+  icon?: string
+}
+
+export type CollegePreset = "public_in_state" | "public_out_of_state" | "private" | "custom"
+
+/** A child and the costs, savings and milestones that come with them. */
+export interface PlanChild {
+  id: string
+  name: string
+  birthYear: number
+  raising: { enabled: boolean; annualCost: number; untilAge: number }
+  college: {
+    enabled: boolean
+    preset: CollegePreset
+    /** Cost of attendance per year, today's dollars. */
+    annualCost: number
+    startAge: number
+    years: number
+    /** Nominal yearly growth of college costs (tuition outpaces inflation). */
+    growth: number
+  }
+  plan529: {
+    enabled: boolean
+    /** The Education (529) account it saves into; created when the plan is turned on. */
+    accountId: string | null
+    /** Yearly contribution (today's dollars) from cash flow until college starts. */
+    annualContribution: number
+  }
+  /** Help after college (or after raising costs end when there's no college). */
+  support: { enabled: boolean; annualAmount: number; years: number }
 }
 
 export interface PlanDocument {
@@ -160,6 +193,7 @@ export interface PlanDocument {
   debts: PlanDebt[]
   cashFlow: PlanCashFlow
   milestones: PlanMilestone[]
+  children: PlanChild[]
 }
 
 /** One simulated year. Flows are for the year; balances are at year end. */

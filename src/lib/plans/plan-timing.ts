@@ -1,4 +1,5 @@
 import { MAX_PLAN_YEARS } from "./plan-constants"
+import { allMilestones } from "./plan-milestones"
 import type { PlanDocument, PlanPerson, PlanSettings, Timing } from "./plan-types"
 
 /** Milestones can point at other milestones; deeper chains are treated as cycles. */
@@ -44,7 +45,7 @@ export function resolveTiming(timing: Timing, ctx: TimingContext, depth = 0): nu
     }
     case "milestone": {
       if (depth >= MAX_MILESTONE_DEPTH) return null
-      const milestone = ctx.doc.milestones.find((m) => m.id === timing.milestoneId)
+      const milestone = allMilestones(ctx.doc).find((m) => m.id === timing.milestoneId)
       return milestone ? resolveTiming(milestone.timing, ctx, depth + 1) : null
     }
   }

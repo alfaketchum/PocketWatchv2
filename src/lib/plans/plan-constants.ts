@@ -12,6 +12,7 @@ export const PLAN_LIMITS = {
   assets: 30,
   debts: 30,
   milestones: 30,
+  children: 10,
   contributionsPerIncome: 10,
 } as const
 
@@ -32,6 +33,7 @@ export const TAX_TREATMENT_LABELS: Record<TaxTreatment, string> = {
   traditional: "Traditional (pre-tax)",
   roth: "Roth",
   hsa: "HSA",
+  education: "Education (529)",
 }
 
 export const RETIREMENT_MILESTONE_ID = "ms-retirement"
@@ -81,6 +83,7 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
     assets: [],
     debts: [],
     cashFlow: { surplusOrder: [], withdrawalOrder: [] },
+    children: [],
     milestones: [
       {
         id: RETIREMENT_MILESTONE_ID,

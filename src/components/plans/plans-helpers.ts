@@ -1,3 +1,4 @@
+import { allMilestones } from "@/lib/plans/plan-milestones"
 import { ageAtStart } from "@/lib/plans/plan-timing"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
 
@@ -21,7 +22,7 @@ export function timingLabel(timing: Timing, doc: PlanDocument): string {
       return `${who}age ${timing.age}`
     }
     case "milestone":
-      return doc.milestones.find((m) => m.id === timing.milestoneId)?.name ?? "Missing milestone"
+      return allMilestones(doc).find((m) => m.id === timing.milestoneId)?.name ?? "Missing milestone"
   }
 }
 

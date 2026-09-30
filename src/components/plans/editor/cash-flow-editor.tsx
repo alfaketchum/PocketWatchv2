@@ -146,7 +146,7 @@ function WithdrawalOrder({ doc, update }: PlanEditorProps) {
       title="Where shortfalls come from"
       description={`When spending is more than income, accounts are drawn down in this order. Traditional withdrawals pay income tax; taxable ones pay capital-gains tax on the gains.${
         protectedBuffer ? ` The protected cash buffer is skipped until every other account is empty (switch it off above to change that).` : ""
-      }`}
+      }${doc.accounts.some((a) => a.taxTreatment === "education") ? " Education (529) accounts aren't listed: they only pay college costs." : ""}`}
     >
       {sequence.length === 0 && <EmptyNote>Add accounts first.</EmptyNote>}
       {sequence.map((a, i) => (

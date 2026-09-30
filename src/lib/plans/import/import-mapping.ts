@@ -40,6 +40,7 @@ export function taxTreatmentFor(type: string, subtype: string | null): TaxTreatm
   const sub = (subtype ?? "").toLowerCase().replace(/[()]/g, "")
   if (sub.includes("roth")) return "roth"
   if (sub.includes("hsa") || sub.includes("health savings")) return "hsa"
+  if (sub.includes("529") || sub.includes("education")) return "education"
   if (TRADITIONAL_SUBTYPES.some((s) => sub.includes(s))) return "traditional"
   return "taxable"
 }

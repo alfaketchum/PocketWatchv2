@@ -59,10 +59,10 @@ export function PlanEditorView({ planId }: { planId: string }) {
   )
   const { isHidden } = usePrivacyMode()
   const { plan, document, update, isLoading, error, isSaving } = usePlanDocument(planId)
-  const { projection, summary, rows, basis, setBasis } = usePlanProjection(document)
+  const { projection, summary, rows, basis, setBasis, view } = usePlanProjection(document)
 
   if (isLoading) return <EditorSkeleton />
-  if (error || !plan || !document || !projection || !summary) {
+  if (error || !plan || !document || !projection || !summary || !view) {
     return (
       <EmptyState
         icon="error"
@@ -79,7 +79,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
     <div className="space-y-5">
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
-      <PlanNetWorthChart doc={document} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
+      <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
       <PlanEditorTabs value={tab} onChange={setTab} />
       {Editor ? (
         <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6" style={{ boxShadow: "var(--shadow-sm)" }}>
@@ -87,8 +87,8 @@ export function PlanEditorView({ planId }: { planId: string }) {
         </div>
       ) : (
         <>
-          <PlanBacktestCard doc={document} projection={projection} isHidden={isHidden} />
-          <PlanLedgerTable doc={document} rows={rows} basis={basis} isHidden={isHidden} />
+          <PlanBacktestCard doc={view} projection={projection} isHidden={isHidden} />
+          <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} />
         </>
       )}
     </div>

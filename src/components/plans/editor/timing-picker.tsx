@@ -1,6 +1,7 @@
 "use client"
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { allMilestones } from "@/lib/plans/plan-milestones"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
 import { primaryAge } from "../plans-helpers"
 
@@ -39,7 +40,7 @@ function defaultFor(type: TimingType, doc: PlanDocument): Timing {
     case "age":
       return { type, personId: person?.id ?? "", age: primaryAge(doc) + 5 }
     case "milestone":
-      return { type, milestoneId: doc.milestones[0]?.id ?? "" }
+      return { type, milestoneId: allMilestones(doc)[0]?.id ?? "" }
   }
 }
 
@@ -79,7 +80,7 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
           className={FIELD_CLASS}
           style={FIELD_STYLE}
         >
-          {doc.milestones.map((m) => (
+          {allMilestones(doc).map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>
@@ -94,7 +95,7 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
 /** Pick when something starts or ends: now, end of plan, an age, a year, or a milestone. */
 export function TimingPicker({ label, value, doc, onChange, allow }: TimingPickerProps) {
   const types = (allow ?? (Object.keys(TYPE_LABELS) as TimingType[])).filter(
-    (t) => t !== "milestone" || doc.milestones.length > 0,
+    (t) => t !== "milestone" || allMilestones(doc).length > 0,
   )
   return (
     <div className="space-y-2">

@@ -83,10 +83,13 @@ export function depositSurplus(
 /** Accounts in withdrawal order: the plan's own order first, the rest by tax treatment. */
 export function withdrawalSequence(doc: PlanDocument): PlanAccount[] {
   const byId = new Map(doc.accounts.map((a) => [a.id, a]))
-  const explicit = doc.cashFlow.withdrawalOrder.map((id) => byId.get(id)).filter((a): a is PlanAccount => !!a)
+  const explicit = doc.cashFlow.withdrawalOrder
+    .map((id) => byId.get(id))
+    .filter((a): a is PlanAccount => !!a && a.taxTreatment !== "education")
   const listed = new Set(explicit.map((a) => a.id))
+  // Education (529) accounts only pay the expenses earmarked for them, never general shortfalls.
   const rest = doc.accounts
-    .filter((a) => !listed.has(a.id))
+    .filter((a) => !listed.has(a.id) && a.taxTreatment !== "education")
     .sort((a, b) => DEFAULT_WITHDRAWAL_ORDER.indexOf(a.taxTreatment) - DEFAULT_WITHDRAWAL_ORDER.indexOf(b.taxTreatment))
   return [...explicit, ...rest]
 }
