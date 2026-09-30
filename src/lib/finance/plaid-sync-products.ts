@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import { encryptCredential } from "./crypto"
 import { withRetry } from "./retry"
 import * as plaid from "./plaid-client"
+import type { PlaidInvestmentSecurity } from "./plaid-products"
 import { isPlaidProductError, storeRawSnapshot } from "./plaid-sync-helpers"
 import type { InstitutionSyncContext, InstitutionReport } from "./plaid-sync-helpers"
 
@@ -171,6 +172,33 @@ export async function syncLiabilities(ctx: InstitutionSyncContext, report: Insti
   }
 }
 
+async function upsertSecurities(userId: string, securities: PlaidInvestmentSecurity[]): Promise<void> {
+  for (const sec of securities) {
+    await db.financeInvestmentSecurity.upsert({
+      where: { userId_securityId: { userId, securityId: sec.securityId } },
+      create: {
+        userId, securityId: sec.securityId, isin: sec.isin, cusip: sec.cusip, sedol: sec.sedol,
+        institutionSecurityId: sec.institutionSecurityId, institutionId: sec.institutionId,
+        proxySecurityId: sec.proxySecurityId, name: sec.name, tickerSymbol: sec.tickerSymbol,
+        isCashEquivalent: sec.isCashEquivalent, type: sec.type,
+        closePrice: sec.closePrice,
+        closePriceAsOf: sec.closePriceAsOf ? new Date(sec.closePriceAsOf) : null,
+        isoCurrencyCode: sec.isoCurrencyCode, unofficialCurrencyCode: sec.unofficialCurrencyCode,
+        marketIdentifierCode: sec.marketIdentifierCode,
+        sector: sec.sector, industry: sec.industry,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Plaid SDK type
+        optionContract: (sec.optionContract as any) ?? undefined,
+      },
+      update: {
+        name: sec.name, tickerSymbol: sec.tickerSymbol, type: sec.type,
+        closePrice: sec.closePrice,
+        closePriceAsOf: sec.closePriceAsOf ? new Date(sec.closePriceAsOf) : null,
+        sector: sec.sector, industry: sec.industry,
+      },
+    })
+  }
+}
+
 export async function syncInvestments(ctx: InstitutionSyncContext, report: InstitutionReport): Promise<void> {
   if (!ctx.availableProducts.has("investments")) {
     report.skipped.push("investments_holdings", "investments_transactions")
@@ -182,30 +210,7 @@ export async function syncInvestments(ctx: InstitutionSyncContext, report: Insti
     const holdingsData = await withRetry(() => plaid.getInvestmentHoldings(ctx.userId, ctx.accessToken))
     await storeRawSnapshot(ctx.userId, ctx.institutionId, "investments_holdings", holdingsData)
 
-    for (const sec of holdingsData.securities) {
-      await db.financeInvestmentSecurity.upsert({
-        where: { userId_securityId: { userId: ctx.userId, securityId: sec.securityId } },
-        create: {
-          userId: ctx.userId, securityId: sec.securityId, isin: sec.isin, cusip: sec.cusip, sedol: sec.sedol,
-          institutionSecurityId: sec.institutionSecurityId, institutionId: sec.institutionId,
-          proxySecurityId: sec.proxySecurityId, name: sec.name, tickerSymbol: sec.tickerSymbol,
-          isCashEquivalent: sec.isCashEquivalent, type: sec.type,
-          closePrice: sec.closePrice,
-          closePriceAsOf: sec.closePriceAsOf ? new Date(sec.closePriceAsOf) : null,
-          isoCurrencyCode: sec.isoCurrencyCode, unofficialCurrencyCode: sec.unofficialCurrencyCode,
-          marketIdentifierCode: sec.marketIdentifierCode,
-          sector: sec.sector, industry: sec.industry,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Plaid SDK type
-          optionContract: (sec.optionContract as any) ?? undefined,
-        },
-        update: {
-          name: sec.name, tickerSymbol: sec.tickerSymbol, type: sec.type,
-          closePrice: sec.closePrice,
-          closePriceAsOf: sec.closePriceAsOf ? new Date(sec.closePriceAsOf) : null,
-          sector: sec.sector, industry: sec.industry,
-        },
-      })
-    }
+    await upsertSecurities(ctx.userId, holdingsData.securities)
 
     for (const h of holdingsData.holdings) {
       const internalId = ctx.accountMap.get(h.accountId)
@@ -258,10 +263,11 @@ export async function syncInvestments(ctx: InstitutionSyncContext, report: Insti
     startObj.setFullYear(startObj.getFullYear() - 2)
     const startDate = startObj.toISOString().split("T")[0]
 
-    const invTxs = await withRetry(() => plaid.getInvestmentTransactions(ctx.userId, ctx.accessToken, startDate, endDate))
-    await storeRawSnapshot(ctx.userId, ctx.institutionId, "investments_transactions", invTxs)
+    const invData = await withRetry(() => plaid.getInvestmentTransactions(ctx.userId, ctx.accessToken, startDate, endDate))
+    await storeRawSnapshot(ctx.userId, ctx.institutionId, "investments_transactions", invData)
+    await upsertSecurities(ctx.userId, invData.securities)
 
-    for (const t of invTxs) {
+    for (const t of invData.transactions) {
       const internalId = ctx.accountMap.get(t.accountId)
       if (!internalId) continue
       await db.financeInvestmentTransaction.upsert({

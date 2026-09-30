@@ -177,6 +177,23 @@ export interface PlaidInvestmentTransaction {
   isoCurrencyCode: string | null; unofficialCurrencyCode: string | null
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Plaid SDK security type (sector/industry/option_contract untyped)
+function mapSecurity(s: any): PlaidInvestmentSecurity {
+  return {
+    securityId: s.security_id, isin: s.isin ?? null, cusip: s.cusip ?? null, sedol: s.sedol ?? null,
+    institutionSecurityId: s.institution_security_id ?? null,
+    institutionId: s.institution_id ?? null, proxySecurityId: s.proxy_security_id ?? null,
+    name: s.name ?? null, tickerSymbol: s.ticker_symbol ?? null,
+    isCashEquivalent: s.is_cash_equivalent ?? false, type: s.type ?? null,
+    closePrice: s.close_price ?? null, closePriceAsOf: s.close_price_as_of ?? null,
+    isoCurrencyCode: s.iso_currency_code ?? null,
+    unofficialCurrencyCode: s.unofficial_currency_code ?? null,
+    marketIdentifierCode: s.market_identifier_code ?? null,
+    sector: s.sector ?? null, industry: s.industry ?? null,
+    optionContract: s.option_contract ?? null,
+  }
+}
+
 export async function getInvestmentHoldings(
   userId: string,
   accessToken: string
@@ -193,19 +210,7 @@ export async function getInvestmentHoldings(
       unofficialCurrencyCode: h.unofficial_currency_code ?? null,
       vestedQuantity: h.vested_quantity ?? null, vestedValue: h.vested_value ?? null,
     })),
-    securities: response.data.securities.map((s) => ({
-      securityId: s.security_id, isin: s.isin ?? null, cusip: s.cusip ?? null, sedol: s.sedol ?? null,
-      institutionSecurityId: s.institution_security_id ?? null,
-      institutionId: s.institution_id ?? null, proxySecurityId: s.proxy_security_id ?? null,
-      name: s.name ?? null, tickerSymbol: s.ticker_symbol ?? null,
-      isCashEquivalent: s.is_cash_equivalent ?? false, type: s.type ?? null,
-      closePrice: s.close_price ?? null, closePriceAsOf: s.close_price_as_of ?? null,
-      isoCurrencyCode: s.iso_currency_code ?? null,
-      unofficialCurrencyCode: s.unofficial_currency_code ?? null,
-      marketIdentifierCode: s.market_identifier_code ?? null,
-      sector: (s as any).sector ?? null, industry: (s as any).industry ?? null,
-      optionContract: (s as any).option_contract ?? null,
-    })),
+    securities: response.data.securities.map(mapSecurity),
   }
 }
 
@@ -214,9 +219,11 @@ export async function getInvestmentTransactions(
   accessToken: string,
   startDate: string,
   endDate: string,
-): Promise<PlaidInvestmentTransaction[]> {
+): Promise<{ transactions: PlaidInvestmentTransaction[]; securities: PlaidInvestmentSecurity[] }> {
   const client = await getPlaidClient(userId)
   const allTxs: PlaidInvestmentTransaction[] = []
+  // Securities traded in the window, including ones no longer held (holdings only lists current ones).
+  const securities = new Map<string, PlaidInvestmentSecurity>()
   let offset = 0
 
   // eslint-disable-next-line no-constant-condition
@@ -237,8 +244,9 @@ export async function getInvestmentTransactions(
       unofficialCurrencyCode: t.unofficial_currency_code ?? null,
     }))
     allTxs.push(...mapped)
+    for (const sec of response.data.securities) securities.set(sec.security_id, mapSecurity(sec))
     offset += mapped.length
     if (offset >= response.data.total_investment_transactions || mapped.length === 0) break
   }
-  return allTxs
+  return { transactions: allTxs, securities: [...securities.values()] }
 }
