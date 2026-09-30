@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 import { encryptCredential } from "./crypto"
 import { withRetry } from "./retry"
 import * as plaid from "./plaid-client"
-import type { PlaidInvestmentSecurity } from "./plaid-products"
+import type { PlaidInvestmentHolding, PlaidInvestmentSecurity } from "./plaid-products"
 import { isPlaidProductError, storeRawSnapshot } from "./plaid-sync-helpers"
 import type { InstitutionSyncContext, InstitutionReport } from "./plaid-sync-helpers"
 
@@ -199,6 +199,22 @@ async function upsertSecurities(userId: string, securities: PlaidInvestmentSecur
   }
 }
 
+/**
+ * Positions sold since the last sync drop out of Plaid's holdings; remove them from current holdings
+ * (their daily snapshots stay). An empty response is skipped so a glitch can't wipe every position.
+ */
+async function pruneSoldHoldings(ctx: InstitutionSyncContext, holdings: PlaidInvestmentHolding[]): Promise<void> {
+  if (holdings.length === 0) return
+  const held = new Map<string, string[]>([...new Set(ctx.accountMap.values())].map((id) => [id, []]))
+  for (const h of holdings) {
+    const internalId = ctx.accountMap.get(h.accountId)
+    if (internalId) held.get(internalId)?.push(h.securityId ?? "")
+  }
+  for (const [accountId, securityIds] of held) {
+    await db.financeInvestmentHolding.deleteMany({ where: { userId: ctx.userId, accountId, securityId: { notIn: securityIds } } })
+  }
+}
+
 export async function syncInvestments(ctx: InstitutionSyncContext, report: InstitutionReport): Promise<void> {
   if (!ctx.availableProducts.has("investments")) {
     report.skipped.push("investments_holdings", "investments_transactions")
@@ -233,6 +249,7 @@ export async function syncInvestments(ctx: InstitutionSyncContext, report: Insti
         },
       })
     }
+    await pruneSoldHoldings(ctx, holdingsData.holdings)
 
     // Daily holding snapshots
     const now = new Date()
