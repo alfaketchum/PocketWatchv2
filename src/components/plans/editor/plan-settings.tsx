@@ -45,7 +45,7 @@ function PersonFields({
   )
 }
 
-/** Plan-wide assumptions: who's in it, how long it runs, inflation and tax rates. */
+/** The Assumptions tab: who's in the plan, how long it runs, inflation and tax rates. */
 export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
   const set = (change: Partial<PlanSettings>) => update((d) => ({ ...d, settings: { ...d.settings, ...change } }))
   const s = doc.settings
@@ -82,7 +82,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
         </div>
       </InputBlock>
       <InputBlock
-        title="Assumptions"
+        title="Rates"
         description="Flat effective rates; real tax brackets come later. The cash buffer (emergency fund) is on the Cash flow tab."
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

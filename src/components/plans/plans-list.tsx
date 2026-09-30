@@ -63,7 +63,7 @@ export function PlansList() {
       setDialog({ kind: "import", name })
       return
     }
-    create.mutate({ from: "blank", name }, { onSuccess: ({ plan }) => router.push(`/plans/${plan.id}?tab=settings`) })
+    create.mutate({ from: "blank", name }, { onSuccess: ({ plan }) => router.push(`/plans/${plan.id}`) })
   }
 
   const createImported = (name: string, document: PlanDocument) =>

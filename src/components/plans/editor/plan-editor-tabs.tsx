@@ -3,25 +3,37 @@
 import { cn } from "@/lib/utils"
 
 export type PlanTab =
-  | "overview"
+  | "assumptions"
   | "accounts"
   | "income"
   | "expenses"
   | "assets"
   | "cashflow"
   | "milestones"
-  | "settings"
+  | "overview"
 
+/** In the order you'd build a plan: assumptions first, results last. */
 export const PLAN_TABS: { value: PlanTab; label: string; icon: string }[] = [
-  { value: "overview", label: "Overview", icon: "insights" },
+  { value: "assumptions", label: "Assumptions", icon: "tune" },
   { value: "accounts", label: "Accounts", icon: "account_balance" },
   { value: "income", label: "Income", icon: "payments" },
   { value: "expenses", label: "Expenses", icon: "shopping_cart" },
   { value: "assets", label: "Assets & debts", icon: "home" },
   { value: "cashflow", label: "Cash flow", icon: "swap_vert" },
   { value: "milestones", label: "Milestones", icon: "flag" },
-  { value: "settings", label: "Settings", icon: "tune" },
+  { value: "overview", label: "Overview", icon: "insights" },
 ]
+
+export const DEFAULT_PLAN_TAB: PlanTab = "assumptions"
+
+/** Old links used ?tab=settings. */
+const TAB_ALIASES: Record<string, PlanTab> = { settings: "assumptions" }
+
+/** The tab a ?tab= value points at, falling back to the first tab. */
+export function planTabFrom(value: string | null): PlanTab {
+  const tab = value ? (TAB_ALIASES[value] ?? value) : null
+  return isPlanTab(tab) ? tab : DEFAULT_PLAN_TAB
+}
 
 export function isPlanTab(value: string | null): value is PlanTab {
   return PLAN_TABS.some((t) => t.value === value)

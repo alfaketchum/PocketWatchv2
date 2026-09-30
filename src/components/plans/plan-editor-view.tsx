@@ -14,7 +14,7 @@ import { CashFlowEditor } from "./editor/cash-flow-editor"
 import { ExpensesEditor } from "./editor/expenses-editor"
 import { IncomesEditor } from "./editor/incomes-editor"
 import { MilestonesEditor } from "./editor/milestones-editor"
-import { isPlanTab, PlanEditorTabs, type PlanTab } from "./editor/plan-editor-tabs"
+import { DEFAULT_PLAN_TAB, PlanEditorTabs, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { PlanEditorHeader } from "./plan-editor-header"
 import { PlanBacktestCard } from "./results/plan-backtest-card"
@@ -33,7 +33,7 @@ const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProp
   assets: AssetsDebtsEditor,
   cashflow: CashFlowEditor,
   milestones: MilestonesEditor,
-  settings: PlanSettingsEditor,
+  assumptions: PlanSettingsEditor,
 }
 
 function EditorSkeleton() {
@@ -52,9 +52,9 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const tabParam = params.get("tab")
-  const tab: PlanTab = isPlanTab(tabParam) ? tabParam : "overview"
+  const tab: PlanTab = planTabFrom(tabParam)
   const setTab = useCallback(
-    (next: PlanTab) => router.replace(next === "overview" ? pathname : `${pathname}?tab=${next}`, { scroll: false }),
+    (next: PlanTab) => router.replace(next === DEFAULT_PLAN_TAB ? pathname : `${pathname}?tab=${next}`, { scroll: false }),
     [router, pathname],
   )
   const { isHidden } = usePrivacyMode()
