@@ -100,7 +100,18 @@ const debt = z.object({
   source,
 })
 
-const milestone = z.object({ id, name, kind: z.enum(["retirement", "custom"]), timing })
+const milestone = z.object({
+  id,
+  name,
+  kind: z.enum(["retirement", "custom"]),
+  timing,
+  icon: z.string().max(40).optional(),
+})
+
+const adjustment = z.discriminatedUnion("kind", [
+  z.object({ id, kind: z.literal("taxRates"), timing, incomeTaxRate: share, capitalGainsRate: share }),
+  z.object({ id, kind: z.literal("spending"), timing, percent: z.number().min(-0.95).max(5) }),
+])
 
 const child = z.object({
   id,
@@ -133,6 +144,7 @@ export const planDocumentSchema = z.object({
   }),
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
   children: z.array(child).max(PLAN_LIMITS.children),
+  adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

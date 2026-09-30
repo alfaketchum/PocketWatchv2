@@ -13,6 +13,7 @@ import {
 } from "./engine-assets"
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
+import { adjustmentEntries, spendingFactorAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { coverDeficit, deposit, depositSurplus, type Holdings } from "./engine-cashflow"
 import { applyTransfers, drawEarmarked, transferEntries, type TransferEntry } from "./engine-education"
 import {
@@ -33,6 +34,7 @@ interface Plan {
   debts: DebtEntry[]
   milestoneYears: { name: string; index: number | null }[]
   transfers: TransferEntry[]
+  adjustments: AdjustmentEntry[]
 }
 
 interface State {
@@ -54,6 +56,7 @@ function preparePlan(original: PlanDocument): Plan {
     debts: debtEntries(doc.debts, ctx),
     milestoneYears: doc.milestones.map((m) => ({ name: m.name, index: resolveTiming(m.timing, ctx) })),
     transfers: transferEntries(childTransfers(original), ctx),
+    adjustments: adjustmentEntries(doc.adjustments ?? [], ctx),
   }
 }
 
@@ -84,14 +87,21 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
   )
 }
 
+/** The plan as it stands in year `index`: tax rates after any changes that have taken effect. */
+function docForYear(plan: Plan, index: number): PlanDocument {
+  if (plan.adjustments.length === 0) return plan.doc
+  const rates = taxRatesAt(plan.adjustments, plan.doc.settings, index)
+  return { ...plan.doc, settings: { ...plan.doc.settings, ...rates } }
+}
+
 /** This year's money in and out, before anything moves between accounts. */
 function yearFlows(plan: Plan, state: State, index: number) {
-  const { doc } = plan
+  const doc = docForYear(plan, index)
   const { inflation } = doc.settings
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index)
   const debts = payDebts(plan.debts, events.debtBalances, index)
   const income = incomeForYear(plan.incomes, doc.accounts, index, inflation)
-  const expenses = expensesForYear(plan.expenses, index, inflation)
+  const expenses = expensesForYear(plan.expenses, index, inflation, spendingFactorAt(plan.adjustments, index))
   const incomeTax = income.taxableIncome * doc.settings.incomeTaxRate
   return { events, debts, income, expenses, incomeTax }
 }
@@ -103,7 +113,7 @@ type Flows = ReturnType<typeof yearFlows>
  * (college from a 529), and finally the surplus or shortfall per the cash-flow rules.
  */
 function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
-  const { doc } = plan
+  const doc = docForYear(plan, index)
   const inflationFactor = Math.pow(1 + doc.settings.inflation, index)
   const grownState = growHoldings(state.holdings, doc)
   let holdings = grownState.holdings

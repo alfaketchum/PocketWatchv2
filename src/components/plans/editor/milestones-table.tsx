@@ -1,5 +1,6 @@
 "use client"
 
+import { detachMilestone, milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanMilestone } from "@/lib/plans/plan-types"
@@ -9,7 +10,9 @@ import { TimingCell } from "./timing-cell"
 
 const COLUMNS = [
   { label: "Milestone" },
-  { label: "When", width: "w-40" },
+  { label: "Source", width: "w-20" },
+  { label: "When", width: "w-32" },
+  { label: "Used by", width: "w-56" },
   { label: "Year", align: "right" as const, width: "w-20" },
   { label: "Your age", align: "right" as const, width: "w-20" },
   { label: "", width: "w-16" },
@@ -32,20 +35,27 @@ export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
       {rows.map(({ m, generated, index }) => (
         <Row key={m.id} muted={generated}>
           <Cell>
-            {generated ? (
-              <span className="flex items-center px-2">
-                <span className="material-symbols-rounded mr-1.5 text-primary" style={{ fontSize: 15 }}>
-                  {m.icon ?? "flag"}
-                </span>
-                {m.name}
-                <Badge>Auto</Badge>
+            <span className="flex items-center">
+              <span className="material-symbols-rounded ml-2 mr-1 shrink-0 text-primary" style={{ fontSize: 15 }}>
+                {m.icon ?? (m.kind === "retirement" ? "beach_access" : "flag")}
               </span>
-            ) : (
-              <CellText label="Milestone name" value={m.name} onChange={(name) => patch(m.id, { name })} />
-            )}
+              {generated ? (
+                <span className="px-1">{m.name}</span>
+              ) : (
+                <CellText label="Milestone name" value={m.name} onChange={(name) => patch(m.id, { name })} />
+              )}
+            </span>
+          </Cell>
+          <Cell>
+            <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
           </Cell>
           <Cell>
             <TimingCell timing={m.timing} doc={doc} />
+          </Cell>
+          <Cell>
+            <span className="block truncate px-2 text-xs text-foreground-muted" title={milestoneUses(doc, m.id).join(" · ")}>
+              {milestoneUses(doc, m.id).join(" · ") || "—"}
+            </span>
           </Cell>
           <Cell align="right">
             <span className="px-2 tabular-nums">{index === null ? "—" : doc.settings.startYear + index}</span>
@@ -62,7 +72,7 @@ export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
                     icon="delete"
                     label={`Remove ${m.name}`}
                     danger
-                    onClick={() => update((d) => ({ ...d, milestones: d.milestones.filter((x) => x.id !== m.id) }))}
+                    onClick={() => update((d) => detachMilestone(d, m.id))}
                   />
                 )}
               </span>

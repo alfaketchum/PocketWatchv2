@@ -13,6 +13,7 @@ export const PLAN_LIMITS = {
   debts: 30,
   milestones: 30,
   children: 10,
+  adjustments: 30,
   contributionsPerIncome: 10,
 } as const
 
@@ -84,6 +85,7 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
     debts: [],
     cashFlow: { surplusOrder: [], withdrawalOrder: [] },
     children: [],
+    adjustments: [],
     milestones: [
       {
         id: RETIREMENT_MILESTONE_ID,

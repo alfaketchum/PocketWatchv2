@@ -5,6 +5,7 @@ import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanPerson, PlanSettings } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, removePerson, type PlanEditorProps } from "../plans-helpers"
+import { AdjustmentsEditor } from "./adjustments-editor"
 import { TextField } from "./plan-editor-controls"
 
 function newPartner(birthYear: number): PlanPerson {
@@ -109,6 +110,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
 
         </div>
       </InputBlock>
+      <AdjustmentsEditor doc={doc} update={update} />
     </div>
   )
 }

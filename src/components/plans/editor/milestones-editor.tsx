@@ -1,22 +1,25 @@
 "use client"
 
+import { useState } from "react"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
+import { detachMilestone, milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, primaryAge, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
+import { AddMilestoneDialog } from "./add-milestone-dialog"
 import { AddButton, ItemCard, TextField } from "./plan-editor-controls"
+import { Badge } from "./plan-table"
 import { TimingPicker } from "./timing-picker"
 import { MilestonesTable } from "./milestones-table"
 
-function newMilestone(doc: PlanDocument): PlanMilestone {
-  const person = doc.people[0]
-  return {
-    id: newItemId("ms"),
-    name: "Kids leave home",
-    kind: "custom",
-    timing: { type: "age", personId: person?.id ?? "", age: primaryAge(doc) + 15 },
-  }
+/** "Used by: Salary stops · Tax rates change", or a hint when nothing points here yet. */
+function UsedBy({ uses }: { uses: string[] }) {
+  return (
+    <p className="text-[11px] text-foreground-muted">
+      {uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to this yet. Pick it as a start or stop anywhere in the plan."}
+    </p>
+  )
 }
 
 function whenLabel(doc: PlanDocument, milestone: PlanMilestone): string {
@@ -32,9 +35,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
   return (
     <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">
       <p className="text-xs font-semibold text-foreground">From your kids and assets</p>
-      <p className="text-[11px] text-foreground-muted">
-        Created automatically. Change them on the Expenses tab (kids) or the Assets &amp; debts tab (buying or selling).
-      </p>
+      <p className="text-[11px] text-foreground-muted">Edit them where they come from: Expenses → Kids, or Assets &amp; debts.</p>
       {marks.map((m) => (
         <div key={m.id} className="flex items-center gap-2 text-xs">
           <span className="material-symbols-rounded text-primary" style={{ fontSize: 15 }}>
@@ -42,6 +43,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
           </span>
           <span className="text-foreground">{m.name}</span>
           <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
+          <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
         </div>
       ))}
     </div>
@@ -50,32 +52,35 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
 
 /** Named points in time that income, spending and assets can start or stop at. */
 export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
+  const [adding, setAdding] = useState(false)
   const patch = (id: string, change: Partial<PlanMilestone>) =>
     update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-foreground-muted">
-        Point income and spending at a milestone instead of a fixed age, then move the milestone to shift everything at once.
-      </p>
+      <p className="text-xs text-foreground-muted">Life events on one timeline. Move a milestone and everything tied to it moves too.</p>
       {view === "compact" ? (
         <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.milestones.map((m) => (
         <ItemCard
           key={m.id} anchorId={planItemAnchor(m.id)}
           title={
-            <span>
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-rounded text-primary" style={{ fontSize: 16 }}>
+                {m.icon ?? (m.kind === "retirement" ? "beach_access" : "flag")}
+              </span>
               {m.name || "Untitled milestone"}
-              <span className="ml-2 text-[11px] font-normal text-foreground-muted">{whenLabel(doc, m)}</span>
+              <span className="text-[11px] font-normal text-foreground-muted">{whenLabel(doc, m)}</span>
             </span>
           }
           removeLabel={`Remove ${m.name}`}
           onRemove={
             m.kind === "retirement"
               ? undefined
-              : () => update((d) => ({ ...d, milestones: d.milestones.filter((x) => x.id !== m.id) }))
+              : () => update((d) => detachMilestone(d, m.id))
           }
         >
+          <UsedBy uses={milestoneUses(doc, m.id)} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
             <TextField label="Name" value={m.name} onChange={(name) => patch(m.id, { name })} />
             <TimingPicker
@@ -89,11 +94,8 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
         </ItemCard>
       ))}
       {view !== "compact" && <GeneratedMilestones doc={doc} />}
-      <AddButton
-        label="Add milestone"
-        disabled={doc.milestones.length >= PLAN_LIMITS.milestones}
-        onClick={() => update((d) => ({ ...d, milestones: [...d.milestones, newMilestone(d)] }))}
-      />
+      <AddButton label="Add milestone" disabled={doc.milestones.length >= PLAN_LIMITS.milestones} onClick={() => setAdding(true)} />
+      {adding && <AddMilestoneDialog doc={doc} update={update} onClose={() => setAdding(false)} />}
     </div>
   )
 }

@@ -86,6 +86,7 @@ export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDo
     assets: doc.assets.map((a) => ({ ...a, start: fn(a.start), end: fn(a.end) })),
     debts: doc.debts.map((d) => ({ ...d, start: fn(d.start) })),
     milestones: doc.milestones.map((m) => ({ ...m, timing: fn(m.timing) })),
+    adjustments: (doc.adjustments ?? []).map((a) => ({ ...a, timing: fn(a.timing) })),
   }
 }
 

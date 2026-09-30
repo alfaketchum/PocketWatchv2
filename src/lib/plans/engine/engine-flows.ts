@@ -95,11 +95,15 @@ export interface ExpenseYear {
   byId: Record<string, number>
 }
 
-export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: number): ExpenseYear {
+/** Kids' generated costs; spending-level changes (moving, etc.) don't scale them. */
+const KIDS_CATEGORY = "Kids"
+
+export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: number, spendingFactor = 1): ExpenseYear {
   return entries.reduce<ExpenseYear>(
     (acc, { expense, range }) => {
       if (!isActive(range, index, expense.oneTime)) return acc
-      const amount = grown(expense.amount, expense.growth, inflation, index)
+      const factor = expense.category === KIDS_CATEGORY || expense.oneTime ? 1 : spendingFactor
+      const amount = grown(expense.amount, expense.growth, inflation, index) * factor
       return { total: acc.total + amount, byId: { ...acc.byId, [expense.id]: amount } }
     },
     { total: 0, byId: {} },

@@ -183,6 +183,17 @@ export interface PlanChild {
   support: { enabled: boolean; annualAmount: number; years: number }
 }
 
+/** A change that applies from a point in time onward (the latest one in effect wins). */
+export type PlanAdjustment =
+  | { id: string; kind: "taxRates"; timing: Timing; incomeTaxRate: number; capitalGainsRate: number }
+  | {
+      id: string
+      kind: "spending"
+      timing: Timing
+      /** Your own expenses change by this share from then on (−0.2 = 20% less). Kids' costs are unaffected. */
+      percent: number
+    }
+
 export interface PlanDocument {
   settings: PlanSettings
   people: PlanPerson[]
@@ -194,6 +205,7 @@ export interface PlanDocument {
   cashFlow: PlanCashFlow
   milestones: PlanMilestone[]
   children: PlanChild[]
+  adjustments: PlanAdjustment[]
 }
 
 /** One simulated year. Flows are for the year; balances are at year end. */
