@@ -130,11 +130,12 @@ export function PlanBarTooltip({
         </>
       ) : mode === "debt" ? (
         <>
-          {positives.map((s) => (
-            <Item key={s.key} s={s} value={row[s.key]} />
-          ))}
-          <Total label="Still owed" value={sum(positives)} tone="out" />
-          <LoanSplit row={row} label="Paid this year" />
+          <Lines list={positives} row={row} shares={sum(positives)} />
+          <Total label="Paid this year" value={sum(positives)} />
+          <p className="flex justify-between gap-4 text-foreground-muted">
+            <span>Still owed at year end</span>
+            <span className="tabular-nums text-error">{fmtMoney(row.owed ?? 0)}</span>
+          </p>
         </>
       ) : mode === "networth" ? (
         <>

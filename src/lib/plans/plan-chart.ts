@@ -1,3 +1,4 @@
+import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principalKey } from "./plan-loan-parts"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 
@@ -66,25 +67,16 @@ export interface ChartMilestone {
 }
 
 /** Milestones (and the year money runs out) positioned by age. */
-/** Balances at or below this count as paid off. */
-const PAID_OFF = 0.5
-
 /** The year each loan is cleared (by its payments, or early when what it's for is sold). */
 function payoffMarks(doc: PlanDocument, projection: PlanProjection, age0: number): ChartMilestone[] {
-  const ctx = timingContext(doc)
-  const rows = projection.rows
-  return doc.debts.flatMap((debt) => {
-    const start = Math.max(0, resolveTiming(debt.start, ctx) ?? 0)
-    // Paid off this year: owed something at the start of the year (the loan's amount in its first year) and nothing now.
-    const index = rows.findIndex((r, i) => {
-      if (i < start) return false
-      const before = i === start ? debt.balance : rows[i - 1].debtBalances[debt.id] ?? 0
-      return (r.debtBalances[debt.id] ?? 0) <= PAID_OFF && before > PAID_OFF
-    })
-    if (index < 0) return []
-    const row = rows[index]
-    return [{ id: `payoff-${debt.id}`, name: `${debt.name} paid off`, kind: "payoff" as const, icon: "credit_score", age: age0 + row.index, year: row.year }]
-  })
+  return loanPayoffs(doc, projection.rows).map(({ debt, row }) => ({
+    id: `payoff-${debt.id}`,
+    name: payoffName(debt),
+    kind: "payoff" as const,
+    icon: PAYOFF_ICON,
+    age: age0 + row.index,
+    year: row.year,
+  }))
 }
 
 export function chartMilestones(doc: PlanDocument, projection: PlanProjection): ChartMilestone[] {
@@ -171,16 +163,27 @@ export function cashFlowPoints(doc: PlanDocument, rows: YearRow[]): CashFlowPoin
   return rows.map((r) => cashFlowFor(doc, r, age0 + r.index))
 }
 
-export type DebtPoint = { age: number; year: number; owed: number } & Record<string, number>
+export type DebtPoint = { age: number; year: number; owed: number; principal: number; interest: number } & Record<string, number>
 
-/** What's still owed on each debt at year end (positive, by debt id), one point per plan year: the Debt view. */
+/**
+ * The Debt view, one point per plan year: what was paid on the loans (positive), as principal and interest in
+ * total and per loan (`prin:<id>`, `int:<id>`), plus what's still owed at year end (`owed`, and by debt id).
+ */
 export function debtPoints(doc: PlanDocument, rows: YearRow[]): DebtPoint[] {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
   return rows.map((r) => {
-    const byDebt = Object.fromEntries(doc.debts.map((d) => [d.id, r.debtBalances[d.id] ?? 0]))
-    const owed = Object.values(byDebt).reduce((s, v) => s + v, 0)
-    return { ...byDebt, age: age0 + r.index, year: r.year, owed }
+    const point: DebtPoint = { age: age0 + r.index, year: r.year, owed: 0, principal: 0, interest: 0 }
+    for (const d of doc.debts) {
+      const { principal, interest } = loanSplit(r, d.id)
+      point[d.id] = r.debtBalances[d.id] ?? 0
+      point[principalKey(d.id)] = principal
+      point[interestKey(d.id)] = interest
+      point.owed += point[d.id]
+      point.principal += principal
+      point.interest += interest
+    }
+    return point
   })
 }
 
@@ -203,6 +206,7 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   shopping_bag: "property",
   autorenew: "property",
   sell: "property",
+  credit_score: "money",
 }
 
 export function milestoneGroup(m: Pick<ChartMilestone, "kind" | "icon">): MilestoneGroup {

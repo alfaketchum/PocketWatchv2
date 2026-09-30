@@ -114,7 +114,7 @@ const INFO: Record<ChartMode, string> = {
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
   expenses:
     "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. When lines have spending patterns, the dashed line is the same plan with every line steady.",
-  debt: "What's still owed on each loan at the end of each year, on its own scale so even a small loan is easy to follow. It shrinks with the plan's payments and is paid off early if what it's for is sold.",
+  debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
 }
 
 /** Remembered per browser: whether the chart shows subcategories. */
@@ -307,6 +307,17 @@ const ChartPlot = memo(function ChartPlot({
           tickLine={false}
           width={56}
         />
+        {mode === "debt" && (
+          <YAxis
+            yAxisId="owed"
+            orientation="right"
+            tick={{ fontSize: 10, fill: foregroundMuted }}
+            tickFormatter={fmtCompact}
+            axisLine={false}
+            tickLine={false}
+            width={56}
+          />
+        )}
         <Tooltip
           content={<PlanBarTooltip series={series} mode={mode} />}
           cursor={{ fill: foreground, fillOpacity: 0.06 }}
@@ -324,6 +335,9 @@ const ChartPlot = memo(function ChartPlot({
             activeDot={false}
             isAnimationActive={false}
           />
+        )}
+        {mode === "debt" && (
+          <Line yAxisId="owed" dataKey="owed" stroke={foreground} strokeOpacity={0.6} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
         )}
         {showSteady && (
           <Line dataKey="steady" stroke={foreground} strokeOpacity={0.55} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
@@ -396,7 +410,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
       center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "expenses", "debt"] : ["networth", "cashflow", "expenses"]} />}
-      right={view === "debt" ? undefined : <DetailToggle checked={detail} onChange={setDetail} />}
+      right={<DetailToggle checked={detail} onChange={setDetail} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
@@ -425,6 +439,12 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
                 {s.label}
               </span>
             ))}
+            {view === "debt" && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
+                <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />
+                Still owed (right axis)
+              </span>
+            )}
             {steady && (
               <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
                 <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />

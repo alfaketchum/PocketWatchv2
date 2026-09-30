@@ -10,6 +10,8 @@ export interface PlanColors {
   hub: string
   /** Up to four distinct plan lines (Compare). */
   series: string[]
+  /** Loan payments in the Debt view: principal pays the loan down, interest is the cost of borrowing. */
+  loan: { principal: string; interest: string }
   /** Milestone icons by what they're about. */
   milestones: Record<MilestoneGroup, string>
 }
@@ -96,6 +98,7 @@ function buildPlanColors(t: {
       saved: primary,
     },
     hub: primary,
+    loan: { principal: error, interest: warning },
     series: [primary, warning, accentHead, mix(primary, card, LIGHTER)],
     // Work life indigo, family green, school teal (between the two), money in gold, property slate (like its band), other changes dark neutral.
     milestones: { work: primary, family: success, education: mix(success, primary, 0.5), money: warning, property: accentHead, life: foreground, alert: error },

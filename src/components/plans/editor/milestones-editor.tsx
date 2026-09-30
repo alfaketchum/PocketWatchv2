@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
+import { payoffMilestones } from "@/lib/plans/plan-payoff-milestones"
 import { milestoneGroup } from "@/lib/plans/plan-chart"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
@@ -35,7 +36,8 @@ function whenLabel(doc: PlanDocument, milestone: PlanMilestone): string {
 /** Milestones created by kids and by assets bought or sold; edited where they come from. */
 function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
   const { milestones: groupColors } = usePlanColors()
-  const marks = generatedMilestones(doc)
+  const payoffs = useMemo(() => payoffMilestones(doc), [doc])
+  const marks = [...generatedMilestones(doc), ...payoffs]
   if (marks.length === 0) return null
   return (
     <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">

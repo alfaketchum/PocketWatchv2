@@ -1,7 +1,9 @@
 "use client"
 
+import { useMemo } from "react"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
+import { payoffMilestones } from "@/lib/plans/plan-payoff-milestones"
 import { milestoneGroup } from "@/lib/plans/plan-chart"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanMilestone } from "@/lib/plans/plan-types"
@@ -23,12 +25,14 @@ const COLUMNS = [
 /** Milestones as a table: yours editable, generated ones (kids, assets) read-only, all in date order. */
 export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEditorProps & { onDelete: (id: string) => void }) {
   const { milestones: groupColors } = usePlanColors()
+  const payoffs = useMemo(() => payoffMilestones(doc), [doc])
   const ctx = timingContext(doc)
   const age0 = primaryAge(doc)
   const patch = (id: string, change: Partial<PlanMilestone>) => update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
   const rows = [
     ...doc.milestones.map((m) => ({ m, generated: false })),
     ...generatedMilestones(doc).map((m) => ({ m, generated: true })),
+    ...payoffs.map((m) => ({ m, generated: true })),
   ]
     .map((r) => ({ ...r, index: resolveTiming(r.m.timing, ctx) }))
     .sort((a, b) => (a.index ?? Infinity) - (b.index ?? Infinity))
