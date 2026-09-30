@@ -1,7 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
-import { chartMilestones, layersFor, netWorthPoints } from "@/lib/plans/plan-chart"
+import { chartMilestones, debtPoints, layersFor, netWorthPoints } from "@/lib/plans/plan-chart"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
@@ -137,4 +137,15 @@ test("529 balances sit in their own tax-free band", () => {
   const layers = layersFor(plan, { accounts: { r: 5, h: 5, m529: 40 }, assets: {}, debts: {} })
   assert.equal(layers.taxFree, 10)
   assert.equal(layers.taxFree529, 40)
+})
+
+test("debtPoints: each loan's balance at year end, positive, with the total owed", () => {
+  const plan: PlanDocument = {
+    ...doc,
+    debts: [{ id: "car", name: "Car loan", kind: "auto", balance: 12_000, rate: 0, monthlyPayment: 500, start: { type: "planStart" }, assetId: null, source: null }],
+  }
+  const points = debtPoints(plan, simulatePlan(plan).rows)
+  assert.equal(points[0].car, 6_000)
+  assert.equal(points[0].owed, 6_000)
+  assert.equal(points[1].car, 0)
 })

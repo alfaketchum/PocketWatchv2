@@ -22,6 +22,7 @@ import {
   CASH_IN_LAYERS,
   CASH_OUT_LAYERS,
   cashFlowPoints,
+  debtPoints,
   chartMilestones,
   NET_WORTH_LAYER_LABELS,
   NET_WORTH_LAYERS,
@@ -33,7 +34,7 @@ import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanBarTooltip } from "./plan-bar-tooltip"
 import { PlanYearPanel } from "./plan-year-panel"
-import { usePlanColors } from "./use-plan-colors"
+import { mix, usePlanColors } from "./use-plan-colors"
 
 const DIMMED = 0.35
 const Y_HEADROOM = 1.03
@@ -104,12 +105,27 @@ function MilestoneMarker({
   )
 }
 
-type ChartMode = "networth" | "cashflow"
+type ChartMode = "networth" | "cashflow" | "debt"
 
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
   { value: "cashflow", label: "Cash flow" },
+  { value: "debt", label: "Debt" },
 ]
+
+const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", debt: "Debt" }
+
+const INFO: Record<ChartMode, string> = {
+  networth:
+    "Year-end balances by tax treatment, plus property (homes, cars, other assets) at what it's worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
+  cashflow:
+    "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
+  debt: "What's still owed on each loan at the end of each year, on its own scale so even a small loan is easy to follow. It shrinks with the plan's payments and is paid off early if what it's for is sold.",
+}
+
+/** Shades of the debt red for each loan, darkest first. */
+const DEBT_SHADE_STEP = 0.2
+const DEBT_SHADE_MAX = 0.7
 
 interface Series {
   key: string
@@ -119,10 +135,10 @@ interface Series {
 
 type ChartRow = { age: number; year: number } & Record<string, number>
 
-function ModeToggle({ value, onChange }: { value: ChartMode; onChange: (mode: ChartMode) => void }) {
+function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
   return (
     <div role="radiogroup" aria-label="Chart view" className="inline-flex rounded-lg border border-card-border p-0.5">
-      {MODES.map((m) => (
+      {MODES.filter((m) => modes.includes(m.value)).map((m) => (
         <button
           key={m.value}
           type="button"
@@ -318,10 +334,11 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, error, success } = useChartTheme()
+  const { primary, error, success, card } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
+  const dPoints = useMemo(() => debtPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
   const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
@@ -334,15 +351,19 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const { netWorth: nwColors, cashFlow: cfColors } = usePlanColors()
-  const points: ChartRow[] = mode === "networth" ? nwPoints : cfPoints
+  const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
+  // The Debt view only exists while the plan has debt; fall back if it's all gone.
+  const view: ChartMode = mode === "debt" && !hasDebt ? "networth" : mode
+  const points: ChartRow[] = view === "networth" ? nwPoints : view === "cashflow" ? cfPoints : dPoints
   const series: Series[] = useMemo(() => {
     const all: Series[] =
-      mode === "networth"
+      view === "networth"
         ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
-        : [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
+        : view === "cashflow"
+          ? [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
+          : doc.debts.map((d, i) => ({ key: d.id, label: d.name, color: mix(nwColors.debt, card, Math.min(DEBT_SHADE_MAX, i * DEBT_SHADE_STEP)) }))
     return all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
-  }, [mode, points, nwColors, cfColors])
-  const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
+  }, [view, points, nwColors, cfColors, doc.debts, card])
   const yAxis = useMemo(() => fitAxis(points, series), [points, series])
   const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
@@ -354,14 +375,10 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
 
   return (
     <FireSectionCard
-      eyebrow={mode === "networth" ? "Net worth" : "Cash flow"}
+      eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
-      info={
-        mode === "networth"
-          ? "Year-end balances by tax treatment, plus property (homes, cars, other assets) at what it's worth. Every debt, mortgages and car loans included, shows below zero, so you can watch it shrink; net worth is the dot. Hover a bar to see that year; click to pin it."
-          : "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out."
-      }
-      center={<ModeToggle value={mode} onChange={setMode} />}
+      info={INFO[view]}
+      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "debt"] : ["networth", "cashflow"]} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
@@ -373,7 +390,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               yAxis={yAxis}
               iconRoom={iconRoom}
               stacked={stacked}
-              mode={mode}
+              mode={view}
               hasDebt={hasDebt}
               selected={selected}
               markColor={markColor}

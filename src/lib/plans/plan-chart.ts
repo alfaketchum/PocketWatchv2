@@ -148,3 +148,16 @@ export function cashFlowPoints(doc: PlanDocument, rows: YearRow[]): CashFlowPoin
   const age0 = person ? ageAtStart(person, doc.settings) : 0
   return rows.map((r) => cashFlowFor(doc, r, age0 + r.index))
 }
+
+export type DebtPoint = { age: number; year: number; owed: number } & Record<string, number>
+
+/** What's still owed on each debt at year end (positive, by debt id), one point per plan year: the Debt view. */
+export function debtPoints(doc: PlanDocument, rows: YearRow[]): DebtPoint[] {
+  const person = doc.people[0]
+  const age0 = person ? ageAtStart(person, doc.settings) : 0
+  return rows.map((r) => {
+    const byDebt = Object.fromEntries(doc.debts.map((d) => [d.id, r.debtBalances[d.id] ?? 0]))
+    const owed = Object.values(byDebt).reduce((s, v) => s + v, 0)
+    return { ...byDebt, age: age0 + r.index, year: r.year, owed }
+  })
+}
