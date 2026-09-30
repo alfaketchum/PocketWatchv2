@@ -107,7 +107,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   taxes: "Taxes",
   debtPayments: "Debt payments",
   assetPurchases: "Asset purchases",
-  saved: "Saved",
+  saved: "Contributions",
 }
 
 const WITHDRAWAL_LAYER: Record<NetWorthLayer, CashFlowLayer | null> = {
@@ -122,7 +122,8 @@ export type CashFlowPoint = { age: number; year: number } & Record<CashFlowLayer
 
 /**
  * Cash flow for one year. Employer match is left out on both sides (it never passes through your
- * hands); "saved" is payroll contributions you made plus surplus deposited. Outflows are negative.
+ * hands); "saved" (Contributions) is payroll contributions you made plus leftover cash flow deposited.
+ * Outflows are negative.
  */
 export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashFlowPoint {
   const point: CashFlowPoint = {

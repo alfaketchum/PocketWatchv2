@@ -78,7 +78,11 @@ test("yearMetrics reads a working year like a P&L", () => {
   assert.equal(m.expenses, 58_000)
   // After-tax income 82k, spending 40k → 51.2% kept (the 10% pre-tax 401k counts as kept).
   assert.ok(Math.abs((m.savingsRate ?? 0) - 42_000 / 82_000) < 1e-9)
-  assert.equal(m.contributions, 15_000 + 32_000)
+  // Yours: 10k payroll + 32k left over after tax and spending; the employer's 5k is separate.
+  assert.equal(m.contributions, 10_000 + 32_000)
+  assert.equal(m.employerMatch, 5_000)
+  // No taxable account and no buffer, so the leftover lands in Cash; the 401k gets the payroll share.
+  assert.deepEqual(m.contributionsBy.map((c) => [c.name, c.value]), [["Cash", 32_000], ["401k", 10_000]])
   assert.equal(m.netWorthChange, 47_000)
   assert.equal(m.liquidNetWorth, 32_000)
   assert.deepEqual(m.incomeSources.map((s) => s.label), ["Salary", "Employer match"])

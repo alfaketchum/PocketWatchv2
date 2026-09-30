@@ -166,6 +166,7 @@ export interface YearRow {
   income: number
   incomeBy: Record<string, number>
   employerMatch: number
+  employerMatchBy: Record<string, number>
   incomeTax: number
   withdrawalTax: number
   /** Taxable earned income after pre-tax contributions, plus traditional withdrawals and realized gains. */
@@ -175,6 +176,7 @@ export interface YearRow {
   debtPayments: number
   assetPurchases: number
   assetSales: number
+  /** Everything deposited into accounts: your payroll contributions, employer match and leftover cash flow. */
   contributions: number
   contributionsBy: Record<string, number>
   withdrawals: number

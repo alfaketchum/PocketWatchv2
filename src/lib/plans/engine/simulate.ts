@@ -115,6 +115,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     income: income.total,
     incomeBy: income.byId,
     employerMatch: income.employerMatch,
+    employerMatchBy: income.matchBy,
     incomeTax,
     withdrawalTax: deficit?.tax ?? 0,
     taxableIncome: income.taxableIncome + (deficit?.taxableWithdrawn ?? 0),

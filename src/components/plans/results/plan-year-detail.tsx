@@ -32,7 +32,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
       <DetailList title="Debts" entries={named(doc.debts, row.debtBalances)} />
       <DetailList title="Income" entries={named(doc.incomes, row.incomeBy)} />
       <DetailList title="Spending" entries={named(doc.expenses, row.expensesBy)} />
-      <DetailList title="Saved into" entries={named(doc.accounts, row.contributionsBy)} />
+      <DetailList title="Deposited into (incl. employer match)" entries={named(doc.accounts, row.contributionsBy)} />
       <DetailList title="Withdrawn from" entries={named(doc.accounts, row.withdrawalsBy)} />
       <DetailList
         title="Other"

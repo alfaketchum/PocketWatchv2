@@ -35,7 +35,11 @@ export interface YearMetrics {
   expenses: number
   /** Share of after-tax income kept; null without income. */
   savingsRate: number | null
+  /** What you put into savings and investment accounts: payroll contributions plus leftover cash flow. */
   contributions: number
+  contributionsBy: { id: string; name: string; value: number }[]
+  /** Added by employers on top; never passes through your cash flow. */
+  employerMatch: number
   /** Gross withdrawals from accounts (taxes on them included). */
   withdrawals: number
   /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
@@ -86,7 +90,11 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     spending: row.expenses,
     expenses: row.expenses + row.debtPayments + taxes + row.assetPurchases,
     savingsRate: afterTaxIncome > 0.5 ? kept / afterTaxIncome : null,
-    contributions: row.contributions,
+    contributions: row.contributions - row.employerMatch,
+    contributionsBy: doc.accounts
+      .map((a) => ({ id: a.id, name: a.name, value: (row.contributionsBy[a.id] ?? 0) - (row.employerMatchBy[a.id] ?? 0) }))
+      .filter((c) => c.value >= 0.5),
+    employerMatch: row.employerMatch,
     withdrawals: row.withdrawals,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree },

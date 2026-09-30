@@ -32,6 +32,8 @@ export interface IncomeYear {
   /** Employee payroll contributions (they leave take-home pay). */
   employeeContributions: number
   employerMatch: number
+  /** Employer match per account. */
+  matchBy: Record<string, number>
   /** Payroll deposits per account, employee and employer combined. */
   deposits: Record<string, number>
 }
@@ -54,6 +56,7 @@ export function incomeForYear(
     taxableIncome: 0,
     employeeContributions: 0,
     employerMatch: 0,
+    matchBy: {},
     deposits: {},
   }
   for (const { income, range } of entries) {
@@ -61,6 +64,7 @@ export function incomeForYear(
     const gross = grown(income.amount, income.growth, inflation, index)
     let taxable = income.taxable ? gross : 0
     let deposits = result.deposits
+    let matchBy = result.matchBy
     let employee = 0
     let match = 0
     for (const c of income.contributions) {
@@ -71,6 +75,7 @@ export function incomeForYear(
       employee += own
       match += employer
       deposits = addTo(deposits, c.accountId, own + employer)
+      if (employer > 0) matchBy = addTo(matchBy, c.accountId, employer)
     }
     result = {
       total: result.total + gross,
@@ -78,6 +83,7 @@ export function incomeForYear(
       taxableIncome: result.taxableIncome + Math.max(0, taxable),
       employeeContributions: result.employeeContributions + employee,
       employerMatch: result.employerMatch + match,
+      matchBy,
       deposits,
     }
   }

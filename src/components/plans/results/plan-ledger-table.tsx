@@ -5,7 +5,7 @@ import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { DollarBasis, PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import { PlanLedgerRow } from "./plan-ledger-row"
 
-const COLUMNS = ["Year", "Age", "Income", "Taxes", "Spending", "Debt", "Saved", "Withdrawn", "Net worth"]
+const COLUMNS = ["Year", "Age", "Income", "Taxes", "Spending", "Debt", "Contributions", "Withdrawn", "Net worth"]
 
 /** Year-by-year cash-flow ledger. */
 export function PlanLedgerTable({

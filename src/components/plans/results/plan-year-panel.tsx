@@ -107,7 +107,21 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         <Line label="Spending" value={fmtMoney(m.spending)} />
         <Line label="Expenses" value={fmtMoney(m.expenses)} hint="Spending + debt payments + taxes + asset purchases" />
         <Line label="Savings rate" value={m.savingsRate === null ? "—" : fmtPct(m.savingsRate)} hint="Share of after-tax income not spent (pre-tax 401k/HSA counts as saved)" />
-        <Line label="Contributions" value={fmtMoney(m.contributions)} hint="Payroll contributions, employer match and surplus saved" />
+        <Drilldown title="Contributions" summary={fmtMoney(m.contributions)}>
+          <p className="text-[10px] text-foreground-muted pb-0.5">
+            Into savings and investment accounts: payroll contributions plus what was left after taxes and spending.
+          </p>
+          {m.contributionsBy.length === 0 && <p className="text-[11px] text-foreground-muted">Nothing left to save this year.</p>}
+          {m.contributionsBy.map((c) => (
+            <div key={c.id} className="flex items-baseline justify-between gap-3 py-0.5 text-[11px]">
+              <span className="min-w-0 truncate text-foreground-muted">{c.name}</span>
+              <span className="tabular-nums text-foreground">{fmtMoney(c.value)}</span>
+            </div>
+          ))}
+        </Drilldown>
+        {m.employerMatch >= 0.5 && (
+          <Line label="Employer match (extra)" value={fmtMoney(m.employerMatch)} hint="Added by your employer on top of your contributions" />
+        )}
         <Line label="Withdrawals" value={fmtMoney(m.withdrawals)} hint="Taken from your accounts to cover spending, including the tax on those withdrawals" />
         <Line
           label="Withdrawal rate"
