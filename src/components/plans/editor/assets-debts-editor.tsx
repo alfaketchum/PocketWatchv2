@@ -172,7 +172,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
 /** Homes, vehicles and the loans against them. */
 export function AssetsDebtsEditor(props: PlanEditorProps) {
   const { doc, update } = props
-  if (props.view === "table") {
+  if (props.view === "compact") {
     return (
       <div className="space-y-3">
         <AssetsDebtsTable {...props} />

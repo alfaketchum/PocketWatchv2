@@ -37,7 +37,7 @@ function payrollSummary(income: PlanIncome, doc: PlanEditorProps["doc"]): string
     .join(", ")
 }
 
-/** Income streams as an editable table; timings and payroll open in list view. */
+/** Income streams as an editable table; timings and payroll open in detailed view. */
 export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanIncome>) => update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
   const today = doc.incomes.filter((i) => !i.oneTime && i.start.type === "planStart").reduce((s, i) => s + i.amount, 0)
@@ -91,7 +91,7 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Cell>
           <Cell align="center">
             <span className="flex">
-              <RowButton icon="edit" label={`Edit ${inc.name} in list view`} onClick={() => onEditItem?.(planItemAnchor(inc.id))} />
+              <RowButton icon="edit" label={`Edit ${inc.name} in detailed view`} onClick={() => onEditItem?.(planItemAnchor(inc.id))} />
               <RowButton
                 icon="delete"
                 label={`Remove ${inc.name}`}

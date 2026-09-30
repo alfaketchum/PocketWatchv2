@@ -156,17 +156,21 @@ export function Cell({ children, align, className }: { children?: ReactNode; ali
   )
 }
 
-export type PlanEditorView = "list" | "table"
+export type PlanEditorView = "compact" | "detailed"
 
 const VIEW_KEY = "plan-editor-view"
 
-/** List/table preference for the plan editor tabs: List until you pick Table, then remembered in this browser. */
+/** Earlier builds saved "table" / "list". */
+const LEGACY_VIEWS: Record<string, PlanEditorView> = { table: "compact", list: "detailed" }
+
+/** Compact (table) or Detailed (cards): Compact until you switch, then remembered in this browser. */
 export function usePlanEditorView(): [PlanEditorView, (view: PlanEditorView) => void] {
-  const [view, setView] = useState<PlanEditorView>("list")
+  const [view, setView] = useState<PlanEditorView>("compact")
   useEffect(() => {
     try {
       const saved = localStorage.getItem(VIEW_KEY)
-      if (saved === "list" || saved === "table") setView(saved)
+      const resolved = saved === "compact" || saved === "detailed" ? saved : saved ? LEGACY_VIEWS[saved] : undefined
+      if (resolved) setView(resolved)
     } catch {
       // Storage can be unavailable (private mode); the default still works.
     }
@@ -182,14 +186,14 @@ export function usePlanEditorView(): [PlanEditorView, (view: PlanEditorView) => 
   return [view, change]
 }
 
-/** List / Table toggle, same look as the Transactions page. */
+/** Compact / Detailed toggle, styled like the Transactions page's view toggle. */
 export function ViewToggle({ value, onChange }: { value: PlanEditorView; onChange: (view: PlanEditorView) => void }) {
   return (
     <div className="flex items-center gap-0.5 bg-background-secondary border border-card-border p-0.5 rounded-lg">
       {(
         [
-          { key: "list", label: "List", icon: "view_agenda" },
-          { key: "table", label: "Table", icon: "table_rows" },
+          { key: "compact", label: "Compact", icon: "table_rows" },
+          { key: "detailed", label: "Detailed", icon: "view_agenda" },
         ] as const
       ).map((opt) => (
         <button

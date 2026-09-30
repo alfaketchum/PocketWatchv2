@@ -35,7 +35,7 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
     <div className="space-y-3">
       <RefreshBalancesButton doc={doc} update={update} />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
-      {view === "table" ? (
+      {view === "compact" ? (
         <AccountsTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.accounts.map((a) => (
         <ItemCard

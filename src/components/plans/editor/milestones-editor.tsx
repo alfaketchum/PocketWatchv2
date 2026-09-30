@@ -58,7 +58,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
       <p className="text-xs text-foreground-muted">
         Point income and spending at a milestone instead of a fixed age, then move the milestone to shift everything at once.
       </p>
-      {view === "table" ? (
+      {view === "compact" ? (
         <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.milestones.map((m) => (
         <ItemCard
@@ -88,7 +88,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorPr
           </div>
         </ItemCard>
       ))}
-      {view !== "table" && <GeneratedMilestones doc={doc} />}
+      {view !== "compact" && <GeneratedMilestones doc={doc} />}
       <AddButton
         label="Add milestone"
         disabled={doc.milestones.length >= PLAN_LIMITS.milestones}

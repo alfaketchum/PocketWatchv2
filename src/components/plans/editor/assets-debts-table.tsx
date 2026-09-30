@@ -44,13 +44,13 @@ const DEBT_COLUMNS = [
 function Actions({ name, anchor, onEditItem, onRemove }: { name: string; anchor: string; onEditItem?: (id: string) => void; onRemove: () => void }) {
   return (
     <span className="flex">
-      <RowButton icon="edit" label={`Edit ${name} in list view`} onClick={() => onEditItem?.(anchor)} />
+      <RowButton icon="edit" label={`Edit ${name} in detailed view`} onClick={() => onEditItem?.(anchor)} />
       <RowButton icon="delete" label={`Remove ${name}`} danger onClick={onRemove} />
     </span>
   )
 }
 
-/** Assets and debts as two editable tables; timings open in list view. */
+/** Assets and debts as two editable tables; timings open in detailed view. */
 export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patchAsset = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
   const patchDebt = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))

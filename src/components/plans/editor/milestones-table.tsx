@@ -56,7 +56,7 @@ export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
           <Cell align="center">
             {!generated && (
               <span className="flex">
-                <RowButton icon="edit" label={`Edit ${m.name} in list view`} onClick={() => onEditItem?.(planItemAnchor(m.id))} />
+                <RowButton icon="edit" label={`Edit ${m.name} in detailed view`} onClick={() => onEditItem?.(planItemAnchor(m.id))} />
                 {m.kind !== "retirement" && (
                   <RowButton
                     icon="delete"

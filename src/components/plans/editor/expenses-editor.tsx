@@ -37,11 +37,11 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
 
   return (
     <div className="space-y-8">
-      {view === "table" ? (
+      {view === "compact" ? (
         <p className="text-xs text-foreground-muted">
           Kids&apos; costs are listed below as read-only lines.{" "}
           <button type="button" onClick={() => onEditItem?.(planItemAnchor("kids"))} className="text-primary hover:underline">
-            Add or change kids in List view
+            Add or change kids in Detailed view
           </button>
         </p>
       ) : (
@@ -56,7 +56,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
           </p>
         )}
-        {view === "table" ? (
+        {view === "compact" ? (
         <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.expenses.map((e) => (
           <ItemCard

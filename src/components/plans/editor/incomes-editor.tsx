@@ -48,7 +48,7 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
   return (
     <div className="space-y-3">
       {doc.incomes.length === 0 && <EmptyNote>No income yet. Add your salary, and later Social Security or a pension.</EmptyNote>}
-      {view === "table" ? (
+      {view === "compact" ? (
         <IncomesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.incomes.map((inc) => (
         <ItemCard

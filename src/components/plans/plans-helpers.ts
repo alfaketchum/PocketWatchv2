@@ -68,13 +68,13 @@ export type DocUpdater = (doc: PlanDocument) => PlanDocument
 export interface PlanEditorProps {
   doc: PlanDocument
   update: (updater: DocUpdater) => void
-  /** List (cards) or compact table; only list-style tabs use it. */
-  view?: "list" | "table"
-  /** From the table: open an item's full editor in list view. */
+  /** Compact (table) or Detailed (cards); only tabs holding lists use it. */
+  view?: "compact" | "detailed"
+  /** From the compact table: open an item's full editor in the detailed view. */
   onEditItem?: (id: string) => void
 }
 
-/** DOM id of an item's card in list view, so the table can jump to it. */
+/** DOM id of an item's card in detailed view, so the table can jump to it. */
 export const planItemAnchor = (id: string) => `plan-item-${id}`
 
 /** Apply `fn` to every timing in the plan. */

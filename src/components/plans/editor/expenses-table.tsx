@@ -63,7 +63,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Cell>
           <Cell align="center">
             <span className="flex">
-              <RowButton icon="edit" label={`Edit ${e.name} in list view`} onClick={() => onEditItem?.(planItemAnchor(e.id))} />
+              <RowButton icon="edit" label={`Edit ${e.name} in detailed view`} onClick={() => onEditItem?.(planItemAnchor(e.id))} />
               <RowButton
                 icon="delete"
                 label={`Remove ${e.name}`}
@@ -96,7 +96,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Cell>
           <Cell />
           <Cell align="center">
-            <RowButton icon="edit" label="Edit this child in list view" onClick={() => onEditItem?.(planItemAnchor(childId))} />
+            <RowButton icon="edit" label="Edit this child in detailed view" onClick={() => onEditItem?.(planItemAnchor(childId))} />
           </Cell>
         </Row>
       ))}

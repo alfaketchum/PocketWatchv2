@@ -37,10 +37,10 @@ const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProp
   assumptions: PlanSettingsEditor,
 }
 
-/** Tabs holding lists of items, which can switch between cards and a table. */
+/** Tabs holding lists of items, which switch between a compact table and detailed cards. */
 const TABLE_TABS = new Set<PlanTab>(["accounts", "income", "expenses", "assets", "milestones"])
 
-/** After switching to list view, scroll to an item's card once it has rendered. */
+/** After switching to the detailed view, scroll to an item's card once it has rendered. */
 const SCROLL_DELAY_MS = 60
 
 function EditorSkeleton() {
@@ -68,7 +68,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const [listView, setListView] = usePlanEditorView()
   const editInList = useCallback(
     (anchor: string) => {
-      setListView("list")
+      setListView("detailed")
       setTimeout(
         () => window.document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "center" }),
         SCROLL_DELAY_MS,
@@ -106,7 +106,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
               <ViewToggle value={listView} onChange={setListView} />
             </div>
           )}
-          <Editor doc={document} update={update} view={TABLE_TABS.has(tab) ? listView : "list"} onEditItem={editInList} />
+          <Editor doc={document} update={update} view={TABLE_TABS.has(tab) ? listView : "detailed"} onEditItem={editInList} />
         </div>
       ) : (
         <>
