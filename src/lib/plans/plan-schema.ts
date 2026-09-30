@@ -79,6 +79,11 @@ const income = z.object({
   origin,
 })
 
+const stageShape = {
+  preset: z.enum(["steady", "gogo", "tapering", "rising", "custom"]),
+  phases: z.array(z.object({ fromAge: z.number().int().min(0).max(120), factor: z.number().min(0).max(5) })).max(10).optional(),
+}
+
 const expense = z.object({
   id,
   name,
@@ -90,8 +95,8 @@ const expense = z.object({
   oneTime: z.boolean(),
   pattern: z
     .object({
-      preset: z.enum(["steady", "gogo", "tapering", "rising", "custom"]),
-      phases: z.array(z.object({ fromAge: z.number().int().min(0).max(120), factor: z.number().min(0).max(5) })).max(10).optional(),
+      ...stageShape,
+      then: z.object({ ...stageShape, at: z.enum(["retirement", "age"]), age: z.number().int().min(0).max(120).optional() }).optional(),
     })
     .optional(),
   origin,

@@ -112,16 +112,20 @@ export interface PlanIncome {
 }
 
 /**
- * How a spending line changes with age, on top of inflation: steady, go-go (more in the first years of
- * retirement, then less), tapering (a little less each year of retirement), rising (healthcare, faster
- * than inflation later in life) or custom phases.
+ * How spending changes over time, on top of inflation: steady, go-go (more for 10 years, then less),
+ * tapering (a little less each year), rising (faster than inflation, e.g. healthcare) or custom phases.
  */
 export type PatternPreset = "steady" | "gogo" | "tapering" | "rising" | "custom"
 
-export interface SpendingPattern {
+export interface SpendingStage {
   preset: PatternPreset
   /** Custom only: from each age on, spend this share of today's amount (1 = 100%). */
   phases?: { fromAge: number; factor: number }[]
+}
+
+/** A line's pattern from now, and optionally a second one from retirement or a chosen age. */
+export interface SpendingPattern extends SpendingStage {
+  then?: SpendingStage & { at: "retirement" | "age"; age?: number }
 }
 
 export interface PlanExpense {

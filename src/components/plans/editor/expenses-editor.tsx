@@ -68,7 +68,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             <button
               type="button"
               onClick={applyTypical}
-              title="Travel, dining and fun: go-go. Shopping, transport, personal care: tapering. Healthcare: rising. Everything else: steady."
+              title="Steady now, then from retirement: travel, dining and fun go-go; shopping, transport, personal care tapering. Healthcare rising from 65. Everything else steady."
               className="btn-secondary text-xs"
             >
               <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
@@ -87,10 +87,13 @@ export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProp
             removeLabel={`Remove ${e.name}`}
             onRemove={() => update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== e.id) }))}
           >
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 items-end">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
               <div className="col-span-2 lg:col-span-1">
                 <TextField label="Name" value={e.name} onChange={(name) => patch(e.id, { name })} />
               </div>
+              {!e.oneTime && (
+                <FireNumberField label="Per month (today's $)" prefix="$" min={0} value={e.amount / 12} onChange={(monthly) => patch(e.id, { amount: monthly * 12 })} />
+              )}
               <FireNumberField
                 label={e.oneTime ? "Amount (today's $)" : "Per year (today's $)"}
                 prefix="$"

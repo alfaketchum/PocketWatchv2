@@ -26,7 +26,7 @@ export function expenseEntries(expenses: PlanExpense[], ctx: TimingContext): Exp
   return expenses.map((expense) => ({
     expense,
     range: resolveRange(expense.start, expense.end, ctx),
-    pattern: (index: number) => (expense.oneTime ? 1 : patternFactor(expense.pattern, age0 + index, retireAge)),
+    pattern: (index: number) => (expense.oneTime ? 1 : patternFactor(expense.pattern, age0 + index, retireAge, age0)),
   }))
 }
 
