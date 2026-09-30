@@ -1,3 +1,4 @@
+import { FI_MILESTONE_ID } from "./plan-constants"
 import { removeAccount, removeAsset, removePerson } from "./plan-edits"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { PlanAdjustment, PlanDocument, PlanMilestone, Timing } from "./plan-types"
@@ -9,15 +10,17 @@ const ADJUSTMENT_LABELS: Record<PlanAdjustment["kind"], string> = {
   state: "State changes",
 }
 
-export type MilestoneSource = "yours" | "kids" | "assets"
+export type MilestoneSource = "yours" | "kids" | "assets" | "plan"
 
 export const MILESTONE_SOURCE_LABELS: Record<MilestoneSource, string> = {
   yours: "Yours",
   kids: "Kids",
   assets: "Assets",
+  plan: "Plan",
 }
 
 export function milestoneSource(m: PlanMilestone): MilestoneSource {
+  if (m.id === FI_MILESTONE_ID) return "plan"
   if (m.kind === "child") return "kids"
   if (m.kind === "asset") return "assets"
   return "yours"

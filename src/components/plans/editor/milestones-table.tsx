@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { fiMilestone } from "@/lib/plans/plan-fi-milestone"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { payoffMilestones } from "@/lib/plans/plan-payoff-milestones"
@@ -26,20 +27,22 @@ const COLUMNS = [
 export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEditorProps & { onDelete: (id: string) => void }) {
   const { milestones: groupColors } = usePlanColors()
   const payoffs = useMemo(() => payoffMilestones(doc), [doc])
+  const fi = useMemo(() => fiMilestone(doc), [doc])
   const ctx = timingContext(doc)
   const age0 = primaryAge(doc)
   const patch = (id: string, change: Partial<PlanMilestone>) => update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
   const rows = [
-    ...doc.milestones.map((m) => ({ m, generated: false })),
-    ...generatedMilestones(doc).map((m) => ({ m, generated: true })),
-    ...payoffs.map((m) => ({ m, generated: true })),
+    ...doc.milestones.map((m) => ({ m, generated: false, unreached: false })),
+    ...generatedMilestones(doc).map((m) => ({ m, generated: true, unreached: false })),
+    ...payoffs.map((m) => ({ m, generated: true, unreached: false })),
+    ...(fi ? [{ m: fi.milestone, generated: true, unreached: !fi.reached }] : []),
   ]
     .map((r) => ({ ...r, index: resolveTiming(r.m.timing, ctx) }))
     .sort((a, b) => (a.index ?? Infinity) - (b.index ?? Infinity))
 
   return (
     <PlanTable columns={COLUMNS}>
-      {rows.map(({ m, generated, index }) => (
+      {rows.map(({ m, generated, unreached, index }) => (
         <Row key={m.id} muted={generated}>
           <Cell>
             <span className="flex items-center">
@@ -60,7 +63,11 @@ export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEdito
             <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
           </Cell>
           <Cell>
-            <TimingCell timing={m.timing} doc={doc} />
+            {unreached ? (
+              <span className="block truncate px-2 text-xs text-foreground-muted">Not reached in this plan</span>
+            ) : (
+              <TimingCell timing={m.timing} doc={doc} />
+            )}
           </Cell>
           <Cell>
             <span className="block truncate px-2 text-xs text-foreground-muted" title={milestoneUses(doc, m.id).join(" · ")}>
@@ -68,10 +75,10 @@ export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEdito
             </span>
           </Cell>
           <Cell align="right">
-            <span className="px-2 tabular-nums">{index === null ? "—" : doc.settings.startYear + index}</span>
+            <span className="px-2 tabular-nums">{index === null || unreached ? "—" : doc.settings.startYear + index}</span>
           </Cell>
           <Cell align="right">
-            <span className="px-2 tabular-nums">{index === null ? "—" : age0 + index}</span>
+            <span className="px-2 tabular-nums">{index === null || unreached ? "—" : age0 + index}</span>
           </Cell>
           <Cell align="center">
             {!generated && (

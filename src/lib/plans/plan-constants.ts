@@ -41,6 +41,10 @@ export const TAX_TREATMENT_LABELS: Record<TaxTreatment, string> = {
 export const RETIREMENT_MILESTONE_ID = "ms-retirement"
 export const PRIMARY_PERSON_ID = "person-1"
 
+/** Safe withdrawal rate behind the read-only "Financial independence" milestone. */
+export const FI_SAFE_WITHDRAWAL_RATE = 0.035
+export const FI_MILESTONE_ID = "fi-financial-independence"
+
 /** A blank plan for someone of `age`, starting this month. */
 export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocument {
   const startYear = now.getFullYear()
