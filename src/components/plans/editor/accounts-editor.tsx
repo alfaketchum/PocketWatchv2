@@ -3,9 +3,10 @@
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, removeAccount, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, removeAccount, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { RefreshBalancesButton } from "./refresh-balances-button"
+import { AccountsTable } from "./accounts-table"
 
 const TREATMENT_OPTIONS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({
   value,
@@ -26,7 +27,7 @@ function newAccount(): PlanAccount {
 }
 
 /** Accounts: balances at plan start, tax bucket, and expected return. */
-export function AccountsEditor({ doc, update }: PlanEditorProps) {
+export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
@@ -34,9 +35,11 @@ export function AccountsEditor({ doc, update }: PlanEditorProps) {
     <div className="space-y-3">
       <RefreshBalancesButton doc={doc} update={update} />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
-      {doc.accounts.map((a) => (
+      {view === "table" ? (
+        <AccountsTable doc={doc} update={update} onEditItem={onEditItem} />
+      ) : doc.accounts.map((a) => (
         <ItemCard
-          key={a.id}
+          key={a.id} anchorId={planItemAnchor(a.id)}
           title={a.name || "Untitled account"}
           removeLabel={`Remove ${a.name}`}
           onRemove={() => update((d) => removeAccount(d, a.id))}

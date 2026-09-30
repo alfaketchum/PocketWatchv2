@@ -40,3 +40,20 @@ test("timingLabel names milestones and ages", () => {
   assert.equal(timingLabel({ type: "milestone", milestoneId: base.milestones[0].id }, base), "Retirement")
   assert.equal(timingLabel({ type: "age", personId: PRIMARY_PERSON_ID, age: 50 }, base), "age 50")
 })
+
+import { removeChild } from "@/components/plans/plans-helpers"
+import { newChild } from "@/lib/plans/plan-children"
+
+test("removing a child also removes the 529 account created for them, and references to it", () => {
+  const child = { ...newChild("kid", "Maya", 2029), plan529: { enabled: true, accountId: "m529", annualContribution: 6_000 } }
+  const doc: PlanDocument = {
+    ...base,
+    accounts: [...base.accounts, { id: "m529", name: "Maya's 529", taxTreatment: "education", balance: 0, costBasis: null, returnRate: 0.06, owner: null, source: null }],
+    cashFlow: { surplusOrder: [{ accountId: "m529", annualCap: null }], withdrawalOrder: [] },
+    children: [child],
+  }
+  const out = removeChild(doc, "kid")
+  assert.equal(out.children.length, 0)
+  assert.ok(!out.accounts.some((a) => a.id === "m529"))
+  assert.deepEqual(out.cashFlow.surplusOrder, [])
+})

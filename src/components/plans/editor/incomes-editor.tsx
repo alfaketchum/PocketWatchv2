@@ -4,11 +4,12 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
 import type { IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { GrowthField } from "./growth-field"
 import { IncomeContributionsEditor } from "./income-contributions-editor"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
+import { IncomesTable } from "./incomes-table"
 
 const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
   { value: "salary", label: "Salary" },
@@ -39,7 +40,7 @@ function newIncome(hasRetirement: boolean): PlanIncome {
 }
 
 /** Income streams: salary until retirement, Social Security later, one-time windfalls. */
-export function IncomesEditor({ doc, update }: PlanEditorProps) {
+export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanIncome>) =>
     update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
@@ -47,9 +48,11 @@ export function IncomesEditor({ doc, update }: PlanEditorProps) {
   return (
     <div className="space-y-3">
       {doc.incomes.length === 0 && <EmptyNote>No income yet. Add your salary, and later Social Security or a pension.</EmptyNote>}
-      {doc.incomes.map((inc) => (
+      {view === "table" ? (
+        <IncomesTable doc={doc} update={update} onEditItem={onEditItem} />
+      ) : doc.incomes.map((inc) => (
         <ItemCard
-          key={inc.id}
+          key={inc.id} anchorId={planItemAnchor(inc.id)}
           title={inc.name || "Untitled income"}
           removeLabel={`Remove ${inc.name}`}
           onRemove={() => update((d) => ({ ...d, incomes: d.incomes.filter((x) => x.id !== inc.id) }))}

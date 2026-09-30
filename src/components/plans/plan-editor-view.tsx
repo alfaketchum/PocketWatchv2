@@ -16,6 +16,7 @@ import { IncomesEditor } from "./editor/incomes-editor"
 import { MilestonesEditor } from "./editor/milestones-editor"
 import { DEFAULT_PLAN_TAB, PlanEditorTabs, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
+import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
 import { PlanBacktestCard } from "./results/plan-backtest-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
@@ -35,6 +36,12 @@ const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProp
   milestones: MilestonesEditor,
   assumptions: PlanSettingsEditor,
 }
+
+/** Tabs holding lists of items, which can switch between cards and a table. */
+const TABLE_TABS = new Set<PlanTab>(["accounts", "income", "expenses", "assets", "milestones"])
+
+/** After switching to list view, scroll to an item's card once it has rendered. */
+const SCROLL_DELAY_MS = 60
 
 function EditorSkeleton() {
   return (
@@ -58,6 +65,17 @@ export function PlanEditorView({ planId }: { planId: string }) {
     [router, pathname],
   )
   const { isHidden } = usePrivacyMode()
+  const [listView, setListView] = usePlanEditorView()
+  const editInList = useCallback(
+    (anchor: string) => {
+      setListView("list")
+      setTimeout(
+        () => window.document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        SCROLL_DELAY_MS,
+      )
+    },
+    [setListView],
+  )
   const { plan, document, update, isLoading, error, isSaving } = usePlanDocument(planId)
   const { projection, summary, rows, basis, setBasis, view } = usePlanProjection(document)
 
@@ -82,8 +100,13 @@ export function PlanEditorView({ planId }: { planId: string }) {
       <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
       <PlanEditorTabs value={tab} onChange={setTab} />
       {Editor ? (
-        <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6" style={{ boxShadow: "var(--shadow-sm)" }}>
-          <Editor doc={document} update={update} />
+        <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
+          {TABLE_TABS.has(tab) && (
+            <div className="flex justify-end">
+              <ViewToggle value={listView} onChange={setListView} />
+            </div>
+          )}
+          <Editor doc={document} update={update} view={TABLE_TABS.has(tab) ? listView : "list"} onEditItem={editInList} />
         </div>
       ) : (
         <>

@@ -5,11 +5,36 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { bufferAccount, surplusOverflowAccount } from "@/lib/plans/engine/engine-cashflow"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
-import type { PlanAccount, SurplusTarget, YearRow } from "@/lib/plans/plan-types"
+import { childTransfers } from "@/lib/plans/plan-children"
+import { isActive, resolveRange, timingContext } from "@/lib/plans/plan-timing"
+import type { PlanAccount, PlanDocument, SurplusTarget, YearRow } from "@/lib/plans/plan-types"
 import type { PlanEditorProps } from "../plans-helpers"
 import { move, OrderButtons, WaterfallColumn, WaterfallStep } from "./waterfall-step"
 
 const DEFAULT_CAP = 7_000
+
+interface PlannedContribution {
+  id: string
+  accountName: string
+  /** Today's dollars per year. */
+  amount: number
+  exampleAmount?: number
+}
+
+/** Active 529 contributions: fixed yearly amounts taken from cash flow before anything else. */
+function planContributions(doc: PlanDocument, example: YearRow | null): PlannedContribution[] {
+  const ctx = timingContext(doc)
+  return childTransfers(doc).map((t) => {
+    const range = resolveRange(t.start, t.end, ctx)
+    const active = example && isActive(range, example.index, false)
+    return {
+      id: t.id,
+      accountName: doc.accounts.find((a) => a.id === t.accountId)?.name ?? "529",
+      amount: t.amount,
+      exampleAmount: active ? t.amount : undefined,
+    }
+  })
+}
 
 /** Example amount for an account, shown only at its first step so nothing is counted twice. */
 function exampleFor(example: YearRow | null, accountId: string, seen: Set<string>): number | undefined {
@@ -55,7 +80,9 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
   const buffer = doc.settings.cashBuffer > 0 ? bufferAccount(doc) : null
   const uncapped = targets.findIndex((t) => t.annualCap === null)
   const overflow: PlanAccount | null = uncapped >= 0 ? null : surplusOverflowAccount(doc)
-  const unused = doc.accounts.filter((a) => !targets.some((t) => t.accountId === a.id))
+  // 529s are funded by their child's plan, not by leftover money.
+  const unused = doc.accounts.filter((a) => a.taxTreatment !== "education" && !targets.some((t) => t.accountId === a.id))
+  const contributions529 = planContributions(doc, example)
   const seen = new Set<string>()
   const leftover = example ? Object.values(example.surplusBy).reduce((s, v) => s + v, 0) : 0
   let step = 0
@@ -68,6 +95,17 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
       description="Fills top down."
       example={example ? `${example.year} · age ${example.ages[0]} · ${fmtMoney(leftover)} left over` : "Never happens in this plan yet."}
     >
+      {contributions529.map((c) => (
+        <WaterfallStep
+          key={c.id}
+          marker="school"
+          pinned
+          direction="in"
+          title={`${c.accountName} · ${fmtMoney(c.amount)}/yr`}
+          subtitle="Set in Expenses → Kids · paid every year, even short ones"
+          amount={c.exampleAmount}
+        />
+      ))}
       {buffer && (
         <WaterfallStep
           marker={++step}

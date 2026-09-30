@@ -4,9 +4,10 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
+import { AssetsDebtsTable } from "./assets-debts-table"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -67,7 +68,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
     >
       {doc.assets.length === 0 && <EmptyNote>No assets yet.</EmptyNote>}
       {doc.assets.map((a) => (
-        <ItemCard key={a.id} title={a.name || "Untitled asset"} removeLabel={`Remove ${a.name}`} onRemove={() => remove(a.id)}>
+        <ItemCard key={a.id} anchorId={planItemAnchor(a.id)} title={a.name || "Untitled asset"} removeLabel={`Remove ${a.name}`} onRemove={() => remove(a.id)}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
             <div className="col-span-2 lg:col-span-1">
               <TextField label="Name" value={a.name} onChange={(name) => patch(a.id, { name })} />
@@ -123,7 +124,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
       {doc.debts.length === 0 && <EmptyNote>No debts.</EmptyNote>}
       {doc.debts.map((debt) => (
         <ItemCard
-          key={debt.id}
+          key={debt.id} anchorId={planItemAnchor(debt.id)}
           title={debt.name || "Untitled debt"}
           removeLabel={`Remove ${debt.name}`}
           onRemove={() => update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }))}
@@ -170,6 +171,26 @@ function DebtsList({ doc, update }: PlanEditorProps) {
 
 /** Homes, vehicles and the loans against them. */
 export function AssetsDebtsEditor(props: PlanEditorProps) {
+  const { doc, update } = props
+  if (props.view === "table") {
+    return (
+      <div className="space-y-3">
+        <AssetsDebtsTable {...props} />
+        <div className="flex flex-wrap gap-2">
+          <AddButton
+            label="Add asset"
+            disabled={doc.assets.length >= PLAN_LIMITS.assets}
+            onClick={() => update((d) => ({ ...d, assets: [...d.assets, newAsset()] }))}
+          />
+          <AddButton
+            label="Add debt"
+            disabled={doc.debts.length >= PLAN_LIMITS.debts}
+            onClick={() => update((d) => ({ ...d, debts: [...d.debts, newDebt()] }))}
+          />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       <AssetsList {...props} />

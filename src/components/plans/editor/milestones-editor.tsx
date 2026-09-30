@@ -4,9 +4,10 @@ import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, PlanMilestone } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, primaryAge, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, primaryAge, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
+import { MilestonesTable } from "./milestones-table"
 
 function newMilestone(doc: PlanDocument): PlanMilestone {
   const person = doc.people[0]
@@ -48,7 +49,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
 }
 
 /** Named points in time that income, spending and assets can start or stop at. */
-export function MilestonesEditor({ doc, update }: PlanEditorProps) {
+export function MilestonesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanMilestone>) =>
     update((d) => ({ ...d, milestones: patchItem(d.milestones, id, change) }))
 
@@ -57,9 +58,11 @@ export function MilestonesEditor({ doc, update }: PlanEditorProps) {
       <p className="text-xs text-foreground-muted">
         Point income and spending at a milestone instead of a fixed age, then move the milestone to shift everything at once.
       </p>
-      {doc.milestones.map((m) => (
+      {view === "table" ? (
+        <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} />
+      ) : doc.milestones.map((m) => (
         <ItemCard
-          key={m.id}
+          key={m.id} anchorId={planItemAnchor(m.id)}
           title={
             <span>
               {m.name || "Untitled milestone"}
@@ -85,7 +88,7 @@ export function MilestonesEditor({ doc, update }: PlanEditorProps) {
           </div>
         </ItemCard>
       ))}
-      <GeneratedMilestones doc={doc} />
+      {view !== "table" && <GeneratedMilestones doc={doc} />}
       <AddButton
         label="Add milestone"
         disabled={doc.milestones.length >= PLAN_LIMITS.milestones}

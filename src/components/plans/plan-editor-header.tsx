@@ -44,7 +44,7 @@ export function PlanEditorHeader({
           <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
             account_tree
           </span>
-          Cash flow Sankey
+          Money flow
         </Link>
         <DollarsToggle value={basis} onChange={onBasisChange} />
       </div>

@@ -62,15 +62,18 @@ export function ItemCard({
   title,
   onRemove,
   removeLabel,
+  anchorId,
   children,
 }: {
   title: ReactNode
   onRemove?: () => void
   removeLabel: string
+  /** DOM id so the table view can jump here. */
+  anchorId?: string
   children: ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-card-border p-3 sm:p-4 space-y-3">
+    <div id={anchorId} className="rounded-xl border border-card-border p-3 sm:p-4 space-y-3 scroll-mt-24">
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-semibold text-foreground min-w-0 truncate">{title}</div>
         {onRemove && (

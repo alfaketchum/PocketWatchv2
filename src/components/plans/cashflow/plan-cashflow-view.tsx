@@ -116,7 +116,10 @@ export function PlanCashflowView({ planId }: { planId: string }) {
           {detail.data.name}
         </Link>
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-2xl text-foreground font-semibold">Cash flow</h1>
+          <div>
+            <h1 className="text-2xl text-foreground font-semibold">Money flow</h1>
+            <p className="text-xs text-foreground-muted mt-0.5">Where each year&apos;s money comes from and where it goes</p>
+          </div>
           <DollarsToggle value={basis} onChange={setBasis} />
         </div>
       </div>

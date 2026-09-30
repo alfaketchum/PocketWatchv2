@@ -53,13 +53,29 @@ export function removeAccount(doc: PlanDocument, accountId: string): PlanDocumen
   }
 }
 
+/** Remove a child along with the 529 account created for them (and every reference to it). */
+export function removeChild(doc: PlanDocument, childId: string): PlanDocument {
+  const child = doc.children.find((c) => c.id === childId)
+  const next = { ...doc, children: doc.children.filter((c) => c.id !== childId) }
+  const accountId = child?.plan529.accountId
+  const sharedWithAnother = next.children.some((c) => c.plan529.accountId === accountId)
+  return accountId && !sharedWithAnother ? removeAccount(next, accountId) : next
+}
+
 export type DocUpdater = (doc: PlanDocument) => PlanDocument
 
 /** Props shared by every plan editor section. */
 export interface PlanEditorProps {
   doc: PlanDocument
   update: (updater: DocUpdater) => void
+  /** List (cards) or compact table; only list-style tabs use it. */
+  view?: "list" | "table"
+  /** From the table: open an item's full editor in list view. */
+  onEditItem?: (id: string) => void
 }
+
+/** DOM id of an item's card in list view, so the table can jump to it. */
+export const planItemAnchor = (id: string) => `plan-item-${id}`
 
 /** Apply `fn` to every timing in the plan. */
 export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDocument {

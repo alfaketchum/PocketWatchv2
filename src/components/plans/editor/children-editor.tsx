@@ -5,7 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { childMilestones, newChild, supportStartAge } from "@/lib/plans/plan-children"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanChild, PlanDocument, Timing } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, planItemAnchor, removeChild, type PlanEditorProps } from "../plans-helpers"
 import { Child529Fields, ChildCollegeFields } from "./child-college-fields"
 import { ChildSection } from "./child-section"
 import { AddButton, ItemCard, TextField } from "./plan-editor-controls"
@@ -33,9 +33,10 @@ function ChildCard({ child, doc, update }: { child: PlanChild } & PlanEditorProp
   const supportFrom = child.birthYear + supportStartAge(child)
   return (
     <ItemCard
+      anchorId={planItemAnchor(child.id)}
       title={`${child.name || "Child"} · born ${child.birthYear}`}
       removeLabel={`Remove ${child.name}`}
-      onRemove={() => update((d) => ({ ...d, children: d.children.filter((c) => c.id !== child.id) }))}
+      onRemove={() => update((d) => removeChild(d, child.id))}
     >
       <div className="grid grid-cols-2 gap-2 items-end">
         <TextField label="Name" value={child.name} maxLength={40} onChange={(name) => patch({ name })} />
@@ -117,6 +118,7 @@ export function ChildrenEditor({ doc, update }: PlanEditorProps) {
       ],
     }))
   return (
+    <div id={planItemAnchor("kids")} className="scroll-mt-24">
     <InputBlock
       title="Kids"
       description="Add a child (born or planned) to project raising costs, college, a 529 plan and support after college. Each shows up as its own expense lines and milestones."
@@ -126,5 +128,6 @@ export function ChildrenEditor({ doc, update }: PlanEditorProps) {
       ))}
       <AddButton label="Add a child" disabled={children.length >= PLAN_LIMITS.children} onClick={add} />
     </InputBlock>
+    </div>
   )
 }

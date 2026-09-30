@@ -6,11 +6,12 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
+import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { GrowthField } from "./growth-field"
 import { ChildrenEditor } from "./children-editor"
 import { AddButton, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
+import { ExpensesTable } from "./expenses-table"
 
 function newExpense(): PlanExpense {
   return {
@@ -26,7 +27,7 @@ function newExpense(): PlanExpense {
 }
 
 /** Spending streams: everyday living costs, kids, travel, a one-time wedding or car. */
-export function ExpensesEditor({ doc, update }: PlanEditorProps) {
+export function ExpensesEditor({ doc, update, view, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanExpense>) =>
     update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const recurringTotal = useMemo(
@@ -36,7 +37,16 @@ export function ExpensesEditor({ doc, update }: PlanEditorProps) {
 
   return (
     <div className="space-y-8">
-      <ChildrenEditor doc={doc} update={update} />
+      {view === "table" ? (
+        <p className="text-xs text-foreground-muted">
+          Kids&apos; costs are listed below as read-only lines.{" "}
+          <button type="button" onClick={() => onEditItem?.(planItemAnchor("kids"))} className="text-primary hover:underline">
+            Add or change kids in List view
+          </button>
+        </p>
+      ) : (
+        <ChildrenEditor doc={doc} update={update} />
+      )}
       <div className="space-y-3">
         <p className="text-sm font-semibold text-foreground">Other expenses</p>
         {doc.expenses.length === 0 ? (
@@ -46,9 +56,11 @@ export function ExpensesEditor({ doc, update }: PlanEditorProps) {
             Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
           </p>
         )}
-        {doc.expenses.map((e) => (
+        {view === "table" ? (
+        <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
+      ) : doc.expenses.map((e) => (
           <ItemCard
-            key={e.id}
+            key={e.id} anchorId={planItemAnchor(e.id)}
             title={e.name || "Untitled expense"}
             removeLabel={`Remove ${e.name}`}
             onRemove={() => update((d) => ({ ...d, expenses: d.expenses.filter((x) => x.id !== e.id) }))}
