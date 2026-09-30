@@ -232,6 +232,16 @@ function MilestoneCard({ hovered, doc }: { hovered: HoveredMark; doc: PlanDocume
   )
 }
 
+/** Still-owed line for the Debt view: drawn down to zero at a payoff, then left out while nothing is owed. */
+function withOwedLine(points: ChartRow[]): ChartRow[] {
+  return points.map((p, i) => {
+    const owedNow = (p.owed ?? 0) > 0.5
+    const owedBefore = i > 0 && (points[i - 1].owed ?? 0) > 0.5
+    // Without a value recharts leaves a gap instead of a flat line along zero.
+    return owedNow || owedBefore ? { ...p, owedLine: p.owed } : p
+  })
+}
+
 const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
   const index = Number(state?.activeTooltipIndex)
   return Number.isInteger(index) && index >= 0 ? index : null
@@ -274,6 +284,10 @@ const ChartPlot = memo(function ChartPlot({
   onHoverMark,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
+  const barTops = useMemo(
+    () => new Map(points.map((p) => [p.age, series.reduce((sum, s) => sum + Math.max(0, p[s.key] ?? 0), 0)])),
+    [points, series],
+  )
   const bars = ({ key, color }: Series) => (
     <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
       {points.map((_, i) => (
@@ -337,18 +351,20 @@ const ChartPlot = memo(function ChartPlot({
           />
         )}
         {mode === "debt" && (
-          <Line yAxisId="owed" dataKey="owed" stroke={foreground} strokeOpacity={0.6} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
+          <Line yAxisId="owed" dataKey="owedLine" stroke={foreground} strokeOpacity={0.5} strokeDasharray="4 3" strokeWidth={1.25} dot={false} activeDot={false} isAnimationActive={false} />
         )}
         {showSteady && (
           <Line dataKey="steady" stroke={foreground} strokeOpacity={0.55} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
         )}
+        {/* Each milestone's line drops from its icon to the top of that year's bar, not through it. */}
         {stacked.map(({ mark: m, level }) => (
           <ReferenceLine
             key={`${m.name}-${m.age}`}
-            x={m.age}
+            segment={[{ x: m.age, y: barTops.get(m.age) ?? 0 }, { x: m.age, y: yAxis.domain[1] }]}
             stroke={m.kind === "depleted" ? error : foregroundMuted}
-            strokeDasharray="3 3"
-            strokeOpacity={0.6}
+            strokeDasharray="2 3"
+            strokeWidth={0.75}
+            strokeOpacity={0.5}
             label={<MilestoneMarker mark={m} level={level} color={markColor(m)} onHover={onHoverMark} />}
           />
         ))}
@@ -394,7 +410,11 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const { netWorth: nwColors } = usePlanColors()
   // Expenses view: the dashed line is the same plan with every spending line steady.
   const steady = useSteadySpending(doc, basis, view === "expenses")
-  const plotPoints = useMemo(() => (steady ? points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 })) : points), [points, steady])
+  const plotPoints = useMemo(() => {
+    if (steady) return points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 }))
+    if (view === "debt") return withOwedLine(points)
+    return points
+  }, [points, steady, view])
   const yAxis = useMemo(() => fitAxis(plotPoints, series, steady ? Math.max(0, ...steady) : 0), [plotPoints, series, steady])
   const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
