@@ -168,12 +168,14 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, error, foregroundMuted, border, foreground } = useChartTheme()
+  const { primary, error, foregroundMuted, border, foreground, success } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
+  // Kids' stages stand out in green; "money runs out" is red; everything else is the accent.
+  const markColor = (m: ChartMilestone) => (m.kind === "depleted" ? error : m.kind === "child" ? success : primary)
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
@@ -269,7 +271,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                     stroke={m.kind === "depleted" ? error : foregroundMuted}
                     strokeDasharray="3 3"
                     strokeOpacity={0.6}
-                    label={<MilestoneMarker mark={m} level={level} color={m.kind === "depleted" ? error : primary} />}
+                    label={<MilestoneMarker mark={m} level={level} color={markColor(m)} />}
                   />
                 ))}
               </ComposedChart>
@@ -289,7 +291,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
               >
                 <span
                   className="material-symbols-rounded"
-                  style={{ fontSize: 13, color: m.kind === "depleted" ? error : primary }}
+                  style={{ fontSize: 13, color: markColor(m) }}
                 >
                   {m.icon ?? MILESTONE_ICONS[m.kind]}
                 </span>

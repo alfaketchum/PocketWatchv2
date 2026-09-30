@@ -38,7 +38,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
       <p className="text-[11px] text-foreground-muted">Edit them where they come from: Expenses → Kids, or Assets &amp; debts.</p>
       {marks.map((m) => (
         <div key={m.id} className="flex items-center gap-2 text-xs">
-          <span className="material-symbols-rounded text-primary" style={{ fontSize: 15 }}>
+          <span className={`material-symbols-rounded ${m.kind === "child" ? "text-success" : "text-primary"}`} style={{ fontSize: 15 }}>
             {m.icon ?? "flag"}
           </span>
           <span className="text-foreground">{m.name}</span>

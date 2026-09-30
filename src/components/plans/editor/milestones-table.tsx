@@ -36,7 +36,10 @@ export function MilestonesTable({ doc, update, onEditItem }: PlanEditorProps) {
         <Row key={m.id} muted={generated}>
           <Cell>
             <span className="flex items-center">
-              <span className="material-symbols-rounded ml-2 mr-1 shrink-0 text-primary" style={{ fontSize: 15 }}>
+              <span
+                className={`material-symbols-rounded ml-2 mr-1 shrink-0 ${m.kind === "child" ? "text-success" : "text-primary"}`}
+                style={{ fontSize: 15 }}
+              >
                 {m.icon ?? (m.kind === "retirement" ? "beach_access" : "flag")}
               </span>
               {generated ? (
