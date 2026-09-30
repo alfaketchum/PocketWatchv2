@@ -26,13 +26,12 @@ import {
   NET_WORTH_LAYER_LABELS,
   NET_WORTH_LAYERS,
   netWorthPoints,
-  type CashFlowLayer,
   type ChartMilestone,
-  type NetWorthLayer,
 } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanYearPanel } from "./plan-year-panel"
+import { usePlanColors } from "./use-plan-colors"
 
 const DIMMED = 0.35
 const Y_HEADROOM = 1.03
@@ -145,35 +144,14 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, palette, error, foregroundMuted, border, warning, success, foreground } = useChartTheme()
+  const { primary, error, foregroundMuted, border, foreground } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  const nwColors: Record<NetWorthLayer | "debt", string> = {
-    cash: palette[2] ?? success,
-    taxable: primary,
-    taxDeferred: palette[1] ?? warning,
-    taxFree: palette[3] ?? primary,
-    realAssetEquity: foregroundMuted,
-    debt: error,
-  }
-  const cfColors: Record<CashFlowLayer, string> = {
-    income: foreground,
-    wdCash: nwColors.cash,
-    wdTaxable: nwColors.taxable,
-    wdTaxDeferred: nwColors.taxDeferred,
-    wdTaxFree: nwColors.taxFree,
-    assetSales: foregroundMuted,
-    unfunded: error,
-    spending: palette[4] ?? error,
-    taxes: warning,
-    debtPayments: palette[5] ?? primary,
-    assetPurchases: foregroundMuted,
-    saved: palette[7] ?? success,
-  }
+  const { netWorth: nwColors, cashFlow: cfColors } = usePlanColors()
   const points: ChartRow[] = mode === "networth" ? nwPoints : cfPoints
   const allSeries: Series[] =
     mode === "networth"

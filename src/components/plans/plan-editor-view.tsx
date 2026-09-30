@@ -77,7 +77,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const Editor = tab === "overview" ? null : EDITORS[tab]
   return (
     <div className="space-y-5">
-      <PlanEditorHeader name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
+      <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
       <PlanNetWorthChart doc={document} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
       <PlanEditorTabs value={tab} onChange={setTab} />

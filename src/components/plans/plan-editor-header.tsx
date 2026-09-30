@@ -6,12 +6,14 @@ import { DollarsToggle } from "./results/dollars-toggle"
 
 /** Top of a single plan: back link, name, save state and dollar basis. */
 export function PlanEditorHeader({
+  planId,
   name,
   isPrimary,
   isSaving,
   basis,
   onBasisChange,
 }: {
+  planId: string
   name: string
   isPrimary: boolean
   isSaving: boolean
@@ -36,7 +38,15 @@ export function PlanEditorHeader({
           )}
           <span className="text-[11px] text-foreground-muted">{isSaving ? "Saving…" : "Saved"}</span>
         </div>
-        <DollarsToggle value={basis} onChange={onBasisChange} />
+        <div className="flex items-center gap-2">
+          <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              account_tree
+            </span>
+            Cash flow Sankey
+          </Link>
+          <DollarsToggle value={basis} onChange={onBasisChange} />
+        </div>
       </div>
     </div>
   )
