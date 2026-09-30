@@ -29,6 +29,7 @@ import {
   type ChartMilestone,
 } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
+import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanYearPanel } from "./plan-year-panel"
 import { usePlanColors } from "./use-plan-colors"
@@ -57,24 +58,35 @@ const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   depleted: "warning",
 }
 
-/** Small round icon at the top of a milestone's line; hover shows its name. */
+interface HoveredMark {
+  mark: ChartMilestone
+  x: number
+  y: number
+}
+
+/** Small round icon at the top of a milestone's line; hovering it shows a card with details. */
 function MilestoneMarker({
   viewBox,
   mark,
   color,
   level,
+  onHover,
 }: {
   viewBox?: { x: number; y: number }
   mark: ChartMilestone
   color: string
   level: number
+  onHover: (hovered: HoveredMark | null) => void
 }) {
   if (!viewBox) return null
   const cx = viewBox.x
   const cy = viewBox.y - ICON_ROW / 2 - level * ICON_STACK
   return (
-    <g style={{ cursor: "default" }}>
-      <title>{`${mark.name} · age ${mark.age} (${mark.year})`}</title>
+    <g
+      style={{ cursor: "help", pointerEvents: "all" }}
+      onMouseEnter={() => onHover({ mark, x: cx, y: cy })}
+      onMouseLeave={() => onHover(null)}
+    >
       <circle cx={cx} cy={cy} r={10} fill={color} />
       <text
         x={cx}
@@ -155,6 +167,32 @@ function fitAxis(rows: ChartRow[], series: Series[]): { domain: [number, number]
   return { domain: [lo, hi], ticks }
 }
 
+/** What to say under a milestone's name: what's tied to it, or where it comes from. */
+function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
+  if (mark.kind === "depleted") return "Your accounts can't cover spending from this year on."
+  if (mark.kind === "child") return "From Kids · edit on Expenses → Kids"
+  if (mark.kind === "asset") return "From Assets & debts · edit it there"
+  const uses = milestoneUses(doc, mark.id)
+  return uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to it yet"
+}
+
+/** Hover card for a milestone icon, placed just below the icon. */
+function MilestoneCard({ hovered, doc }: { hovered: HoveredMark; doc: PlanDocument }) {
+  const { mark, x, y } = hovered
+  return (
+    <div
+      className="pointer-events-none absolute z-10 w-60 -translate-x-1/2 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg"
+      style={{ left: x, top: y + 16 }}
+    >
+      <p className="font-semibold text-foreground">{mark.name}</p>
+      <p className="text-foreground-muted">
+        {mark.year} · age {mark.age}
+      </p>
+      <p className="mt-1 text-[11px] text-foreground-muted">{milestoneSubtext(mark, doc)}</p>
+    </div>
+  )
+}
+
 interface Props {
   doc: PlanDocument
   projection: PlanProjection
@@ -174,6 +212,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
+  const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
   // Kids' stages stand out in green; "money runs out" is red; everything else is the accent.
   const markColor = (m: ChartMilestone) => (m.kind === "depleted" ? error : m.kind === "child" ? success : primary)
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
@@ -219,7 +258,8 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
-          <div className="h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+          <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+            {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={points}
@@ -271,7 +311,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                     stroke={m.kind === "depleted" ? error : foregroundMuted}
                     strokeDasharray="3 3"
                     strokeOpacity={0.6}
-                    label={<MilestoneMarker mark={m} level={level} color={markColor(m)} />}
+                    label={<MilestoneMarker mark={m} level={level} color={markColor(m)} onHover={setHoveredMark} />}
                   />
                 ))}
               </ComposedChart>

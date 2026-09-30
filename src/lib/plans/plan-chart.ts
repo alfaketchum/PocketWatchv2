@@ -69,6 +69,8 @@ export function netWorthPoints(doc: PlanDocument, rows: YearRow[]): NetWorthPoin
 }
 
 export interface ChartMilestone {
+  /** The milestone's id; empty for "money runs out". */
+  id: string
   name: string
   kind: "retirement" | "custom" | "child" | "asset" | "depleted"
   icon?: string
@@ -84,10 +86,10 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   const marks: ChartMilestone[] = doc.milestones.flatMap((m) => {
     const index = resolveTiming(m.timing, ctx)
     if (index === null || index < 0 || index >= ctx.length) return []
-    return [{ name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
+    return [{ id: m.id, name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
   })
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
-  if (depleted) marks.push({ name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
+  if (depleted) marks.push({ id: "", name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   return marks
 }
 
