@@ -5,6 +5,7 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
 import type { IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { DepositsEditor } from "./deposits-editor"
 import { GrowthField } from "./growth-field"
 import { IncomeContributionsEditor } from "./income-contributions-editor"
 import { AddButton, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
@@ -101,6 +102,7 @@ export function IncomesEditor({ doc, update, view, onEditItem }: PlanEditorProps
         disabled={doc.incomes.length >= PLAN_LIMITS.incomes}
         onClick={() => update((d) => ({ ...d, incomes: [...d.incomes, newIncome(hasRetirement)] }))}
       />
+      <DepositsEditor doc={doc} update={update} />
     </div>
   )
 }

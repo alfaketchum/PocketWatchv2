@@ -79,6 +79,7 @@ function detailsFor(group: (typeof OUT_GROUPS)[number], doc: PlanDocument, row: 
     return [
       { name: "Income tax", value: row.incomeTax },
       { name: "Tax on withdrawals", value: row.withdrawalTax },
+      { name: "Tax on asset sales", value: row.saleTax },
     ]
   }
   return []

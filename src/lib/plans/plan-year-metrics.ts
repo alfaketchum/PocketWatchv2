@@ -40,6 +40,8 @@ export interface YearMetrics {
   contributionsBy: { id: string; name: string; value: number }[]
   /** Added by employers on top; never passes through your cash flow. */
   employerMatch: number
+  /** Inherited or gifted money that landed straight in accounts. */
+  received: number
   /** Gross withdrawals from accounts (taxes on them included). */
   withdrawals: number
   /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
@@ -75,7 +77,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
   if (!row) return null
   const previous = index > 0 ? rows[index - 1].netWorth : startNetWorth
   const layers = layersFor(doc, { accounts: row.balances, assets: row.assetValues, debts: row.debtBalances })
-  const taxes = row.incomeTax + row.withdrawalTax
+  const taxes = row.incomeTax + row.withdrawalTax + row.saleTax
   const afterTaxIncome = row.income - row.incomeTax
   const kept = afterTaxIncome - row.expenses - row.debtPayments
   const startBalance = index > 0 ? rows[index - 1].accountsTotal : doc.accounts.reduce((sum, a) => sum + a.balance, 0)
@@ -95,6 +97,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
       .map((a) => ({ id: a.id, name: a.name, value: (row.contributionsBy[a.id] ?? 0) - (row.employerMatchBy[a.id] ?? 0) }))
       .filter((c) => c.value >= 0.5),
     employerMatch: row.employerMatch,
+    received: row.deposits,
     withdrawals: row.withdrawals,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree + layers.taxFree529 },

@@ -24,6 +24,11 @@ const DEBT_KINDS: { value: DebtKind; label: string }[] = [
 ]
 
 const NO_ASSET = "none"
+
+const ACQUIRED: { value: "purchase" | "received"; label: string }[] = [
+  { value: "purchase", label: "Bought (paid from cash flow)" },
+  { value: "received", label: "Inherited or gifted (no cost)" },
+]
 /** Typical yearly value loss for a car, applied when an asset is switched to "Vehicle". */
 const VEHICLE_DEPRECIATION = -0.15
 
@@ -64,7 +69,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
   return (
     <InputBlock
       title="Assets"
-      description="A home or car you own now, or plan to buy (starts later) or sell (ends). Purchases are paid from cash flow, less any loan that finances them."
+      description="A home or car you own now, buy or inherit later, or sell. Sales pay capital-gains tax on the gain over cost basis; homes get the $250k/$500k exclusion after 2 years."
     >
       {doc.assets.length === 0 && <EmptyNote>No assets yet.</EmptyNote>}
       {doc.assets.map((a) => (
@@ -90,6 +95,22 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               max={1}
               value={a.appreciation}
               onChange={(appreciation) => patch(a.id, { appreciation })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2 items-end">
+            <SelectField
+              label="How acquired"
+              value={a.acquired ?? "purchase"}
+              options={ACQUIRED}
+              onChange={(acquired) => patch(a.id, { acquired })}
+            />
+            <FireNumberField
+              label="Cost basis (for tax on sale)"
+              prefix="$"
+              min={0}
+              value={a.costBasis ?? a.value}
+              hint={a.costBasis == null ? "Default: its value when acquired (stepped-up if inherited)." : undefined}
+              onChange={(costBasis) => patch(a.id, { costBasis })}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

@@ -46,6 +46,7 @@ export function removeAccount(doc: PlanDocument, accountId: string): PlanDocumen
       ...inc,
       contributions: inc.contributions.filter((c) => c.accountId !== accountId),
     })),
+    deposits: (doc.deposits ?? []).filter((d) => d.accountId !== accountId),
     cashFlow: {
       surplusOrder: doc.cashFlow.surplusOrder.filter((t) => t.accountId !== accountId),
       withdrawalOrder: doc.cashFlow.withdrawalOrder.filter((id) => id !== accountId),
@@ -87,6 +88,7 @@ export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDo
     debts: doc.debts.map((d) => ({ ...d, start: fn(d.start) })),
     milestones: doc.milestones.map((m) => ({ ...m, timing: fn(m.timing) })),
     adjustments: (doc.adjustments ?? []).map((a) => ({ ...a, timing: fn(a.timing) })),
+    deposits: (doc.deposits ?? []).map((d) => ({ ...d, timing: fn(d.timing) })),
   }
 }
 

@@ -64,6 +64,22 @@ export function AccountsEditor({ doc, update, view, onEditItem }: PlanEditorProp
               value={a.returnRate}
               onChange={(returnRate) => patch(a.id, { returnRate })}
             />
+            {a.drainByYear != null && (
+              <div className="col-span-2 lg:col-span-4 flex flex-wrap items-end gap-3">
+                <div className="w-44">
+                  <FireNumberField
+                    label="Inherited: empty by end of"
+                    min={1900}
+                    max={2200}
+                    value={a.drainByYear}
+                    onChange={(drainByYear) => patch(a.id, { drainByYear })}
+                  />
+                </div>
+                <p className="pb-2 text-[11px] text-foreground-muted">
+                  Drawn evenly each year until then{a.taxTreatment === "traditional" ? ", taxed as income" : ""}. Most non-spouse heirs have 10 years.
+                </p>
+              </div>
+            )}
             {a.taxTreatment === "education" && (
               <p className="col-span-2 lg:col-span-4 text-[11px] text-foreground-muted">
                 Education (529) accounts grow tax-free and only pay college costs from a child&apos;s 529 plan (Expenses → Kids). They&apos;re

@@ -36,6 +36,7 @@ export function milestoneUses(doc: PlanDocument, id: string): string[] {
   for (const d of doc.debts) add(d.start, `${d.name} starts`)
   for (const m of doc.milestones) if (m.id !== id) add(m.timing, `${m.name}`)
   for (const a of doc.adjustments ?? []) add(a.timing, a.kind === "taxRates" ? "Tax rates change" : "Spending changes")
+  for (const d of doc.deposits ?? []) add(d.timing, `${d.name} arrives`)
   return uses
 }
 
@@ -55,6 +56,7 @@ export function detachMilestone(doc: PlanDocument, id: string): PlanDocument {
     assets: doc.assets.map((a) => ({ ...a, start: fix(a.start), end: fix(a.end) })),
     debts: doc.debts.map((d) => ({ ...d, start: fix(d.start) })),
     adjustments: (doc.adjustments ?? []).map((a) => ({ ...a, timing: fix(a.timing) })),
+    deposits: (doc.deposits ?? []).map((d) => ({ ...d, timing: fix(d.timing) })),
     milestones: doc.milestones.filter((m) => m.id !== id).map((m) => ({ ...m, timing: fix(m.timing) })),
   }
 }

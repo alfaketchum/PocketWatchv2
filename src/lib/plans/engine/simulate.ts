@@ -16,6 +16,7 @@ import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { coverDeficit, deposit, depositSurplus, type Holdings } from "./engine-cashflow"
 import { applyTransfers, drawEarmarked, transferEntries, type TransferEntry } from "./engine-education"
+import { applyDeposits, depositEntries, drainInherited, type DepositEntry } from "./engine-inheritance"
 import {
   expenseEntries,
   expensesForYear,
@@ -35,6 +36,7 @@ interface Plan {
   milestoneYears: { name: string; index: number | null }[]
   transfers: TransferEntry[]
   adjustments: AdjustmentEntry[]
+  deposits: DepositEntry[]
 }
 
 interface State {
@@ -57,6 +59,7 @@ function preparePlan(original: PlanDocument): Plan {
     milestoneYears: doc.milestones.map((m) => ({ name: m.name, index: resolveTiming(m.timing, ctx) })),
     transfers: transferEntries(childTransfers(original), ctx),
     adjustments: adjustmentEntries(doc.adjustments ?? [], ctx),
+    deposits: depositEntries(doc.deposits ?? [], ctx),
   }
 }
 
@@ -98,7 +101,10 @@ function docForYear(plan: Plan, index: number): PlanDocument {
 function yearFlows(plan: Plan, state: State, index: number) {
   const doc = docForYear(plan, index)
   const { inflation } = doc.settings
-  const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index)
+  const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
+    capitalGainsRate: doc.settings.capitalGainsRate,
+    joint: doc.people.length > 1,
+  })
   const debts = payDebts(plan.debts, events.debtBalances, index)
   const income = incomeForYear(plan.incomes, doc.accounts, index, inflation)
   const expenses = expensesForYear(plan.expenses, index, inflation, spendingFactorAt(plan.adjustments, index))
@@ -123,18 +129,22 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
   }
   const transfers = applyTransfers(plan.transfers, doc.accounts, holdings, index, doc.settings.inflation)
   const earmarked = drawEarmarked(doc.expenses, flows.expenses.byId, transfers.holdings)
-  holdings = earmarked.holdings
+  const deposits = applyDeposits(plan.deposits, doc.accounts, earmarked.holdings, index, doc.settings.inflation)
+  const drained = drainInherited(doc.accounts, deposits.holdings, doc.settings.startYear + index, doc.settings.incomeTaxRate)
+  holdings = drained.holdings
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
     income.total - income.employeeContributions - incomeTax - expenses.total - debts.paid -
-    events.purchases + events.sales - transfers.total + earmarked.drawn
+    events.purchases + events.sales - events.saleTax - transfers.total + earmarked.drawn + drained.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
   const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
   return {
     holdings: surplus?.holdings ?? deficit?.holdings ?? holdings,
     growth: grownState.growth,
     contributionsBy: mergeSums(mergeSums(income.deposits, transfers.byAccount), surplus?.depositsBy ?? {}),
-    withdrawalsBy: mergeSums(earmarked.byAccount, deficit?.withdrawalsBy ?? {}),
+    withdrawalsBy: mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), deficit?.withdrawalsBy ?? {}),
+    deposits,
+    drained,
     surplusBy: surplus?.depositsBy ?? {},
     shortfallBy: deficit?.withdrawalsBy ?? {},
     deficit,
@@ -160,8 +170,11 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     employerMatch: income.employerMatch,
     employerMatchBy: income.matchBy,
     incomeTax,
-    withdrawalTax: moved.deficit?.tax ?? 0,
-    taxableIncome: income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0),
+    withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax,
+    saleTax: events.saleTax,
+    deposits: moved.deposits.total,
+    depositsBy: moved.deposits.byAccount,
+    taxableIncome: income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable,
     expenses: expenses.total,
     expensesBy: expenses.byId,
     debtPayments: debts.paid,

@@ -34,6 +34,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
       <DetailList title="Spending" entries={named(doc.expenses, row.expensesBy)} />
       <DetailList title="Deposited into (incl. employer match)" entries={named(doc.accounts, row.contributionsBy)} />
       <DetailList title="Withdrawn from" entries={named(doc.accounts, row.withdrawalsBy)} />
+      <DetailList title="Received into (inherited, gifts)" entries={named(doc.accounts, row.depositsBy)} />
       <DetailList
         title="Other"
         entries={[
@@ -41,6 +42,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Employer match", value: row.employerMatch },
           { label: "Income tax", value: row.incomeTax },
           { label: "Tax on withdrawals", value: row.withdrawalTax },
+          { label: "Tax on asset sales", value: row.saleTax },
           { label: "Debt payments", value: row.debtPayments },
           { label: "Asset purchases", value: row.assetPurchases },
           { label: "Asset sales", value: row.assetSales },

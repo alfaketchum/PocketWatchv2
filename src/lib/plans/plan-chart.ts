@@ -146,7 +146,7 @@ export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashF
     assetSales: Math.max(0, row.assetSales),
     unfunded: row.shortfall,
     spending: -row.expenses,
-    taxes: -(row.incomeTax + row.withdrawalTax),
+    taxes: -(row.incomeTax + row.withdrawalTax + row.saleTax),
     debtPayments: -row.debtPayments,
     assetPurchases: -(row.assetPurchases + Math.max(0, -row.assetSales)),
     saved: -(row.contributions - row.employerMatch),

@@ -44,6 +44,7 @@ const account = z.object({
   returnRate: rate,
   owner: id.nullable(),
   source,
+  drainByYear: year.nullable().optional(),
 })
 
 const contribution = z.object({
@@ -86,6 +87,8 @@ const asset = z.object({
   appreciation: rate,
   start: timing,
   end: timing,
+  acquired: z.enum(["purchase", "received"]).optional(),
+  costBasis: money.nullable().optional(),
 })
 
 const debt = z.object({
@@ -145,6 +148,7 @@ export const planDocumentSchema = z.object({
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
   children: z.array(child).max(PLAN_LIMITS.children),
   adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
+  deposits: z.array(z.object({ id, name, accountId: id, amount: money, timing })).max(PLAN_LIMITS.deposits),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

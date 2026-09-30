@@ -12,6 +12,7 @@ const LANDS_ON: Partial<Record<TemplateKey, string>> = {
   child: "Added to Expenses → Kids",
   home: "Added to Assets & debts",
   retire: "Retirement date updated",
+  inheritance: "Inheritance added: see Income, Accounts and Assets",
 }
 
 function TemplateGrid({ onPick }: { onPick: (key: TemplateKey) => void }) {

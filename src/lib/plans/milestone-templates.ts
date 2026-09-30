@@ -1,8 +1,19 @@
 import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
-import type { PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
+import { resolveTiming, timingContext } from "./plan-timing"
+import type { PlanAccount, PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
 
-export type TemplateKey = "retire" | "married" | "child" | "home" | "career" | "break" | "move" | "windfall" | "custom"
+export type TemplateKey =
+  | "retire"
+  | "married"
+  | "child"
+  | "home"
+  | "career"
+  | "break"
+  | "move"
+  | "inheritance"
+  | "windfall"
+  | "custom"
 
 export interface TemplateMeta {
   key: TemplateKey
@@ -20,7 +31,8 @@ export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "career", label: "Career change", icon: "work", creates: "Ends a salary and starts a new one" },
   { key: "break", label: "Career break", icon: "luggage", creates: "Pauses a salary for a few years" },
   { key: "move", label: "Move", icon: "moving", creates: "Changes your spending from then on" },
-  { key: "windfall", label: "Windfall", icon: "redeem", creates: "A one-time income" },
+  { key: "inheritance", label: "Inheritance", icon: "volunteer_activism", creates: "Cash, stocks, property or retirement accounts" },
+  { key: "windfall", label: "Windfall", icon: "redeem", creates: "A one-time income (bonus, sale)" },
   { key: "custom", label: "Custom", icon: "flag", creates: "Just a named date" },
 ]
 
@@ -186,4 +198,105 @@ export function applyWindfall(doc: PlanDocument, input: { name: string; when: Ti
 
 export function applyCustom(doc: PlanDocument, input: { name: string; when: Timing }, newId: IdMaker): PlanDocument {
   return addMilestone(doc, { id: newId("ms"), name: input.name, kind: "custom", icon: ICONS.custom, timing: input.when })
+}
+
+export type InheritedKind = "cash" | "stocks" | "realEstate" | "retirement"
+
+/** One piece of an inheritance. */
+export interface InheritedPart {
+  kind: InheritedKind
+  /** Value when received, today's dollars. */
+  amount: number
+  label: string
+  /** Stocks: an existing taxable account, or null for a new "Inherited brokerage" account. */
+  accountId: string | null
+  /** Retirement accounts: Roth (tax-free withdrawals) or traditional (taxed as income). */
+  roth: boolean
+}
+
+export interface InheritanceInput {
+  name: string
+  when: Timing
+  parts: InheritedPart[]
+  /** State inheritance tax on the total (a handful of states); 0 for none. */
+  stateTaxRate: number
+}
+
+/** Inherited IRAs must be emptied by the end of the 10th year after the death (SECURE Act). */
+export const INHERITED_IRA_YEARS = 10
+
+const newAccount = (id: string, name: string, taxTreatment: PlanAccount["taxTreatment"], returnRate: number): PlanAccount => ({
+  id,
+  name,
+  taxTreatment,
+  balance: 0,
+  costBasis: null,
+  returnRate,
+  owner: null,
+  source: null,
+})
+
+/**
+ * Inheritance, by kind and taxed the way each kind is:
+ * cash is not income; stocks land in a taxable account at a stepped-up basis; property is received
+ * (no purchase cost) at a stepped-up basis; retirement accounts must be emptied within 10 years,
+ * taxed as income unless Roth. An optional state inheritance tax is paid from cash flow.
+ */
+export function applyInheritance(doc: PlanDocument, input: InheritanceInput, newId: IdMaker): PlanDocument {
+  const msId = newId("ms-inheritance")
+  let next = addMilestone(doc, { id: msId, name: input.name, kind: "custom", icon: ICONS.inheritance, timing: input.when })
+  const when = at(msId)
+  const year = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
+  for (const part of input.parts.filter((p) => p.amount > 0)) next = addInheritedPart(next, part, when, year, newId)
+  const total = input.parts.reduce((s, p) => s + Math.max(0, p.amount), 0)
+  if (input.stateTaxRate > 0 && total > 0) {
+    next = {
+      ...next,
+      expenses: [
+        ...next.expenses,
+        { id: newId("exp"), name: "State inheritance tax", category: null, amount: total * input.stateTaxRate, growth: null, start: when, end: when, oneTime: true },
+      ],
+    }
+  }
+  return next
+}
+
+function addInheritedPart(doc: PlanDocument, part: InheritedPart, when: Timing, year: number, newId: IdMaker): PlanDocument {
+  const label = part.label.trim()
+  if (part.kind === "cash") {
+    const income: PlanIncome = {
+      id: newId("inc"),
+      name: label || "Inherited cash",
+      kind: "other",
+      amount: part.amount,
+      growth: null,
+      start: when,
+      end: when,
+      taxable: false,
+      oneTime: true,
+      contributions: [],
+    }
+    return { ...doc, incomes: [...doc.incomes, income] }
+  }
+  if (part.kind === "realEstate") {
+    return {
+      ...doc,
+      assets: [
+        ...doc.assets,
+        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: { type: "planEnd" }, acquired: "received", costBasis: null },
+      ],
+    }
+  }
+  const existing = part.kind === "stocks" && part.accountId ? doc.accounts.find((a) => a.id === part.accountId) : null
+  const account =
+    existing ??
+    (part.kind === "stocks"
+      ? newAccount(newId("acct"), label || "Inherited brokerage", "taxable", 0.07)
+      : { ...newAccount(newId("acct"), label || (part.roth ? "Inherited Roth IRA" : "Inherited IRA"), part.roth ? "roth" : "traditional", 0.07), drainByYear: year + INHERITED_IRA_YEARS })
+  const accounts = existing ? doc.accounts : [...doc.accounts, account]
+  return {
+    ...doc,
+    accounts,
+    deposits: [...(doc.deposits ?? []), { id: newId("dep"), name: label || account.name, accountId: account.id, amount: part.amount, timing: when }],
+  }
 }

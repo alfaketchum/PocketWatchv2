@@ -29,7 +29,7 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     endYear: last ? last.year : settings.startYear,
     endAge: startAge + rows.length,
     endingNetWorth: last ? last.netWorth : projection.startNetWorth,
-    lifetimeTaxes: rows.reduce((s, r) => s + r.incomeTax + r.withdrawalTax, 0),
+    lifetimeTaxes: rows.reduce((s, r) => s + r.incomeTax + r.withdrawalTax + r.saleTax, 0),
     spark: rows.map((r) => r.netWorth),
   }
 }

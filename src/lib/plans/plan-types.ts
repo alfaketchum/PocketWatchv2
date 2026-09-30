@@ -62,6 +62,8 @@ export interface PlanAccount {
   returnRate: number
   owner: string | null
   source: PlanSource | null
+  /** Inherited retirement accounts must be emptied by the end of this year (10-year rule); drawn evenly. */
+  drainByYear?: number | null
 }
 
 /** Payroll contribution from an income stream into an account. */
@@ -117,6 +119,10 @@ export interface PlanAsset {
   start: Timing
   /** Sold in this year; proceeds after linked debts flow back in. */
   end: Timing
+  /** "received" (inherited or gifted) assets cost nothing when they arrive. Defaults to purchase. */
+  acquired?: "purchase" | "received"
+  /** For capital-gains tax on sale; null = value when acquired (purchase price, or stepped-up value). */
+  costBasis?: number | null
 }
 
 export interface PlanDebt {
@@ -183,6 +189,16 @@ export interface PlanChild {
   support: { enabled: boolean; annualAmount: number; years: number }
 }
 
+/** Money that lands straight in an account, outside your cash flow (inherited stocks, a gift). */
+export interface PlanDeposit {
+  id: string
+  name: string
+  accountId: string
+  /** Today's dollars. */
+  amount: number
+  timing: Timing
+}
+
 /** A change that applies from a point in time onward (the latest one in effect wins). */
 export type PlanAdjustment =
   | { id: string; kind: "taxRates"; timing: Timing; incomeTaxRate: number; capitalGainsRate: number }
@@ -206,6 +222,7 @@ export interface PlanDocument {
   milestones: PlanMilestone[]
   children: PlanChild[]
   adjustments: PlanAdjustment[]
+  deposits: PlanDeposit[]
 }
 
 /** One simulated year. Flows are for the year; balances are at year end. */
@@ -219,6 +236,11 @@ export interface YearRow {
   employerMatchBy: Record<string, number>
   incomeTax: number
   withdrawalTax: number
+  /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */
+  saleTax: number
+  /** One-time deposits straight into accounts (inheritance, gifts); not part of cash flow. */
+  deposits: number
+  depositsBy: Record<string, number>
   /** Taxable earned income after pre-tax contributions, plus traditional withdrawals and realized gains. */
   taxableIncome: number
   expenses: number

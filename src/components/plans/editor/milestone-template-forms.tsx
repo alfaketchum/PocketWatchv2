@@ -13,11 +13,14 @@ import {
   applyMove,
   applyRetire,
   applyWindfall,
+  applyInheritance,
+  type InheritedPart,
   monthlyPayment,
   type TemplateKey,
 } from "@/lib/plans/milestone-templates"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
 import { newItemId } from "../plans-helpers"
+import { emptyPart, InheritanceFields } from "./inheritance-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 
@@ -43,6 +46,8 @@ export interface TemplateDraft {
   rate: number
   termYears: number
   appreciation: number
+  parts: InheritedPart[]
+  stateTaxRate: number
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
@@ -53,7 +58,8 @@ const DEFAULT_NAMES: Record<TemplateKey, string> = {
   career: "New job",
   break: "Career break",
   move: "Move",
-  windfall: "Inheritance",
+  inheritance: "Inheritance",
+  windfall: "Windfall",
   custom: "",
 }
 
@@ -82,6 +88,8 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     rate: 0.065,
     termYears: 30,
     appreciation: 0.03,
+    parts: [emptyPart("cash")],
+    stateTaxRate: 0,
   }
 }
 
@@ -114,6 +122,8 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
       return applyBreak(doc, { incomeId: d.incomeId, startYear: d.startYear, years: d.years }, newItemId)
     case "move":
       return applyMove(doc, { name, when: d.when, percent: d.percent }, newItemId)
+    case "inheritance":
+      return applyInheritance(doc, { name, when: d.when, parts: d.parts, stateTaxRate: d.stateTaxRate }, newItemId)
     case "windfall":
       return applyWindfall(doc, { name, when: d.when, amount: d.amount, taxable: d.taxable }, newItemId)
     case "custom":
@@ -125,6 +135,7 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
 export function draftProblem(key: TemplateKey, d: TemplateDraft, doc: PlanDocument): string | null {
   if ((key === "career" || key === "break") && !doc.incomes.some((i) => i.id === d.incomeId)) return "Add an income first."
   if (key === "custom" && !d.name.trim()) return "Give it a name."
+  if (key === "inheritance" && !d.parts.some((p) => p.amount > 0)) return "Enter an amount."
   return null
 }
 
@@ -232,6 +243,14 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
             hint="Negative for a cheaper place (−10 = 10% less). Kids' costs aren't affected."
             onChange={(percent) => set({ percent })}
           />
+        </>
+      )
+    case "inheritance":
+      return (
+        <>
+          {name}
+          {when}
+          <InheritanceFields parts={d.parts} stateTaxRate={d.stateTaxRate} doc={doc} onChange={set} />
         </>
       )
     case "windfall":

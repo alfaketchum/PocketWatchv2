@@ -48,17 +48,50 @@ export interface AssetEvents {
   debtBalances: Record<string, number>
   purchases: number
   sales: number
+  /** Capital-gains tax on this year's sales. */
+  saleTax: number
+}
+
+/** Home-sale exclusion (not inflation-indexed): single / married filing jointly. */
+export const HOME_SALE_EXCLUSION = { single: 250_000, joint: 500_000 }
+/** Years you must have owned (and lived in) a home to use the exclusion. */
+const EXCLUSION_MIN_YEARS = 2
+
+export interface SaleTaxRules {
+  capitalGainsRate: number
+  /** Two people in the plan: the joint home-sale exclusion applies. */
+  joint: boolean
+}
+
+/** Cost basis when sold: set explicitly, else its value when acquired (purchase price or stepped-up value). */
+export function assetBasis(asset: PlanAsset, range: ResolvedRange): number {
+  return asset.costBasis ?? assetValueAt(asset, Math.max(0, range.start))
+}
+
+/** Capital-gains tax when an asset is sold in year `index`, after the home-sale exclusion. */
+export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
+  const gain = assetValueAt(asset, index) - assetBasis(asset, range)
+  const ownedYears = index - Math.max(0, range.start)
+  const exclusion =
+    asset.kind === "home" && ownedYears >= EXCLUSION_MIN_YEARS
+      ? rules.joint
+        ? HOME_SALE_EXCLUSION.joint
+        : HOME_SALE_EXCLUSION.single
+      : 0
+  return Math.max(0, gain - exclusion) * rules.capitalGainsRate
 }
 
 /**
- * Start-of-year events for year `index`: debts that start this year, asset purchases
- * (net of debts financing them) and asset sales (net of the debts they pay off).
+ * Start-of-year events for year `index`: debts that start this year, asset purchases (net of debts
+ * financing them; received assets cost nothing) and asset sales (net of the debts they pay off,
+ * with capital-gains tax on the gain).
  */
 export function applyAssetEvents(
   assets: AssetEntry[],
   debts: DebtEntry[],
   debtBalances: Record<string, number>,
   index: number,
+  rules: SaleTaxRules,
 ): AssetEvents {
   let balances = { ...debtBalances }
   for (const { debt, start } of debts) {
@@ -66,19 +99,21 @@ export function applyAssetEvents(
   }
   let purchases = 0
   let sales = 0
+  let saleTax = 0
   for (const { asset, range } of assets) {
     const linked = debts.filter((d) => d.debt.assetId === asset.id)
-    if (range.start > 0 && range.start === index) {
+    if (range.start > 0 && range.start === index && asset.acquired !== "received") {
       const financed = linked.filter((d) => d.start === index).reduce((s, d) => s + d.debt.balance, 0)
       purchases += Math.max(0, assetValueAt(asset, index) - financed)
     }
     if (range.end === index && range.end > Math.max(0, range.start)) {
       const owed = linked.reduce((s, d) => s + (balances[d.debt.id] ?? 0), 0)
       sales += assetValueAt(asset, index) - owed
+      saleTax += saleTaxFor(asset, range, index, rules)
       for (const d of linked) balances = { ...balances, [d.debt.id]: 0 }
     }
   }
-  return { debtBalances: balances, purchases, sales }
+  return { debtBalances: balances, purchases, sales, saleTax }
 }
 
 /** Pay every active debt for the year. */

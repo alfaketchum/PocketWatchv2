@@ -122,6 +122,9 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         {m.employerMatch >= 0.5 && (
           <Line label="Employer match (extra)" value={fmtMoney(m.employerMatch)} hint="Added by your employer on top of your contributions" />
         )}
+        {m.received >= 0.5 && (
+          <Line label="Received into accounts" value={fmtMoney(m.received)} tone="good" hint="Inherited investments or accounts, gifts: not part of cash flow" />
+        )}
         <Line label="Withdrawals" value={fmtMoney(m.withdrawals)} hint="Taken from your accounts to cover spending, including the tax on those withdrawals" />
         <Line
           label="Withdrawal rate"

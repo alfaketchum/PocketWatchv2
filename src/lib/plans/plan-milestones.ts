@@ -8,7 +8,14 @@ export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
   return doc.assets.flatMap((asset) => {
     const marks: PlanMilestone[] = []
     if (asset.start.type !== "planStart") {
-      marks.push({ id: `asset-${asset.id}-buy`, name: `Buy ${asset.name}`, kind: "asset", icon: BUY_ICONS[asset.kind], timing: asset.start })
+      const received = asset.acquired === "received"
+      marks.push({
+        id: `asset-${asset.id}-buy`,
+        name: `${received ? "Receive" : "Buy"} ${asset.name}`,
+        kind: "asset",
+        icon: received ? "volunteer_activism" : BUY_ICONS[asset.kind],
+        timing: asset.start,
+      })
     }
     if (asset.end.type !== "planEnd") {
       marks.push({ id: `asset-${asset.id}-sell`, name: `Sell ${asset.name}`, kind: "asset", icon: "sell", timing: asset.end })
