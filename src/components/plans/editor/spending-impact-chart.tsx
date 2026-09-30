@@ -7,7 +7,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { spendingImpact, type ImpactPoint } from "@/lib/plans/plan-spending-impact"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
-const HEIGHT = 170
+const HEIGHT = 190
 const LATE_AGE = 80
 
 function Stat({ label, value, steady }: { label: string; value: number; steady: number }) {
@@ -70,7 +70,7 @@ export function SpendingImpactChart({ doc }: { doc: PlanDocument }) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 xl:grid-cols-1 xl:gap-2">
         <Stat label="Lifetime" value={impact.lifetime.withPatterns} steady={impact.lifetime.steady} />
         {retire ? <Stat label={`At retirement (${retire.age})`} value={retire.withPatterns} steady={retire.steady} /> : <div />}
         {late ? <Stat label={`At ${LATE_AGE}`} value={late.withPatterns} steady={late.steady} /> : <div />}

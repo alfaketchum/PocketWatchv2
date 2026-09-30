@@ -82,7 +82,8 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
             <PatternProfileMenu doc={doc} update={update} />
           </div>
         )}
-        {doc.expenses.length > 0 && <SpendingImpactChart doc={doc} />}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 space-y-3">
         {view === "compact" ? (
         <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
       ) : doc.expenses.map((e) => (
@@ -138,6 +139,13 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
             )}
           </ItemCard>
         ))}
+        </div>
+        {doc.expenses.length > 0 && (
+          <aside className="xl:sticky xl:top-4 xl:self-start">
+            <SpendingImpactChart doc={doc} />
+          </aside>
+        )}
+        </div>
       </div>
     </div>
   )

@@ -37,6 +37,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
   return (
     <PlanTable
       columns={COLUMNS}
+      minWidth="min-w-[1080px]"
       footer={
         <tr>
           <td className="px-2 py-2">Spending today (excl. kids)</td>

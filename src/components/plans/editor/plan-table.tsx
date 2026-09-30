@@ -121,10 +121,21 @@ export interface Column {
 }
 
 /** Compact table shell: sticky header, horizontal scroll on narrow screens, optional totals row. */
-export function PlanTable({ columns, children, footer }: { columns: Column[]; children: ReactNode; footer?: ReactNode }) {
+export function PlanTable({
+  columns,
+  children,
+  footer,
+  minWidth = "min-w-[640px]",
+}: {
+  columns: Column[]
+  children: ReactNode
+  footer?: ReactNode
+  /** Narrowest the table gets before it scrolls sideways (a Tailwind min-w class). */
+  minWidth?: string
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border border-card-border">
-      <table className="w-full min-w-[640px] text-sm">
+      <table className={cn("w-full text-sm", minWidth)}>
         <thead className="bg-background-secondary/60">
           <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
             {columns.map((c, i) => (
