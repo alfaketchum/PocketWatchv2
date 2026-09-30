@@ -8,6 +8,7 @@ import { GeneralSettingsTab } from "@/components/settings/general-settings-tab"
 import { FinanceSettingsTab } from "@/components/finance/settings/finance-settings-tab"
 import { DigitalAssetsSettingsTab } from "@/components/settings/digital-assets-settings-tab"
 import { TravelSettingsTab } from "@/components/settings/travel-settings-tab"
+import { FireSettingsTab } from "@/components/settings/fire-settings-tab"
 import { type SettingsTabId, SETTINGS_TABS } from "@/components/settings/settings-constants"
 
 function SettingsPageContent() {
@@ -54,6 +55,7 @@ function SettingsPageContent() {
       {activeTab === "general" && <GeneralSettingsTab />}
       {activeTab === "finance" && <FinanceSettingsTab />}
       {activeTab === "digital-assets" && <DigitalAssetsSettingsTab />}
+      {activeTab === "fire" && <FireSettingsTab />}
       {activeTab === "travel" && <TravelSettingsTab />}
     </div>
   )

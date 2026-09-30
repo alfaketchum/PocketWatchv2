@@ -29,13 +29,6 @@ export const SUPPORTED_SERVICES = [
     keyUrl: "https://www.coingecko.com/en/api/pricing",
   },
   {
-    id: "bls",
-    label: "BLS (Bureau of Labor Statistics)",
-    domain: "bls.gov",
-    description: "Occupation wage percentiles for FIRE › Compare (optional; raises the daily query limit)",
-    keyUrl: "https://data.bls.gov/registrationEngine/",
-  },
-  {
     id: "alchemy",
     label: "Alchemy",
     domain: "alchemy.com",

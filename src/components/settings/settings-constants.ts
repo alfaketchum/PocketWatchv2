@@ -2,6 +2,7 @@ export const SETTINGS_TABS = [
   { id: "general", label: "General", icon: "tune" },
   { id: "finance", label: "Finance", icon: "account_balance" },
   { id: "digital-assets", label: "Digital Assets", icon: "pie_chart" },
+  { id: "fire", label: "FIRE", icon: "local_fire_department" },
   { id: "travel", label: "Travel", icon: "flight" },
 ] as const
 
@@ -25,6 +26,7 @@ export const SETTINGS_SECTIONS = [
   { tab: "digital-assets", id: "api-keys", title: "API Keys", keywords: ["zerion", "alchemy", "helius", "etherscan", "codex", "key", "provider"] },
   { tab: "digital-assets", id: "exchange-connections", title: "Exchange Connections", keywords: ["kraken", "coinbase", "exchange", "connect"] },
   { tab: "digital-assets", id: "data-management-portfolio", title: "Data Management", keywords: ["clear", "reset", "portfolio", "data"] },
+  { tab: "fire", id: "fire-data-sources", title: "BLS Wage Data", keywords: ["bls", "wages", "occupation", "profession", "compare", "fire", "key"] },
   { tab: "travel", id: "travel-credentials", title: "Travel Credentials", keywords: ["roame", "serpapi", "atf", "point.me", "flight", "search", "token"] },
 ] as const
 
