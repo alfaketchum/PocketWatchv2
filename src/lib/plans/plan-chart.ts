@@ -12,7 +12,7 @@ export const NET_WORTH_LAYER_LABELS: Record<NetWorthLayer | "debt", string> = {
   taxDeferred: "Tax-deferred",
   taxFree: "Tax-free",
   taxFree529: "Tax-free (529)",
-  realAssets: "Homes & assets",
+  realAssets: "Property",
   debt: "Debt",
 }
 

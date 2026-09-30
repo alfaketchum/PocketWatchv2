@@ -358,7 +358,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={
         mode === "networth"
-          ? "Year-end balances by tax treatment, plus homes and other assets at what they're worth. Every debt, mortgages and car loans included, shows below zero, so you can watch it shrink; net worth is the dot. Hover a bar to see that year; click to pin it."
+          ? "Year-end balances by tax treatment, plus property (homes, cars, other assets) at what it's worth. Every debt, mortgages and car loans included, shows below zero, so you can watch it shrink; net worth is the dot. Hover a bar to see that year; click to pin it."
           : "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out."
       }
       center={<ModeToggle value={mode} onChange={setMode} />}
