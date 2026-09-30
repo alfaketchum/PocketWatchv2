@@ -50,6 +50,8 @@ export interface AssetEvents {
   sales: number
   /** Capital-gains tax on this year's sales. */
   saleTax: number
+  /** Taxable gain from this year's sales (after the home exclusion). */
+  saleGains: number
 }
 
 /** Home-sale exclusion (not inflation-indexed): single / married filing jointly. */
@@ -68,8 +70,8 @@ export function assetBasis(asset: PlanAsset, range: ResolvedRange): number {
   return asset.costBasis ?? assetValueAt(asset, Math.max(0, range.start))
 }
 
-/** Capital-gains tax when an asset is sold in year `index`, after the home-sale exclusion. */
-export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
+/** Taxable gain when an asset is sold in year `index`, after the home-sale exclusion. */
+export function saleGainFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
   const gain = assetValueAt(asset, index) - assetBasis(asset, range)
   const ownedYears = index - Math.max(0, range.start)
   const exclusion =
@@ -78,7 +80,12 @@ export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number
         ? HOME_SALE_EXCLUSION.joint
         : HOME_SALE_EXCLUSION.single
       : 0
-  return Math.max(0, gain - exclusion) * rules.capitalGainsRate
+  return Math.max(0, gain - exclusion)
+}
+
+/** Capital-gains tax when an asset is sold in year `index`, after the home-sale exclusion. */
+export function saleTaxFor(asset: PlanAsset, range: ResolvedRange, index: number, rules: SaleTaxRules): number {
+  return saleGainFor(asset, range, index, rules) * rules.capitalGainsRate
 }
 
 /**
@@ -100,6 +107,7 @@ export function applyAssetEvents(
   let purchases = 0
   let sales = 0
   let saleTax = 0
+  let saleGains = 0
   for (const { asset, range } of assets) {
     const linked = debts.filter((d) => d.debt.assetId === asset.id)
     if (range.start > 0 && range.start === index && asset.acquired !== "received") {
@@ -109,11 +117,13 @@ export function applyAssetEvents(
     if (range.end === index && range.end > Math.max(0, range.start)) {
       const owed = linked.reduce((s, d) => s + (balances[d.debt.id] ?? 0), 0)
       sales += assetValueAt(asset, index) - owed
-      saleTax += saleTaxFor(asset, range, index, rules)
+      const gain = saleGainFor(asset, range, index, rules)
+      saleGains += gain
+      saleTax += gain * rules.capitalGainsRate
       for (const d of linked) balances = { ...balances, [d.debt.id]: 0 }
     }
   }
-  return { debtBalances: balances, purchases, sales, saleTax }
+  return { debtBalances: balances, purchases, sales, saleTax, saleGains }
 }
 
 /** Pay every active debt for the year. */

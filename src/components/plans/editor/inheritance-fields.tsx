@@ -2,10 +2,13 @@
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
-import { INHERITED_IRA_YEARS, type InheritedKind, type InheritedPart } from "@/lib/plans/milestone-templates"
+import { fmtMoney } from "@/components/fire/fire-helpers"
+import { inheritanceTaxFor, INHERITED_IRA_YEARS, type InheritedKind, type InheritedPart } from "@/lib/plans/milestone-templates"
+import { INHERITANCE_TAX_STATES, RELATIONSHIP_LABELS, type Relationship } from "@/lib/plans/tax/inheritance-tax"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { RowButton } from "./plan-table"
 import { SelectField, TextField } from "./plan-editor-controls"
+import { STATE_OPTIONS } from "./plan-tax-settings"
 
 const KINDS: { value: InheritedKind; label: string }[] = [
   { value: "cash", label: "Cash" },
@@ -31,21 +34,33 @@ function taxNote(part: InheritedPart): string {
 }
 
 const NEW_ACCOUNT = "new"
+const NO_STATE = "none"
 
 export const emptyPart = (kind: InheritedKind = "cash"): InheritedPart => ({ kind, amount: 0, label: "", accountId: null, roth: false })
 
-/** The parts of an inheritance (any mix of kinds, each with its own amount) and a state tax rate. */
+const RELATIONSHIPS = (Object.keys(RELATIONSHIP_LABELS) as Relationship[]).map((value) => ({ value, label: RELATIONSHIP_LABELS[value] }))
+
+function inheritanceTaxNote(tax: number, state: string | null): string {
+  if (tax > 0) return `State inheritance tax: ${fmtMoney(tax)}, paid the year you inherit. Federal estate tax is paid by the estate, not you.`
+  const taxing = state !== null && (INHERITANCE_TAX_STATES as readonly string[]).includes(state)
+  return taxing ? "Exempt at this relationship." : "No inheritance tax. Only KY, MD, NE, NJ and PA tax heirs."
+}
+
+/** The parts of an inheritance (any mix of kinds, each with its own amount), who it's from and where they lived. */
 export function InheritanceFields({
   parts,
-  stateTaxRate,
+  relationship,
+  decedentState,
   doc,
   onChange,
 }: {
   parts: InheritedPart[]
-  stateTaxRate: number
+  relationship: Relationship
+  decedentState: string | null
   doc: PlanDocument
-  onChange: (change: { parts?: InheritedPart[]; stateTaxRate?: number }) => void
+  onChange: (change: { parts?: InheritedPart[]; relationship?: Relationship; decedentState?: string | null }) => void
 }) {
+  const tax = inheritanceTaxFor({ parts, relationship, decedentState })
   const taxable = doc.accounts.filter((a) => a.taxTreatment === "taxable")
   const accountOptions = [{ value: NEW_ACCOUNT, label: "New: Inherited brokerage" }, ...taxable.map((a) => ({ value: a.id, label: a.name }))]
   const set = (i: number, change: Partial<InheritedPart>) => onChange({ parts: parts.map((p, j) => (j === i ? { ...p, ...change } : p)) })
@@ -69,6 +84,16 @@ export function InheritanceFields({
                 onChange={(v) => set(i, { accountId: v === NEW_ACCOUNT ? null : v })}
               />
             )}
+            {p.kind === "realEstate" && (
+              <FireNumberField
+                label="Sell in (year)"
+                min={0}
+                max={2200}
+                value={p.sellYear ?? 0}
+                hint="0 to keep it"
+                onChange={(y) => set(i, { sellYear: y >= doc.settings.startYear ? y : null })}
+              />
+            )}
             {p.kind === "retirement" && (
               <div className="pb-1.5">
                 <Toggle label="Roth" checked={p.roth} onChange={(roth) => set(i, { roth })} />
@@ -81,16 +106,16 @@ export function InheritanceFields({
       <button type="button" onClick={() => onChange({ parts: [...parts, emptyPart("stocks")] })} className="text-[11px] text-primary hover:underline">
         + Add another part
       </button>
-      <FireNumberField
-        label="State inheritance tax (0 for none)"
-        suffix="%"
-        scale={100}
-        min={0}
-        max={0.2}
-        value={stateTaxRate}
-        hint="Only a few states tax heirs (PA, NJ, KY, NE, MD). Federal estate tax is paid by the estate, not you."
-        onChange={(v) => onChange({ stateTaxRate: v })}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <SelectField label="They were your" value={relationship} options={RELATIONSHIPS} onChange={(r) => onChange({ relationship: r })} />
+        <SelectField
+          label="They lived in"
+          value={decedentState ?? NO_STATE}
+          options={STATE_OPTIONS}
+          onChange={(v) => onChange({ decedentState: v === NO_STATE ? null : v })}
+        />
+      </div>
+      <p className="text-[11px] text-foreground-muted">{inheritanceTaxNote(tax, decedentState)}</p>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { resolveTiming, timingContext } from "./plan-timing"
+import { stateInheritanceTax, type Relationship } from "./tax/inheritance-tax"
 import type { PlanAccount, PlanDebt, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
 
 export type TemplateKey =
@@ -85,6 +86,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
     adjustments: [
       ...(next.adjustments ?? []),
       { id: newId("adj"), kind: "taxRates", timing: at(msId), incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
+      { id: newId("adj"), kind: "filingStatus", timing: at(msId), status: "joint", origin: msId },
     ],
   }
   if (input.weddingCost > 0) {
@@ -214,14 +216,28 @@ export interface InheritedPart {
   accountId: string | null
   /** Retirement accounts: Roth (tax-free withdrawals) or traditional (taxed as income). */
   roth: boolean
+  /** Real estate: the year you'd sell it; null to keep it. */
+  sellYear?: number | null
 }
 
 export interface InheritanceInput {
   name: string
   when: Timing
   parts: InheritedPart[]
-  /** State inheritance tax on the total (a handful of states); 0 for none. */
-  stateTaxRate: number
+  /** Where the person who died lived; with `relationship`, sets the state inheritance tax. */
+  decedentState?: string | null
+  relationship?: Relationship
+  /** A flat state inheritance tax rate instead (used when no state is given). */
+  stateTaxRate?: number
+}
+
+/** State inheritance tax for the whole inheritance (today's dollars). */
+export function inheritanceTaxFor(input: Pick<InheritanceInput, "parts" | "decedentState" | "relationship" | "stateTaxRate">): number {
+  const total = input.parts.reduce((s, p) => s + Math.max(0, p.amount), 0)
+  if (input.decedentState !== undefined && input.relationship) {
+    return stateInheritanceTax(input.decedentState, input.relationship, total)
+  }
+  return total * (input.stateTaxRate ?? 0)
 }
 
 /** Inherited IRAs must be emptied by the end of the 10th year after the death (SECURE Act). */
@@ -250,13 +266,13 @@ export function applyInheritance(doc: PlanDocument, input: InheritanceInput, new
   const when = at(msId)
   const year = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
   for (const part of input.parts.filter((p) => p.amount > 0)) next = addInheritedPart(next, part, msId, year, newId)
-  const total = input.parts.reduce((s, p) => s + Math.max(0, p.amount), 0)
-  if (input.stateTaxRate > 0 && total > 0) {
+  const tax = inheritanceTaxFor(input)
+  if (tax > 0) {
     next = {
       ...next,
       expenses: [
         ...next.expenses,
-        { id: newId("exp"), name: "State inheritance tax", category: null, amount: total * input.stateTaxRate, growth: null, start: when, end: when, oneTime: true, origin: msId },
+        { id: newId("exp"), name: "State inheritance tax", category: null, amount: tax, growth: null, start: when, end: when, oneTime: true, origin: msId },
       ],
     }
   }
@@ -287,7 +303,7 @@ function addInheritedPart(doc: PlanDocument, part: InheritedPart, msId: string, 
       ...doc,
       assets: [
         ...doc.assets,
-        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: { type: "planEnd" }, acquired: "received", costBasis: null, origin: msId },
+        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: part.sellYear ? { type: "year", year: part.sellYear } : { type: "planEnd" }, acquired: "received", costBasis: null, origin: msId },
       ],
     }
   }

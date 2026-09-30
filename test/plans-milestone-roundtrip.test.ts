@@ -88,7 +88,7 @@ for (const [label, apply] of TEMPLATES) {
 test("the delete prompt can list what a template created", () => {
   const before = base()
   const after = applyMarried(before, { when, partner: { name: "Sam", birthYear: 1992 }, partnerIncome: 60_000, incomeTaxRate: 0.15, capitalGainsRate: 0.15, weddingCost: 30_000 }, newId)
-  assert.deepEqual(milestoneCreations(after, added(before, after)).sort(), ["Sam (person)", "Sam's salary (income)", "Tax rate change", "Wedding (expense)"].sort())
+  assert.deepEqual(milestoneCreations(after, added(before, after)).sort(), ["Filing status changes", "Sam (person)", "Sam's salary (income)", "Tax rates change", "Wedding (expense)"].sort())
 })
 
 test("career change removed: the original salary runs to its original end again", () => {

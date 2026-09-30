@@ -19,6 +19,7 @@ import {
   type TemplateKey,
 } from "@/lib/plans/milestone-templates"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
+import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { newItemId } from "../plans-helpers"
 import { emptyPart, InheritanceFields } from "./inheritance-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
@@ -47,7 +48,8 @@ export interface TemplateDraft {
   termYears: number
   appreciation: number
   parts: InheritedPart[]
-  stateTaxRate: number
+  relationship: Relationship
+  decedentState: string | null
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
@@ -89,7 +91,8 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     termYears: 30,
     appreciation: 0.03,
     parts: [emptyPart("cash")],
-    stateTaxRate: 0,
+    relationship: "child",
+    decedentState: doc.settings.state ?? null,
   }
 }
 
@@ -123,7 +126,7 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
     case "move":
       return applyMove(doc, { name, when: d.when, percent: d.percent }, newItemId)
     case "inheritance":
-      return applyInheritance(doc, { name, when: d.when, parts: d.parts, stateTaxRate: d.stateTaxRate }, newItemId)
+      return applyInheritance(doc, { name, when: d.when, parts: d.parts, relationship: d.relationship, decedentState: d.decedentState }, newItemId)
     case "windfall":
       return applyWindfall(doc, { name, when: d.when, amount: d.amount, taxable: d.taxable }, newItemId)
     case "custom":
@@ -250,7 +253,7 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
         <>
           {name}
           {when}
-          <InheritanceFields parts={d.parts} stateTaxRate={d.stateTaxRate} doc={doc} onChange={set} />
+          <InheritanceFields parts={d.parts} relationship={d.relationship} decedentState={d.decedentState} doc={doc} onChange={set} />
         </>
       )
     case "windfall":

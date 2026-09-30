@@ -13,7 +13,13 @@ import {
 } from "./engine-assets"
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
-import { adjustmentEntries, spendingFactorAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
+import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
+import { taxTrueUp, yearTax } from "./engine-tax"
+
+/** Differences smaller than this (dollars) aren't worth another pass. */
+const TRUE_UP_MIN = 1
+/** Each pass shrinks the difference by the marginal rate, so a few passes settle it. */
+const MAX_TRUE_UP_PASSES = 6
 import { coverDeficit, deposit, depositSurplus, type Holdings } from "./engine-cashflow"
 import { applyTransfers, drawEarmarked, transferEntries, type TransferEntry } from "./engine-education"
 import { applyDeposits, depositEntries, drainInherited, type DepositEntry } from "./engine-inheritance"
@@ -90,36 +96,30 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
   )
 }
 
-/** The plan as it stands in year `index`: tax rates after any changes that have taken effect. */
-function docForYear(plan: Plan, index: number): PlanDocument {
-  if (plan.adjustments.length === 0) return plan.doc
-  const rates = taxRatesAt(plan.adjustments, plan.doc.settings, index)
-  return { ...plan.doc, settings: { ...plan.doc.settings, ...rates } }
-}
-
-/** This year's money in and out, before anything moves between accounts. */
+/** This year's money in and out, and how it's taxed, before anything moves between accounts. */
 function yearFlows(plan: Plan, state: State, index: number) {
-  const doc = docForYear(plan, index)
-  const { inflation } = doc.settings
+  const { inflation } = plan.doc.settings
+  const income = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
+  const tax = yearTax(plan.doc, plan.adjustments, index, income)
+  const doc = tax.doc
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
     capitalGainsRate: doc.settings.capitalGainsRate,
     joint: doc.people.length > 1,
   })
   const debts = payDebts(plan.debts, events.debtBalances, index)
-  const income = incomeForYear(plan.incomes, doc.accounts, index, inflation)
   const expenses = expensesForYear(plan.expenses, index, inflation, spendingFactorAt(plan.adjustments, index))
-  const incomeTax = income.taxableIncome * doc.settings.incomeTaxRate
-  return { events, debts, income, expenses, incomeTax }
+  return { doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax }
 }
 
 type Flows = ReturnType<typeof yearFlows>
 
 /**
  * Grow accounts, then move money: payroll deposits, fixed contributions (529), earmarked draws
- * (college from a 529), and finally the surplus or shortfall per the cash-flow rules.
+ * (college from a 529), inherited deposits and drawdowns, and finally the surplus or shortfall per
+ * the cash-flow rules. `extraTax` is the bracket true-up owed on top of what was charged.
  */
-function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
-  const doc = docForYear(plan, index)
+function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraTax = 0) {
+  const { doc } = flows
   const inflationFactor = Math.pow(1 + doc.settings.inflation, index)
   const grownState = growHoldings(state.holdings, doc)
   let holdings = grownState.holdings
@@ -134,7 +134,7 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
   holdings = drained.holdings
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
-    income.total - income.employeeContributions - incomeTax - expenses.total - debts.paid -
+    income.total - income.employeeContributions - incomeTax - extraTax - expenses.total - debts.paid -
     events.purchases + events.sales - events.saleTax - transfers.total + earmarked.drawn + drained.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
   const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
@@ -151,10 +151,33 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows) {
   }
 }
 
+type Moved = ReturnType<typeof moveMoney>
+
+/**
+ * Under brackets: tax the year's final totals exactly and settle the difference from cash flow.
+ * Paying the difference can mean withdrawing (and being taxed on) a bit more, so repeat until it settles.
+ */
+function settleTax(plan: Plan, state: State, index: number, flows: Flows): { moved: Moved; trueUp: number } {
+  let trueUp = 0
+  let moved = moveMoney(plan, state, index, flows)
+  if (!flows.tax.situation) return { moved, trueUp }
+  for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
+    const diff = taxTrueUp(flows.tax, {
+      ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
+      gains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains,
+      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax,
+    })
+    if (Math.abs(diff) < TRUE_UP_MIN) break
+    trueUp += diff
+    moved = moveMoney(plan, state, index, flows, trueUp)
+  }
+  return { moved, trueUp }
+}
+
 function stepYear(plan: Plan, state: State, index: number): { row: YearRow; state: State } {
   const { doc } = plan
   const flows = yearFlows(plan, state, index)
-  const moved = moveMoney(plan, state, index, flows)
+  const { moved, trueUp } = settleTax(plan, state, index, flows)
   const { income, expenses, debts, events, incomeTax } = flows
   const assetValues = assetValuesAtEnd(plan, index)
   const valueChange = assetValueChange(plan.assets, index)
@@ -169,7 +192,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     incomeBy: income.byId,
     employerMatch: income.employerMatch,
     employerMatchBy: income.matchBy,
-    incomeTax,
+    incomeTax: incomeTax + trueUp,
     withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax,
     saleTax: events.saleTax,
     deposits: moved.deposits.total,

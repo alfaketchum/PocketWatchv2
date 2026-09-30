@@ -2,7 +2,8 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
-import { applyInheritance, INHERITED_IRA_YEARS, type InheritedPart } from "@/lib/plans/milestone-templates"
+import { applyInheritance, inheritanceTaxFor, INHERITED_IRA_YEARS, type InheritedPart } from "@/lib/plans/milestone-templates"
+import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { HOME_SALE_EXCLUSION } from "@/lib/plans/engine/engine-assets"
 import { planDocumentSchema, parsePlanDocument } from "@/lib/plans/plan-schema"
 import type { PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
@@ -16,7 +17,7 @@ function plan(patch: Partial<PlanDocument> = {}): PlanDocument {
   const base = blankPlanDocument(NOW, 35)
   return {
     ...base,
-    settings: { ...base.settings, inflation: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15, cashBuffer: 0, endAge: 70 },
+    settings: { ...base.settings, taxMode: "flat", inflation: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15, cashBuffer: 0, endAge: 70 },
     accounts: [{ ...base.accounts[0], returnRate: 0 }],
     ...patch,
   }
@@ -95,4 +96,33 @@ test("a mix of kinds with a state inheritance tax paid from cash flow", () => {
 test("plans saved before deposits existed still load", () => {
   const { deposits: _d, ...old } = blankPlanDocument(NOW)
   assert.deepEqual(parsePlanDocument(old, blankPlanDocument(NOW))?.deposits, [])
+})
+
+test("state inheritance tax depends on where they lived and your relationship", () => {
+  const cash = [part({ kind: "cash", amount: 200_000 })]
+  const tax = (decedentState: string | null, relationship: Relationship) => inheritanceTaxFor({ parts: cash, decedentState, relationship })
+  assert.equal(tax("PA", "child"), 9_000) // 4.5%
+  assert.equal(tax("PA", "spouse"), 0)
+  assert.equal(tax("NJ", "child"), 0) // Class A
+  assert.equal(tax("NJ", "sibling"), 175_000 * 0.11) // first $25k exempt
+  assert.equal(tax("NE", "child"), 1_000) // 1% above $100k
+  assert.equal(tax("CA", "unrelated"), 0)
+  assert.equal(tax(null, "unrelated"), 0)
+})
+
+test("the inheritance tax is charged the year you inherit", () => {
+  const d = applyInheritance(
+    plan(),
+    { name: "Inheritance", when: { type: "year", year: 2030 }, parts: [part({ kind: "cash", amount: 200_000 })], decedentState: "PA", relationship: "child" },
+    newId,
+  )
+  const taxLine = d.expenses.find((e) => e.name === "State inheritance tax")!
+  assert.equal(row(d, 2030).expensesBy[taxLine.id], 9_000)
+})
+
+test("inherited property can be sold in a set year", () => {
+  const d = inherit([part({ kind: "realEstate", amount: 400_000, sellYear: 2035 })])
+  assert.deepEqual(d.assets[0].end, { type: "year", year: 2035 })
+  assert.ok(row(d, 2034).assetValues[d.assets[0].id] > 0)
+  assert.equal(row(d, 2036).assetValues[d.assets[0].id] ?? 0, 0)
 })

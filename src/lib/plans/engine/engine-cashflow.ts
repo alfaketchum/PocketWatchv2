@@ -130,6 +130,9 @@ export interface DeficitResult {
   tax: number
   /** Traditional withdrawals plus realized gains: the part of withdrawals that is taxable income. */
   taxableWithdrawn: number
+  /** Of that: traditional withdrawals (ordinary income) and realized gains (capital gains). */
+  ordinaryWithdrawn: number
+  gainsRealized: number
   shortfall: number
 }
 
@@ -149,7 +152,8 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
   let current = holdings
   let withdrawalsBy: Record<string, number> = {}
   let tax = 0
-  let taxableWithdrawn = 0
+  let ordinaryWithdrawn = 0
+  let gainsRealized = 0
   for (const { account, keep } of passes) {
     if (left <= 0) break
     const balance = (current.balances[account.id] ?? 0) - keep
@@ -157,11 +161,21 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     if (balance <= 0 || rate >= 1) continue
     const net = Math.min(left, balance * (1 - rate))
     const gross = net / (1 - rate)
-    taxableWithdrawn += gross * taxableShare(account, current)
+    const taxablePart = gross * taxableShare(account, current)
+    if (account.taxTreatment === "traditional") ordinaryWithdrawn += taxablePart
+    else gainsRealized += taxablePart
     current = withdraw(current, account, gross)
     withdrawalsBy = add(withdrawalsBy, account.id, gross)
     tax += gross - net
     left -= net
   }
-  return { holdings: current, withdrawalsBy, tax, taxableWithdrawn, shortfall: Math.max(0, left) }
+  return {
+    holdings: current,
+    withdrawalsBy,
+    tax,
+    taxableWithdrawn: ordinaryWithdrawn + gainsRealized,
+    ordinaryWithdrawn,
+    gainsRealized,
+    shortfall: Math.max(0, left),
+  }
 }

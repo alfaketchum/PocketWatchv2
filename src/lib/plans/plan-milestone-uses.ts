@@ -1,6 +1,12 @@
 import { removeAccount, removeAsset, removePerson } from "./plan-edits"
 import { resolveTiming, timingContext } from "./plan-timing"
-import type { PlanDocument, PlanMilestone, Timing } from "./plan-types"
+import type { PlanAdjustment, PlanDocument, PlanMilestone, Timing } from "./plan-types"
+
+const ADJUSTMENT_LABELS: Record<PlanAdjustment["kind"], string> = {
+  taxRates: "Tax rates change",
+  spending: "Spending changes",
+  filingStatus: "Filing status changes",
+}
 
 export type MilestoneSource = "yours" | "kids" | "assets"
 
@@ -36,7 +42,7 @@ export function milestoneUses(doc: PlanDocument, id: string): string[] {
   }
   for (const d of doc.debts) add(d.start, `${d.name} starts`)
   for (const m of doc.milestones) if (m.id !== id) add(m.timing, `${m.name}`)
-  for (const a of doc.adjustments ?? []) add(a.timing, a.kind === "taxRates" ? "Tax rates change" : "Spending changes")
+  for (const a of doc.adjustments ?? []) add(a.timing, ADJUSTMENT_LABELS[a.kind])
   for (const d of doc.deposits ?? []) add(d.timing, `${d.name} arrives`)
   return uses
 }
@@ -74,7 +80,7 @@ export function milestoneCreations(doc: PlanDocument, id: string): string[] {
     ...doc.accounts.filter(own).map((a) => `${a.name} (account)`),
     ...doc.assets.filter(own).map((a) => `${a.name} (asset)`),
     ...doc.debts.filter(own).map((d) => `${d.name} (debt)`),
-    ...(doc.adjustments ?? []).filter(own).map((a) => (a.kind === "taxRates" ? "Tax rate change" : "Spending change")),
+    ...(doc.adjustments ?? []).filter(own).map((a) => ADJUSTMENT_LABELS[a.kind]),
     ...doc.people.filter(own).map((p) => `${p.name} (person)`),
     ...doc.milestones.filter(own).map((m) => `${m.name} (milestone)`),
   ]

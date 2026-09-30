@@ -55,7 +55,7 @@ function doc(patch: Partial<PlanDocument> = {}): PlanDocument {
   const base = blankPlanDocument(NOW, 35)
   return {
     ...base,
-    settings: { ...base.settings, inflation: 0, incomeTaxRate: 0, capitalGainsRate: 0, cashBuffer: 0, endAge: 45 },
+    settings: { ...base.settings, taxMode: "flat", inflation: 0, incomeTaxRate: 0, capitalGainsRate: 0, cashBuffer: 0, endAge: 45 },
     accounts: [],
     ...patch,
   }

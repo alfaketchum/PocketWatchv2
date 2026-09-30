@@ -56,6 +56,9 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
       cashBuffer: 20_000,
       bufferAccountId: null,
       protectBuffer: true,
+      taxMode: "brackets",
+      state: null,
+      filingStatus: "single",
     },
     people: [{ id: PRIMARY_PERSON_ID, name: "Me", birthYear: startYear - age, birthMonth: 1 }],
     accounts: [

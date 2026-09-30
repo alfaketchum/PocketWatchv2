@@ -55,7 +55,7 @@ import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 test("yearMetrics reads a working year like a P&L", () => {
   const plan: PlanDocument = {
     ...doc,
-    settings: { ...doc.settings, inflation: 0, incomeTaxRate: 0.2, cashBuffer: 0 },
+    settings: { ...doc.settings, taxMode: "flat", inflation: 0, incomeTaxRate: 0.2, cashBuffer: 0 },
     accounts: [{ ...doc.accounts[0], balance: 0 }, { ...doc.accounts[2], balance: 0 }],
     assets: [],
     debts: [],

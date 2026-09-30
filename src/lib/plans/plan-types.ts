@@ -50,6 +50,11 @@ export interface PlanSettings {
   bufferAccountId: string | null
   /** When on, shortfalls leave the buffer alone until every other account is empty. */
   protectBuffer: boolean
+  /** "brackets": 2026 federal + state brackets, indexed to inflation. "flat": the flat rates above. */
+  taxMode: "flat" | "brackets"
+  /** Two-letter state of residence for state income tax; null for none. */
+  state: string | null
+  filingStatus: "single" | "joint"
 }
 
 export interface PlanAccount {
@@ -228,6 +233,7 @@ export type PlanAdjustment =
       percent: number
       origin?: string
     }
+  | { id: string; kind: "filingStatus"; timing: Timing; status: "single" | "joint"; origin?: string }
 
 export interface PlanDocument {
   settings: PlanSettings

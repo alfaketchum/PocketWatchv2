@@ -29,7 +29,7 @@ function plan(patch: Partial<PlanDocument> = {}): PlanDocument {
   const base = blankPlanDocument(NOW, 35)
   return {
     ...base,
-    settings: { ...base.settings, inflation: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15, cashBuffer: 0, endAge: 60 },
+    settings: { ...base.settings, taxMode: "flat", inflation: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15, cashBuffer: 0, endAge: 60 },
     incomes: [salary],
     expenses: [{ id: "live", name: "Living", category: null, amount: 40_000, growth: 0, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
     ...patch,
@@ -64,11 +64,13 @@ test("get married: milestone, partner with income, new tax rates, wedding cost â
   assert.ok(planDocumentSchema.safeParse(d).success)
   assert.equal(d.people.length, 2)
   const ms = d.milestones.find((m) => m.name === "Get married")!
-  assert.deepEqual(milestoneUses(d, ms.id).sort(), ["Sam's salary starts", "Tax rates change", "Wedding starts"].sort())
+  assert.deepEqual(milestoneUses(d, ms.id).sort(), ["Filing status changes", "Sam's salary starts", "Tax rates change", "Wedding starts"].sort())
   assert.equal(row(d, 2027).income, 100_000)
   assert.equal(row(d, 2028).income, 160_000)
   assert.equal(row(d, 2028).incomeTax, 160_000 * 0.15)
   assert.equal(row(d, 2028).expensesBy[d.expenses.find((e) => e.name === "Wedding")!.id], 30_000)
+  const filing = (d.adjustments ?? []).find((a) => a.kind === "filingStatus")
+  assert.ok(filing && filing.kind === "filingStatus" && filing.status === "joint" && filing.origin === ms.id)
 })
 
 test("buy a home: asset plus a linked mortgage with an amortized payment", () => {

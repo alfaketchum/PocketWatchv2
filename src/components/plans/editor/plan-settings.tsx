@@ -8,6 +8,7 @@ import { removePerson } from "@/lib/plans/plan-edits"
 import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
 import { AdjustmentsEditor } from "./adjustments-editor"
 import { TextField } from "./plan-editor-controls"
+import { PlanTaxSettings } from "./plan-tax-settings"
 
 function newPartner(birthYear: number): PlanPerson {
   return { id: newItemId("person"), name: "Partner", birthYear, birthMonth: 1 }
@@ -47,7 +48,7 @@ function PersonFields({
   )
 }
 
-/** The Assumptions tab: who's in the plan, how long it runs, inflation and tax rates. */
+/** The Assumptions tab: who's in the plan, how long it runs, inflation and taxes. */
 export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
   const set = (change: Partial<PlanSettings>) => update((d) => ({ ...d, settings: { ...d.settings, ...change } }))
   const s = doc.settings
@@ -76,41 +77,15 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
           </button>
         )}
       </InputBlock>
-      <InputBlock title="Timeline">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <InputBlock title="Timeline" description="The cash buffer (emergency fund) is on the Cash flow tab.">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <FireNumberField label="Plan starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
           <FireNumberField label="Start month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
           <FireNumberField label="Plan until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
-        </div>
-      </InputBlock>
-      <InputBlock
-        title="Rates"
-        description="Flat effective rates; real tax brackets come later. The cash buffer (emergency fund) is on the Cash flow tab."
-      >
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           <FireNumberField label="Inflation" suffix="%" scale={100} min={-0.05} max={0.2} value={s.inflation} onChange={(inflation) => set({ inflation })} />
-          <FireNumberField
-            label="Income tax (effective)"
-            suffix="%"
-            scale={100}
-            min={0}
-            max={1}
-            value={s.incomeTaxRate}
-            hint="Also applies to traditional withdrawals."
-            onChange={(incomeTaxRate) => set({ incomeTaxRate })}
-          />
-          <FireNumberField
-            label="Capital gains tax"
-            suffix="%"
-            scale={100}
-            min={0}
-            max={1}
-            value={s.capitalGainsRate}
-            onChange={(capitalGainsRate) => set({ capitalGainsRate })}
-          />
-
         </div>
       </InputBlock>
+      <PlanTaxSettings settings={s} set={set} />
       <AdjustmentsEditor doc={doc} update={update} />
     </div>
   )

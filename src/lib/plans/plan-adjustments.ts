@@ -27,6 +27,15 @@ export function taxRatesAt(
   return rates
 }
 
+/** Filing status in effect in year `index`. */
+export function filingStatusAt(entries: AdjustmentEntry[], settings: PlanSettings, index: number): "single" | "joint" {
+  let status = settings.filingStatus
+  for (const { adjustment, index: from } of entries) {
+    if (adjustment.kind === "filingStatus" && from !== null && from <= index) status = adjustment.status
+  }
+  return status
+}
+
 /** Multiplier on your own expenses in year `index`: every spending change so far, compounded. */
 export function spendingFactorAt(entries: AdjustmentEntry[], index: number): number {
   return entries.reduce(
