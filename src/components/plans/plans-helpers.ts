@@ -59,3 +59,28 @@ export interface PlanEditorProps {
   doc: PlanDocument
   update: (updater: DocUpdater) => void
 }
+
+/** Apply `fn` to every timing in the plan. */
+export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDocument {
+  return {
+    ...doc,
+    incomes: doc.incomes.map((i) => ({ ...i, start: fn(i.start), end: fn(i.end) })),
+    expenses: doc.expenses.map((e) => ({ ...e, start: fn(e.start), end: fn(e.end) })),
+    assets: doc.assets.map((a) => ({ ...a, start: fn(a.start), end: fn(a.end) })),
+    debts: doc.debts.map((d) => ({ ...d, start: fn(d.start) })),
+    milestones: doc.milestones.map((m) => ({ ...m, timing: fn(m.timing) })),
+  }
+}
+
+/** Remove a person; ages that referred to them are re-pointed at the first person. */
+export function removePerson(doc: PlanDocument, personId: string): PlanDocument {
+  const people = doc.people.filter((p) => p.id !== personId)
+  const primary = people[0]
+  if (!primary) return doc
+  const remapped = mapTimings(doc, (t) => (t.type === "age" && t.personId === personId ? { ...t, personId: primary.id } : t))
+  return {
+    ...remapped,
+    people,
+    accounts: remapped.accounts.map((a) => (a.owner === personId ? { ...a, owner: null } : a)),
+  }
+}

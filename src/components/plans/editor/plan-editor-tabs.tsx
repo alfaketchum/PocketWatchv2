@@ -2,14 +2,24 @@
 
 import { cn } from "@/lib/utils"
 
-export type PlanTab = "overview" | "accounts" | "income" | "expenses" | "cashflow" | "settings"
+export type PlanTab =
+  | "overview"
+  | "accounts"
+  | "income"
+  | "expenses"
+  | "assets"
+  | "cashflow"
+  | "milestones"
+  | "settings"
 
 export const PLAN_TABS: { value: PlanTab; label: string; icon: string }[] = [
   { value: "overview", label: "Overview", icon: "insights" },
   { value: "accounts", label: "Accounts", icon: "account_balance" },
   { value: "income", label: "Income", icon: "payments" },
   { value: "expenses", label: "Expenses", icon: "shopping_cart" },
+  { value: "assets", label: "Assets & debts", icon: "home" },
   { value: "cashflow", label: "Cash flow", icon: "swap_vert" },
+  { value: "milestones", label: "Milestones", icon: "flag" },
   { value: "settings", label: "Settings", icon: "tune" },
 ]
 

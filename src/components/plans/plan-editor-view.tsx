@@ -9,9 +9,11 @@ import { usePlanProjection } from "@/hooks/plans/use-plan-projection"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import type { PlanEditorProps } from "./plans-helpers"
 import { AccountsEditor } from "./editor/accounts-editor"
+import { AssetsDebtsEditor } from "./editor/assets-debts-editor"
 import { CashFlowEditor } from "./editor/cash-flow-editor"
 import { ExpensesEditor } from "./editor/expenses-editor"
 import { IncomesEditor } from "./editor/incomes-editor"
+import { MilestonesEditor } from "./editor/milestones-editor"
 import { isPlanTab, PlanEditorTabs, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { PlanEditorHeader } from "./plan-editor-header"
@@ -27,7 +29,9 @@ const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProp
   accounts: AccountsEditor,
   income: IncomesEditor,
   expenses: ExpensesEditor,
+  assets: AssetsDebtsEditor,
   cashflow: CashFlowEditor,
+  milestones: MilestonesEditor,
   settings: PlanSettingsEditor,
 }
 
