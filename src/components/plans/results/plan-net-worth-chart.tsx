@@ -20,14 +20,13 @@ import { cn } from "@/lib/utils"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
-import { retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanBarTooltip } from "./plan-bar-tooltip"
 import { PlanYearPanel } from "./plan-year-panel"
 import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
 import { usePlanColors } from "./use-plan-colors"
 import { useSteadySpending } from "./use-steady-spending"
-import { SpendingPatternStats } from "./spending-pattern-stats"
+import { SpendingImpactChart } from "./spending-impact-chart"
 
 const DIMMED = 0.35
 const Y_HEADROOM = 1.03
@@ -390,6 +389,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   )
 
   return (
+    <>
     <FireSectionCard
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
@@ -442,7 +442,6 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               </span>
             ))}
           </div>
-          {steady && <SpendingPatternStats points={plotPoints} retireAge={retirementAge(doc)} />}
         </div>
         {metrics && activePoint && (
           <div className="lg:sticky lg:top-4" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
@@ -463,5 +462,8 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
         )}
       </div>
     </FireSectionCard>
+    {/* The Expenses view gets the lifetime-spending card right under it. */}
+    {view === "expenses" && doc.expenses.some((e) => !e.oneTime) && <SpendingImpactChart doc={doc} isHidden={isHidden} />}
+    </>
   )
 })
