@@ -113,7 +113,7 @@ function LegendRow({ slice, percentage, active, onActive, isHidden }: {
 }) {
   return (
     <div
-      className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-opacity"
+      className="flex break-inside-avoid items-center gap-2 rounded-md px-1.5 py-1 transition-opacity"
       style={{ opacity: active && slice.key !== active ? 0.45 : 1 }}
       onMouseEnter={() => onActive(slice.key)}
       onMouseLeave={() => onActive(null)}
@@ -125,7 +125,7 @@ function LegendRow({ slice, percentage, active, onActive, isHidden }: {
         <span className="whitespace-nowrap font-data text-[11px] tabular-nums text-foreground-muted">{fmtLegend(slice.value)}</span>
       </BlurredValue>
       <span
-        className="w-12 text-right whitespace-nowrap font-data text-[10px] tabular-nums"
+        className="w-10 text-right whitespace-nowrap font-data text-[10px] tabular-nums"
         style={{ color: percentage >= 1 ? hexToRgba(slice.color, 0.85) : "var(--foreground-muted)" }}
       >
         {percentage.toFixed(1)}%
@@ -145,7 +145,7 @@ export function AllocationDonut({ title, slices, totalValue, caption, isHidden }
       <p className="text-xs font-medium text-foreground-muted mb-4">{title}</p>
       <div className="flex flex-col items-center gap-6">
         <Ring slices={slices} sum={sum} active={active} onActive={setActive} totalValue={totalValue} caption={caption} isHidden={isHidden} />
-        <div className="grid w-full min-w-0 grid-cols-1 gap-x-6 gap-y-0.5 sm:grid-cols-2">
+        <div className="w-full min-w-0 gap-x-6 sm:columns-2">
           {slices.map((slice) => (
             <LegendRow
               key={slice.key}
