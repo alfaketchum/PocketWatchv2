@@ -14,7 +14,7 @@ import {
   type CashFlowLayer,
   type NetWorthLayer,
 } from "@/lib/plans/plan-chart"
-import { cashFlowDetail, expensesView, netWorthDetail, type ExpenseGroup } from "@/lib/plans/plan-chart-detail"
+import { cashFlowDetail, EXPENSE_GROUP_LABELS, expensesView, netWorthDetail, type ExpenseGroup } from "@/lib/plans/plan-chart-detail"
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import { shades, usePlanColors } from "./use-plan-colors"
 
@@ -24,6 +24,8 @@ export interface Series {
   key: string
   label: string
   color: string
+  /** With subcategories on: the band this line rolls up into (for the hover card). */
+  group?: { key: string; label: string; color: string }
 }
 
 export type ChartRow = { age: number; year: number } & Record<string, number>
@@ -32,13 +34,16 @@ export type ChartRow = { age: number; year: number } & Record<string, number>
 function shadeDetail<P extends string>(
   detail: { key: string; label: string; parent: P }[],
   parentColor: (parent: P) => string,
+  parentLabel: (parent: P) => string,
   theme: { card: string; foreground: string },
 ): Series[] {
   const byParent = new Map<P, typeof detail>()
   for (const s of detail) byParent.set(s.parent, [...(byParent.get(s.parent) ?? []), s])
   return [...byParent.entries()].flatMap(([parent, list]) => {
-    const colors = shades(parentColor(parent), list.length, theme)
-    return list.map((s, i) => ({ key: s.key, label: s.label, color: colors[i] }))
+    const base = parentColor(parent)
+    const colors = shades(base, list.length, theme)
+    const group = { key: String(parent), label: parentLabel(parent), color: base }
+    return list.map((s, i) => ({ key: s.key, label: s.label, color: colors[i], group }))
   })
 }
 
@@ -71,7 +76,7 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
       const e = expensesView(doc, rows, detail)
       if (!detail) return { points: e.points, all: e.series.map((s) => ({ key: s.key, label: s.label, color: groupColor[s.group] })) }
       const byGroup = e.series.map((s) => ({ key: s.key, label: s.label, parent: s.group }))
-      return { points: e.points, all: shadeDetail(byGroup, (g) => groupColor[g], theme) }
+      return { points: e.points, all: shadeDetail(byGroup, (g) => groupColor[g], (g) => EXPENSE_GROUP_LABELS[g], theme) }
     }
     if (view === "networth") {
       if (!detail) {
@@ -79,14 +84,17 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
         return { points: nwPoints, all: keys.map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] })) }
       }
       const d = netWorthDetail(doc, rows)
-      return { points: d.points, all: shadeDetail(d.series, (p) => nwColors[p as NetWorthLayer | "debt"], theme) }
+      return {
+        points: d.points,
+        all: shadeDetail(d.series, (p) => nwColors[p as NetWorthLayer | "debt"], (p) => NET_WORTH_LAYER_LABELS[p as NetWorthLayer | "debt"], theme),
+      }
     }
     if (!detail) {
       const keys = [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS]
       return { points: cashFlowPoints(doc, rows), all: keys.map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] })) }
     }
     const d = cashFlowDetail(doc, rows)
-    return { points: d.points, all: shadeDetail(d.series, (p) => cfColors[p as CashFlowLayer], theme) }
+    return { points: d.points, all: shadeDetail(d.series, (p) => cfColors[p as CashFlowLayer], (p) => CASH_FLOW_LABELS[p as CashFlowLayer], theme) }
   }, [view, detail, doc, rows, nwPoints, nwColors, cfColors, card, foreground])
 
   const series = useMemo(() => all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5)), [all, points])

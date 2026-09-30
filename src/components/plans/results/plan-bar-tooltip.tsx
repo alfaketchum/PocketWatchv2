@@ -6,14 +6,16 @@ export interface TooltipSeries {
   key: string
   label: string
   color: string
+  /** With subcategories on: the band this line rolls up into. */
+  group?: { key: string; label: string; color: string }
 }
 
 type Row = { age: number; year: number } & Record<string, number>
 
-function Item({ s, value, share }: { s: TooltipSeries; value: number; share?: number }) {
+function Item({ s, value, share, bold }: { s: Pick<TooltipSeries, "key" | "label" | "color">; value: number; share?: number; bold?: boolean }) {
   return (
-    <p className="flex items-center justify-between gap-4">
-      <span className="inline-flex min-w-0 items-center gap-1.5 text-foreground-muted">
+    <p className={`flex items-center justify-between gap-4 ${bold ? "font-medium" : ""}`}>
+      <span className={`inline-flex min-w-0 items-center gap-1.5 ${bold ? "text-foreground" : "text-foreground-muted"}`}>
         <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: s.color }} />
         <span className="truncate">{s.label}</span>
       </span>
@@ -22,6 +24,40 @@ function Item({ s, value, share }: { s: TooltipSeries; value: number; share?: nu
         {share !== undefined && <span className="ml-1.5 text-foreground-muted">{fmtPct(share, 0)}</span>}
       </span>
     </p>
+  )
+}
+
+/**
+ * Lines as plain items, or (with subcategories) rolled up under their band with its subtotal and share,
+ * each line indented beneath it.
+ */
+function Lines({ list, row, sign = 1, shares }: { list: TooltipSeries[]; row: Row; sign?: 1 | -1; shares?: number }) {
+  if (!list.some((s) => s.group)) {
+    return <>{list.map((s) => <Item key={s.key} s={s} value={sign * row[s.key]} share={shares ? row[s.key] / shares : undefined} />)}</>
+  }
+  const groups = new Map<string, { head: NonNullable<TooltipSeries["group"]>; items: TooltipSeries[] }>()
+  for (const s of list) {
+    const head = s.group ?? { key: s.key, label: s.label, color: s.color }
+    groups.set(head.key, { head, items: [...(groups.get(head.key)?.items ?? []), s] })
+  }
+  return (
+    <>
+      {[...groups.values()].map(({ head, items }) => {
+        const total = items.reduce((t, s) => t + row[s.key], 0)
+        return (
+          <div key={head.key}>
+            <Item s={{ key: head.key, label: head.label, color: head.color }} value={sign * total} share={shares ? total / shares : undefined} bold />
+            {items.length > 1 &&
+              items.map((s) => (
+                <p key={s.key} className="flex justify-between gap-4 pl-3.5 text-[11px] text-foreground-muted">
+                  <span className="truncate">{s.label}</span>
+                  <span className="tabular-nums">{fmtMoney(sign * row[s.key])}</span>
+                </p>
+              ))}
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -61,9 +97,7 @@ export function PlanBarTooltip({
       </p>
       {mode === "expenses" ? (
         <>
-          {positives.map((s) => (
-            <Item key={s.key} s={s} value={row[s.key]} share={row[s.key] / sum(positives)} />
-          ))}
+          <Lines list={positives} row={row} shares={sum(positives)} />
           <Total label="Spent" value={sum(positives)} tone="out" />
         </>
       ) : mode === "debt" ? (
@@ -75,25 +109,17 @@ export function PlanBarTooltip({
         </>
       ) : mode === "networth" ? (
         <>
-          {positives.map((s) => (
-            <Item key={s.key} s={s} value={row[s.key]} share={row[s.key] / sum(positives)} />
-          ))}
-          {negatives.map((s) => (
-            <Item key={s.key} s={s} value={row[s.key]} />
-          ))}
+          <Lines list={positives} row={row} shares={sum(positives)} />
+          <Lines list={negatives} row={row} />
           <Total label="Net worth" value={row.netWorth} />
         </>
       ) : (
         <>
           <p className="pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">Money in</p>
-          {positives.map((s) => (
-            <Item key={s.key} s={s} value={row[s.key]} />
-          ))}
+          <Lines list={positives} row={row} />
           <Total label="Total in" value={sum(positives)} tone="in" />
           <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">Money out</p>
-          {negatives.map((s) => (
-            <Item key={s.key} s={s} value={-row[s.key]} />
-          ))}
+          <Lines list={negatives} row={row} sign={-1} />
           <Total label="Total out" value={sum(negatives)} tone="out" />
         </>
       )}
