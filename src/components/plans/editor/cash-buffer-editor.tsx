@@ -9,35 +9,24 @@ import { cn } from "@/lib/utils"
 import type { PlanEditorProps } from "../plans-helpers"
 import { SelectField } from "./plan-editor-controls"
 
-/** Caveats that change what the buffer can actually do in this plan. */
-function bufferNotes(doc: PlanDocument, holderId: string, holderBalance: number): string {
+/** Short caveats: the buffer isn't full yet, other cash isn't part of it. */
+function bufferNotes(doc: PlanDocument, holderId: string, holderBalance: number): string[] {
   const notes: string[] = []
-  if (holderBalance < doc.settings.cashBuffer) {
-    notes.push(
-      `It holds ${fmtMoney(holderBalance)} today, below the ${fmtMoney(doc.settings.cashBuffer)} target; it only grows from leftover money after taxes and spending.`,
-    )
-  }
+  if (holderBalance < doc.settings.cashBuffer) notes.push(`Holds ${fmtMoney(holderBalance)} today; fills from leftover money.`)
   const others = doc.accounts.filter((a) => a.taxTreatment === "cash" && a.id !== holderId).length
-  if (others > 0) notes.push(`Your other ${others === 1 ? "cash account isn't" : `${others} cash accounts aren't`} part of the buffer.`)
-  return notes.length ? ` ${notes.join(" ")}` : ""
+  if (others > 0) notes.push(`${others} other cash account${others === 1 ? "" : "s"} not included.`)
+  return notes
 }
 
-/** Plain-English description of what the buffer does in the plan right now. */
-export function bufferStatus(doc: PlanDocument): { tone: "on" | "off" | "none"; text: string } {
+/** One-line description of what the buffer does now, plus caveats. */
+export function bufferStatus(doc: PlanDocument): { tone: "on" | "off" | "none"; text: string; notes: string[] } {
   const account = bufferAccount(doc)
-  const amount = fmtMoney(doc.settings.cashBuffer)
-  if (!account) return { tone: "none", text: "No cash account yet. Add one on the Accounts tab to keep a buffer." }
-  if (doc.settings.cashBuffer <= 0) return { tone: "none", text: "No buffer: set an amount above $0 to keep one." }
-  if (doc.settings.protectBuffer) {
-    return {
-      tone: "on",
-      text: `On: up to ${amount} stays in ${account.name}. When money is short, your other accounts are drawn first; the buffer is only spent once everything else is empty. Turn it off to spend cash first instead.${bufferNotes(doc, account.id, account.balance)}`,
-    }
-  }
-  return {
-    tone: "off",
-    text: `Off: ${account.name} is refilled to ${amount} from leftover money, but it's spent first when money is short, because cash leads the withdrawal order. Turn it on to keep it as a last resort.${bufferNotes(doc, account.id, account.balance)}`,
-  }
+  if (!account) return { tone: "none", text: "Add a cash account to keep a buffer.", notes: [] }
+  if (doc.settings.cashBuffer <= 0) return { tone: "none", text: "Set an amount to keep a buffer.", notes: [] }
+  const notes = bufferNotes(doc, account.id, account.balance)
+  return doc.settings.protectBuffer
+    ? { tone: "on", text: "Protected: spent only after every other account is empty.", notes }
+    : { tone: "off", text: "Not protected: spent first when money is short.", notes }
 }
 
 function ProtectSwitch({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: (on: boolean) => void }) {
@@ -71,7 +60,7 @@ export function CashBufferEditor({ doc, update }: PlanEditorProps) {
   return (
     <InputBlock
       title="Cash buffer (emergency fund)"
-      description="Cash you keep on hand: the first thing leftover money refills, and (when protected) the last thing a shortfall touches."
+      description="First to refill, last to spend."
     >
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr_auto] gap-3 items-end">
         <FireNumberField label="Amount (today's $)" prefix="$" min={0} value={doc.settings.cashBuffer} onChange={(cashBuffer) => set({ cashBuffer })} />
@@ -87,13 +76,20 @@ export function CashBufferEditor({ doc, update }: PlanEditorProps) {
           <ProtectSwitch checked={doc.settings.protectBuffer} disabled={!holder} onChange={(protectBuffer) => set({ protectBuffer })} />
         </div>
       </div>
-      <p
-        className={cn(
-          "rounded-lg px-3 py-2 text-xs",
-          status.tone === "on" ? "bg-primary/10 text-foreground" : status.tone === "off" ? "bg-warning/10 text-foreground" : "bg-background-secondary text-foreground-muted",
-        )}
-      >
-        {status.text}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+        <span
+          className={cn(
+            "font-medium",
+            status.tone === "on" ? "text-primary" : status.tone === "off" ? "text-warning" : "text-foreground-muted",
+          )}
+        >
+          {status.text}
+        </span>
+        {status.notes.map((n) => (
+          <span key={n} className="text-foreground-muted">
+            · {n}
+          </span>
+        ))}
       </p>
     </InputBlock>
   )

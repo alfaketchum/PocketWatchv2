@@ -9,7 +9,7 @@ import { move, OrderButtons, WaterfallColumn, WaterfallStep } from "./waterfall-
 
 const TAX_NOTES: Record<TaxTreatment, string> = {
   cash: "no tax",
-  taxable: "capital-gains tax on the gains",
+  taxable: "tax on gains",
   traditional: "taxed as income",
   roth: "tax-free",
   hsa: "tax-free",
@@ -31,12 +31,8 @@ export function ShortfallWaterfall({ doc, update, example }: PlanEditorProps & {
       icon="north"
       tone="out"
       title="When money is short"
-      description="Shortfalls are drawn from these, top down, until covered."
-      example={
-        example
-          ? `Example: in ${example.year} (age ${example.ages[0]}), ${fmtMoney(needed)} came out of your accounts, taxes on it included (today's $).`
-          : "Your plan never runs short, so this order doesn't come into play yet."
-      }
+      description="Drawn top down."
+      example={example ? `${example.year} · age ${example.ages[0]} · ${fmtMoney(needed)} withdrawn (incl. tax)` : "Never happens in this plan yet."}
     >
       {sequence.map((a, i) => (
         <WaterfallStep
@@ -46,8 +42,8 @@ export function ShortfallWaterfall({ doc, update, example }: PlanEditorProps & {
           last={!protectedBuffer && i === sequence.length - 1}
           title={a.name}
           subtitle={`${TAX_TREATMENT_LABELS[a.taxTreatment]} · ${TAX_NOTES[a.taxTreatment]}${
-            protectedBuffer?.id === a.id ? ` · only what's above the ${fmtMoney(doc.settings.cashBuffer)} buffer` : ""
-          }${buffer?.id === a.id && !protectedBuffer ? " · includes your cash buffer (not protected)" : ""}`}
+            protectedBuffer?.id === a.id ? ` · above ${fmtMoney(doc.settings.cashBuffer)} only` : ""
+          }${buffer?.id === a.id && !protectedBuffer ? " · incl. buffer" : ""}`}
           amount={example?.shortfallBy[a.id]}
           actions={<OrderButtons index={i} count={sequence.length} onMove={(delta) => setOrder(move(ids, i, delta))} />}
         />
@@ -58,8 +54,8 @@ export function ShortfallWaterfall({ doc, update, example }: PlanEditorProps & {
           pinned
           last
           direction="out"
-          title={`Last resort: the ${fmtMoney(doc.settings.cashBuffer)} cash buffer`}
-          subtitle={`${protectedBuffer.name} · only once every account above is empty. Switch off "Protect" above to spend it earlier.`}
+          title={`Last resort: ${fmtMoney(doc.settings.cashBuffer)} buffer`}
+          subtitle={protectedBuffer.name}
         />
       )}
       {sequence.length === 0 && <li className="text-xs text-foreground-muted">Add accounts on the Accounts tab first.</li>}
@@ -69,7 +65,7 @@ export function ShortfallWaterfall({ doc, update, example }: PlanEditorProps & {
             Reset to default order
           </button>
         )}
-        {has529 && <span>Education (529) accounts aren&apos;t listed: they only pay college costs.</span>}
+        {has529 && <span>529s excluded (college only)</span>}
       </li>
     </WaterfallColumn>
   )

@@ -38,7 +38,7 @@ function TargetFields({ target, onChange }: { target: SurplusTarget; onChange: (
       )}
       <div className="pb-1.5">
         <Toggle
-          label="No limit (takes everything left)"
+          label="No limit"
           checked={target.annualCap === null}
           onChange={(on) => onChange({ ...target, annualCap: on ? null : DEFAULT_CAP })}
         />
@@ -65,12 +65,8 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
       icon="south"
       tone="in"
       title="When money is left over"
-      description="Leftover cash fills these from the top down."
-      example={
-        example
-          ? `Example: in ${example.year} (age ${example.ages[0]}), ${fmtMoney(leftover)} was left over. Amounts beside each step show where it went (today's $).`
-          : "Your plan never has money left over, so these rules don't come into play yet."
-      }
+      description="Fills top down."
+      example={example ? `${example.year} · age ${example.ages[0]} · ${fmtMoney(leftover)} left over` : "Never happens in this plan yet."}
     >
       {buffer && (
         <WaterfallStep
@@ -78,7 +74,7 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
           pinned
           direction="in"
           title={`Top up the cash buffer to ${fmtMoney(doc.settings.cashBuffer)}`}
-          subtitle={`${buffer.name} · set in Cash buffer above`}
+          subtitle={buffer.name}
           amount={exampleFor(example, buffer.id, seen)}
         />
       )}
@@ -95,8 +91,8 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
             title={account.name}
             subtitle={
               unreachable
-                ? `Never reached: ${byId.get(targets[uncapped].accountId)?.name} above takes everything left`
-                : `${TAX_TREATMENT_LABELS[account.taxTreatment]} · ${t.annualCap === null ? "takes everything left" : `up to ${fmtMoney(t.annualCap)} a year`}`
+                ? "Not reached"
+                : TAX_TREATMENT_LABELS[account.taxTreatment]
             }
             amount={exampleFor(example, account.id, seen)}
             actions={
@@ -119,7 +115,7 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
             className="rounded-lg border border-card-border bg-background text-xs text-foreground"
             style={{ padding: "6px 10px", fontSize: 12 }}
           >
-            <option value="">+ Add an account to fill…</option>
+            <option value="">+ Add account</option>
             {unused.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -135,7 +131,7 @@ export function SurplusWaterfall({ doc, update, example }: PlanEditorProps & { e
           last
           direction="in"
           title={`Everything else → ${overflow.name}`}
-          subtitle="Automatic: your first taxable account (or cash if there isn't one). Add an account with no limit above to change it."
+          subtitle="Catch-all"
           amount={exampleFor(example, overflow.id, seen)}
         />
       )}
