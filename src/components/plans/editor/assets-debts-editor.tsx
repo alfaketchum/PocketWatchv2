@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
@@ -11,6 +12,7 @@ import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
 import { AssetRunningCostsFields } from "./asset-running-costs-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
+import { AddAssetDialog } from "./add-asset-dialog"
 import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 
@@ -37,17 +39,15 @@ const ACQUIRED: { value: "purchase" | "received"; label: string }[] = [
 /** Typical yearly value loss for a car, applied when an asset is switched to "Vehicle". */
 const VEHICLE_DEPRECIATION = -0.15
 
-function newAsset(): PlanAsset {
-  return {
-    id: newItemId("asset"),
-    name: "Home",
-    kind: "home",
-    value: 400_000,
-    appreciation: 0.03,
-    start: { type: "planStart" },
-    end: { type: "planEnd" },
-    runningCosts: TYPICAL_RUNNING_COSTS.home,
-  }
+/** "Add asset" opens a pop-out asking what it is: owned now, or a home or vehicle to buy later. */
+function AddAssetButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <AddButton label="Add asset" disabled={doc.assets.length >= PLAN_LIMITS.assets} onClick={() => setOpen(true)} />
+      {open && <AddAssetDialog doc={doc} update={update} onClose={() => setOpen(false)} />}
+    </>
+  )
 }
 
 /** Switching kind swaps in the new kind's typical costs, unless the costs were already changed by hand. */
@@ -150,11 +150,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
           <AssetRunningCostsFields asset={a} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
         </ItemCard>
       ))}
-      <AddButton
-        label="Add asset"
-        disabled={doc.assets.length >= PLAN_LIMITS.assets}
-        onClick={() => update((d) => ({ ...d, assets: [...d.assets, newAsset()] }))}
-      />
+      <AddAssetButton doc={doc} update={update} />
     </InputBlock>
   )
 }
@@ -224,11 +220,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
         <PlanLoanSuggestions doc={doc} update={update} />
         <AssetsDebtsTable {...props} />
         <div className="flex flex-wrap gap-2">
-          <AddButton
-            label="Add asset"
-            disabled={doc.assets.length >= PLAN_LIMITS.assets}
-            onClick={() => update((d) => ({ ...d, assets: [...d.assets, newAsset()] }))}
-          />
+          <AddAssetButton doc={doc} update={update} />
           <AddButton
             label="Add debt"
             disabled={doc.debts.length >= PLAN_LIMITS.debts}

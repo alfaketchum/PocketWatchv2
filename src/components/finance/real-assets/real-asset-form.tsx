@@ -14,8 +14,8 @@ const KIND_OPTIONS: { value: RealAssetKind; label: string }[] = [
 const DEFAULT_NAMES: Record<RealAssetKind, string> = { home: "Home", vehicle: "Car", other: "Asset" }
 const NO_LOAN = "none"
 
-function draftFrom(asset: RealAssetItem | null): RealAssetInput {
-  if (!asset) return { kind: "home", name: DEFAULT_NAMES.home, value: 0, appreciation: TYPICAL_APPRECIATION.home, purchasePrice: null, purchaseDate: null, loanAccountId: null }
+function draftFrom(asset: RealAssetItem | null, kind: RealAssetKind): RealAssetInput {
+  if (!asset) return { kind, name: DEFAULT_NAMES[kind], value: 0, appreciation: TYPICAL_APPRECIATION[kind], purchasePrice: null, purchaseDate: null, loanAccountId: null }
   return {
     kind: asset.kind,
     name: asset.name,
@@ -30,19 +30,22 @@ function draftFrom(asset: RealAssetItem | null): RealAssetInput {
 /** Add or edit a home, vehicle or other asset. Saving a new value records it for today. */
 export function RealAssetForm({
   asset,
+  kind = "home",
   loans,
   saving,
   onSave,
   onCancel,
 }: {
   asset: RealAssetItem | null
+  /** Type of a new asset (picked before the form opens). */
+  kind?: RealAssetKind
   loans: RealAssetLoan[]
   saving: boolean
   /** A value left as estimated is omitted, so only a value you enter is recorded. */
   onSave: (input: Partial<RealAssetInput>) => void
   onCancel: () => void
 }) {
-  const [initial] = useState<RealAssetInput>(() => draftFrom(asset))
+  const [initial] = useState<RealAssetInput>(() => draftFrom(asset, kind))
   const [d, setD] = useState<RealAssetInput>(initial)
   const set = (change: Partial<RealAssetInput>) => setD((cur) => ({ ...cur, ...change }))
   const changeKind = (kind: RealAssetKind) =>
@@ -58,7 +61,7 @@ export function RealAssetForm({
         onSave(asset && value === initial.value ? rest : d)
       }}
     >
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+      <div className="grid grid-cols-2 gap-2 items-end">
         <SelectField label="Type" value={d.kind} options={KIND_OPTIONS} onChange={changeKind} />
         <TextField label="Name" value={d.name} onChange={(name) => set({ name })} />
         <FireNumberField label="Worth today" prefix="$" min={0} value={d.value} onChange={(value) => set({ value })} />
@@ -73,7 +76,7 @@ export function RealAssetForm({
           onChange={(appreciation) => set({ appreciation })}
         />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+      <div className="grid grid-cols-2 gap-2 items-end">
         <FireNumberField label="Paid (optional)" prefix="$" min={0} value={d.purchasePrice ?? 0} onChange={(v) => set({ purchasePrice: v > 0 ? v : null })} />
         <label className="block">
           <span className="block text-[11px] font-medium text-foreground-muted mb-1">Bought on (optional)</span>

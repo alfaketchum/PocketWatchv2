@@ -361,7 +361,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           ? "Year-end balances by tax treatment. Real-asset equity is what your home and other assets are worth minus the loans on them; other debt shows below zero. Hover a bar to see that year; click to pin it."
           : "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out."
       }
-      right={<ModeToggle value={mode} onChange={setMode} />}
+      center={<ModeToggle value={mode} onChange={setMode} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">

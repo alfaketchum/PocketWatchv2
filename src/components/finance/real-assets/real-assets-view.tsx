@@ -8,6 +8,7 @@ import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { formatCurrency } from "@/lib/utils"
 import { RealAssetCard } from "./real-asset-card"
 import { RealAssetForm } from "./real-asset-form"
+import { AddRealAssetDialog } from "./add-real-asset-dialog"
 
 /** Editing: an asset id, "new", or nothing open. */
 type Editing = string | "new" | null
@@ -59,9 +60,7 @@ export function RealAssetsView() {
             </div>
           )}
           {editing === "new" && (
-            <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-              <RealAssetForm asset={null} loans={loans} saving={save.isPending} onSave={submit(undefined)} onCancel={() => setEditing(null)} />
-            </div>
+            <AddRealAssetDialog loans={loans} saving={save.isPending} onSave={submit(undefined)} onClose={() => setEditing(null)} />
           )}
           {assets.length === 0 && editing !== "new" && (
             <div className="bg-card border border-card-border rounded-2xl p-8 text-center">
