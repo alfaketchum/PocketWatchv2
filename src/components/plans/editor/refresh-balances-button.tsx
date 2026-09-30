@@ -32,7 +32,7 @@ export function RefreshBalancesButton({ doc, update }: PlanEditorProps) {
       }
       const loans = balances.loans ? loanSuggestions(doc, balances.loans) : []
       if (loans.length > 0) {
-        toast.info(`New in your linked accounts: ${loans.map((s) => s.debt.name).join(", ")}`, {
+        toast.info(`New in your linked accounts: ${loans.flatMap((s) => (s.type === "addOwned" ? [] : [s.debt.name])).join(", ")}`, {
           action: { label: "Review", onClick: () => router.push(`${pathname}?tab=assets`) },
         })
       }

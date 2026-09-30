@@ -1,5 +1,6 @@
 import { DEFAULT_CASH_RETURN, DEFAULT_RETURN_RATE, RETIREMENT_MILESTONE_ID } from "../plan-constants"
-import type { DebtKind, PlanAccount, PlanDebt, PlanExpense, PlanIncome, TaxTreatment } from "../plan-types"
+import { TYPICAL_RUNNING_COSTS } from "../plan-asset-costs"
+import type { AssetKind, DebtKind, PlanAccount, PlanAsset, PlanDebt, PlanExpense, PlanIncome, TaxTreatment } from "../plan-types"
 
 const MONTHS = 12
 /** Categories averaging less than this per month are folded into "Other spending". */
@@ -158,4 +159,41 @@ export function expensesFromCategories(categories: { category: string; avgMonthl
     ...large.map((c, i) => stream(`exp-${i}-${slug(c.category)}`, c.category, c.category, c.avgMonthly)),
     ...(otherMonthly > 0 ? [stream("exp-other", "Other spending", null, otherMonthly)] : []),
   ]
+}
+
+/** A home, vehicle or other asset from Finance › Homes & Vehicles, valued today. */
+export interface ImportRealAsset {
+  id: string
+  kind: string
+  name: string
+  value: number
+  appreciation: number
+  loanAccountId: string | null
+}
+
+const assetKindOf = (kind: string): AssetKind => (kind === "home" || kind === "vehicle" ? kind : "other")
+
+/** Homes and vehicles as plan assets owned now, each linked to its imported loan when it has one. */
+export function assetsFromRealAssets(items: ImportRealAsset[], debts: PlanDebt[]): { assets: PlanAsset[]; debts: PlanDebt[] } {
+  const assets = items.map(
+    (a): PlanAsset => ({
+      id: `asset-${a.id}`,
+      name: a.name,
+      kind: assetKindOf(a.kind),
+      value: Math.round(a.value),
+      appreciation: a.appreciation,
+      start: { type: "planStart" },
+      end: { type: "planEnd" },
+      runningCosts: TYPICAL_RUNNING_COSTS[assetKindOf(a.kind)],
+      source: { kind: "real-asset", refId: a.id },
+    }),
+  )
+  const assetForLoan = new Map(items.filter((a) => a.loanAccountId).map((a) => [a.loanAccountId as string, `asset-${a.id}`]))
+  return {
+    assets,
+    debts: debts.map((d) => {
+      const assetId = d.source?.kind === "finance-account" ? assetForLoan.get(d.source.refId) : undefined
+      return assetId ? { ...d, assetId } : d
+    }),
+  }
 }

@@ -19,6 +19,9 @@ interface BreakdownPoint {
   investment: number
   stablecoin: number
   digital: number
+  realEstate?: number
+  vehicle?: number
+  otherAsset?: number
   credit: number
   loan: number
 }
@@ -62,6 +65,7 @@ export function NetWorthHistoryChart({ data, breakdown, height = 280 }: NetWorth
   const bd = breakdown ?? []
   const stackData = bd.map((p) => ({
     date: p.date, cash: p.cash, savings: p.savings, investment: p.investment, stablecoin: p.stablecoin, digital: p.digital,
+    realEstate: p.realEstate ?? 0, vehicle: p.vehicle ?? 0, otherAsset: p.otherAsset ?? 0,
   }))
 
   const availStack = NW_STACK_ORDER.map((k) => cats[k]).filter((l) => stackData.some((p) => (p[l.key as StackKey] || 0) > 0.5))

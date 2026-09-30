@@ -21,6 +21,10 @@ function groupsFor(doc: PlanDocument): { title: string; rows: Row[] }[] {
       rows: doc.accounts.map((a) => ({ id: a.id, label: a.name, detail: TAX_TREATMENT_LABELS[a.taxTreatment], amount: a.balance })),
     },
     {
+      title: "Homes & vehicles",
+      rows: doc.assets.map((a) => ({ id: a.id, label: a.name, detail: "owned now", amount: a.value })),
+    },
+    {
       title: "Debts",
       rows: doc.debts.map((d) => ({ id: d.id, label: d.name, detail: `${fmtMoney(d.monthlyPayment)}/mo`, amount: -d.balance })),
     },
@@ -40,7 +44,11 @@ function pick(doc: PlanDocument, selected: Set<string>): PlanDocument {
   return {
     ...doc,
     accounts: doc.accounts.filter((a) => selected.has(a.id)),
-    debts: doc.debts.filter((d) => selected.has(d.id)),
+    assets: doc.assets.filter((a) => selected.has(a.id)),
+    // A loan kept without its home or car no longer points at it.
+    debts: doc.debts
+      .filter((d) => selected.has(d.id))
+      .map((d) => (d.assetId && !selected.has(d.assetId) ? { ...d, assetId: null } : d)),
     incomes: doc.incomes.filter((i) => selected.has(i.id)),
     expenses: doc.expenses.filter((e) => selected.has(e.id)),
   }

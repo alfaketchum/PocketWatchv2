@@ -62,6 +62,8 @@ export default function NetWorthPage() {
     investment: bdLast.investment - bdBase.investment,
     stablecoin: bdLast.stablecoin - bdBase.stablecoin,
     digital: bdLast.digital - bdBase.digital,
+    realEstate: (bdLast.realEstate ?? 0) - (bdBase.realEstate ?? 0),
+    vehicle: (bdLast.vehicle ?? 0) - (bdBase.vehicle ?? 0),
     credit: bdLast.credit - bdBase.credit,
     loan: bdLast.loan - bdBase.loan,
   } : undefined
@@ -127,6 +129,7 @@ export default function NetWorthPage() {
             fiatDebt={fiat.debt}
             stablecoins={crypto.stablecoins}
             digitalAssets={crypto.digitalAssets}
+            realAssets={data?.realAssets ?? { home: 0, vehicle: 0, other: 0 }}
             totalNetWorth={totalNetWorth}
             isHidden={isHidden}
           />
@@ -151,7 +154,7 @@ export default function NetWorthPage() {
               + Connect account
             </a>
           </div>
-          <NetWorthAccountsBreakdown isHidden={isHidden} changes={groupChanges} accountChanges={data?.accountChanges} timeframe={timeframe} />
+          <NetWorthAccountsBreakdown isHidden={isHidden} changes={groupChanges} accountChanges={data?.accountChanges} timeframe={timeframe} realAssets={data?.realAssets?.items} />
         </div>
       </FadeIn>
 

@@ -78,6 +78,7 @@ model User {
   mailSenders                   MailSender[]
   fireProfile                   FireProfile?
   plans                         Plan[]
+  realAssets                    RealAsset[]
   calendarTokenVersion          Int?                           @default(1)
 
 }
@@ -191,6 +192,41 @@ model Plan {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// A home, vehicle or other thing the user owns, valued by hand. Counts in net worth; `values` keeps each update.
+model RealAsset {
+  id            String           @id @default(cuid())
+  userId        String
+  /// "home" | "vehicle" | "other"
+  kind          String
+  name          String
+  /// Latest known value and when it was known; later days are estimated with `appreciation`.
+  value         Float
+  valueAsOf     DateTime
+  /// Yearly value change used between updates (negative for a car).
+  appreciation  Float
+  purchasePrice Float?
+  purchaseDate  DateTime?
+  /// The FinanceAccount (mortgage or auto loan) that pays for it, if any.
+  loanAccountId String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  values        RealAssetValue[]
+
+  @@index([userId])
+}
+
+/// One recorded value of a RealAsset (the latest also lives on the asset).
+model RealAssetValue {
+  id      String    @id @default(cuid())
+  assetId String
+  date    DateTime
+  value   Float
+  asset   RealAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, date])
 }
 
 model TrackedWallet {

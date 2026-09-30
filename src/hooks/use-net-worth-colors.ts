@@ -2,11 +2,11 @@
 
 import { useChartTheme } from "@/hooks/use-chart-theme"
 
-export type NwCategory = "cash" | "savings" | "investment" | "stablecoin" | "digital" | "debt"
+export type NwCategory = "cash" | "savings" | "investment" | "stablecoin" | "digital" | "realEstate" | "vehicle" | "otherAsset" | "debt"
 
 /** Asset categories in stack order (bottom → top). Debt is a liability, shown separately. */
 export const NW_STACK_ORDER: Exclude<NwCategory, "debt">[] = [
-  "cash", "savings", "investment", "stablecoin", "digital",
+  "cash", "savings", "investment", "stablecoin", "digital", "realEstate", "vehicle", "otherAsset",
 ]
 
 export interface NwCategoryMeta {
@@ -28,6 +28,10 @@ export function useNetWorthCategories(): Record<NwCategory, NwCategoryMeta> {
     investment: { key: "investment", label: "Investments",   icon: "trending_up",            color: ct.primary },
     stablecoin: { key: "stablecoin", label: "Stablecoins",   icon: "paid",                   color: ct.warning },
     digital:    { key: "digital",    label: "Digital Assets", icon: "currency_bitcoin",      color: ct.palette[7] ?? "#BF5AF2" },
+    // The palette's other hues are taken (or near-duplicates of taken ones), so hard assets use the neutrals.
+    realEstate: { key: "realEstate", label: "Real Estate",   icon: "home",                   color: ct.accentHead },
+    vehicle:    { key: "vehicle",    label: "Vehicles",      icon: "directions_car",         color: ct.palette[4] ?? "#FF2D55" },
+    otherAsset: { key: "otherAsset", label: "Other Assets",  icon: "category",               color: ct.foregroundMuted },
     debt:       { key: "debt",       label: "Debt",          icon: "credit_card",            color: ct.error },
   }
 }

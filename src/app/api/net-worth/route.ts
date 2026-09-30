@@ -8,6 +8,8 @@ import { loadCryptoDaily } from "@/lib/portfolio/crypto-daily"
 import { loadStablecoinSplit } from "@/lib/portfolio/net-worth-stable-split"
 import { syncStablecoinCharts } from "@/lib/portfolio/wallet-chart-cache"
 import { runAsBackgroundZerion } from "@/lib/portfolio/zerion-request-meter"
+import { totalsAt, valueAt } from "@/lib/finance/real-assets"
+import { loadRealAssets } from "@/lib/finance/real-assets-store"
 
 /**
  * GET /api/net-worth
@@ -119,8 +121,13 @@ export async function GET(request: Request) {
     const cryptoStablecoins = cryptoValue * stableRatio
     const cryptoDigitalAssets = cryptoValue - cryptoStablecoins
 
+    // ─── Homes, vehicles and other assets valued by hand ───
+    const realAssets = await loadRealAssets(user.id)
+    const now = new Date()
+    const realNow = totalsAt(realAssets, now)
+
     // ─── Combined ───
-    const totalNetWorth = fiatNetWorth + cryptoValue
+    const totalNetWorth = fiatNetWorth + cryptoValue + realNow.total
 
     // ─── Historical snapshots (last 365 days by default; ?range=all for everything) ───
     const fullHistory = new URL(request.url).searchParams.get("range") === "all"
@@ -176,7 +183,7 @@ export async function GET(request: Request) {
     // Full taxonomy per day. Crypto splits into stablecoins (USDC/USDT/USDe/USDG)
     // vs digital assets from real per-day history; the live ratio is only a
     // fallback until the stablecoin history has been fetched.
-    type GroupBreakdown = FinanceBreakdown & { stablecoin: number; digital: number }
+    type GroupBreakdown = FinanceBreakdown & { stablecoin: number; digital: number; realEstate: number; vehicle: number; otherAsset: number }
 
     // Forward-fill each series across the union of days.
     const todayKey = new Date().toISOString().slice(0, 10)
@@ -189,7 +196,7 @@ export async function GET(request: Request) {
     let lastBd: FinanceBreakdown = {
       cash: fiatCash, savings: fiatSavings, investment: fiatInvestments, credit: 0, loan: fiatDebt,
     }
-    const history: Array<{ date: string; fiat: number; crypto: number; total: number }> = []
+    const history: Array<{ date: string; fiat: number; crypto: number; real: number; total: number }> = []
     const breakdownHistory: Array<{ date: string } & GroupBreakdown> = []
 
     for (const day of sortedDays) {
@@ -198,10 +205,13 @@ export async function GET(request: Request) {
       if (bd) lastBd = bd
       // Today uses the live, complete crypto value so the last point matches the headline
       const { crypto, venues } = cryptoDaily.cryptoFor(day)
-      history.push({ date: day, fiat: lastFiat, crypto, total: lastFiat + crypto })
+      const real = day === todayKey ? realNow : totalsAt(realAssets, new Date(`${day}T12:00:00Z`))
+      history.push({ date: day, fiat: lastFiat, crypto, real: real.total, total: lastFiat + crypto + real.total })
       const stablecoin = day === todayKey ? cryptoStablecoins
         : stableFor ? stableFor(day, crypto, venues) : crypto * stableRatio
-      breakdownHistory.push({ date: day, ...lastBd, stablecoin, digital: crypto - stablecoin })
+      breakdownHistory.push({
+        date: day, ...lastBd, stablecoin, digital: crypto - stablecoin, realEstate: real.home, vehicle: real.vehicle, otherAsset: real.other,
+      })
     }
 
     // Per-account change over each timeframe window (from per-account snapshots).
@@ -246,6 +256,13 @@ export async function GET(request: Request) {
         digitalAssets: cryptoDigitalAssets,
         // Live portfolio total (current); null = not a stale snapshot timestamp.
         snapshotAt: null,
+      },
+      realAssets: {
+        home: realNow.home,
+        vehicle: realNow.vehicle,
+        other: realNow.other,
+        total: realNow.total,
+        items: realAssets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, value: valueAt(a, now) })),
       },
       history,
       breakdownHistory,

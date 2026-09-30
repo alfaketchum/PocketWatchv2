@@ -7,7 +7,7 @@ import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { useFinanceAccounts } from "@/hooks/use-finance"
 import { TYPE_ICONS } from "@/components/finance/accounts/accounts-constants"
 import {
-  GROUP_META, ASSET_ORDER, LIABILITY_ORDER, agoLabel, buildAccountGroups, sumGroups,
+  GROUP_META, ASSET_ORDER, LIABILITY_ORDER, REAL_ASSET_ROW, agoLabel, buildAccountGroups, sumGroups, withRealAssets,
   type GroupKey, type AccountRow,
 } from "./account-groups"
 import type { NetWorthTf } from "@/hooks/use-net-worth-timeframe"
@@ -30,7 +30,9 @@ function ChangeAmount({ change, isLiability, isHidden, className }: { change: nu
   )
 }
 
-export function NetWorthAccountsBreakdown({ isHidden, changes, accountChanges, timeframe = "M" }: { isHidden: boolean; changes?: GroupChanges; accountChanges?: AccountChanges; timeframe?: Timeframe }) {
+type RealAssetItems = Array<{ id: string; name: string; kind: string; value: number }>
+
+export function NetWorthAccountsBreakdown({ isHidden, changes, accountChanges, timeframe = "M", realAssets }: { isHidden: boolean; changes?: GroupChanges; accountChanges?: AccountChanges; timeframe?: Timeframe; realAssets?: RealAssetItems }) {
   const hydrated = useHydrated()
   const accountsQuery = useFinanceAccounts()
   // Accounts may already be cached before hydration; render the server's loading state first.
@@ -46,7 +48,7 @@ export function NetWorthAccountsBreakdown({ isHidden, changes, accountChanges, t
     )
   }
 
-  const groups = buildAccountGroups(institutions)
+  const groups = withRealAssets(buildAccountGroups(institutions), realAssets)
   const hasAny = Object.values(groups).some((rows) => rows.length > 0)
   if (!hasAny) {
     return (
@@ -172,7 +174,7 @@ function AccountGroup({
           {rows.map((row) => (
             <div key={row.id} className="flex items-center gap-3 px-4 py-2.5 border-b border-card-border/40 last:border-0">
               <span className="material-symbols-rounded text-foreground-muted flex-shrink-0" style={{ fontSize: 16 }} aria-hidden="true">
-                {TYPE_ICONS[row.type] ?? "account_balance"}
+                {row.type === REAL_ASSET_ROW ? meta.icon : (TYPE_ICONS[row.type] ?? "account_balance")}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground truncate">{row.name}</p>

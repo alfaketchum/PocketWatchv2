@@ -47,7 +47,11 @@ export function ProgressView() {
   const doc = detail.data?.document ?? null
 
   const path = useMemo(() => (doc ? planPath(doc, simulatePlan(doc)) : []), [doc])
-  const actual = useMemo(() => monthlyActual(netWorth.data?.history ?? []), [netWorth.data])
+  // The plan's line is financial net worth, so leave out homes and vehicles valued by hand.
+  const actual = useMemo(
+    () => monthlyActual((netWorth.data?.history ?? []).map((p) => ({ date: p.date, total: p.total - (p.real ?? 0) }))),
+    [netWorth.data],
+  )
   const status = useMemo(() => progressStatus(path, actual), [path, actual])
   const now = nowFractionalYear(new Date())
 

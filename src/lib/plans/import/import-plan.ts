@@ -15,6 +15,9 @@ import {
   type ImportLiability,
 } from "./import-mapping"
 import { loadTradingActivity } from "./trading-activity"
+import { valueAt } from "@/lib/finance/real-assets"
+import { loadRealAssets } from "@/lib/finance/real-assets-store"
+import { assetsFromRealAssets, type ImportRealAsset } from "./import-mapping"
 
 const PERCENT = 100
 
@@ -106,23 +109,33 @@ export async function loadCryptoValue(userId: string): Promise<number> {
   return snapshot?.totalValue ?? 0
 }
 
-/** A plan pre-filled from the user's linked accounts, liabilities, income and spending. */
+/** Homes and vehicles from Finance › Homes & Vehicles, valued today. */
+export async function loadImportRealAssets(userId: string): Promise<ImportRealAsset[]> {
+  const now = new Date()
+  const assets = await loadRealAssets(userId)
+  return assets.map((a) => ({ id: a.id, kind: a.kind, name: a.name, value: valueAt(a, now), appreciation: a.appreciation, loanAccountId: a.loanAccountId }))
+}
+
+/** A plan pre-filled from the user's linked accounts, liabilities, homes and vehicles, income and spending. */
 export async function buildImportDraft(userId: string): Promise<ImportDraft> {
-  const [base, rows, liabilities, crypto, budget] = await Promise.all([
+  const [base, rows, liabilities, crypto, budget, realAssets] = await Promise.all([
     blankPlanForUser(userId),
     loadImportAccounts(userId),
     loadLiabilities(userId),
     loadCryptoValue(userId),
     gatherBudgetContext(userId),
+    loadImportRealAssets(userId),
   ])
   const cryptoAcct = cryptoAccount(crypto)
   const trading = await loadTradingActivity(userId, rows)
   const accounts = [...withDetectedTrading(accountsFromRows(rows), trading), ...(cryptoAcct ? [cryptoAcct] : [])]
-  const debts = debtsFromRows(rows, liabilities)
+  const owned = assetsFromRealAssets(realAssets, debtsFromRows(rows, liabilities))
+  const debts = owned.debts
   const income = incomeFromMonthly(budget.income.monthly)
   const document: PlanDocument = {
     ...base,
     accounts,
+    assets: owned.assets,
     debts,
     incomes: income ? [income] : [],
     expenses: expensesFromCategories(budget.categories),
@@ -138,11 +151,12 @@ export async function loadLinkedLoans(userId: string, rows?: ImportAccountRow[])
 
 /** Current balances of everything a plan can link back to, plus brokerage trading and loans, for "Refresh balances". */
 export async function loadSourceBalances(userId: string): Promise<SourceBalances> {
-  const [rows, crypto] = await Promise.all([loadImportAccounts(userId), loadCryptoValue(userId)])
+  const [rows, crypto, realAssets] = await Promise.all([loadImportAccounts(userId), loadCryptoValue(userId), loadImportRealAssets(userId)])
   const [trading, loans] = await Promise.all([loadTradingActivity(userId, rows), loadLinkedLoans(userId, rows)])
   return {
     accounts: Object.fromEntries(rows.map((r) => [r.id, Math.abs(r.currentBalance ?? 0)])),
     crypto,
+    realAssets: Object.fromEntries(realAssets.map((a) => [a.id, Math.round(a.value)])),
     trading,
     loans,
   }

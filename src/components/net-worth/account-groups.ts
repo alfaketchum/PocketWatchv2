@@ -4,7 +4,7 @@
  */
 
 export type GroupKey =
-  | "cash" | "savings" | "investment" | "stablecoin" | "digital" | "credit" | "loan" | "other"
+  | "cash" | "savings" | "investment" | "stablecoin" | "digital" | "realEstate" | "vehicle" | "credit" | "loan" | "other"
 
 export const GROUP_META: Record<GroupKey, { label: string; icon: string; kind: "asset" | "liability" }> = {
   cash:       { label: "Cash",          icon: "account_balance",        kind: "asset" },
@@ -12,12 +12,14 @@ export const GROUP_META: Record<GroupKey, { label: string; icon: string; kind: "
   investment: { label: "Investments",   icon: "trending_up",            kind: "asset" },
   stablecoin: { label: "Stablecoins",   icon: "paid",                   kind: "asset" },
   digital:    { label: "Digital Assets", icon: "currency_bitcoin",      kind: "asset" },
+  realEstate: { label: "Real Estate",   icon: "home",                   kind: "asset" },
+  vehicle:    { label: "Vehicles",      icon: "directions_car",         kind: "asset" },
   other:      { label: "Other",         icon: "account_balance_wallet", kind: "asset" },
   credit:     { label: "Credit Cards",  icon: "credit_card",            kind: "liability" },
   loan:       { label: "Loans",         icon: "request_quote",          kind: "liability" },
 }
 
-export const ASSET_ORDER: GroupKey[] = ["cash", "savings", "investment", "stablecoin", "digital", "other"]
+export const ASSET_ORDER: GroupKey[] = ["cash", "savings", "investment", "stablecoin", "digital", "realEstate", "vehicle", "other"]
 export const LIABILITY_ORDER: GroupKey[] = ["credit", "loan"]
 
 /**
@@ -76,7 +78,7 @@ interface InstitutionLike {
 }
 
 function emptyGroups(): Record<GroupKey, AccountRow[]> {
-  return { cash: [], savings: [], investment: [], stablecoin: [], digital: [], other: [], credit: [], loan: [] }
+  return { cash: [], savings: [], investment: [], stablecoin: [], digital: [], realEstate: [], vehicle: [], other: [], credit: [], loan: [] }
 }
 
 /** Group all visible accounts across institutions into the bucket map. */
@@ -104,4 +106,20 @@ export function buildAccountGroups(
 
 export function sumGroups(groups: Record<GroupKey, AccountRow[]>, keys: GroupKey[]): number {
   return keys.reduce((sum, k) => sum + groups[k].reduce((s, r) => s + r.balance, 0), 0)
+}
+
+/** Row type for homes, vehicles and other assets valued by hand (Finance › Homes & Vehicles). */
+export const REAL_ASSET_ROW = "real-asset"
+
+/** Adds hand-valued homes, vehicles and other assets to the groups (Real Estate, Vehicles, Other). */
+export function withRealAssets(
+  groups: Record<GroupKey, AccountRow[]>,
+  items: Array<{ id: string; name: string; kind: string; value: number }> | undefined,
+): Record<GroupKey, AccountRow[]> {
+  const out = { ...groups, realEstate: [...groups.realEstate], vehicle: [...groups.vehicle], other: [...groups.other] }
+  for (const a of items ?? []) {
+    const key: GroupKey = a.kind === "home" ? "realEstate" : a.kind === "vehicle" ? "vehicle" : "other"
+    out[key].push({ id: a.id, name: a.name, mask: null, type: REAL_ASSET_ROW, balance: a.value, synced: null, needsReconnect: false })
+  }
+  return out
 }

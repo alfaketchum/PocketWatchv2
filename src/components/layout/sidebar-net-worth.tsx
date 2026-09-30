@@ -11,7 +11,7 @@ import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import { NetWorthTimeframeToggle } from "@/components/net-worth/net-worth-timeframe-toggle"
 import {
-  GROUP_META, ASSET_ORDER, LIABILITY_ORDER, buildAccountGroups, sumGroups,
+  GROUP_META, ASSET_ORDER, LIABILITY_ORDER, REAL_ASSET_ROW, buildAccountGroups, sumGroups, withRealAssets,
   type GroupKey,
 } from "@/components/net-worth/account-groups"
 
@@ -76,7 +76,7 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
     return next
   })
 
-  const groups = buildAccountGroups(institutions)
+  const groups = withRealAssets(buildAccountGroups(institutions), netWorth?.realAssets?.items)
 
   // Surface the crypto portfolio as its own Stablecoins / Digital Assets asset
   // groups so the sidebar reflects total net worth, not just finance accounts.
@@ -192,9 +192,10 @@ export function SidebarNetWorth({ collapsed }: { collapsed?: boolean }) {
                         )}
                       </>
                     )
-                    // Crypto rows link through to the portfolio; finance rows are static.
-                    return r.type === "crypto" ? (
-                      <Link key={r.id} href="/portfolio" className="flex items-center gap-2 pl-12 pr-2 py-1 rounded-md hover:bg-background-secondary transition-colors">{inner}</Link>
+                    // Crypto rows link through to the portfolio, homes and vehicles to their page; finance rows are static.
+                    const href = r.type === "crypto" ? "/portfolio" : r.type === REAL_ASSET_ROW ? "/finance/real-assets" : null
+                    return href ? (
+                      <Link key={r.id} href={href} className="flex items-center gap-2 pl-12 pr-2 py-1 rounded-md hover:bg-background-secondary transition-colors">{inner}</Link>
                     ) : (
                       <div key={r.id} className="flex items-center gap-2 pl-12 pr-2 py-1">{inner}</div>
                     )

@@ -19,7 +19,7 @@ export type Timing =
 
 /** Link back to the real account an item was imported from; only used by "Refresh balances". */
 export interface PlanSource {
-  kind: "finance-account" | "crypto"
+  kind: "finance-account" | "crypto" | "real-asset"
   refId: string
 }
 
@@ -161,6 +161,8 @@ export interface PlanAsset {
   acquired?: "purchase" | "received"
   /** For capital-gains tax on sale; null = value when acquired (purchase price, or stepped-up value). */
   costBasis?: number | null
+  /** The home or vehicle on Finance › Homes & Vehicles this came from, for "Refresh balances". */
+  source?: PlanSource | null
   /** How a future purchase is paid. Missing = cash, unless a debt is linked to it. A linked debt always wins. */
   financing?: AssetFinancing
   /** Insurance, maintenance, property tax…: charged every year it's owned. */

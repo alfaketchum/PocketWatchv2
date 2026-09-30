@@ -13,6 +13,8 @@ interface NetWorthBreakdownProps {
   fiatDebt: number
   stablecoins: number
   digitalAssets: number
+  /** Homes, vehicles and other assets valued by hand. */
+  realAssets: { home: number; vehicle: number; other: number }
   totalNetWorth: number
   isHidden: boolean
 }
@@ -23,11 +25,14 @@ const HREF: Record<NwCategory, string> = {
   investment: "/finance/investments",
   stablecoin: "/portfolio",
   digital: "/portfolio",
+  realEstate: "/finance/real-assets",
+  vehicle: "/finance/real-assets",
+  otherAsset: "/finance/real-assets",
   debt: "/finance/cards",
 }
 
 // Asset categories in display order (Debt is appended separately as a liability).
-const ASSET_ORDER: NwCategory[] = ["cash", "savings", "investment", "stablecoin", "digital"]
+const ASSET_ORDER: NwCategory[] = ["cash", "savings", "investment", "stablecoin", "digital", "realEstate", "vehicle", "otherAsset"]
 
 export function NetWorthBreakdown({
   fiatCash,
@@ -36,6 +41,7 @@ export function NetWorthBreakdown({
   fiatDebt,
   stablecoins,
   digitalAssets,
+  realAssets,
   totalNetWorth,
   isHidden,
 }: NetWorthBreakdownProps) {
@@ -47,6 +53,9 @@ export function NetWorthBreakdown({
     investment: fiatInvestments,
     stablecoin: stablecoins,
     digital: digitalAssets,
+    realEstate: realAssets.home,
+    vehicle: realAssets.vehicle,
+    otherAsset: realAssets.other,
     debt: -fiatDebt,
   }
 

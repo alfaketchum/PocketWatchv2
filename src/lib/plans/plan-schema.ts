@@ -20,7 +20,7 @@ const timing = z.discriminatedUnion("type", [
   z.object({ type: z.literal("milestone"), milestoneId: id }),
 ])
 
-const source = z.object({ kind: z.enum(["finance-account", "crypto"]), refId: z.string().min(1).max(128) }).nullable()
+const source = z.object({ kind: z.enum(["finance-account", "crypto", "real-asset"]), refId: z.string().min(1).max(128) }).nullable()
 
 const settings = z.object({
   startYear: year,
@@ -101,6 +101,7 @@ const asset = z.object({
   end: timing,
   acquired: z.enum(["purchase", "received"]).optional(),
   costBasis: money.nullable().optional(),
+  source: source.optional(),
   financing: z
     .object({
       mode: z.enum(["cash", "loan", "undecided"]),

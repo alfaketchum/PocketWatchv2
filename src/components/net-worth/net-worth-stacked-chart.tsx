@@ -11,9 +11,12 @@ export interface StackPoint {
   investment: number
   stablecoin: number
   digital: number
+  realEstate: number
+  vehicle: number
+  otherAsset: number
 }
 
-export type StackKey = "cash" | "savings" | "investment" | "stablecoin" | "digital"
+export type StackKey = "cash" | "savings" | "investment" | "stablecoin" | "digital" | "realEstate" | "vehicle" | "otherAsset"
 
 interface Props {
   data: StackPoint[]

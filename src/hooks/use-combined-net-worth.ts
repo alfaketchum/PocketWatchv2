@@ -18,10 +18,20 @@ export interface CombinedNetWorthData {
     digitalAssets: number
     snapshotAt: string | null
   }
+  /** Homes, vehicles and other assets valued by hand (Finance › Homes & vehicles). */
+  realAssets?: {
+    home: number
+    vehicle: number
+    other: number
+    total: number
+    items: Array<{ id: string; name: string; kind: string; value: number }>
+  }
   history: Array<{
     date: string
     fiat: number
     crypto: number
+    /** Homes, vehicles and other assets valued by hand (included in total). */
+    real?: number
     total: number
   }>
   /** Per-day totals for each asset/liability group (powers per-group change). */
@@ -32,6 +42,9 @@ export interface CombinedNetWorthData {
     investment: number
     stablecoin: number
     digital: number
+    realEstate?: number
+    vehicle?: number
+    otherAsset?: number
     credit: number
     loan: number
   }>

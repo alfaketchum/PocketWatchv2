@@ -60,6 +60,7 @@ export async function financeFetch<T>(
 export const financeKeys = {
   all: ["finance"] as const,
   accounts: () => [...financeKeys.all, "accounts"] as const,
+  realAssets: () => [...financeKeys.all, "real-assets"] as const,
   transactions: (filters: TxFilters) =>
     [...financeKeys.all, "transactions", filters] as const,
   budgets: (rangeKey?: string) =>
