@@ -13,7 +13,7 @@ import {
   hasUsableReconstructedHistory, interpolateSparseGaps,
   buildWalletFingerprint, getNormalizedAddresses,
   safeScaleReference, isProjectedChartFlat, zerionMatchesLive,
-  SCALE_FACTOR_MIN, SCALE_FACTOR_MAX,
+  SCALE_FACTOR_MIN, SCALE_FACTOR_MAX, RANGE_SECONDS,
 } from "@/lib/portfolio/snapshot-helpers"
 import {
   refreshZerionCache, smoothZerionPoints,
@@ -24,6 +24,7 @@ import {
   fetchProjectedChart,
 } from "@/lib/portfolio/snapshot-data-pipeline"
 import { loadSupplementalSeries, stripSupplementalFromSnapshots } from "@/lib/portfolio/supplemental-history"
+import { dailyCryptoPoints } from "@/lib/portfolio/crypto-daily"
 
 /** GET /api/portfolio/history/snapshots — return net value history. */
 export async function GET(request: Request) {
@@ -214,9 +215,16 @@ export async function GET(request: Request) {
       strictPoints = await blendExchangeBalances({ userId: user.id, merged, matchingLiveSnapshots, onchainValueFromSnapshot })
     }
 
-    strictPoints = strictPoints.map((p) => ({ ...p, value: p.value + supplementalAt(p.timestamp) }))
+    // Past 1D, Total is the same day-by-day series the breakdown views stack (live snapshot, else that
+    // day's wallet history + exchanges + venues) rather than Zerion history rescaled to today's value.
+    const useDaily = effectiveScope === "total" && range !== "1D"
+    const since = range === "ALL" ? new Date(0) : new Date((nowSec - RANGE_SECONDS[range]) * 1000)
+    const latestLiveTotal = rawSnapshots.filter((s) => s.source === "live_refresh").at(-1)?.totalValue ?? 0
+    strictPoints = useDaily
+      ? await dailyCryptoPoints(user.id, since, latestLiveTotal)
+      : strictPoints.map((p) => ({ ...p, value: p.value + supplementalAt(p.timestamp) }))
     const ranged = applyRange(strictPoints, range, nowSec)
-    const interpolated = range === "1D" ? ranged : interpolateSparseGaps(ranged)
+    const interpolated = range === "1D" || useDaily ? ranged : interpolateSparseGaps(ranged)
     const points = interpolated.map((p) => ({ timestamp: p.timestamp, total_value: p.value, total_usd_value: p.value, source: p.source }))
 
     const { status, warningCode } = computeStatusAndWarning({

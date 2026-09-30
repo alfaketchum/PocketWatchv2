@@ -6,6 +6,7 @@ import { useChartTheme } from "@/hooks/use-chart-theme"
 import { useNetWorthCategories } from "@/hooks/use-net-worth-colors"
 import { StackedAreaChart, type StackLayer } from "@/components/ui/stacked-area-chart"
 import { distinctBandColors } from "@/lib/chart-band-colors"
+import { alignToTotal, type TotalPoint } from "@/lib/portfolio/composition-align"
 import type { CompositionMode } from "@/types/composition"
 
 const MISC_COLOR = "#8a8f98"
@@ -15,10 +16,12 @@ interface Props {
   range: string
   height: number
   isHidden: boolean
+  /** The Total line; the stack is fitted to it so every view shows the same value */
+  total: TotalPoint[]
 }
 
 /** Stacked breakdown of portfolio value: Stablecoins vs Digital, or By asset. */
-export function PortfolioCompositionChart({ mode, range, height, isHidden }: Props) {
+export function PortfolioCompositionChart({ mode, range, height, isHidden, total }: Props) {
   const { data, isLoading, isError } = usePortfolioComposition(mode, range)
   const theme = useChartTheme()
   const cats = useNetWorthCategories()
@@ -39,6 +42,8 @@ export function PortfolioCompositionChart({ mode, range, height, isHidden }: Pro
     })
   }, [data, cats, theme])
 
+  const points = useMemo(() => (data ? alignToTotal(data.points, total) : []), [data, total])
+
   if (isError) {
     return <div className="flex items-center justify-center text-xs text-error" style={{ height }}>Failed to load breakdown</div>
   }
@@ -46,7 +51,7 @@ export function PortfolioCompositionChart({ mode, range, height, isHidden }: Pro
 
   return (
     <div className="px-2 pb-3">
-      <StackedAreaChart data={data.points} layers={layers} height={height} isHidden={isHidden} />
+      <StackedAreaChart data={points} layers={layers} height={height} isHidden={isHidden} />
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 px-4 pt-1">
         {[...layers].reverse().map((l) => (
           <span key={l.key} className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">

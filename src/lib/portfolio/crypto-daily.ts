@@ -70,3 +70,14 @@ export async function loadCryptoDaily(userId: string, since: Date, todayValue: n
   }
   return { days, cryptoFor }
 }
+
+/** The daily crypto series as chart points (one per UTC day, epoch seconds): the portfolio chart's Total line. */
+export async function dailyCryptoPoints(userId: string, since: Date, todayValue: number): Promise<Array<{ timestamp: number; value: number; source: string }>> {
+  const { days, cryptoFor } = await loadCryptoDaily(userId, since, todayValue)
+  const todayKey = utcDayKey(Date.now())
+  return days.map((day) => ({
+    timestamp: day === todayKey ? Math.floor(Date.now() / 1000) : Date.parse(day) / 1000,
+    value: cryptoFor(day).crypto,
+    source: "daily",
+  })).filter((p) => p.value > 0)
+}

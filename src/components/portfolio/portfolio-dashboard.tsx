@@ -16,11 +16,10 @@ import {
 } from "@/hooks/use-portfolio-tracker"
 import { formatFiatValue } from "@/lib/portfolio/utils"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { ChainAllocationBar } from "@/components/portfolio/chain-allocation-bar"
+import { ChainAllocationDonut } from "@/components/portfolio/chain-allocation-donut"
 import { ApiKeysBanner } from "@/components/portfolio/api-keys-banner"
 import { OverviewStatCard } from "@/components/portfolio/overview-stat-card"
 import { SyncButton } from "@/components/portfolio/sync-button"
-import { QuickActionsGrid } from "@/components/portfolio/quick-actions-grid"
 import { ChartPointDetail } from "@/components/portfolio/chart-point-detail"
 
 const ExpandableAssetTable = dynamic(
@@ -267,13 +266,9 @@ export function PortfolioDashboard() {
 
       {Object.keys(locationData).length > 0 && (
         <FadeIn delay={0.15}>
-          <ChainAllocationBar locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
+          <ChainAllocationDonut locations={locationData} totalValue={effectiveTotalValue} isHidden={isHidden} />
         </FadeIn>
       )}
-
-      <FadeIn delay={0.2}>
-        <QuickActionsGrid />
-      </FadeIn>
 
       <FadeIn delay={0.25}>
         <ExpandableAssetTable

@@ -120,7 +120,7 @@ export function ChartHeroSection({
       </div>
 
       {view !== "total" ? (
-        <PortfolioCompositionChart mode={view} range={timeframe} height={240} isHidden={isHidden} />
+        <PortfolioCompositionChart mode={view} range={timeframe} height={240} isHidden={isHidden} total={chartData} />
       ) : chartData.length >= 1 ? (
         <PortfolioLineChart
           data={chartData.length === 1
