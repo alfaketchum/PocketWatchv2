@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { CASH_IN_LAYERS, CASH_OUT_LAYERS, cashFlowPoints, NET_WORTH_LAYERS, netWorthPoints } from "@/lib/plans/plan-chart"
-import { cashFlowDetail, netWorthDetail } from "@/lib/plans/plan-chart-detail"
+import { cashFlowDetail, expensesView, netWorthDetail } from "@/lib/plans/plan-chart-detail"
 import { expandPlan } from "@/lib/plans/plan-expand"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
@@ -47,4 +47,19 @@ test("cash flow subcategories add up to each band every year", () => {
       close(sumParent(p, series.filter((s) => s.parent === layer).map((s) => s.key)), grouped[i][layer], 1e-4)
     }
   })
+})
+
+test("expenses view: groups and every-line detail add up to the same total spent", () => {
+  const d = plan()
+  const rows = simulatePlan(d).rows
+  const grouped = expensesView(d, rows, false)
+  const detailed = expensesView(d, rows, true)
+  grouped.points.forEach((p, i) => {
+    const byGroup = sumParent(p, grouped.series.map((s) => s.key))
+    const byLine = sumParent(detailed.points[i], detailed.series.map((s) => s.key))
+    close(byGroup, p.spent, 1e-4)
+    close(byLine, p.spent, 1e-4)
+    close(p.spent, rows[i].expenses + rows[i].debtPayments + rows[i].incomeTax + rows[i].withdrawalTax + rows[i].saleTax + rows[i].tradingTax, 1e-4)
+  })
+  assert.ok(detailed.series.some((s) => s.group === "debt"))
 })

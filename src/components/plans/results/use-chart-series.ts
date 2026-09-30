@@ -14,11 +14,11 @@ import {
   type CashFlowLayer,
   type NetWorthLayer,
 } from "@/lib/plans/plan-chart"
-import { cashFlowDetail, netWorthDetail, type DetailSeries } from "@/lib/plans/plan-chart-detail"
+import { cashFlowDetail, expensesView, netWorthDetail, type ExpenseGroup } from "@/lib/plans/plan-chart-detail"
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import { shades, usePlanColors } from "./use-plan-colors"
 
-export type ChartMode = "networth" | "cashflow" | "debt"
+export type ChartMode = "networth" | "cashflow" | "expenses" | "debt"
 
 export interface Series {
   key: string
@@ -29,11 +29,15 @@ export interface Series {
 export type ChartRow = { age: number; year: number } & Record<string, number>
 
 /** Colors each subcategory as a shade of its parent band's color. */
-function shadeDetail(detail: DetailSeries[], parentColor: (parent: DetailSeries["parent"]) => string, theme: { card: string; foreground: string }): Series[] {
-  const byParent = new Map<string, DetailSeries[]>()
+function shadeDetail<P extends string>(
+  detail: { key: string; label: string; parent: P }[],
+  parentColor: (parent: P) => string,
+  theme: { card: string; foreground: string },
+): Series[] {
+  const byParent = new Map<P, typeof detail>()
   for (const s of detail) byParent.set(s.parent, [...(byParent.get(s.parent) ?? []), s])
   return [...byParent.entries()].flatMap(([parent, list]) => {
-    const colors = shades(parentColor(parent as DetailSeries["parent"]), list.length, theme)
+    const colors = shades(parentColor(parent), list.length, theme)
     return list.map((s, i) => ({ key: s.key, label: s.label, color: colors[i] }))
   })
 }
@@ -55,6 +59,19 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
     if (view === "debt") {
       const colors = shades(nwColors.debt, doc.debts.length, theme)
       return { points: debtPoints(doc, rows), all: doc.debts.map((d, i) => ({ key: d.id, label: d.name, color: colors[i] })) }
+    }
+    if (view === "expenses") {
+      const groupColor: Record<ExpenseGroup, string> = {
+        living: cfColors.spending,
+        kids: cfColors.income,
+        property: nwColors.realAssets,
+        taxes: cfColors.taxes,
+        debt: cfColors.debtPayments,
+      }
+      const e = expensesView(doc, rows, detail)
+      if (!detail) return { points: e.points, all: e.series.map((s) => ({ key: s.key, label: s.label, color: groupColor[s.group] })) }
+      const byGroup = e.series.map((s) => ({ key: s.key, label: s.label, parent: s.group }))
+      return { points: e.points, all: shadeDetail(byGroup, (g) => groupColor[g], theme) }
     }
     if (view === "networth") {
       if (!detail) {

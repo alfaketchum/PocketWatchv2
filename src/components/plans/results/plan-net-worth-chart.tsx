@@ -98,16 +98,19 @@ function MilestoneMarker({
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
   { value: "cashflow", label: "Cash flow" },
+  { value: "expenses", label: "Expenses" },
   { value: "debt", label: "Debt" },
 ]
 
-const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", debt: "Debt" }
+const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", expenses: "Expenses", debt: "Debt" }
 
 const INFO: Record<ChartMode, string> = {
   networth:
     "Year-end balances by tax treatment, plus property (homes, cars, other assets) at what it's worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
+  expenses:
+    "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here.",
   debt: "What's still owed on each loan at the end of each year, on its own scale so even a small loan is easy to follow. It shrinks with the plan's payments and is paid off early if what it's for is sold.",
 }
 
@@ -382,7 +385,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
-      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "debt"] : ["networth", "cashflow"]} />}
+      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "expenses", "debt"] : ["networth", "cashflow", "expenses"]} />}
       right={view === "debt" ? undefined : <DetailToggle checked={detail} onChange={setDetail} />}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">

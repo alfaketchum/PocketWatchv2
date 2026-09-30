@@ -8,6 +8,7 @@ import {
   type CashFlowLayer,
   type NetWorthLayer,
 } from "./plan-chart"
+import { ASSET_COSTS_CATEGORY } from "./plan-asset-costs"
 import { ageAtStart } from "./plan-timing"
 import type { PlanDocument, YearRow } from "./plan-types"
 
@@ -89,4 +90,55 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     ...doc.accounts.map((a) => ({ key: `sv:${a.id}`, label: `Into ${a.name}`, parent: "saved" as const })),
   ]
   return { series: ordered(series, [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS], points), points }
+}
+
+/** Groups in the Expenses view: everyday living, kids, owning a home or car, taxes and debt payments. */
+export const EXPENSE_GROUPS = ["living", "kids", "property", "taxes", "debt"] as const
+export type ExpenseGroup = (typeof EXPENSE_GROUPS)[number]
+
+export const EXPENSE_GROUP_LABELS: Record<ExpenseGroup, string> = {
+  living: "Living",
+  kids: "Kids",
+  property: "Home & vehicle costs",
+  taxes: "Taxes",
+  debt: "Debt payments",
+}
+
+const groupOfExpense = (category: string | null): ExpenseGroup =>
+  category === "Kids" ? "kids" : category === ASSET_COSTS_CATEGORY ? "property" : "living"
+
+/**
+ * Everything spent each year (positive): spending lines, taxes and debt payments. Grouped, or with
+ * `detail` each spending line and kind of tax; the groups add up to the same total either way.
+ */
+export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean): { series: (DetailSeries & { group: ExpenseGroup })[]; points: DetailRow[] } {
+  const person = doc.people[0]
+  const age0 = person ? ageAtStart(person, doc.settings) : 0
+  const points = rows.map((r) => {
+    const row: DetailRow = { age: age0 + r.index, year: r.year, debt: r.debtPayments }
+    let spent = r.debtPayments
+    for (const g of ["living", "kids", "property", "taxes"] as const) row[g] = 0
+    for (const e of doc.expenses) {
+      const v = r.expensesBy[e.id] ?? 0
+      row[`sp:${e.id}`] = v
+      row[groupOfExpense(e.category)] += v
+      spent += v
+    }
+    for (const t of TAX_PARTS) {
+      row[t.key] = r[t.field]
+      row.taxes += r[t.field]
+      spent += r[t.field]
+    }
+    row.spent = spent
+    return row
+  })
+  const peak = (key: string) => Math.max(0, ...points.map((p) => p[key] ?? 0))
+  if (!detail) {
+    return { series: EXPENSE_GROUPS.map((g) => ({ key: g, label: EXPENSE_GROUP_LABELS[g], parent: "spending", group: g })), points }
+  }
+  const lines = doc.expenses
+    .map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const, group: groupOfExpense(e.category) }))
+    .sort((a, b) => EXPENSE_GROUPS.indexOf(a.group) - EXPENSE_GROUPS.indexOf(b.group) || peak(b.key) - peak(a.key))
+  const taxes = TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const, group: "taxes" as const }))
+  return { series: [...lines, ...taxes, { key: "debt", label: "Debt payments", parent: "debtPayments", group: "debt" }], points }
 }
