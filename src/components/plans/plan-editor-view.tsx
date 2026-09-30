@@ -21,6 +21,7 @@ import { PlanEditorHeader } from "./plan-editor-header"
 import { PlanBacktestCard } from "./results/plan-backtest-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
+import { PlanTradingCard } from "./results/plan-trading-card"
 
 const PlanNetWorthChart = dynamic(
   () => import("./results/plan-net-worth-chart").then((m) => m.PlanNetWorthChart),
@@ -111,6 +112,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
       ) : (
         <>
           <PlanBacktestCard doc={view} projection={projection} isHidden={isHidden} />
+          <PlanTradingCard doc={document} isHidden={isHidden} />
           <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} />
         </>
       )}

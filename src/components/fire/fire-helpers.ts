@@ -20,6 +20,8 @@ export function fmtMoney(value: number | null | undefined): string {
 export function fmtCompact(value: number): string {
   const abs = Math.abs(value)
   const sign = value < 0 ? "-" : ""
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(abs >= 1e13 ? 0 : 1)}T`
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(abs >= 1e10 ? 0 : 1)}B`
   if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(abs >= 1e7 ? 0 : 1)}M`
   if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(0)}k`
   return `${sign}$${abs.toFixed(0)}`
