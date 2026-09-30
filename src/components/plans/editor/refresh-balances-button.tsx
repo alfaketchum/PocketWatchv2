@@ -1,14 +1,18 @@
 "use client"
 
 import { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { fetchSourceBalances } from "@/hooks/plans/use-plan-import"
 import { applySourceBalances } from "@/lib/plans/plan-refresh"
+import { pendingSuggestions } from "@/lib/plans/trading-detect"
 import type { PlanEditorProps } from "../plans-helpers"
 
 /** Only on request: copy today's balances from the linked accounts this plan was imported from. */
 export function RefreshBalancesButton({ doc, update }: PlanEditorProps) {
   const [busy, setBusy] = useState(false)
+  const router = useRouter()
+  const pathname = usePathname()
   const linked = doc.accounts.some((a) => a.source) || doc.debts.some((d) => d.source)
   if (!linked) return null
 
@@ -18,6 +22,13 @@ export function RefreshBalancesButton({ doc, update }: PlanEditorProps) {
       const balances = await fetchSourceBalances()
       update((d) => applySourceBalances(d, balances, new Date()))
       toast.success("Balances updated; the plan now starts this month")
+      // Trading settings are only suggested, never changed by a refresh.
+      const traded = balances.trading ? pendingSuggestions(doc, balances.trading) : []
+      if (traded.length > 0) {
+        toast.info(`${traded.map((p) => p.account.name).join(", ")}: trading looks different from what the plan assumes`, {
+          action: { label: "Review", onClick: () => router.push(`${pathname}/trading`) },
+        })
+      }
     } catch (err) {
       toast.error(`Couldn't refresh balances: ${(err as Error).message}`)
     } finally {

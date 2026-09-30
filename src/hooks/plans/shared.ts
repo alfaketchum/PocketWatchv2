@@ -47,6 +47,7 @@ export const plansKeys = {
   list: () => [...plansKeys.all, "list"] as const,
   detail: (id: string) => [...plansKeys.all, "detail", id] as const,
   importPreview: () => [...plansKeys.all, "import-preview"] as const,
+  tradingActivity: () => [...plansKeys.all, "trading-activity"] as const,
 }
 
 export interface PlanMeta {

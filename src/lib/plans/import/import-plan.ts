@@ -4,6 +4,7 @@ import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { blankPlanForUser } from "../plan-records"
 import type { SourceBalances } from "../plan-refresh"
 import type { PlanDocument } from "../plan-types"
+import { withDetectedTrading } from "../trading-detect"
 import {
   accountsFromRows,
   cryptoAccount,
@@ -13,6 +14,7 @@ import {
   type ImportAccountRow,
   type ImportLiability,
 } from "./import-mapping"
+import { loadTradingActivity } from "./trading-activity"
 
 const PERCENT = 100
 
@@ -114,7 +116,8 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
     gatherBudgetContext(userId),
   ])
   const cryptoAcct = cryptoAccount(crypto)
-  const accounts = [...accountsFromRows(rows), ...(cryptoAcct ? [cryptoAcct] : [])]
+  const trading = await loadTradingActivity(userId, rows)
+  const accounts = [...withDetectedTrading(accountsFromRows(rows), trading), ...(cryptoAcct ? [cryptoAcct] : [])]
   const debts = debtsFromRows(rows, liabilities)
   const income = incomeFromMonthly(budget.income.monthly)
   const document: PlanDocument = {
@@ -127,11 +130,12 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
   return { document, uncheckedIds: debts.filter((d) => d.kind === "credit").map((d) => d.id) }
 }
 
-/** Current balances of everything a plan can link back to, for "Refresh balances". */
+/** Current balances of everything a plan can link back to, plus brokerage trading activity, for "Refresh balances". */
 export async function loadSourceBalances(userId: string): Promise<SourceBalances> {
   const [rows, crypto] = await Promise.all([loadImportAccounts(userId), loadCryptoValue(userId)])
   return {
     accounts: Object.fromEntries(rows.map((r) => [r.id, Math.abs(r.currentBalance ?? 0)])),
     crypto,
+    trading: await loadTradingActivity(userId, rows),
   }
 }

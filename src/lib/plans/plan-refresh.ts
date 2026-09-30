@@ -1,9 +1,12 @@
 import type { PlanDocument, PlanSource } from "./plan-types"
+import type { TradingActivity } from "./trading-detect"
 
 /** Current balances of linked accounts (by finance account id) and crypto. */
 export interface SourceBalances {
   accounts: Record<string, number>
   crypto: number
+  /** Trading activity of linked brokerage accounts; suggestions only, never applied by a refresh. */
+  trading?: Record<string, TradingActivity>
 }
 
 function balanceFor(source: PlanSource | null, balances: SourceBalances): number | null {
