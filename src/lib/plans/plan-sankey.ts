@@ -1,3 +1,4 @@
+import { loanPayments } from "./plan-loan-parts"
 import { cashFlowFor, CASH_FLOW_LABELS, type CashFlowLayer } from "./plan-chart"
 import type { PlanDocument, YearRow } from "./plan-types"
 
@@ -82,6 +83,12 @@ function detailsFor(group: (typeof OUT_GROUPS)[number], doc: PlanDocument, row: 
       { name: "Tax on asset sales", value: row.saleTax },
       { name: "Tax on trading gains", value: row.tradingTax },
     ]
+  }
+  if (group === "debtPayments") {
+    return loanPayments(doc, row).flatMap((l) => [
+      { name: `${l.name} principal`, value: l.principal },
+      { name: `${l.name} interest`, value: l.interest },
+    ])
   }
   return []
 }

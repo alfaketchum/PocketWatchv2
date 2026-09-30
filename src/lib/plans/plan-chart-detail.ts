@@ -1,3 +1,4 @@
+import { interestKey, loanSplit, principalKey } from "./plan-loan-parts"
 import {
   CASH_IN_LAYERS,
   CASH_OUT_LAYERS,
@@ -62,7 +63,6 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
       year: r.year,
       assetSales: Math.max(0, r.assetSales),
       unfunded: r.shortfall,
-      debtPayments: -r.debtPayments,
       assetPurchases: -(r.assetPurchases + Math.max(0, -r.assetSales)),
     }
     for (const i of doc.incomes) row[`in:${i.id}`] = r.incomeBy[i.id] ?? 0
@@ -72,6 +72,11 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     }
     for (const e of doc.expenses) row[`sp:${e.id}`] = -(r.expensesBy[e.id] ?? 0)
     for (const t of TAX_PARTS) row[t.key] = -r[t.field]
+    for (const d of doc.debts) {
+      const { principal, interest } = loanSplit(r, d.id)
+      row[principalKey(d.id)] = -principal
+      row[interestKey(d.id)] = -interest
+    }
     return row
   })
   const withdrawalParent = (id: string) => {
@@ -85,11 +90,19 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     { key: "unfunded", label: "Unfunded (money ran out)", parent: "unfunded" },
     ...doc.expenses.map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const })),
     ...TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const })),
-    { key: "debtPayments", label: "Debt payments", parent: "debtPayments" },
+    ...loanSeries(doc, "debtPayments" as const),
     { key: "assetPurchases", label: "Asset purchases", parent: "assetPurchases" },
     ...doc.accounts.map((a) => ({ key: `sv:${a.id}`, label: `Into ${a.name}`, parent: "saved" as const })),
   ]
   return { series: ordered(series, [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS], points), points }
+}
+
+/** Each loan's payments as two series, principal then interest, under `parent`. */
+function loanSeries<P extends string>(doc: PlanDocument, parent: P) {
+  return doc.debts.flatMap((d) => [
+    { key: principalKey(d.id), label: `${d.name} · principal`, parent },
+    { key: interestKey(d.id), label: `${d.name} · interest`, parent },
+  ])
 }
 
 /** Groups in the Expenses view: everyday living, kids, owning a home or car, taxes and debt payments. */
@@ -117,6 +130,11 @@ export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean
   const points = rows.map((r) => {
     const row: DetailRow = { age: age0 + r.index, year: r.year, debt: r.debtPayments }
     let spent = r.debtPayments
+    for (const d of doc.debts) {
+      const { principal, interest } = loanSplit(r, d.id)
+      row[principalKey(d.id)] = principal
+      row[interestKey(d.id)] = interest
+    }
     for (const g of ["living", "kids", "property", "taxes"] as const) row[g] = 0
     for (const e of doc.expenses) {
       const v = r.expensesBy[e.id] ?? 0
@@ -140,5 +158,6 @@ export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean
     .map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const, group: groupOfExpense(e.category) }))
     .sort((a, b) => EXPENSE_GROUPS.indexOf(a.group) - EXPENSE_GROUPS.indexOf(b.group) || peak(b.key) - peak(a.key))
   const taxes = TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const, group: "taxes" as const }))
-  return { series: [...lines, ...taxes, { key: "debt", label: "Debt payments", parent: "debtPayments", group: "debt" }], points }
+  const loans = loanSeries(doc, "debtPayments" as const).map((l) => ({ ...l, group: "debt" as const }))
+  return { series: [...lines, ...taxes, ...loans], points }
 }

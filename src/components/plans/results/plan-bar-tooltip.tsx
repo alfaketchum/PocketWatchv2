@@ -72,6 +72,26 @@ function Total({ label, value, tone }: { label: string; value: number; tone?: "i
   )
 }
 
+/** This year's loan payments split into principal and interest (skipped when the bars already show it per loan). */
+function LoanSplit({ row, label }: { row: Row; label: string }) {
+  const principal = row.loanPrincipal ?? 0
+  const interest = row.loanInterest ?? 0
+  if (principal + interest < 0.5) return null
+  return (
+    <div className="border-t border-card-border pt-1 text-[11px]">
+      <p className="text-foreground-muted">{label}</p>
+      <p className="flex justify-between gap-4 pl-3.5 text-foreground-muted">
+        <span>Principal</span>
+        <span className="tabular-nums text-foreground">{fmtMoney(principal)}</span>
+      </p>
+      <p className="flex justify-between gap-4 pl-3.5 text-foreground-muted">
+        <span>Interest</span>
+        <span className="tabular-nums text-foreground">{fmtMoney(interest)}</span>
+      </p>
+    </div>
+  )
+}
+
 /** What a bar is made of, top layer first: net-worth layers with shares, or money in / out. */
 export function PlanBarTooltip({
   active,
@@ -90,6 +110,7 @@ export function PlanBarTooltip({
   const positives = present.filter((s) => row[s.key] > 0).reverse()
   const negatives = present.filter((s) => row[s.key] < 0)
   const sum = (list: TooltipSeries[]) => list.reduce((t, s) => t + Math.abs(row[s.key]), 0)
+  const loansSplitInBars = series.some((s) => s.key.startsWith("prin:"))
   return (
     <div className="w-64 space-y-1 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className="font-semibold text-foreground">
@@ -99,6 +120,13 @@ export function PlanBarTooltip({
         <>
           <Lines list={positives} row={row} shares={sum(positives)} />
           <Total label="Spent" value={sum(positives)} tone="out" />
+          {row.steady !== undefined && (
+            <p className="flex justify-between gap-4 text-[11px] text-foreground-muted">
+              <span>All steady (no patterns)</span>
+              <span className="tabular-nums">{fmtMoney(row.steady)}</span>
+            </p>
+          )}
+          {!loansSplitInBars && <LoanSplit row={row} label="Debt payments" />}
         </>
       ) : mode === "debt" ? (
         <>
@@ -106,6 +134,7 @@ export function PlanBarTooltip({
             <Item key={s.key} s={s} value={row[s.key]} />
           ))}
           <Total label="Still owed" value={sum(positives)} tone="out" />
+          <LoanSplit row={row} label="Paid this year" />
         </>
       ) : mode === "networth" ? (
         <>
@@ -121,6 +150,7 @@ export function PlanBarTooltip({
           <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">Money out</p>
           <Lines list={negatives} row={row} sign={-1} />
           <Total label="Total out" value={sum(negatives)} tone="out" />
+          {!loansSplitInBars && <LoanSplit row={row} label="Debt payments" />}
         </>
       )}
     </div>

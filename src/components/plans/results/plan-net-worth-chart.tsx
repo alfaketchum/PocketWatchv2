@@ -20,11 +20,14 @@ import { cn } from "@/lib/utils"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
+import { retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { PlanBarTooltip } from "./plan-bar-tooltip"
 import { PlanYearPanel } from "./plan-year-panel"
 import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
 import { usePlanColors } from "./use-plan-colors"
+import { useSteadySpending } from "./use-steady-spending"
+import { SpendingPatternStats } from "./spending-pattern-stats"
 
 const DIMMED = 0.35
 const Y_HEADROOM = 1.03
@@ -110,7 +113,7 @@ const INFO: Record<ChartMode, string> = {
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
   expenses:
-    "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here.",
+    "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. When lines have spending patterns, the dashed line is the same plan with every line steady.",
   debt: "What's still owed on each loan at the end of each year, on its own scale so even a small loan is easy to follow. It shrinks with the plan's payments and is paid off early if what it's for is sold.",
 }
 
@@ -178,8 +181,8 @@ function roundStep(raw: number): number {
 }
 
 /** Round ticks that hug the stacked bars, so the tallest one nearly fills the plot. */
-function fitAxis(rows: ChartRow[], series: Series[]): { domain: [number, number]; ticks: number[] } {
-  let top = 0
+function fitAxis(rows: ChartRow[], series: Series[], atLeast = 0): { domain: [number, number]; ticks: number[] } {
+  let top = atLeast
   let bottom = 0
   for (const row of rows) {
     const values = series.map((s) => row[s.key] ?? 0)
@@ -241,6 +244,8 @@ interface ChartPlotProps {
   stacked: { mark: ChartMilestone; level: number }[]
   mode: ChartMode
   hasDebt: boolean
+  /** Draw the dashed all-steady spending line (Expenses view) */
+  showSteady: boolean
   selected: number | null
   markColor: (m: ChartMilestone) => string
   onHover: (index: number | null) => void
@@ -260,6 +265,7 @@ const ChartPlot = memo(function ChartPlot({
   stacked,
   mode,
   hasDebt,
+  showSteady,
   selected,
   markColor,
   onHover,
@@ -318,6 +324,9 @@ const ChartPlot = memo(function ChartPlot({
             isAnimationActive={false}
           />
         )}
+        {showSteady && (
+          <Line dataKey="steady" stroke={foreground} strokeOpacity={0.55} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
+        )}
         {stacked.map(({ mark: m, level }) => (
           <ReferenceLine
             key={`${m.name}-${m.age}`}
@@ -368,7 +377,10 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const [hovered, setHovered] = useState<number | null>(null)
   const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
   const { netWorth: nwColors } = usePlanColors()
-  const yAxis = useMemo(() => fitAxis(points, series), [points, series])
+  // Expenses view: the dashed line is the same plan with every spending line steady.
+  const steady = useSteadySpending(doc, basis, view === "expenses")
+  const plotPoints = useMemo(() => (steady ? points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 })) : points), [points, steady])
+  const yAxis = useMemo(() => fitAxis(plotPoints, series, steady ? Math.max(0, ...steady) : 0), [plotPoints, series, steady])
   const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
@@ -390,13 +402,14 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
             <ChartPlot
-              points={points}
+              points={plotPoints}
               series={series}
               yAxis={yAxis}
               iconRoom={iconRoom}
               stacked={stacked}
               mode={view}
               hasDebt={hasDebt}
+              showSteady={steady !== null}
               selected={selected}
               markColor={markColor}
               onHover={setHovered}
@@ -411,6 +424,12 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
                 {s.label}
               </span>
             ))}
+            {steady && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
+                <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />
+                All steady (no spending patterns)
+              </span>
+            )}
             {marks.map((m) => (
               <span
                 key={`legend-${m.name}-${m.age}`}
@@ -423,6 +442,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               </span>
             ))}
           </div>
+          {steady && <SpendingPatternStats points={plotPoints} retireAge={retirementAge(doc)} />}
         </div>
         {metrics && activePoint && (
           <div className="lg:sticky lg:top-4" style={{ filter: isHidden ? "blur(8px)" : undefined }}>

@@ -30,6 +30,12 @@ export interface Series {
 
 export type ChartRow = { age: number; year: number } & Record<string, number>
 
+function loanTotals(row: YearRow | undefined): { loanPrincipal: number; loanInterest: number } {
+  if (!row) return { loanPrincipal: 0, loanInterest: 0 }
+  const interest = Math.min(row.debtPayments, row.debtInterest)
+  return { loanPrincipal: row.debtPayments - interest, loanInterest: interest }
+}
+
 /** Colors each subcategory as a shade of its parent band's color. */
 function shadeDetail<P extends string>(
   detail: { key: string; label: string; parent: P }[],
@@ -97,6 +103,11 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
     return { points: d.points, all: shadeDetail(d.series, (p) => cfColors[p as CashFlowLayer], (p) => CASH_FLOW_LABELS[p as CashFlowLayer], theme) }
   }, [view, detail, doc, rows, nwPoints, nwColors, cfColors, card, foreground])
 
+  // Each year's loan payments split into principal and interest, for the hover card (not drawn as bars).
+  const withLoans = useMemo(
+    () => (view === "networth" ? points : points.map((p, i) => ({ ...p, ...loanTotals(rows[i]) }))),
+    [view, points, rows],
+  )
   const series = useMemo(() => all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5)), [all, points])
-  return { view, points, series, nwPoints, hasDebt }
+  return { view, points: withLoans, series, nwPoints, hasDebt }
 }

@@ -1,5 +1,6 @@
 import { TAX_TREATMENT_LABELS } from "./plan-constants"
 import { layersFor } from "./plan-chart"
+import { loanPayments, type LoanPayment } from "./plan-loan-parts"
 import type { PlanDocument, TaxTreatment, YearRow } from "./plan-types"
 
 export interface Allocation {
@@ -31,8 +32,14 @@ export interface YearMetrics {
   effectiveTaxRate: number | null
   /** Spending streams only. */
   spending: number
+  /** Each spending line this year, largest first. */
+  spendingBy: { id: string; name: string; value: number }[]
+  debtPayments: number
+  assetPurchases: number
   /** Everything paid out: spending, debt payments, taxes and asset purchases. */
   expenses: number
+  /** Loan payments this year, each split into principal and interest. */
+  loans: LoanPayment[]
   /** Share of after-tax income kept; null without income. */
   savingsRate: number | null
   /** What you put into savings and investment accounts: payroll contributions plus leftover cash flow. */
@@ -90,7 +97,14 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     taxes,
     effectiveTaxRate: row.taxableIncome > 0.5 ? taxes / row.taxableIncome : null,
     spending: row.expenses,
+    spendingBy: doc.expenses
+      .map((e) => ({ id: e.id, name: e.name, value: row.expensesBy[e.id] ?? 0 }))
+      .filter((e) => e.value >= 0.5)
+      .sort((a, b) => b.value - a.value),
+    debtPayments: row.debtPayments,
+    assetPurchases: row.assetPurchases,
     expenses: row.expenses + row.debtPayments + taxes + row.assetPurchases,
+    loans: loanPayments(doc, row),
     savingsRate: afterTaxIncome > 0.5 ? kept / afterTaxIncome : null,
     contributions: row.contributions - row.employerMatch,
     contributionsBy: doc.accounts

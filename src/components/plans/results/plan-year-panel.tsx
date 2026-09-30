@@ -21,20 +21,21 @@ function Section({ children }: { children: ReactNode }) {
   return <div className="border-t border-card-border pt-2 mt-2">{children}</div>
 }
 
-function Drilldown({ title, summary, children }: { title: string; summary: string; children: ReactNode }) {
+/** A line that opens to show what it's made of; the arrow sits right after the label. */
+function Drilldown({ title, summary, hint, children }: { title: string; summary: string; hint?: string; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <div>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 py-1 text-left">
-        <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} title={hint} className="flex w-full items-center justify-between gap-3 py-1 text-left">
+        <span className="inline-flex items-center gap-0.5 text-xs text-foreground-muted hover:text-foreground">
+          {title}
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
             {open ? "expand_more" : "chevron_right"}
           </span>
-          {title}
         </span>
         <span className="text-xs font-medium tabular-nums text-foreground">{summary}</span>
       </button>
-      {open && <div className="pl-5 pb-1">{children}</div>}
+      {open && <div className="pl-3 pb-1">{children}</div>}
     </div>
   )
 }
@@ -62,6 +63,16 @@ function TaxBalanceBar({ balance, colors }: { balance: TaxBalance; colors: Recor
           </span>
         ))}
       </div>
+    </div>
+  )
+}
+
+/** One row inside an open drilldown. */
+function SubLine({ label, value, indent }: { label: string; value: string; indent?: boolean }) {
+  return (
+    <div className={cn("flex items-baseline justify-between gap-3 py-0.5 text-[11px]", indent && "pl-3")}>
+      <span className="min-w-0 truncate text-foreground-muted">{label}</span>
+      <span className="tabular-nums text-foreground whitespace-nowrap">{value}</span>
     </div>
   )
 }
@@ -104,8 +115,24 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         <Line label="Taxable income" value={fmtMoney(m.taxableIncome)} hint="Taxable pay after pre-tax contributions, plus traditional withdrawals and realized gains" />
         <Line label="Taxes" value={fmtMoney(m.taxes)} />
         <Line label="Effective tax rate" value={m.effectiveTaxRate === null ? "—" : fmtPct(m.effectiveTaxRate)} hint="Taxes ÷ taxable income" />
-        <Line label="Spending" value={fmtMoney(m.spending)} />
-        <Line label="Expenses" value={fmtMoney(m.expenses)} hint="Spending + debt payments + taxes + asset purchases" />
+        <Drilldown title="Spending" summary={fmtMoney(m.spending)}>
+          {m.spendingBy.length === 0 && <p className="text-[11px] text-foreground-muted">No spending this year.</p>}
+          {m.spendingBy.map((e) => (
+            <SubLine key={e.id} label={e.name} value={fmtMoney(e.value)} />
+          ))}
+        </Drilldown>
+        <Drilldown title="Expenses" summary={fmtMoney(m.expenses)} hint="Spending + taxes + debt payments + asset purchases">
+          <SubLine label="Spending" value={fmtMoney(m.spending)} />
+          <SubLine label="Taxes" value={fmtMoney(m.taxes)} />
+          {m.debtPayments >= 0.5 && <SubLine label="Debt payments" value={fmtMoney(m.debtPayments)} />}
+          {m.loans.map((l) => (
+            <div key={l.id}>
+              <SubLine indent label={`${l.name} principal`} value={fmtMoney(l.principal)} />
+              <SubLine indent label={`${l.name} interest`} value={fmtMoney(l.interest)} />
+            </div>
+          ))}
+          {m.assetPurchases >= 0.5 && <SubLine label="Asset purchases" value={fmtMoney(m.assetPurchases)} />}
+        </Drilldown>
         <Line label="Savings rate" value={m.savingsRate === null ? "—" : fmtPct(m.savingsRate)} hint="Share of after-tax income not spent (pre-tax 401k/HSA counts as saved)" />
         <Drilldown title="Contributions" summary={fmtMoney(m.contributions)}>
           <p className="text-[10px] text-foreground-muted pb-0.5">
@@ -113,10 +140,7 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
           </p>
           {m.contributionsBy.length === 0 && <p className="text-[11px] text-foreground-muted">Nothing left to save this year.</p>}
           {m.contributionsBy.map((c) => (
-            <div key={c.id} className="flex items-baseline justify-between gap-3 py-0.5 text-[11px]">
-              <span className="min-w-0 truncate text-foreground-muted">{c.name}</span>
-              <span className="tabular-nums text-foreground">{fmtMoney(c.value)}</span>
-            </div>
+            <SubLine key={c.id} label={c.name} value={fmtMoney(c.value)} />
           ))}
         </Drilldown>
         {m.employerMatch >= 0.5 && (
@@ -149,10 +173,7 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         <Drilldown title="Income sources" summary={fmtMoney(m.incomeSources.reduce((s, i) => s + i.value, 0))}>
           {m.incomeSources.length === 0 && <p className="text-[11px] text-foreground-muted">No income this year.</p>}
           {m.incomeSources.map((s) => (
-            <div key={s.label} className="flex items-baseline justify-between gap-3 py-0.5 text-[11px]">
-              <span className="min-w-0 truncate text-foreground-muted">{s.label}</span>
-              <span className="tabular-nums text-foreground">{fmtMoney(s.value)}</span>
-            </div>
+            <SubLine key={s.label} label={s.label} value={fmtMoney(s.value)} />
           ))}
         </Drilldown>
       </Section>

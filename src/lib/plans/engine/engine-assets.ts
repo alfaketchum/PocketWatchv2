@@ -41,17 +41,20 @@ export function isOwned(range: ResolvedRange, index: number): boolean {
   return Math.max(0, range.start) <= index && index < range.end
 }
 
-/** Twelve monthly payments; the last one only clears what's left. */
-export function amortizeYear(balance: number, rate: number, monthlyPayment: number): { balance: number; paid: number } {
+/** Twelve monthly payments; the last one only clears what's left. `interest` is the part of `paid` that was interest. */
+export function amortizeYear(balance: number, rate: number, monthlyPayment: number): { balance: number; paid: number; interest: number } {
   let remaining = balance
   let paid = 0
+  let interest = 0
   for (let m = 0; m < MONTHS && remaining > 0; m++) {
-    const withInterest = remaining * (1 + rate / MONTHS)
+    const monthInterest = remaining * (rate / MONTHS)
+    const withInterest = remaining + monthInterest
     const payment = Math.min(monthlyPayment, withInterest)
     remaining = withInterest - payment
     paid += payment
+    interest += Math.min(payment, monthInterest)
   }
-  return { balance: remaining, paid }
+  return { balance: remaining, paid, interest }
 }
 
 export interface AssetEvents {
@@ -164,17 +167,20 @@ export function payDebts(
   debts: DebtEntry[],
   debtBalances: Record<string, number>,
   index: number,
-): { debtBalances: Record<string, number>; paid: number } {
+): { debtBalances: Record<string, number>; paid: number; interest: number; paidBy: Record<string, number>; interestBy: Record<string, number> } {
   let balances = { ...debtBalances }
-  let paid = 0
+  const paidBy: Record<string, number> = {}
+  const interestBy: Record<string, number> = {}
   for (const { debt, start } of debts) {
     const balance = balances[debt.id] ?? 0
     if (start > index || balance <= 0) continue
     const year = amortizeYear(balance, debt.rate, debt.monthlyPayment)
     balances = { ...balances, [debt.id]: year.balance }
-    paid += year.paid
+    paidBy[debt.id] = year.paid
+    interestBy[debt.id] = year.interest
   }
-  return { debtBalances: balances, paid }
+  const total = (by: Record<string, number>) => Object.values(by).reduce((s, v) => s + v, 0)
+  return { debtBalances: balances, paid: total(paidBy), interest: total(interestBy), paidBy, interestBy }
 }
 
 /** Change in value this year of assets held all year, split into gains and losses. */

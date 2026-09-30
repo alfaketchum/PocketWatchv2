@@ -338,6 +338,11 @@ export interface YearRow {
   expenses: number
   expensesBy: Record<string, number>
   debtPayments: number
+  /** Loan payments by debt id; principal is payment minus interest. */
+  debtPaymentsBy: Record<string, number>
+  /** The interest part of `debtPayments`. */
+  debtInterest: number
+  debtInterestBy: Record<string, number>
   assetPurchases: number
   assetSales: number
   /** Everything deposited into accounts: your payroll contributions, employer match and leftover cash flow. */

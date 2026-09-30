@@ -206,6 +206,14 @@ test("amortizeYear: payments stop at payoff", () => {
   assert.equal(year.paid, 1_000)
 })
 
+test("amortizeYear: interest is the part of each payment that isn't principal", () => {
+  const year = amortizeYear(12_000, 0.12, 1_000)
+  // First month: 1% of 12,000 = 120 interest, 880 principal.
+  assert.ok(year.interest > 120 && year.interest < 12 * 120)
+  assert.ok(Math.abs(year.paid - year.interest - (12_000 - year.balance)) < 1e-6, "principal paid = balance reduction")
+  assert.equal(amortizeYear(1_000, 0, 300).interest, 0)
+})
+
 test("mortgage pays off and its payment stops; selling a home repays its debt", () => {
   const d = doc({
     accounts: [account("cash", "cash", 1_000_000)],
