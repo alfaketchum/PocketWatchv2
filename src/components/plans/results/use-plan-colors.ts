@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import type { CashFlowLayer, NetWorthLayer } from "@/lib/plans/plan-chart"
 
@@ -41,6 +42,29 @@ const LIGHTER = 0.5
  */
 export function usePlanColors(): PlanColors {
   const { primary, success, error, warning, card, foreground, accentHead } = useChartTheme()
+  // Stable between renders (only rebuilt when the theme changes), so charts can memoize on it.
+  return useMemo(() => buildPlanColors({ primary, success, error, warning, card, foreground, accentHead }), [
+    primary,
+    success,
+    error,
+    warning,
+    card,
+    foreground,
+    accentHead,
+  ])
+}
+
+function buildPlanColors(t: {
+  primary: string
+  success: string
+  error: string
+  warning: string
+  card: string
+  foreground: string
+  accentHead: string
+}): PlanColors {
+  const { primary, success, error, warning, card, foreground, accentHead } = t
+
   const netWorth: PlanColors["netWorth"] = {
     cash: accentHead,
     taxable: primary,

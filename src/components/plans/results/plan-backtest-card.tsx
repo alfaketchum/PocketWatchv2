@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { fmtCompact, fmtSuccess } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
@@ -17,6 +17,7 @@ const MIX_OPTIONS: { value: Mix; label: string }[] = [
 ]
 
 const SAFE = 0.95
+const BACKTEST_DELAY_MS = 350
 const SHAKY = 0.8
 
 function verdict(rate: number): { text: string; tone: string } {
@@ -26,14 +27,22 @@ function verdict(rate: number): { text: string; tone: string } {
 }
 
 /** The plan's retirement spending replayed through every market since 1871. */
-export function PlanBacktestCard({ doc, projection, isHidden }: { doc: PlanDocument; projection: PlanProjection; isHidden: boolean }) {
+export const PlanBacktestCard = memo(function PlanBacktestCard({ doc, projection, isHidden }: { doc: PlanDocument; projection: PlanProjection; isHidden: boolean }) {
   const history = useFireHistoryData()
   const [mix, setMix] = useState<Mix>("0.8")
   const input = useMemo(() => backtestInput(doc, projection), [doc, projection])
-  const rate = useMemo(
-    () => (history.data && input ? planSuccessRate(history.data, input, Number(mix)) : null),
-    [history.data, input, mix],
-  )
+  // Replaying ~1,100 historical periods takes a moment, so run it just after edits settle instead of
+  // on every keystroke; the last result stays on screen meanwhile.
+  const [rate, setRate] = useState<number | null>(null)
+  useEffect(() => {
+    if (!history.data || !input) {
+      setRate(null)
+      return
+    }
+    const data = history.data
+    const timer = setTimeout(() => setRate(planSuccessRate(data, input, Number(mix))), BACKTEST_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [history.data, input, mix])
 
   return (
     <FireSectionCard
@@ -64,4 +73,4 @@ export function PlanBacktestCard({ doc, projection, isHidden }: { doc: PlanDocum
       )}
     </FireSectionCard>
   )
-}
+})

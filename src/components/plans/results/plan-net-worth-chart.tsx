@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import {
   Bar,
   CartesianGrid,
@@ -157,8 +157,14 @@ function fitAxis(rows: ChartRow[], series: Series[]): { domain: [number, number]
   let bottom = 0
   for (const row of rows) {
     const values = series.map((s) => row[s.key] ?? 0)
-    top = Math.max(top, values.reduce((sum, v) => sum + Math.max(0, v), 0))
-    bottom = Math.min(bottom, values.reduce((sum, v) => sum + Math.min(0, v), 0))
+    top = Math.max(
+      top,
+      values.reduce((sum, v) => sum + Math.max(0, v), 0),
+    )
+    bottom = Math.min(
+      bottom,
+      values.reduce((sum, v) => sum + Math.min(0, v), 0),
+    )
   }
   const step = roundStep(((top - bottom) * Y_HEADROOM) / TICK_INTERVALS)
   const lo = Math.floor((bottom * Y_HEADROOM) / step) * step
@@ -194,6 +200,111 @@ function MilestoneCard({ hovered, doc }: { hovered: HoveredMark; doc: PlanDocume
   )
 }
 
+const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
+  const index = Number(state?.activeTooltipIndex)
+  return Number.isInteger(index) && index >= 0 ? index : null
+}
+
+interface ChartPlotProps {
+  points: ChartRow[]
+  series: Series[]
+  yAxis: { domain: [number, number]; ticks: number[] }
+  iconRoom: number
+  stacked: { mark: ChartMilestone; level: number }[]
+  mode: ChartMode
+  hasDebt: boolean
+  selected: number | null
+  markColor: (m: ChartMilestone) => string
+  onHover: (index: number | null) => void
+  onSelect: (index: number) => void
+  onHoverMark: (hovered: HoveredMark | null) => void
+}
+
+/**
+ * The plot itself, memoized: hovering (which only changes the side panel and hover cards) must not
+ * redraw hundreds of bar segments. It re-renders only when its data, selection or theme changes.
+ */
+const ChartPlot = memo(function ChartPlot({
+  points,
+  series,
+  yAxis,
+  iconRoom,
+  stacked,
+  mode,
+  hasDebt,
+  selected,
+  markColor,
+  onHover,
+  onSelect,
+  onHoverMark,
+}: ChartPlotProps) {
+  const { error, foregroundMuted, border, foreground } = useChartTheme()
+  const bars = ({ key, color }: Series) => (
+    <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
+      {points.map((_, i) => (
+        <Cell key={i} fillOpacity={selected === null || selected === i ? 0.85 : DIMMED} />
+      ))}
+    </Bar>
+  )
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart
+        data={points}
+        margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
+        stackOffset="sign"
+        barCategoryGap="8%"
+        onMouseMove={(state) => onHover(indexOf(state))}
+        onMouseLeave={() => onHover(null)}
+        onClick={(state) => {
+          const index = indexOf(state)
+          if (index !== null) onSelect(index)
+        }}
+      >
+        <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
+        <XAxis dataKey="age" tick={{ fontSize: 10, fill: foregroundMuted }} axisLine={false} tickLine={false} minTickGap={16} />
+        <YAxis
+          domain={yAxis.domain}
+          ticks={yAxis.ticks}
+          allowDataOverflow
+          tick={{ fontSize: 10, fill: foregroundMuted }}
+          tickFormatter={fmtCompact}
+          axisLine={false}
+          tickLine={false}
+          width={56}
+        />
+        <Tooltip
+          content={<PlanBarTooltip series={series} mode={mode} />}
+          cursor={{ fill: foreground, fillOpacity: 0.06 }}
+          allowEscapeViewBox={{ x: false, y: true }}
+          wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}
+        />
+        <ReferenceLine y={0} stroke={border} />
+        {series.map(bars)}
+        {/* Net worth only differs from the bar tops when there's debt; mark it with a light dot then. */}
+        {mode === "networth" && hasDebt && (
+          <Line
+            dataKey="netWorth"
+            stroke="none"
+            dot={{ r: 2.5, fill: foregroundMuted, stroke: "none" }}
+            activeDot={false}
+            isAnimationActive={false}
+          />
+        )}
+        {stacked.map(({ mark: m, level }) => (
+          <ReferenceLine
+            key={`${m.name}-${m.age}`}
+            x={m.age}
+            stroke={m.kind === "depleted" ? error : foregroundMuted}
+            strokeDasharray="3 3"
+            strokeOpacity={0.6}
+            label={<MilestoneMarker mark={m} level={level} color={markColor(m)} onHover={onHoverMark} />}
+          />
+        ))}
+      </ComposedChart>
+    </ResponsiveContainer>
+  )
+})
+
 interface Props {
   doc: PlanDocument
   projection: PlanProjection
@@ -206,8 +317,8 @@ interface Props {
  * One stacked bar per plan year: net worth by tax treatment (with real-asset equity and debt), or
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
-export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
-  const { primary, error, foregroundMuted, border, foreground, success } = useChartTheme()
+export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
+  const { primary, error, success } = useChartTheme()
   const [mode, setMode] = useState<ChartMode>("networth")
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const cfPoints = useMemo(() => cashFlowPoints(doc, rows), [doc, rows])
@@ -215,36 +326,30 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
   const stacked = useMemo(() => stackMarks(marks), [marks])
   const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
   // Kids' stages stand out in green; "money runs out" is red; everything else is the accent.
-  const markColor = (m: ChartMilestone) => (m.kind === "depleted" ? error : m.kind === "child" ? success : primary)
+  const markColor = useCallback(
+    (m: ChartMilestone) => (m.kind === "depleted" ? error : m.kind === "child" ? success : primary),
+    [error, success, primary],
+  )
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
   const { netWorth: nwColors, cashFlow: cfColors } = usePlanColors()
   const points: ChartRow[] = mode === "networth" ? nwPoints : cfPoints
-  const allSeries: Series[] =
-    mode === "networth"
-      ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
-      : [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
-  const series = allSeries.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
-  const hasDebt = nwPoints.some((p) => p.debt < -0.5)
-  const yAxis = fitAxis(points, series)
+  const series: Series[] = useMemo(() => {
+    const all: Series[] =
+      mode === "networth"
+        ? [...NET_WORTH_LAYERS, "debt" as const].map((k) => ({ key: k, label: NET_WORTH_LAYER_LABELS[k], color: nwColors[k] }))
+        : [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS].map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] }))
+    return all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5))
+  }, [mode, points, nwColors, cfColors])
+  const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
+  const yAxis = useMemo(() => fitAxis(points, series), [points, series])
+  const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
   const metrics = useMemo(
     () => yearMetrics(doc, rows, active, projection.startNetWorth),
     [doc, rows, active, projection.startNetWorth],
-  )
-  const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
-    const index = Number(state?.activeTooltipIndex)
-    return Number.isInteger(index) && index >= 0 ? index : null
-  }
-
-  const bars = ({ key, color }: Series) => (
-    <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
-      {points.map((_, i) => (
-        <Cell key={i} fillOpacity={selected === null || selected === i ? 0.85 : DIMMED} />
-      ))}
-    </Bar>
   )
 
   return (
@@ -262,67 +367,20 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
         <div className="min-w-0">
           <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={points}
-                margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
-                stackOffset="sign"
-                barCategoryGap="8%"
-                onMouseMove={(state) => setHovered(indexOf(state))}
-                onMouseLeave={() => setHovered(null)}
-                onClick={(state) => {
-                  const index = indexOf(state)
-                  if (index !== null) setSelected(index === selected ? null : index)
-                }}
-              >
-                <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="age"
-                  tick={{ fontSize: 10, fill: foregroundMuted }}
-                  axisLine={false}
-                  tickLine={false}
-                  minTickGap={16}
-                />
-                <YAxis
-                  domain={yAxis.domain}
-                  ticks={yAxis.ticks}
-                  allowDataOverflow
-                  tick={{ fontSize: 10, fill: foregroundMuted }}
-                  tickFormatter={fmtCompact}
-                  axisLine={false}
-                  tickLine={false}
-                  width={56}
-                />
-                <Tooltip
-                  content={<PlanBarTooltip series={series} mode={mode} />}
-                  cursor={{ fill: foreground, fillOpacity: 0.06 }}
-                  allowEscapeViewBox={{ x: false, y: true }}
-                  wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}
-                />
-                <ReferenceLine y={0} stroke={border} />
-                {series.map(bars)}
-                {/* Net worth only differs from the bar tops when there's debt; mark it with a light dot then. */}
-                {mode === "networth" && hasDebt && (
-                  <Line
-                    dataKey="netWorth"
-                    stroke="none"
-                    dot={{ r: 2.5, fill: foregroundMuted, stroke: "none" }}
-                    activeDot={false}
-                    isAnimationActive={false}
-                  />
-                )}
-                {stacked.map(({ mark: m, level }) => (
-                  <ReferenceLine
-                    key={`${m.name}-${m.age}`}
-                    x={m.age}
-                    stroke={m.kind === "depleted" ? error : foregroundMuted}
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.6}
-                    label={<MilestoneMarker mark={m} level={level} color={markColor(m)} onHover={setHoveredMark} />}
-                  />
-                ))}
-              </ComposedChart>
-            </ResponsiveContainer>
+            <ChartPlot
+              points={points}
+              series={series}
+              yAxis={yAxis}
+              iconRoom={iconRoom}
+              stacked={stacked}
+              mode={mode}
+              hasDebt={hasDebt}
+              selected={selected}
+              markColor={markColor}
+              onHover={setHovered}
+              onSelect={toggleSelected}
+              onHoverMark={setHoveredMark}
+            />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
             {series.map((s) => (
@@ -336,10 +394,7 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
                 key={`legend-${m.name}-${m.age}`}
                 className="inline-flex items-center gap-1 text-[11px] text-foreground-muted"
               >
-                <span
-                  className="material-symbols-rounded"
-                  style={{ fontSize: 13, color: markColor(m) }}
-                >
+                <span className="material-symbols-rounded" style={{ fontSize: 13, color: markColor(m) }}>
                   {m.icon ?? MILESTONE_ICONS[m.kind]}
                 </span>
                 {m.name} ({m.age})
@@ -355,11 +410,16 @@ export function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Pr
               year={activePoint.year}
               pinned={selected !== null}
               onUnpin={() => setSelected(null)}
-              colors={{ cash: nwColors.cash, taxable: nwColors.taxable, taxDeferred: nwColors.taxDeferred, taxFree: nwColors.taxFree }}
+              colors={{
+                cash: nwColors.cash,
+                taxable: nwColors.taxable,
+                taxDeferred: nwColors.taxDeferred,
+                taxFree: nwColors.taxFree,
+              }}
             />
           </div>
         )}
       </div>
     </FireSectionCard>
   )
-}
+})
