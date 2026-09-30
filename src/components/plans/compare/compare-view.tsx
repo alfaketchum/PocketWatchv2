@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic"
 import { useMemo, useState } from "react"
 import { EmptyState } from "@/components/ui/empty-state"
-import { useChartTheme } from "@/hooks/use-chart-theme"
 import { usePlansList } from "@/hooks/plans/use-plans-list"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { cn } from "@/lib/utils"
+import { usePlanColors } from "../results/use-plan-colors"
 import { CompareTable } from "./compare-table"
 
 const CompareChart = dynamic(() => import("./compare-chart").then((m) => m.CompareChart), {
@@ -21,12 +21,12 @@ const DEFAULT_COMPARED = 2
 export function CompareView() {
   const list = usePlansList()
   const { isHidden } = usePrivacyMode()
-  const { palette, primary } = useChartTheme()
+  const { series } = usePlanColors()
   const plans = useMemo(() => (list.data?.plans ?? []).filter((p) => p.summary), [list.data])
   const [picked, setPicked] = useState<string[] | null>(null)
   const selectedIds = picked ?? plans.slice(0, DEFAULT_COMPARED).map((p) => p.id)
   const selected = plans.filter((p) => selectedIds.includes(p.id))
-  const colors = selected.map((_, i) => (i === 0 ? primary : palette[i] ?? primary))
+  const colors = selected.map((_, i) => series[i % series.length])
 
   if (list.isLoading) return <div className="h-[420px] animate-shimmer rounded-2xl" />
   if (plans.length < 2) {

@@ -11,6 +11,8 @@ export interface ChartColors {
   foregroundMuted: string
   card: string
   border: string
+  /** Neutral accent (headings, secondary marks). */
+  accentHead: string
   /** 6-8 color palette for multi-series charts (donut, category trends) */
   palette: string[]
 }
@@ -24,6 +26,7 @@ const CSS_VARS: Record<keyof Omit<ChartColors, "palette">, string> = {
   foregroundMuted: "--foreground-muted",
   card: "--card",
   border: "--card-border",
+  accentHead: "--accent-head",
 }
 
 const FALLBACK: ChartColors = {
@@ -35,6 +38,7 @@ const FALLBACK: ChartColors = {
   foregroundMuted: "#6b6b7d",
   card: "#ffffff",
   border: "#e7e7ef",
+  accentHead: "#7c7c8e",
   palette: [
     "#5b5bd6", "#b5791a", "#1f9d57", "#8886ff",
     "#e0484d", "#4a4ac9", "#e0a54a", "#45c07a",
