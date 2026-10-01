@@ -14,7 +14,7 @@ export function PlansHeader() {
   return (
     <div className="space-y-3">
       <div>
-        <h1 className="text-2xl text-foreground font-semibold">Blueprint</h1>
+        <h1 className="text-2xl text-foreground font-semibold">Roadmap</h1>
         <p className="text-xs text-foreground-muted mt-0.5">
           Your retirement, mapped year by year: accounts, income, spending and what-if plans
         </p>

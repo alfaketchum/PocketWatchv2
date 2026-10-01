@@ -13,7 +13,7 @@ export const SECTION_TABS: readonly SectionTab[] = [
   { key: "netWorth",  icon: "equalizer",   label: "Worth",    root: "/net-worth" },
   { key: "finance",   icon: "monitoring",  label: "Finance",  root: "/finance" },
   { key: "fire",      icon: "local_fire_department", label: "FIRE", root: "/fire" },
-  { key: "plans",     icon: "route",       label: "Blueprint", root: "/plans" },
+  { key: "plans",     icon: "route",       label: "Roadmap",  root: "/plans" },
   { key: "portfolio", icon: "pie_chart",   label: "Assets",   root: "/portfolio" },
   { key: "travel",    icon: "flight",      label: "Travel",   root: "/travel" },
   { key: "ai",        icon: "smart_toy",   label: "Chat",     root: "/chat" },

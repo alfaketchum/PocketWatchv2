@@ -80,7 +80,7 @@ export function RoadmapView() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Roadmap</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Tickets</h1>
           <p className="text-xs text-foreground-muted mt-0.5">
             Features from the ProjectionLab review, ranked by demand, PL&apos;s gaps and our head start. Move them along week by week.
           </p>
@@ -92,7 +92,7 @@ export function RoadmapView() {
         )}
       </div>
       {adding && <AddRoadmapItem onDone={() => setAdding(false)} />}
-      {isError && <p className="text-sm text-error">Couldn&apos;t load the roadmap.</p>}
+      {isError && <p className="text-sm text-error">Couldn&apos;t load tickets.</p>}
       {isLoading || !items ? (
         <div className="h-96 animate-shimmer rounded-2xl" />
       ) : (

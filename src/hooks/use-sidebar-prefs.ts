@@ -55,7 +55,7 @@ export const FIRE_NAV_ITEMS: NavItem[] = [
 ]
 
 export const PLANS_NAV_ITEMS: NavItem[] = [
-  { id: "plans-list", label: "Blueprint", href: "/plans", icon: "route" },
+  { id: "plans-list", label: "Roadmap", href: "/plans", icon: "route" },
   { id: "plans-compare", label: "Compare Plans", href: "/plans/compare", icon: "compare_arrows", sidebar: false },
   { id: "plans-progress", label: "Plan vs Actual", href: "/plans/progress", icon: "track_changes", sidebar: false },
 ]
@@ -71,7 +71,7 @@ export const AI_NAV_ITEMS: NavItem[] = [
 ]
 
 export const PRODUCT_NAV_ITEMS: NavItem[] = [
-  { id: "product-roadmap", label: "Roadmap", href: "/roadmap", icon: "map" },
+  { id: "product-roadmap", label: "Tickets", href: "/roadmap", icon: "confirmation_number" },
   { id: "product-methodology", label: "Methodology", href: "/methodology", icon: "functions" },
 ]
 
@@ -121,13 +121,13 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     }
     savePrefs(prefs)
   }
-  // Inject product category (Roadmap) if missing, at the end
+  // Inject product category (Tickets) if missing, at the end
   if (!prefs.categoryOrder.includes("product")) {
     prefs.categoryOrder.push("product")
     prefs.categories.product = { order: PRODUCT_NAV_ITEMS.map((i) => i.id), hidden: [] }
     savePrefs(prefs)
   }
-  // Inject methodology item if missing (after Roadmap)
+  // Inject methodology item if missing (after Tickets)
   const productCat = prefs.categories.product
   if (productCat && !productCat.order.includes("product-methodology")) {
     productCat.order.push("product-methodology")
