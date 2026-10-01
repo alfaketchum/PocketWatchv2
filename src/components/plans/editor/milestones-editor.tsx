@@ -110,8 +110,9 @@ export function MilestonesEditor({ doc, update, view, onEditItem, viewToggle }: 
         <AddButton label="Add milestone" disabled={doc.milestones.length >= PLAN_LIMITS.milestones} onClick={() => setAdding(true)} />
       </EditorToolbar>
       <p className="text-xs text-foreground-muted">
-        Your plan&apos;s timeline. Life events that change several things at once are added here; homes, cars, kids and income changes
-        are added on their own tabs and show up here too. Move a milestone and everything tied to it moves with it.
+        Your plan&apos;s story: sketch it first. Life events that change several things at once (retiring, marrying, moving…) are added
+        here and fill in the later steps for you; homes, cars, kids and income changes are added on their own tabs and show up here too.
+        Move a milestone and everything tied to it moves with it.
       </p>
       {view === "compact" ? (
         <MilestonesTable doc={doc} update={update} onEditItem={onEditItem} onDelete={setDeleting} />

@@ -6,15 +6,18 @@ import type { BuildTab, TabStatus } from "@/lib/plans/plan-tab-status"
 
 export type PlanTab = BuildTab | "overview"
 
-/** In the order you'd build a plan, numbered as steps: assumptions first, the ledger of results last. */
+/**
+ * In the order you'd build a plan, numbered as steps: assumptions, then the life story (milestones, which fill in
+ * later steps and which they point at), then today's money, and the ledger of results last.
+ */
 export const PLAN_TABS: { value: PlanTab; label: string }[] = [
   { value: "assumptions", label: "Assumptions" },
+  { value: "milestones", label: "Milestones" },
   { value: "accounts", label: "Accounts" },
   { value: "income", label: "Income" },
   { value: "expenses", label: "Expenses" },
   { value: "assets", label: "Assets & debts" },
   { value: "cashflow", label: "Cash flow" },
-  { value: "milestones", label: "Milestones" },
   { value: "overview", label: "Ledger Overview" },
 ]
 
