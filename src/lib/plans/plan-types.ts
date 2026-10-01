@@ -183,8 +183,12 @@ export interface PlanExpense {
   fundedBy?: string | null
   /** How it changes with age; missing = steady. */
   pattern?: SpendingPattern
-  /** Generated only: a running cost of this asset (property tax flagged for SALT / rental expenses). */
-  costOf?: { assetId: string; propertyTax: boolean }
+  /**
+   * Generated only: a running cost of this asset (property tax flagged for SALT / rental expenses). A cost set
+   * as a share of value has `realGrowth`: it rises with inflation plus the asset's real appreciation, following
+   * the value on any inflation path (`growth` then only describes it).
+   */
+  costOf?: { assetId: string; propertyTax: boolean; realGrowth?: number }
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }

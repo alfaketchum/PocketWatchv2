@@ -1,4 +1,4 @@
-import { inflationOf } from "./plan-inflation"
+import { inflationOf, type Inflation } from "./plan-inflation"
 import { assetValue } from "./engine/engine-assets"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetFinancing, AssetKind, DebtKind, PaymentMode, PlanAsset, PlanDebt, PlanDocument } from "./plan-types"
@@ -60,14 +60,14 @@ export function isFuturePurchase(asset: PlanAsset, startIndex: number | null): b
  * Loans generated from assets' "How you'll pay": one per financed future purchase, sized on the price
  * in the purchase year. A debt already linked to the asset (a real or hand-entered loan) always wins.
  */
-export function financingDebts(doc: PlanDocument): PlanDebt[] {
+export function financingDebts(doc: PlanDocument, inflation: Inflation = inflationOf(doc.settings)): PlanDebt[] {
   const ctx = timingContext(doc)
   const linked = new Set(doc.debts.map((d) => d.assetId).filter((id): id is string => id !== null))
   return doc.assets.flatMap((asset) => {
     const terms = effectiveFinancing(asset)
     const start = resolveTiming(asset.start, ctx)
     if (!terms || linked.has(asset.id) || !isFuturePurchase(asset, start)) return []
-    const price = assetValue(asset, start ?? 0, start ?? 0, inflationOf(doc.settings))
+    const price = assetValue(asset, start ?? 0, start ?? 0, inflation, doc.settings.inflation)
     const { loan, monthly } = loanSummary(price, terms)
     if (loan <= 0) return []
     return [

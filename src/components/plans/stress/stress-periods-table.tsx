@@ -1,6 +1,6 @@
 "use client"
 
-import { fmtMoney } from "@/components/fire/fire-helpers"
+import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { NOTABLE_PERIODS } from "@/lib/fire/fire-constants"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
@@ -13,6 +13,7 @@ export function StressPeriodsTable({ cohorts, isHidden }: { cohorts: CohortResul
         <tr className="text-left text-[10px] uppercase tracking-wider text-foreground-muted">
           <th className="py-1.5 font-semibold">Starting in</th>
           <th className="py-1.5 font-semibold">Outcome</th>
+          <th className="py-1.5 pl-3 text-right font-semibold" title="Average yearly inflation over the first 10 years">Inflation/yr</th>
           <th className="py-1.5 text-right font-semibold">Lowest invested</th>
           <th className="py-1.5 text-right font-semibold">Ending net worth</th>
         </tr>
@@ -28,11 +29,12 @@ export function StressPeriodsTable({ cohorts, isHidden }: { cohorts: CohortResul
                   <td className={`py-1.5 ${c.depletedAge !== null ? "text-error" : "text-success"}`}>
                     {c.depletedAge !== null ? `Runs out at ${c.depletedAge}` : "Lasts"}
                   </td>
+                  <td className="py-1.5 text-right tabular-nums text-foreground-muted">{c.avgInflation === null ? "—" : fmtPct(c.avgInflation, 1)}</td>
                   <td className="py-1.5 text-right tabular-nums text-foreground" style={blur}>{fmtMoney(Math.min(...c.invested))}</td>
                   <td className="py-1.5 text-right tabular-nums text-foreground" style={blur}>{fmtMoney(c.netWorth.at(-1) ?? 0)}</td>
                 </>
               ) : (
-                <td colSpan={3} className="py-1.5 text-foreground-muted">Not enough history after it yet for a plan this long</td>
+                <td colSpan={4} className="py-1.5 text-foreground-muted">Not enough history after it yet for a plan this long</td>
               )}
             </tr>
           )

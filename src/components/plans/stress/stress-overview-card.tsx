@@ -11,7 +11,7 @@ import { useStressTest } from "./use-stress-test"
 
 /** Ledger Overview's one-line stress result (every historical start year, from today), linking to the stress test page. */
 export function StressOverviewCard({ doc, planId }: { doc: PlanDocument; planId: string }) {
-  const { cohorts, loading } = useStressTest(doc, "start")
+  const { cohorts, loading } = useStressTest(doc, "start", "plan")
   const summary = useMemo(() => (cohorts ? summarize(cohorts, null) : null), [cohorts])
   const verdict = summary && summary.cohorts.length > 0 ? stressVerdict(summary.successRate) : null
   return (

@@ -10,6 +10,7 @@ Early Retirement Now SWR series simulates:
   e    real S&P 500 total return (dividends reinvested) for the month
   b    real 10-year Treasury total return for the month
   cape Shiller CAPE (P/E10) at the start of the month, null before 1881
+  cpi  consumer price index for the month (Shiller's; BLS CPI-U from 1913, reconstructed before)
 """
 
 import json
@@ -85,6 +86,7 @@ def build_months(levels: list[dict]) -> list[dict]:
             "e": round(nxt["eq"] / cur["eq"] - 1, 6),
             "b": round(nxt["bond"] / cur["bond"] - 1, 6),
             "cape": round(cur["cape"], 2) if cur["cape"] else None,
+            "cpi": round(cur["cpi"], 4),
         })
     return months
 
@@ -100,8 +102,8 @@ def main() -> None:
         "dataThrough": months[-1]["ym"],
         "latestCape": round(latest_cape, 2),
         "latestCapeMonth": next(m["ym"] for m in reversed(levels) if m["cape"]),
-        "fields": ["ym", "e", "b", "cape"],
-        "rows": [[m["ym"], m["e"], m["b"], m["cape"]] for m in months],
+        "fields": ["ym", "e", "b", "cape", "cpi"],
+        "rows": [[m["ym"], m["e"], m["b"], m["cape"], m["cpi"]] for m in months],
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, separators=(",", ":")))

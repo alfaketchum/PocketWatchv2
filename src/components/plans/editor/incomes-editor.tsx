@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
 import type { IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
@@ -26,6 +27,11 @@ const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
 
 /** Income types that usually come with a workplace plan. */
 const PAYROLL_KINDS = new Set<IncomeKind>(["salary", "business"])
+
+/** Income that may pay the same dollars every year (pensions, annuities): offered a "No raises" box. */
+const FIXED_PAY_KINDS = new Set<IncomeKind>(["pension", "other"])
+const NO_RAISES_HINT =
+  "Pays the same dollar amount every year, like most private pensions and annuities. Inflation slowly shrinks what it buys: at 3% a year, $30,000 buys about $22,000 of today's goods after 10 years."
 
 /** Income changes offered from Add income (they also add a milestone to the timeline). */
 const INCOME_TEMPLATES: TemplateKey[] = ["career", "break", "windfall"]
@@ -97,6 +103,12 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
           <div className="flex flex-wrap gap-4">
             <Toggle label="Taxable" checked={inc.taxable} onChange={(taxable) => patch(inc.id, { taxable })} />
             <Toggle label="One-time" checked={inc.oneTime} onChange={(oneTime) => patch(inc.id, { oneTime })} />
+            {!inc.oneTime && FIXED_PAY_KINDS.has(inc.kind) && (
+              <span className="inline-flex items-center gap-1">
+                <Toggle label="No raises (same dollars every year)" checked={inc.growth === 0} onChange={(fixed) => patch(inc.id, { growth: fixed ? 0 : null })} />
+                <InfoTooltip content={NO_RAISES_HINT} />
+              </span>
+            )}
           </div>
           {!inc.oneTime && (PAYROLL_KINDS.has(inc.kind) || inc.contributions.length > 0) && (
             <IncomeContributionsEditor

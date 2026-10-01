@@ -3,11 +3,12 @@
 import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo, useState } from "react"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { deflator } from "@/lib/plans/plan-dollars"
 import { ageAtStart } from "@/lib/plans/plan-timing"
 import type { PlanProjection } from "@/lib/plans/plan-types"
-import { anchorIndex, summarize, type StressAlign } from "@/lib/plans/stress/stress-test"
+import { anchorIndex, summarize, type StressAlign, type StressInflation } from "@/lib/plans/stress/stress-test"
 import type { PlanEditorProps } from "../plans-helpers"
 import { StressCohortBars } from "./stress-cohort-bars"
 import { StressFanChart } from "./stress-fan-chart"
@@ -26,6 +27,12 @@ const ALIGN_OPTIONS: { value: StressAlign; label: string }[] = [
   { value: "start", label: "From today" },
   { value: "retirement", label: "From retirement" },
 ]
+const INFLATION_OPTIONS: { value: StressInflation; label: string }[] = [
+  { value: "plan", label: "Plan's assumption" },
+  { value: "history", label: "What actually happened" },
+]
+const INFLATION_INFO =
+  "The historical returns already have each year's real inflation taken out, so for anything that rises with prices the inflation rate cancels. \"What actually happened\" also runs each period through its real inflation (official CPI, from 1913): pensions without raises lose buying power faster in the 1970s, fixed loan payments get cheaper, and tax lines fixed in dollars catch more income. Earlier years keep the plan's rate."
 const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
   { value: "range", label: "Range" },
   { value: "years", label: "Each start year" },
@@ -49,9 +56,10 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [alignChoice, setAlign] = useState<StressAlign>("start")
   const align = canAlignRetirement ? alignChoice : "start"
   const [cape, setCape] = useState<Cape>("all")
+  const [inflation, setInflation] = useState<StressInflation>("plan")
   const [measure, setMeasure] = useState<Measure>("netWorth")
   const [chartView, setChartView] = useState<ChartView>("range")
-  const { annual, cohorts, running, loading, error } = useStressTest(doc, align)
+  const { annual, cohorts, running, loading, error } = useStressTest(doc, align, inflation)
   const summary = useMemo(() => (cohorts ? summarize(cohorts, cape === "all" ? null : Number(cape)) : null), [cohorts, cape])
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
@@ -69,6 +77,10 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     <div className="flex flex-wrap items-center gap-3">
       {canAlignRetirement && <ChoiceChips label="Line history up with" options={ALIGN_OPTIONS} value={align} onChange={setAlign} />}
       <ChoiceChips label="Expensive markets only" options={capeOptions} value={cape} onChange={setCape} />
+      <div className="flex items-center gap-1">
+        <ChoiceChips label="Inflation" options={INFLATION_OPTIONS} value={inflation} onChange={setInflation} />
+        <InfoTooltip content={INFLATION_INFO} />
+      </div>
     </div>
   )
 

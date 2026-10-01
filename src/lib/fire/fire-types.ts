@@ -119,7 +119,8 @@ export interface ShillerDataset {
   latestCape: number
   latestCapeMonth: string
   fields: string[]
-  rows: [string, number, number, number | null][]
+  /** ym, real stock return, real bond return, CAPE, CPI level (missing in older bundles). */
+  rows: [string, number, number, number | null, number?][]
 }
 
 /** Parsed, typed-array form of the dataset for fast simulation. */
@@ -128,6 +129,8 @@ export interface MarketHistory {
   equity: Float64Array
   bonds: Float64Array
   cape: (number | null)[]
+  /** CPI level at the start of each month, when the dataset has it. */
+  cpi?: Float64Array
   dataThrough: string
   latestCape: number
   latestCapeMonth: string

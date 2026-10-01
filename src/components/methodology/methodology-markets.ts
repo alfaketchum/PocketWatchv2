@@ -31,11 +31,28 @@ export const MARKET_SECTIONS: MethodSection[] = [
       },
       {
         kind: "text",
-        text: "**Why inflation is the plan's own rate**: the historical returns already have that year's actual inflation taken out. Expenses rise at the plan's rate and returns get the same rate added back, so the two cancel: your spending keeps its buying power, and your investments earn what they really earned after inflation. Using the 1970s' 10% on both sides would give the same answer.",
+        text: "**Inflation: the plan's assumption (default).** The historical returns already have that year's actual inflation taken out. Expenses rise at the plan's rate and returns get the same rate added back, so the two cancel: your spending keeps its buying power, and your investments earn what they really earned after inflation. Using the 1970s' 10% on both sides would give the same answer.",
+      },
+      {
+        kind: "text",
+        text: "**Inflation: what actually happened.** What the default misses is everything that doesn't rise with prices. This mode runs each period through its real inflation too (official CPI, January to January, from 1913; earlier years keep the plan's rate), so a run starting in 1966 lives through the 1970s' prices:",
+      },
+      {
+        kind: "table",
+        head: ["In high inflation", "What happens"],
+        rows: [
+          ["Investments, inflation-linked spending, Social Security", "Unchanged in real terms (the rate cancels)"],
+          ["Pension or annuity with \"No raises\"", "Same dollars every year: loses buying power faster"],
+          ["Fixed-rate mortgage or loan", "Same payment: gets cheaper in real terms"],
+          ["Expense or income with its own fixed growth %", "Falls behind high inflation, outpaces low inflation"],
+          ["Tax brackets and standard deduction", "Rise with actual inflation, as the IRS indexes them"],
+          ["Tax lines fixed by law (3.8% NIIT line, SALT cap, home-sale exclusion)", "Stay put: more income crosses them"],
+          ["Homes and vehicles", "Keep their after-inflation appreciation"],
+        ],
       },
       {
         kind: "note",
-        text: "What that misses: things that don't rise with inflation. A pension without raises, a fixed mortgage payment, an expense with its own fixed growth rate and tax lines set by law lose buying power at the plan's steady rate, not at the pace of a high-inflation decade like the 1970s. Replaying history's actual inflation is on the roadmap. Home and vehicle values also keep their assumed appreciation in every run.",
+        text: "Each year's flows are priced at the start of the year and land at its end, so very high inflation trims their real size by about that year's inflation (under 1% on a typical plan's ending net worth). Home and vehicle values keep their assumed appreciation in every run rather than replaying history.",
       },
     ],
     sources: [
@@ -88,7 +105,6 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Medicare IRMAA** surcharges and the **alternative minimum tax** aren't included.",
           "**Social Security taxation** is a fixed 85% rather than the exact formula.",
           "**Years, not months**: plans step a year at a time (FIRE's history engine is monthly).",
-          "**Historical inflation** isn't replayed in the stress test (see Stress test).",
           "**Tax law** is 2026's, carried forward; scheduled changes in the 2025 law (SALT cap) are included, future legislation isn't.",
         ],
       },

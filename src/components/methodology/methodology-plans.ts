@@ -105,7 +105,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
       },
       {
         kind: "note",
-        text: "On a year-by-year path, account returns keep their after-inflation value: a year with higher inflation also gets a higher dollar return, so a changing path never quietly makes investments better or worse.",
+        text: "On a year-by-year path, account returns and home and vehicle appreciation keep their after-inflation value: a year with higher inflation also gets a higher dollar return, so a changing path never quietly makes investments or property better or worse.",
       },
     ],
     sources: [{ label: "FRED: 5-, 10-year breakevens and 5y5y forward", url: "https://fred.stlouisfed.org/series/T10YIE" }],

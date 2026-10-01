@@ -1,4 +1,4 @@
-import { inflationOf } from "../plan-inflation"
+import type { Inflation } from "../plan-inflation"
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
 import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
@@ -30,7 +30,14 @@ function earnedOrdinaryIncome(doc: PlanDocument, income: IncomeYear, brackets: b
  * How this year is taxed: flat rates (with any changes over time), or brackets for the year's status and state,
  * itemizing property tax and mortgage interest when that beats the standard deduction.
  */
-export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index: number, income: IncomeYear, itemized?: Itemized): YearTax {
+export function yearTax(
+  doc: PlanDocument,
+  adjustments: AdjustmentEntry[],
+  index: number,
+  income: IncomeYear,
+  inflation: Inflation,
+  itemized?: Itemized,
+): YearTax {
   const settings = doc.settings
   if (settings.taxMode !== "brackets") {
     const rates = taxRatesAt(adjustments, settings, index)
@@ -40,7 +47,7 @@ export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index
   const situation: TaxSituation = {
     status: filingStatusAt(adjustments, settings, index),
     state: stateAt(adjustments, settings, index),
-    index: thresholdIndex(settings.startYear + index, inflationOf(settings), settings.startYear),
+    index: thresholdIndex(settings.startYear + index, inflation, settings.startYear),
     ...(itemized ? { itemized } : {}),
   }
   const earnedOrdinary = earnedOrdinaryIncome(doc, income, true)

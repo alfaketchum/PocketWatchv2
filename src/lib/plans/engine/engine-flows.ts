@@ -115,7 +115,9 @@ export function expensesForYear(entries: ExpenseEntry[], index: number, inflatio
     (acc, { expense, range, pattern }) => {
       if (!isActive(range, index, expense.oneTime)) return acc
       const factor = (expense.category !== null && FIXED_CATEGORIES.has(expense.category)) || expense.oneTime ? 1 : spendingFactor
-      const amount = grown(expense.amount, expense.growth, inflation, index) * factor * pattern(index)
+      const realGrowth = expense.costOf?.realGrowth
+      const base = realGrowth === undefined ? grown(expense.amount, expense.growth, inflation, index) : expense.amount * priceIndex(inflation, index) * Math.pow(1 + realGrowth, index)
+      const amount = base * factor * pattern(index)
       return { total: acc.total + amount, byId: { ...acc.byId, [expense.id]: amount } }
     },
     { total: 0, byId: {} },

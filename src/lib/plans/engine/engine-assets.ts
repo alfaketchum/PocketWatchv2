@@ -1,4 +1,5 @@
 import { priceIndex, type Inflation } from "../plan-inflation"
+import { realRate } from "../plan-dollars"
 import { livesIn } from "../plan-asset-costs"
 import { resolveRange, resolveTiming, type ResolvedRange, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDebt } from "../plan-types"
@@ -10,6 +11,8 @@ export interface AssetEntry {
   range: ResolvedRange
   /** The plan's inflation: a future purchase costs today's value grown by it. */
   inflation: Inflation
+  /** The plan's single rate, against which the asset's appreciation was entered. */
+  baseRate: number
 }
 
 export interface DebtEntry {
@@ -18,8 +21,8 @@ export interface DebtEntry {
   start: number
 }
 
-export function assetEntries(assets: PlanAsset[], ctx: TimingContext, inflation: Inflation): AssetEntry[] {
-  return assets.map((asset) => ({ asset, range: resolveRange(asset.start, asset.end, ctx), inflation }))
+export function assetEntries(assets: PlanAsset[], ctx: TimingContext, inflation: Inflation, baseRate: number): AssetEntry[] {
+  return assets.map((asset) => ({ asset, range: resolveRange(asset.start, asset.end, ctx), inflation, baseRate }))
 }
 
 export function debtEntries(debts: PlanDebt[], ctx: TimingContext): DebtEntry[] {
@@ -30,13 +33,14 @@ export function debtEntries(debts: PlanDebt[], ctx: TimingContext): DebtEntry[] 
  * Value at the start of year `index` of an asset first owned in year `start`. `value` is in today's
  * dollars: a future purchase costs it grown by inflation, and only then gains or loses its own rate.
  */
-export function assetValue(asset: PlanAsset, start: number, index: number, inflation: Inflation): number {
+export function assetValue(asset: PlanAsset, start: number, index: number, inflation: Inflation, baseRate: number): number {
   const bought = Math.max(0, start)
-  return asset.value * priceIndex(inflation, bought) * Math.pow(1 + asset.appreciation, index - bought)
+  // Appreciation keeps its real value: on one rate equal to `baseRate` this is value × (1 + i)^bought × (1 + a)^owned.
+  return asset.value * priceIndex(inflation, index) * Math.pow(1 + realRate(asset.appreciation, baseRate), index - bought)
 }
 
 export function assetValueAt(entry: AssetEntry, index: number): number {
-  return assetValue(entry.asset, entry.range.start, index, entry.inflation)
+  return assetValue(entry.asset, entry.range.start, index, entry.inflation, entry.baseRate)
 }
 
 export function isOwned(range: ResolvedRange, index: number): boolean {

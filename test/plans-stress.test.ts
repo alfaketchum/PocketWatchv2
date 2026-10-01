@@ -6,7 +6,9 @@ import { parsePlanDocument } from "@/lib/plans/plan-schema"
 import type { PlanAccount, PlanDocument } from "@/lib/plans/plan-types"
 import { annualHistory, type AnnualHistory } from "@/lib/plans/stress/stress-history"
 import { defaultMix, yearReturn } from "@/lib/plans/stress/stress-mix"
-import { anchorIndex, cohortStarts, percentile, runCohort, summarize } from "@/lib/plans/stress/stress-test"
+import { anchorIndex, cohortInflation, cohortStarts, percentile, runCohort, summarize } from "@/lib/plans/stress/stress-test"
+import { assetValue } from "@/lib/plans/engine/engine-assets"
+import { inflationPath, priceIndex, rateAt } from "@/lib/plans/plan-inflation"
 import type { MarketHistory } from "@/lib/fire/fire-types"
 
 const NOW = new Date(2026, 0, 15)
@@ -28,8 +30,8 @@ function plan(spend: number, extra: Partial<PlanDocument> = {}): PlanDocument {
   }
 }
 
-function history(stocks: number[], cape: (number | null)[] = stocks.map(() => 20)): AnnualHistory {
-  return { years: stocks.map((_, i) => 1900 + i), stocks, bonds: stocks.map(() => 0), cape, stockLogMean: Math.log(1.05), latestCape: 40 }
+function history(stocks: number[], cape: (number | null)[] = stocks.map(() => 20), inflation: (number | null)[] = stocks.map(() => null), firstYear = 1900): AnnualHistory {
+  return { years: stocks.map((_, i) => firstYear + i), stocks, bonds: stocks.map(() => 0), cape, inflation, stockLogMean: Math.log(1.05), latestCape: 40 }
 }
 
 test("the returnFor hook is inert when it returns each account's own rate", () => {
@@ -108,4 +110,56 @@ test("account mixes are saved normalized", () => {
   assert.equal(parsed, null, "shares above 1 are rejected")
   const ok = parsePlanDocument({ ...base, accounts: [account("a", { mix: { stocks: 0.6, bonds: 0.2, cash: 0, crypto: 0 } })] }, base)
   assert.ok(Math.abs((ok?.accounts[0].mix?.stocks ?? 0) - 0.75) < 1e-12)
+})
+
+/** 1966-style history: flat real markets with `rate` inflation every year from 1966. */
+const hot = (rate: number, years = 12) => history(Array(years).fill(0), undefined, Array(years).fill(rate), 1966)
+const close = (a: number, b: number, tol = 1e-6) => assert.ok(Math.abs(a - b) <= tol * Math.max(1, Math.abs(b)), `${a} ≈ ${b}`)
+
+/** Spending 40k (grows with prices) from a flat real account, plus a pension and/or a fixed-rate loan. */
+function fixedDollarPlan(extra: Partial<PlanDocument>): PlanDocument {
+  const base = plan(40_000)
+  return { ...base, settings: { ...base.settings, inflation: 0.025 }, accounts: [account("a", { balance: 1_000_000, mix: { stocks: 0, bonds: 0, cash: 1, crypto: 0 } })], ...extra }
+}
+const pension = (growth: number | null) => ({ id: "p", name: "Pension", kind: "pension" as const, amount: 30_000, growth, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, taxable: false, oneTime: false, contributions: [] })
+const mortgage = { id: "m", name: "Mortgage", kind: "mortgage" as const, balance: 300_000, rate: 0.04, monthlyPayment: 2_000, start: { type: "planStart" as const }, assetId: null, source: null }
+
+test("historical inflation equal to the plan's own changes nothing", () => {
+  const doc = fixedDollarPlan({ incomes: [pension(0)], debts: [mortgage] })
+  const same = hot(0.025)
+  const a = runCohort(doc, same, 0, 0, "plan")
+  const b = runCohort(doc, same, 0, 0, "history")
+  a.netWorth.forEach((v, i) => close(b.netWorth[i], v))
+  assert.equal(b.depletedAge, a.depletedAge)
+})
+
+test("in high inflation a pension without raises loses buying power; one with raises doesn't", () => {
+  const ending = (growth: number | null, mode: "plan" | "history") => runCohort(fixedDollarPlan({ incomes: [pension(growth)] }), hot(0.08), 0, 0, mode).netWorth.at(-1)!
+  assert.ok(ending(0, "history") < ending(0, "plan") - 10_000, "fixed pension buys less in a 1970s-style decade")
+  // Within 1%: each year's flows are priced at the start of the year and land at its end, so higher inflation
+  // trims their real size by about one year's inflation (the engine's year-end convention, not a fixed-dollar effect).
+  close(ending(null, "history"), ending(null, "plan"), 0.01)
+})
+
+test("in high inflation a fixed-rate loan gets cheaper in real terms", () => {
+  const ending = (mode: "plan" | "history") => runCohort(fixedDollarPlan({ debts: [mortgage] }), hot(0.08), 0, 0, mode).netWorth.at(-1)!
+  assert.ok(ending("history") > ending("plan") + 10_000)
+})
+
+test("history's inflation from 1913 only; the plan's rate before, and the 10-year average", () => {
+  const doc = fixedDollarPlan({})
+  const early = history(Array(20).fill(0), undefined, Array(20).fill(0.1), 1905)
+  const path = cohortInflation(doc, early, 0, 0, "history")
+  assert.equal(rateAt(path, 0), 0.025)
+  assert.equal(rateAt(path, 8), 0.1)
+  assert.equal(runCohort(doc, early, 0, 0).avgInflation, null)
+  close(runCohort(doc, early, 8, 0).avgInflation!, 0.1)
+})
+
+test("assets keep their real appreciation on any inflation path", () => {
+  const home = { id: "h", name: "Home", kind: "home" as const, value: 500_000, appreciation: 0.045, start: { type: "planStart" as const }, end: { type: "planEnd" as const } } as unknown as Parameters<typeof assetValue>[0]
+  close(assetValue(home, 0, 10, 0.025, 0.025), 500_000 * Math.pow(1.045, 10))
+  const path = inflationPath([0.08, 0.12, 0.02, 0.05], 0.03)
+  const real = 1.045 / 1.025 - 1
+  close(assetValue(home, 0, 4, path, 0.025), 500_000 * priceIndex(path, 4) * Math.pow(1 + real, 4))
 })

@@ -44,7 +44,7 @@ test("dollar costs run only while owned, rising with inflation", () => {
 
 test("a share of value follows the asset's value each year", () => {
   const d = plan([house])
-  for (const year of [2030, 2032, 2040]) close(costs(d, year), 0.01 * assetValue(house, 4, year - 2026, INFLATION))
+  for (const year of [2030, 2032, 2040]) close(costs(d, year), 0.01 * assetValue(house, 4, year - 2026, INFLATION, INFLATION))
 })
 
 test("a move's spending change doesn't scale ownership costs", () => {

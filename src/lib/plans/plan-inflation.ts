@@ -22,6 +22,11 @@ function withLevels(path: InflationPath): InflationPath {
 
 export type Inflation = number | InflationPath
 
+/** A path from yearly rates (e.g. history's actual inflation), with `tail` for the years after. */
+export function inflationPath(rates: number[], tail: number): InflationPath {
+  return withLevels({ rates, tail })
+}
+
 /** Plausible bounds for a yearly rate derived from market yields. */
 const MIN_RATE = -0.02
 const MAX_RATE = 0.1

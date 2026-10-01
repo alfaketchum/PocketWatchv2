@@ -20,17 +20,22 @@ export function parseDataset(data: ShillerDataset): MarketHistory {
   const bonds = new Float64Array(n)
   const months: string[] = new Array(n)
   const cape: (number | null)[] = new Array(n)
-  data.rows.forEach(([ym, e, b, c], i) => {
+  const cpi = new Float64Array(n)
+  let hasCpi = n > 0
+  data.rows.forEach(([ym, e, b, c, p], i) => {
     months[i] = ym
     equity[i] = e
     bonds[i] = b
     cape[i] = c
+    if (p === undefined) hasCpi = false
+    else cpi[i] = p
   })
   return {
     months,
     equity,
     bonds,
     cape,
+    ...(hasCpi ? { cpi } : {}),
     dataThrough: data.dataThrough,
     latestCape: data.latestCape,
     latestCapeMonth: data.latestCapeMonth,

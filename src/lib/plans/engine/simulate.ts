@@ -36,9 +36,13 @@ import {
   type IncomeEntry,
 } from "./engine-flows"
 
-/** Options for one run: `returnFor` overrides each account's nominal return per plan year (stress tests). */
+/**
+ * Options for one run (stress tests): `returnFor` overrides each account's nominal return per plan year;
+ * `inflation` replaces the plan's own (history's actual inflation). Fixed-dollar amounts stay fixed.
+ */
 export interface SimulateOptions {
   returnFor?: (account: PlanAccount, index: number) => number
+  inflation?: Inflation
 }
 
 interface Plan {
@@ -76,16 +80,17 @@ function realReturnsOnPath(doc: PlanDocument, inflation: Inflation): SimulateOpt
 }
 
 function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
-  const doc = expandPlan(original)
+  const doc = expandPlan(original, opts.inflation)
   const ctx = timingContext(doc)
+  const inflation = opts.inflation ?? inflationOf(doc.settings, ctx.length)
   return {
     doc,
-    inflation: inflationOf(doc.settings, ctx.length),
-    returnFor: opts.returnFor ?? realReturnsOnPath(doc, inflationOf(doc.settings, ctx.length)),
+    inflation,
+    returnFor: opts.returnFor ?? realReturnsOnPath(doc, inflation),
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
     expenses: expenseEntries(doc.expenses, ctx),
-    assets: assetEntries(doc.assets, ctx, inflationOf(doc.settings, ctx.length)),
+    assets: assetEntries(doc.assets, ctx, inflation, doc.settings.inflation),
     debts: debtEntries(doc.debts, ctx),
     milestoneYears: doc.milestones.map((m) => ({ name: m.name, index: resolveTiming(m.timing, ctx) })),
     transfers: transferEntries(childTransfers(original), ctx),
@@ -135,7 +140,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { startYear } = plan.doc.settings
   const { inflation } = plan
   const baseIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
-  const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome)
+  const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome, inflation)
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
     capitalGainsRate: earnedTax.doc.settings.capitalGainsRate,
     incomeTaxRate: earnedTax.doc.settings.incomeTaxRate,
@@ -157,7 +162,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { itemized, rentalTaxable } = property
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
-  const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, itemized) : earnedTax
+  const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized) : earnedTax
   return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, rentalTaxable }
 }
 

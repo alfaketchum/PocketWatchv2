@@ -71,7 +71,7 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
           <Cell align="right">
             <CellNumber
               label="Growth"
-              suffix={inc.growth === null ? "% infl." : "%"}
+              suffix={inc.growth === null ? "% infl." : inc.growth === 0 ? "% fixed" : "%"}
               scale={100}
               min={-0.5}
               max={1}

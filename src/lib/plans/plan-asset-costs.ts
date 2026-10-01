@@ -1,4 +1,4 @@
-import { inflationOf, priceIndex } from "./plan-inflation"
+import { realRate } from "./plan-dollars"
 import { NATIONAL_PROPERTY_TAX_RATE, propertyTaxRate } from "./tax/property-tax-rates"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetKind, AssetRunningCost, PlanAsset, PlanDocument, PlanExpense } from "./plan-types"
@@ -63,13 +63,12 @@ export function totalYearlyCost(asset: PlanAsset): number {
 
 /**
  * Running costs as expenses for the years the asset is owned. Dollar costs rise with inflation. A share
- * of value follows the value: bought in year s at today's price grown by inflation, then changing at its
- * own rate, so its cost in year t ≥ s is pct × value × (1 + i)^s × (1 + a)^(t − s) — an expense of
- * pct × value × ((1 + i) / (1 + a))^s growing at a.
+ * of value follows the value, which keeps its real appreciation r = (1 + a) / (1 + i) − 1: its cost in year
+ * t ≥ s is pct × value × P(t) × (1 + r)^(t − s), with P the price level — an expense of
+ * pct × value × (1 + r)^−s rising with inflation plus r. On one rate that is pct × value × (1 + i)^s × (1 + a)^(t − s).
  */
 export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
   const ctx = timingContext(doc)
-  const inflation = inflationOf(doc.settings)
   const existing = new Set(doc.expenses.map((e) => e.id))
   return doc.assets.flatMap((asset) => {
     const bought = Math.max(0, resolveTiming(asset.start, ctx) ?? 0)
@@ -77,7 +76,8 @@ export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
       const id = `cost-${asset.id}-${i}`
       if (cost.amount <= 0 || existing.has(id)) return []
       const byValue = cost.basis === "percentOfValue"
-      const amount = byValue ? (cost.amount * asset.value * priceIndex(inflation, bought)) / Math.pow(1 + asset.appreciation, bought) : cost.amount
+      const real = realRate(asset.appreciation, doc.settings.inflation)
+      const amount = byValue ? (cost.amount * asset.value) / Math.pow(1 + real, bought) : cost.amount
       return [
         {
           id,
@@ -88,7 +88,7 @@ export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
           start: asset.start,
           end: asset.end,
           oneTime: false,
-          costOf: { assetId: asset.id, propertyTax: isPropertyTax(cost) },
+          costOf: { assetId: asset.id, propertyTax: isPropertyTax(cost), ...(byValue ? { realGrowth: real } : {}) },
         },
       ]
     })

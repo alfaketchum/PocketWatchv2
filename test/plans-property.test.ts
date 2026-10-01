@@ -72,7 +72,7 @@ test("home-sale exclusion only for a home you live in", () => {
   const doc = plan()
   const ctx = timingContext(doc)
   const rules = { capitalGainsRate: 0.15, incomeTaxRate: 0.3, joint: false }
-  const sold = (asset: PlanAsset) => saleGainFor(assetEntries([asset], ctx, 0)[0], 5, rules)
+  const sold = (asset: PlanAsset) => saleGainFor(assetEntries([asset], ctx, 0, 0)[0], 5, rules)
   const bought = home({ costBasis: 600_000 })
   assert.equal(livesIn(bought), true)
   assert.equal(sold(bought), 400_000 - 250_000)
