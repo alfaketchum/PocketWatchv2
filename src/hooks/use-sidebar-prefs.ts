@@ -70,6 +70,10 @@ export const AI_NAV_ITEMS: NavItem[] = [
   { id: "ai-chat", label: "PocketLLM", href: "/chat", icon: "smart_toy" },
 ]
 
+export const PRODUCT_NAV_ITEMS: NavItem[] = [
+  { id: "product-roadmap", label: "Roadmap", href: "/roadmap", icon: "map" },
+]
+
 export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
   { id: "accounts-directory", label: "Directory", href: "/accounts", icon: "alternate_email" },
 ]
@@ -85,11 +89,12 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
   ai:        { label: "Assistant",     items: AI_NAV_ITEMS },
+  product:   { label: "Product",       items: PRODUCT_NAV_ITEMS },
 }
 
 function buildDefaultPrefs(): SidebarPrefs {
   return {
-    categoryOrder: ["netWorth", "finance", "fire", "plans", "accounts", "portfolio", "travel", "ai"],
+    categoryOrder: ["netWorth", "finance", "fire", "plans", "accounts", "portfolio", "travel", "ai", "product"],
     categories: {
       netWorth:  { order: NET_WORTH_NAV_ITEMS.map((i) => i.id), hidden: [] },
       finance:   { order: FINANCE_NAV_ITEMS.map((i) => i.id),   hidden: [] },
@@ -99,6 +104,7 @@ function buildDefaultPrefs(): SidebarPrefs {
       portfolio: { order: PORTFOLIO_NAV_ITEMS.map((i) => i.id), hidden: [] },
       travel:    { order: TRAVEL_NAV_ITEMS.map((i) => i.id),    hidden: [] },
       ai:        { order: AI_NAV_ITEMS.map((i) => i.id),        hidden: [] },
+      product:   { order: PRODUCT_NAV_ITEMS.map((i) => i.id),   hidden: [] },
     },
   }
 }
@@ -111,6 +117,12 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
       order: NET_WORTH_NAV_ITEMS.map((i) => i.id),
       hidden: [],
     }
+    savePrefs(prefs)
+  }
+  // Inject product category (Roadmap) if missing, at the end
+  if (!prefs.categoryOrder.includes("product")) {
+    prefs.categoryOrder.push("product")
+    prefs.categories.product = { order: PRODUCT_NAV_ITEMS.map((i) => i.id), hidden: [] }
     savePrefs(prefs)
   }
   // Inject travel category if missing
