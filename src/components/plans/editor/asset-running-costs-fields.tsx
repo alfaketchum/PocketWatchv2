@@ -2,7 +2,7 @@
 
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { FireNumberField } from "@/components/fire/fire-number-field"
-import { totalYearlyCost, TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
+import { isPropertyTax, totalYearlyCost, typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import type { AssetRunningCost, PlanAsset } from "@/lib/plans/plan-types"
 import { SelectField, TextField } from "./plan-editor-controls"
 
@@ -14,15 +14,19 @@ const BASIS_OPTIONS: { value: AssetRunningCost["basis"]; label: string }[] = [
 ]
 
 /** Insurance, maintenance, property tax…: yearly costs charged while the asset is owned. */
-export function AssetRunningCostsFields({ asset, onChange }: { asset: PlanAsset; onChange: (costs: AssetRunningCost[]) => void }) {
+export function AssetRunningCostsFields({ asset, state, onChange }: { asset: PlanAsset; state: string | null; onChange: (costs: AssetRunningCost[]) => void }) {
   const costs = asset.runningCosts ?? []
-  const typical = TYPICAL_RUNNING_COSTS[asset.kind]
+  const typical = typicalRunningCosts(asset.kind, state)
+  const typicalTax = typical.find(isPropertyTax)
   const patch = (i: number, change: Partial<AssetRunningCost>) => onChange(costs.map((c, j) => (j === i ? { ...c, ...change } : c)))
   const remove = (i: number) => onChange(costs.filter((_, j) => j !== i))
 
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-foreground">Running costs</p>
+      {costs.length === 0 && asset.kind === "home" && (
+        <p className="text-[11px] text-warning">No property tax, insurance or maintenance yet: owning this home costs nothing in the plan.</p>
+      )}
       {costs.map((c, i) => (
         <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
           <TextField label="Cost" value={c.name} onChange={(name) => patch(i, { name })} />
@@ -47,7 +51,7 @@ export function AssetRunningCostsFields({ asset, onChange }: { asset: PlanAsset;
         )}
         {costs.length === 0 && typical.length > 0 && (
           <button type="button" className="text-primary hover:underline" onClick={() => onChange(typical)}>
-            Use typical costs
+            Use typical costs{typicalTax ? ` (${state ?? "US"} property tax ${(typicalTax.amount * 100).toFixed(2)}%)` : ""}
           </button>
         )}
         {costs.length > 0 && (

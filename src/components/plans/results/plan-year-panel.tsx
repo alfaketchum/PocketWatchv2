@@ -115,6 +115,13 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         <Line label="Taxable income" value={fmtMoney(m.taxableIncome)} hint="Taxable pay after pre-tax contributions, plus traditional withdrawals and realized gains" />
         <Line label="Taxes" value={fmtMoney(m.taxes)} />
         <Line label="Effective tax rate" value={m.effectiveTaxRate === null ? "—" : fmtPct(m.effectiveTaxRate)} hint="Taxes ÷ taxable income" />
+        {m.deduction && (
+          <Line
+            label={m.deduction.itemized ? "Itemized deductions" : "Standard deduction"}
+            value={fmtMoney(m.deduction.amount)}
+            hint="Federal: the larger of the standard deduction and itemizing SALT (state income + property tax, capped) and mortgage interest"
+          />
+        )}
         <Drilldown title="Spending" summary={fmtMoney(m.spending)}>
           {m.spendingBy.length === 0 && <p className="text-[11px] text-foreground-muted">No spending this year.</p>}
           {m.spendingBy.map((e) => (

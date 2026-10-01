@@ -158,6 +158,8 @@ export interface PlanExpense {
   fundedBy?: string | null
   /** How it changes with age; missing = steady. */
   pattern?: SpendingPattern
+  /** Generated only: a running cost of this asset (property tax flagged for SALT / rental expenses). */
+  costOf?: { assetId: string; propertyTax: boolean }
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }
@@ -179,6 +181,21 @@ export interface AssetRunningCost {
   name: string
   amount: number
   basis: "dollars" | "percentOfValue"
+  /** Property tax counts toward SALT when itemizing (older plans: recognized by name). */
+  kind?: "propertyTax"
+}
+
+/** Renting a home out: rent and its costs, in today's dollars. */
+export interface AssetRental {
+  monthlyRent: number
+  /** When renting starts; null = as soon as it's owned. */
+  start: Timing | null
+  /** Share of the year it sits empty. */
+  vacancy: number
+  /** Property manager's cut of the rent collected. */
+  managementFee: number
+  /** Yearly rent increase; null = inflation. */
+  growth: number | null
 }
 
 export interface PlanAsset {
@@ -203,6 +220,11 @@ export interface PlanAsset {
   runningCosts?: AssetRunningCost[]
   /** Sell it and buy another like it every this many years (a car), until it's sold. Null or missing = keep it. */
   replaceEveryYears?: number | null
+  /** Homes: you live in it, so its sale can use the home-sale exclusion and its property tax and mortgage
+   *  interest can be itemized. Missing = yes for a home you buy, no for one you inherit. */
+  primaryResidence?: boolean
+  /** Homes: rented out (then it isn't your residence; its costs count against the rent). */
+  rental?: AssetRental
   /** Generated only: the asset this one replaces (a later car in a replacement cycle). */
   replacementOf?: string
   /** Generated only: sold because a replacement takes over, not sold outright. */
@@ -353,6 +375,10 @@ export interface YearRow {
   /** The interest part of `debtPayments`. */
   debtInterest: number
   debtInterestBy: Record<string, number>
+  /** Rent left after rented homes' costs, interest and depreciation: taxed as ordinary income. */
+  rentalTaxable: number
+  /** Federal deduction taken (brackets only): the standard deduction, or itemized when larger. */
+  deduction: { amount: number; itemized: boolean } | null
   assetPurchases: number
   assetSales: number
   /** Everything deposited into accounts: your payroll contributions, employer match and leftover cash flow. */

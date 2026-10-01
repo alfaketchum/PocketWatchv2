@@ -12,6 +12,7 @@ import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
 import { AssetRunningCostsFields } from "./asset-running-costs-fields"
+import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
 import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
@@ -85,7 +86,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
   return (
     <InputBlock
       title="Assets"
-      description="A home or car you own now, buy or inherit later, or sell. Sales pay capital-gains tax on the gain over cost basis; homes get the $250k/$500k exclusion after 2 years."
+      description="A home or car you own now, buy or inherit later, or sell. Sales pay capital-gains tax on the gain over cost basis; a home you live in gets the $250k/$500k exclusion after 2 years."
     >
       {doc.assets.length === 0 && <EmptyNote>No assets yet.</EmptyNote>}
       {doc.assets.map((a) => (
@@ -149,8 +150,9 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               onChange={(end) => patch(a.id, { end })}
             />
           </div>
+          {a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
           <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
-          <AssetRunningCostsFields asset={a} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
+          <AssetRunningCostsFields asset={a} state={doc.settings.state} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
         </ItemCard>
       ))}
     </InputBlock>

@@ -25,7 +25,7 @@ function taxNote(part: InheritedPart): string {
     case "stocks":
       return "Not taxed on arrival. Cost basis steps up to today's value, so only future gains are taxed."
     case "realEstate":
-      return "Not taxed on arrival. Basis steps up; if sold, only appreciation after this is taxed (home exclusion after 2 years)."
+      return "Not taxed on arrival. Basis steps up; if sold, only appreciation after this is taxed (no home-sale exclusion unless you live in it)."
     case "retirement":
       return part.roth
         ? `Must be emptied within ${INHERITED_IRA_YEARS} years; Roth withdrawals are tax-free.`

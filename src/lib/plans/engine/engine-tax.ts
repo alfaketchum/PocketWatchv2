@@ -1,6 +1,7 @@
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
-import { marginalRates, taxBase, thresholdIndex, totalTax, type TaxSituation } from "../tax/tax-calc"
+import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
+import type { Itemized } from "../tax/itemized-2026"
 import type { PlanDocument } from "../plan-types"
 import type { IncomeYear } from "./engine-flows"
 
@@ -24,8 +25,11 @@ function earnedOrdinaryIncome(doc: PlanDocument, income: IncomeYear, brackets: b
   return Math.max(0, income.taxableIncome - exempt)
 }
 
-/** How this year is taxed: flat rates (with any changes over time), or brackets for the year's status and state. */
-export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index: number, income: IncomeYear): YearTax {
+/**
+ * How this year is taxed: flat rates (with any changes over time), or brackets for the year's status and state,
+ * itemizing property tax and mortgage interest when that beats the standard deduction.
+ */
+export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index: number, income: IncomeYear, itemized?: Itemized): YearTax {
   const settings = doc.settings
   if (settings.taxMode !== "brackets") {
     const rates = taxRatesAt(adjustments, settings, index)
@@ -36,6 +40,7 @@ export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index
     status: filingStatusAt(adjustments, settings, index),
     state: stateAt(adjustments, settings, index),
     index: thresholdIndex(settings.startYear + index, settings.inflation),
+    ...(itemized ? { itemized } : {}),
   }
   const earnedOrdinary = earnedOrdinaryIncome(doc, income, true)
   const earned = taxBase({ ordinary: earnedOrdinary })
@@ -61,14 +66,24 @@ export interface TaxedAmounts {
   charged: number
 }
 
-/** Exact tax on the year's totals minus what was charged along the way (positive = still owed). */
-export function taxTrueUp(tax: YearTax, amounts: TaxedAmounts): number {
-  if (!tax.situation) return 0
-  const base = taxBase({
+function finalBase(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): TaxBase {
+  return taxBase({
     ordinary: tax.earnedOrdinary + amounts.ordinaryWithdrawn,
     shortGains: amounts.shortGains,
     longGains: amounts.longGains,
     realEstateGains: amounts.realEstateGains,
   })
-  return totalTax(base, tax.situation) - amounts.charged
+}
+
+/** Exact tax on the year's totals minus what was charged along the way (positive = still owed). */
+export function taxTrueUp(tax: YearTax, amounts: TaxedAmounts): number {
+  if (!tax.situation) return 0
+  return totalTax(finalBase(tax, amounts), tax.situation) - amounts.charged
+}
+
+/** The federal deduction taken on the year's final totals (brackets only): standard, or itemized when larger. */
+export function yearDeduction(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): { amount: number; itemized: boolean } | null {
+  if (!tax.situation) return null
+  const base = finalBase(tax, amounts)
+  return federalDeduction(base, tax.situation, stateTax(base, tax.situation))
 }

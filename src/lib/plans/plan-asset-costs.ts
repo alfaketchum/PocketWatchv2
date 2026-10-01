@@ -1,13 +1,14 @@
+import { NATIONAL_PROPERTY_TAX_RATE, propertyTaxRate } from "./tax/property-tax-rates"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetKind, AssetRunningCost, PlanAsset, PlanDocument, PlanExpense } from "./plan-types"
 
 /** Category of generated ownership costs; spending changes (a move, say) don't scale them. */
 export const ASSET_COSTS_CATEGORY = "Home & vehicle"
 
-/** Typical yearly costs of owning each kind of asset. */
+/** Typical yearly costs of owning each kind of asset (a home's property tax: the national average). */
 export const TYPICAL_RUNNING_COSTS: Record<AssetKind, AssetRunningCost[]> = {
   home: [
-    { name: "Property tax", amount: 0.011, basis: "percentOfValue" },
+    { name: "Property tax", amount: NATIONAL_PROPERTY_TAX_RATE, basis: "percentOfValue", kind: "propertyTax" },
     { name: "Insurance", amount: 0.0035, basis: "percentOfValue" },
     { name: "Maintenance", amount: 0.01, basis: "percentOfValue" },
   ],
@@ -17,6 +18,26 @@ export const TYPICAL_RUNNING_COSTS: Record<AssetKind, AssetRunningCost[]> = {
     { name: "Registration & taxes", amount: 400, basis: "dollars" },
   ],
   other: [],
+}
+
+/** Typical costs for an asset in the plan's state: a home's property tax at that state's effective rate. */
+export function typicalRunningCosts(kind: AssetKind, state: string | null | undefined): AssetRunningCost[] {
+  return TYPICAL_RUNNING_COSTS[kind].map((c) => (c.kind === "propertyTax" ? { ...c, amount: propertyTaxRate(state) } : c))
+}
+
+/** Property tax (itemizable): flagged, or named so in plans saved before the flag existed. */
+export function isPropertyTax(cost: AssetRunningCost): boolean {
+  return cost.kind === "propertyTax" || /property tax/i.test(cost.name)
+}
+
+/**
+ * You live in this home: its sale can use the home-sale exclusion, and its property tax and mortgage
+ * interest are personal (itemizable). Rented homes never are; otherwise bought homes are unless unticked,
+ * inherited ones aren't unless ticked.
+ */
+export function livesIn(asset: Pick<PlanAsset, "kind" | "rental" | "primaryResidence" | "acquired">): boolean {
+  if (asset.kind !== "home" || asset.rental) return false
+  return asset.primaryResidence ?? asset.acquired !== "received"
 }
 
 /** One year's cost in today's dollars at the asset's value today. */
@@ -55,6 +76,7 @@ export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
           start: asset.start,
           end: asset.end,
           oneTime: false,
+          costOf: { assetId: asset.id, propertyTax: isPropertyTax(cost) },
         },
       ]
     })

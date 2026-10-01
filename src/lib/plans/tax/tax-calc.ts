@@ -10,6 +10,7 @@ import {
 } from "./federal-2026"
 import { STATE_GAINS } from "./state-gains-2026"
 import { STATE_TAX, type StateTax } from "./state-2026"
+import { saltCap, STATE_PROPERTY_TAX_DEDUCTION, type Itemized } from "./itemized-2026"
 
 /** Tax on `income` over progressive `brackets` whose thresholds are scaled by `index`. */
 export function bracketTax(income: number, brackets: Brackets, index = 1): number {
@@ -41,6 +42,8 @@ export interface TaxSituation {
   state: string | null
   /** Threshold index for the year (see thresholdIndex). */
   index: number
+  /** Property tax and mortgage interest this year; without it only the standard deduction applies. */
+  itemized?: Itemized
 }
 
 /** A year's taxable income by kind. */
@@ -67,12 +70,27 @@ function netInvestmentIncomeTax(b: TaxBase, s: TaxSituation): number {
 }
 
 /**
- * Federal tax: ordinary income and short-term gains through the brackets, then long-term gains
- * stacked on top at 0 / 15 / 20%, plus the 3.8% net investment income tax.
+ * The federal deduction: the larger of the standard deduction and itemizing SALT (state income tax plus
+ * property tax, under the year's cap) and mortgage interest.
  */
-export function federalTax(b: TaxBase, s: TaxSituation): number {
+export function federalDeduction(b: TaxBase, s: TaxSituation, stateIncomeTax: number): { amount: number; itemized: boolean } {
+  const standard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
+  const it = s.itemized
+  if (!it) return { amount: standard, itemized: false }
+  const magi = b.ordinary + b.shortGains + b.longGains
+  const salt = Math.min(saltCap(it.year, magi), stateIncomeTax + it.propertyTax)
+  const itemized = salt + it.mortgageInterest
+  return itemized > standard ? { amount: itemized, itemized: true } : { amount: standard, itemized: false }
+}
+
+/**
+ * Federal tax: ordinary income and short-term gains through the brackets, then long-term gains
+ * stacked on top at 0 / 15 / 20%, plus the 3.8% net investment income tax. `stateIncomeTax` (paid the
+ * same year) counts toward SALT when itemizing.
+ */
+export function federalTax(b: TaxBase, s: TaxSituation, stateIncomeTax = 0): number {
   const ordinary = b.ordinary + b.shortGains
-  const deduction = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
+  const deduction = federalDeduction(b, s, stateIncomeTax).amount
   const ordinaryTaxable = Math.max(0, ordinary - deduction)
   // Unused deduction shelters gains too.
   const gainsTaxable = Math.max(0, b.longGains - Math.max(0, deduction - ordinary))
@@ -98,8 +116,16 @@ function separateGainsTax(table: StateTax | undefined, b: TaxBase, s: TaxSituati
   return regularStateTax(table, other, s) + bracketTax(otherTaxable + gainsTaxable, brackets, s.index) - bracketTax(otherTaxable, brackets, s.index)
 }
 
+/** A state's homeowner property-tax deduction (NJ), taken off ordinary income. */
+function withStatePropertyTaxDeduction(b: TaxBase, s: TaxSituation): TaxBase {
+  const limit = s.state ? STATE_PROPERTY_TAX_DEDUCTION[s.state] : undefined
+  if (!limit || !s.itemized) return b
+  return { ...b, ordinary: Math.max(0, b.ordinary - Math.min(limit, s.itemized.residenceTax)) }
+}
+
 /** State tax: gains are taxed like other income, except in the states in STATE_GAINS. */
-export function stateTax(b: TaxBase, s: TaxSituation): number {
+export function stateTax(base: TaxBase, s: TaxSituation): number {
+  const b = withStatePropertyTaxDeduction(base, s)
   const table = s.state ? STATE_TAX[s.state] : undefined
   const rule = s.state ? STATE_GAINS[s.state] : undefined
   const all = b.ordinary + b.shortGains + b.longGains
@@ -121,7 +147,8 @@ export function stateTax(b: TaxBase, s: TaxSituation): number {
 }
 
 export function totalTax(b: TaxBase, s: TaxSituation): number {
-  return federalTax(b, s) + stateTax(b, s)
+  const state = stateTax(b, s)
+  return federalTax(b, s, state) + state
 }
 
 export interface MarginalRates {

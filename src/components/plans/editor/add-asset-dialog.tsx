@@ -4,7 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { FireNumberField } from "@/components/fire/fire-number-field"
-import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
+import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, PlanAsset } from "@/lib/plans/plan-types"
 import { newItemId, type PlanEditorProps } from "../plans-helpers"
@@ -75,7 +75,7 @@ export function AddAssetDialog({ doc, update, onClose }: Pick<PlanEditorProps, "
         appreciation: owned.appreciation,
         start: { type: "planStart" },
         end: { type: "planEnd" },
-        runningCosts: TYPICAL_RUNNING_COSTS[owned.kind],
+        runningCosts: typicalRunningCosts(owned.kind, doc.settings.state),
       }
       update((d) => ({ ...d, assets: [...d.assets, asset] }))
     } else if (draft) {
@@ -125,7 +125,7 @@ export function AddAssetDialog({ doc, update, onClose }: Pick<PlanEditorProps, "
             />
           </div>
           <p className="text-xs text-foreground-muted">
-            {TYPICAL_RUNNING_COSTS[owned.kind].length > 0 ? "Typical running costs are added; edit them on its card. " : ""}
+            {typicalRunningCosts(owned.kind, null).length > 0 ? "Typical running costs are added; edit them on its card. " : ""}
             If it has a loan, add the loan under Debts and link it.
           </p>
         </div>

@@ -14,7 +14,8 @@ import {
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
-import { taxTrueUp, yearTax } from "./engine-tax"
+import { taxTrueUp, yearDeduction, yearTax } from "./engine-tax"
+import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
 
 /** Differences smaller than this (dollars) aren't worth another pass. */
@@ -109,20 +110,38 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
   )
 }
 
-/** This year's money in and out, and how it's taxed, before anything moves between accounts. */
+/**
+ * This year's money in and out, and how it's taxed, before anything moves between accounts. Homes come in
+ * twice: sales and loans first (at the earned-income rates), then the year's tax again with rent taxed
+ * and property tax and mortgage interest itemized where that helps.
+ */
 function yearFlows(plan: Plan, state: State, index: number) {
-  const { inflation } = plan.doc.settings
-  const income = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
-  const tax = yearTax(plan.doc, plan.adjustments, index, income)
-  const doc = tax.doc
+  const { inflation, startYear } = plan.doc.settings
+  const baseIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
+  const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome)
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
-    capitalGainsRate: doc.settings.capitalGainsRate,
-    incomeTaxRate: doc.settings.incomeTaxRate,
-    joint: doc.people.length > 1,
+    capitalGainsRate: earnedTax.doc.settings.capitalGainsRate,
+    incomeTaxRate: earnedTax.doc.settings.incomeTaxRate,
+    joint: plan.doc.people.length > 1,
   })
   const debts = payDebts(plan.debts, events.debtBalances, index)
   const expenses = expensesForYear(plan.expenses, index, inflation, spendingFactorAt(plan.adjustments, index))
-  return { doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax }
+  const property = propertyYear({
+    doc: plan.doc,
+    ctx: plan.ctx,
+    assets: plan.assets,
+    index,
+    year: startYear + index,
+    expensesById: expenses.byId,
+    incomeById: baseIncome.byId,
+    interestBy: debts.interestBy,
+    balanceBy: events.debtBalances,
+  })
+  const { itemized, rentalTaxable } = property
+  const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
+  const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
+  const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, itemized) : earnedTax
+  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, rentalTaxable }
 }
 
 type Flows = ReturnType<typeof yearFlows>
@@ -169,6 +188,16 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
 
 type Moved = ReturnType<typeof moveMoney>
 
+/** What's taxed this year beyond earned income: withdrawals, and gains from sales, drawdowns and trading. */
+function taxedAmounts(flows: Flows, moved: Moved) {
+  return {
+    ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
+    shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains + moved.trading.shortGains,
+    longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains + moved.trading.longGains,
+    realEstateGains: flows.events.saleRealEstateGains,
+  }
+}
+
 /**
  * Under brackets: tax the year's final totals exactly and settle the difference from cash flow.
  * Paying the difference can mean withdrawing (and being taxed on) a bit more, so repeat until it settles.
@@ -179,10 +208,7 @@ function settleTax(plan: Plan, state: State, index: number, flows: Flows): { mov
   if (!flows.tax.situation) return { moved, trueUp }
   for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
     const diff = taxTrueUp(flows.tax, {
-      ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
-      shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains + moved.trading.shortGains,
-      longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains + moved.trading.longGains,
-      realEstateGains: flows.events.saleRealEstateGains,
+      ...taxedAmounts(flows, moved),
       charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax + moved.trading.tax,
     })
     if (Math.abs(diff) < TRUE_UP_MIN) break
@@ -226,6 +252,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     debtPaymentsBy: debts.paidBy,
     debtInterest: debts.interest,
     debtInterestBy: debts.interestBy,
+    rentalTaxable: flows.rentalTaxable,
+    deduction: yearDeduction(flows.tax, taxedAmounts(flows, moved)),
     assetPurchases: events.purchases,
     assetSales: events.sales,
     contributions: sum(moved.contributionsBy),

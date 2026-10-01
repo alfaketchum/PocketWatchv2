@@ -2,7 +2,7 @@ import { newChild } from "./plan-children"
 import { RETIREMENT_MILESTONE_ID } from "./plan-constants"
 import { resolveTiming, timingContext } from "./plan-timing"
 import { stateInheritanceTax, type Relationship } from "./tax/inheritance-tax"
-import { TYPICAL_RUNNING_COSTS } from "./plan-asset-costs"
+import { typicalRunningCosts } from "./plan-asset-costs"
 import { monthlyPayment } from "./plan-financing"
 import type { AssetKind, PaymentMode, PlanAccount, PlanAdjustment, PlanDocument, PlanIncome, PlanMilestone, Timing } from "./plan-types"
 
@@ -151,7 +151,7 @@ function applyPurchase(doc: PlanDocument, kind: AssetKind, input: PurchaseInput,
         start: input.when,
         end: { type: "planEnd" },
         financing: { mode: input.payWith, downShare, rate: input.rate, termYears: input.termYears },
-        runningCosts: TYPICAL_RUNNING_COSTS[kind],
+        runningCosts: typicalRunningCosts(kind, doc.settings.state),
         ...(input.replaceEveryYears ? { replaceEveryYears: input.replaceEveryYears } : {}),
       },
     ],
@@ -326,7 +326,7 @@ function addInheritedPart(doc: PlanDocument, part: InheritedPart, msId: string, 
       ...doc,
       assets: [
         ...doc.assets,
-        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: part.sellYear ? { type: "year", year: part.sellYear } : { type: "planEnd" }, acquired: "received", costBasis: null, origin: msId },
+        { id: newId("asset"), name: label || "Inherited property", kind: "home", value: part.amount, appreciation: 0.03, start: when, end: part.sellYear ? { type: "year", year: part.sellYear } : { type: "planEnd" }, acquired: "received", costBasis: null, primaryResidence: false, runningCosts: typicalRunningCosts("home", doc.settings.state), origin: msId },
       ],
     }
   }

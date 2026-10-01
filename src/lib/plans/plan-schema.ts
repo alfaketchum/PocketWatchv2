@@ -132,10 +132,27 @@ const asset = z.object({
     })
     .optional(),
   runningCosts: z
-    .array(z.object({ name, amount: z.number().min(0).max(1e8), basis: z.enum(["dollars", "percentOfValue"]) }))
+    .array(
+      z.object({
+        name,
+        amount: z.number().min(0).max(1e8),
+        basis: z.enum(["dollars", "percentOfValue"]),
+        kind: z.enum(["propertyTax"]).optional(),
+      }),
+    )
     .max(10)
     .optional(),
   replaceEveryYears: z.number().int().min(1).max(50).nullable().optional(),
+  primaryResidence: z.boolean().optional(),
+  rental: z
+    .object({
+      monthlyRent: money,
+      start: timing.nullable(),
+      vacancy: share,
+      managementFee: share,
+      growth: rate.nullable(),
+    })
+    .optional(),
   origin,
 })
 

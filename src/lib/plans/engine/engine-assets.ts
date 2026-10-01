@@ -1,3 +1,4 @@
+import { livesIn } from "../plan-asset-costs"
 import { resolveRange, resolveTiming, type ResolvedRange, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDebt } from "../plan-types"
 
@@ -73,7 +74,7 @@ export interface AssetEvents {
 
 /** Home-sale exclusion (not inflation-indexed): single / married filing jointly. */
 export const HOME_SALE_EXCLUSION = { single: 250_000, joint: 500_000 }
-/** Years you must have owned (and lived in) a home to use the exclusion. */
+/** Years you must have owned (and lived in) a home to use the exclusion; only a home you live in qualifies. */
 const EXCLUSION_MIN_YEARS = 2
 
 export interface SaleTaxRules {
@@ -95,7 +96,7 @@ export function saleGainFor(entry: AssetEntry, index: number, rules: SaleTaxRule
   const gain = assetValueAt(entry, index) - assetBasis(entry)
   const ownedYears = index - Math.max(0, range.start)
   const exclusion =
-    asset.kind === "home" && ownedYears >= EXCLUSION_MIN_YEARS
+    livesIn(asset) && ownedYears >= EXCLUSION_MIN_YEARS
       ? rules.joint
         ? HOME_SALE_EXCLUSION.joint
         : HOME_SALE_EXCLUSION.single
