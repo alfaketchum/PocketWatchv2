@@ -11,7 +11,8 @@ import { PatternProfileMenu } from "./pattern-profile-menu"
 import { patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
-import { ChildrenEditor } from "./children-editor"
+import { ChildDialog } from "./child-dialog"
+import { KidCostList } from "./kid-cost-list"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { useExpenseCategories } from "./use-expense-categories"
 import { TimingPicker } from "./timing-picker"
@@ -58,6 +59,7 @@ function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update
 
 /** Spending streams: everyday living costs, kids, travel, a one-time wedding or car. */
 export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
+  const [editingChild, setEditingChild] = useState<string | null>(null)
   const patch = (id: string, change: Partial<PlanExpense>) =>
     update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const recurringTotal = useMemo(
@@ -79,7 +81,6 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
       <EditorToolbar toggle={viewToggle}>
         <AddExpenseButton doc={doc} update={update} />
       </EditorToolbar>
-      <ChildrenEditor doc={doc} update={update} view={view} />
       <div className="space-y-3">
         <p className="text-sm font-semibold text-foreground">Other expenses</p>
         {doc.expenses.length === 0 ? (
@@ -93,7 +94,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
           </div>
         )}
         {view === "compact" ? (
-        <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} />
+        <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} onEditChild={setEditingChild} />
       ) : doc.expenses.map((e) => (
           <ItemCard
             key={e.id} anchorId={planItemAnchor(e.id)}
@@ -153,7 +154,9 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
             )}
           </ItemCard>
         ))}
+        {view !== "compact" && <KidCostList doc={doc} onEdit={setEditingChild} />}
         {view !== "compact" && <AssetCostList lines={assetCostLines(doc)} />}
+        {editingChild && <ChildDialog doc={doc} update={update} childId={editingChild} onClose={() => setEditingChild(null)} />}
       </div>
     </div>
   )

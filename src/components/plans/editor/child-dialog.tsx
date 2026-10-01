@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { newChild } from "@/lib/plans/plan-children"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
-import { mergeChildDraft } from "@/lib/plans/plan-edits"
+import { mergeChildDraft, removeChild } from "@/lib/plans/plan-edits"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { newItemId, type DocUpdater, type PlanEditorProps } from "../plans-helpers"
 import { ChildFields } from "./child-fields"
@@ -47,6 +47,18 @@ export function ChildDialog({ doc, update, childId, onClose }: Pick<PlanEditorPr
           <button type="button" onClick={onClose} className="btn-ghost text-sm mr-auto">
             Cancel
           </button>
+          {!adding && child && (
+            <button
+              type="button"
+              onClick={() => {
+                update((d) => removeChild(d, start.childId))
+                onClose()
+              }}
+              className="btn-ghost text-sm text-error"
+            >
+              Remove {child.name || "child"}
+            </button>
+          )}
           {full && <span className="self-center text-xs text-foreground-muted">This plan has the most children it can hold.</span>}
           <button type="button" onClick={save} disabled={full || !child} className="btn-primary text-sm disabled:opacity-50">
             {adding ? "Add" : "Save"}

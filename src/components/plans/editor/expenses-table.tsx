@@ -53,7 +53,7 @@ function columns(sort: Sort, setSort: (s: Sort) => void) {
 const Dash = () => <span className="px-2 text-foreground-muted">—</span>
 
 /** Expenses as an editable table, with kids' and home & vehicle generated lines shown read-only. */
-export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
+export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEditorProps & { onEditChild: (childId: string) => void }) {
   const patch = (id: string, change: Partial<PlanExpense>) => update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const kidLines = (doc.children ?? []).flatMap((child) =>
     childExpenses({ ...doc, children: [child] }).map((expense) => ({ expense, childId: child.id })),
@@ -157,7 +157,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Cell>
           <Cell />
           <Cell align="center">
-            <RowButton icon="edit" label="Edit this child in detailed view" onClick={() => onEditItem?.(planItemAnchor(childId))} />
+            <RowButton icon="edit" label="Edit this child" onClick={() => onEditChild(childId)} />
           </Cell>
         </Row>
       ))}
