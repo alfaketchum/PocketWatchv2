@@ -14,9 +14,9 @@ export function PlansHeader() {
   return (
     <div className="space-y-3">
       <div>
-        <h1 className="text-2xl text-foreground font-semibold">Plans</h1>
+        <h1 className="text-2xl text-foreground font-semibold">Blueprint</h1>
         <p className="text-xs text-foreground-muted mt-0.5">
-          Build your financial roadmap by hand: accounts, income, spending and what-if scenarios
+          Your retirement, mapped year by year: accounts, income, spending and what-if plans
         </p>
       </div>
       {PLANS_NAV_ITEMS.length > 1 && (
