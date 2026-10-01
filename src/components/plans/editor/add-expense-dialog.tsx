@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { fmtMoney } from "@/components/fire/fire-helpers"
@@ -22,24 +22,69 @@ const MONTHS = 12
 const DEFAULT_YEARLY = 6_000
 const OTHER: ExpenseCategory = { label: "Something else", icon: "receipt_long", hex: "", avgMonthly: null, medianMonthly: null, budgetMonthly: null }
 
-function CategoryGrid({ categories, onPick }: { categories: ExpenseCategory[]; onPick: (c: ExpenseCategory | null) => void }) {
+/** What's already planned in a category: its recurring lines and their yearly total. */
+interface Planned {
+  lines: PlanExpense[]
+  yearly: number
+}
+
+function plannedByCategory(expenses: PlanExpense[]): Map<string, Planned> {
+  const out = new Map<string, Planned>()
+  for (const e of expenses) {
+    if (!e.category || e.oneTime) continue
+    const cur = out.get(e.category) ?? { lines: [], yearly: 0 }
+    out.set(e.category, { lines: [...cur.lines, e], yearly: cur.yearly + e.amount })
+  }
+  return out
+}
+
+/** A category tile: already in the plan (neutral check, click edits it), spent on but missing (amber note), or plain. */
+function CategoryTile({ c, planned, onPick }: { c: ExpenseCategory; planned: Planned | undefined; onPick: () => void }) {
+  const gap = !planned && c.avgMonthly !== null && c.avgMonthly > 0
+  const status = planned
+    ? `In plan: ${fmtMoney(planned.yearly / MONTHS)}/mo${planned.lines.length > 1 ? ` (${planned.lines.length} lines)` : ""}`
+    : gap
+      ? `You spend ${fmtMoney(c.avgMonthly)}/mo · not in plan`
+      : null
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-label={planned ? `${c.label}: ${status}. Edit it` : status ? `${c.label}: ${status}` : c.label}
+      className={cn(
+        "relative flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors hover:border-primary hover:bg-primary/5",
+        gap ? "border-warning/40" : "border-card-border",
+      )}
+    >
+      {planned && (
+        <span className="material-symbols-rounded absolute right-1.5 top-1.5 text-foreground-muted" style={{ fontSize: 14 }} aria-hidden="true">
+          check_circle
+        </span>
+      )}
+      <span className="material-symbols-rounded shrink-0" style={{ fontSize: 20, color: c.hex || "var(--primary)" }} aria-hidden="true">
+        {c.icon}
+      </span>
+      <span className="min-w-0 pr-3">
+        <span className="block truncate text-sm font-medium text-foreground">{c.label}</span>
+        {status && <span className={cn("block text-[11px] leading-snug tabular-nums", gap ? "text-warning" : "text-foreground-muted")}>{status}</span>}
+      </span>
+    </button>
+  )
+}
+
+function CategoryGrid({
+  categories,
+  planned,
+  onPick,
+}: {
+  categories: ExpenseCategory[]
+  planned: Map<string, Planned>
+  onPick: (c: ExpenseCategory | null) => void
+}) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       {[...categories, OTHER].map((c) => (
-        <button
-          key={c.label}
-          type="button"
-          onClick={() => onPick(c === OTHER ? null : c)}
-          className="flex items-center gap-2 rounded-xl border border-card-border px-3 py-2.5 text-left hover:border-primary hover:bg-primary/5 transition-colors"
-        >
-          <span className="material-symbols-rounded shrink-0" style={{ fontSize: 20, color: c.hex || "var(--primary)" }}>
-            {c.icon}
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-foreground">{c.label}</span>
-            {c.avgMonthly !== null && <span className="block text-[11px] text-foreground-muted tabular-nums">{fmtMoney(c.avgMonthly)}/mo avg</span>}
-          </span>
-        </button>
+        <CategoryTile key={c.label} c={c} planned={c === OTHER ? undefined : planned.get(c.label)} onPick={() => onPick(c === OTHER ? null : c)} />
       ))}
     </div>
   )
@@ -116,13 +161,17 @@ export function AddExpenseDialog({
   onEvent,
 }: Pick<PlanEditorProps, "doc" | "update"> & { onClose: () => void; onEvent: (key: TemplateKey) => void }) {
   const categories = useExpenseCategories()
+  const planned = useMemo(() => plannedByCategory(doc.expenses), [doc.expenses])
   const [picked, setPicked] = useState<ExpenseCategory | null | undefined>(undefined)
   const [line, setLine] = useState<PlanExpense | null>(null)
+  /** The existing line being edited, when a category already in the plan was picked. */
+  const [editingId, setEditingId] = useState<string | null>(null)
   const full = doc.expenses.length >= PLAN_LIMITS.expenses
   const set = (change: Partial<PlanExpense>) => setLine((l) => (l ? { ...l, ...change } : l))
 
-  const pick = (c: ExpenseCategory | null) => {
-    setPicked(c)
+  /** A fresh line in the category (or a blank one), pre-filled with your average. */
+  const startNew = (c: ExpenseCategory | null) => {
+    setEditingId(null)
     setLine({
       id: newItemId("exp"),
       name: c?.label ?? "Expense",
@@ -134,12 +183,27 @@ export function AddExpenseDialog({
       oneTime: false,
     })
   }
+  // Picking a category that's already planned opens that line: edit rather than add a duplicate by accident.
+  const pick = (c: ExpenseCategory | null) => {
+    setPicked(c)
+    const existing = c ? planned.get(c.label)?.lines[0] : undefined
+    if (!existing) return startNew(c)
+    setEditingId(existing.id)
+    setLine(existing)
+  }
   const setOneTime = (oneTime: boolean) => {
     const start: Timing = oneTime ? { type: "year", year: doc.settings.startYear + 2 } : { type: "planStart" }
     set({ oneTime, start })
   }
-  const add = () => {
-    if (!line || full) return
+  const save = () => {
+    if (!line) return
+    if (editingId) {
+      update((d) => ({ ...d, expenses: d.expenses.map((e) => (e.id === editingId ? { ...line, name: line.name.trim() || e.name } : e)) }))
+      toast.success(`Saved ${line.name.trim() || "the expense"}`)
+      onClose()
+      return
+    }
+    if (full) return
     update((d) => {
       const named = { ...line, name: line.name.trim() || line.category || "Expense" }
       return { ...d, expenses: [...d.expenses, { ...named, pattern: patternForNewLine(d, named) }] }
@@ -152,7 +216,7 @@ export function AddExpenseDialog({
   return (
     <AccountsModalShell
       wide={!chosen}
-      title={chosen ? `Add ${(line.category ?? "an expense").toLowerCase()}` : "Add an expense"}
+      title={chosen ? `${editingId ? "Edit" : "Add"} ${(line.category ?? (editingId ? "expense" : "an expense")).toLowerCase()}` : "Add an expense"}
       onClose={onClose}
       footer={
         chosen ? (
@@ -160,9 +224,9 @@ export function AddExpenseDialog({
             <button type="button" onClick={() => setPicked(undefined)} className="btn-ghost text-sm mr-auto">
               ← Back
             </button>
-            {full && <span className="self-center text-xs text-foreground-muted">This plan has the most expenses it can hold.</span>}
-            <button type="button" onClick={add} disabled={full} className="btn-primary text-sm disabled:opacity-50">
-              Add
+            {full && !editingId && <span className="self-center text-xs text-foreground-muted">This plan has the most expenses it can hold.</span>}
+            <button type="button" onClick={save} disabled={full && !editingId} className="btn-primary text-sm disabled:opacity-50">
+              {editingId ? "Save" : "Add"}
             </button>
           </>
         ) : (
@@ -174,13 +238,26 @@ export function AddExpenseDialog({
     >
       {!chosen && (
         <>
-          <p className="text-xs text-foreground-muted">Your budget categories, with your average month over the last year (the same numbers &ldquo;Start from my data&rdquo; uses).</p>
-          <CategoryGrid categories={categories} onPick={pick} />
+          <p className="text-xs text-foreground-muted">
+            Your budget categories. A check means it&apos;s already in your plan (click to edit it); an amber note means you spend on it
+            but it isn&apos;t planned yet. Averages are your last 12 months, as &ldquo;Start from my data&rdquo; measures them.
+          </p>
+          <CategoryGrid categories={categories} planned={planned} onPick={pick} />
           <EventChoices onEvent={onEvent} />
         </>
       )}
       {chosen && (
         <div className="space-y-3">
+          {editingId && (
+            <p className="text-xs text-foreground-muted">
+              {line.category} is already in your plan; you&apos;re editing that line.{" "}
+              {!full && (
+                <button type="button" onClick={() => startNew(picked ?? null)} className="text-primary hover:underline">
+                  Add a separate {line.category} line instead
+                </button>
+              )}
+            </p>
+          )}
           <TextField label="Name" value={line.name} onChange={(name) => set({ name })} />
           <div className="grid grid-cols-2 gap-2">
             {!line.oneTime && (
