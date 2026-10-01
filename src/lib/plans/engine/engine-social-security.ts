@@ -22,7 +22,11 @@ interface Ctx {
   inflation: Inflation
   /** Wage index for the year (the earnings-test limits rise with it). */
   wageIndex: number
+  /** PIAs estimated from earnings records, by income id (others use the entered PIA). */
+  pia: Record<string, number>
 }
+
+const piaOf = (ctx: Ctx, income: PlanIncome): number => ctx.pia[income.id] ?? income.socialSecurity?.pia ?? 0
 
 const personOf = (doc: PlanDocument, income: PlanIncome): PlanPerson | undefined =>
   doc.people.find((p) => p.id === income.personId) ?? doc.people[0]
@@ -41,7 +45,7 @@ function partnerPia(ctx: Ctx, person: PlanPerson): number | null {
   const claim = ctx.entries.find(
     (e) => e.income.socialSecurity && personOf(ctx.doc, e.income)?.id === partner?.id && isActive(e.range, ctx.index, false),
   )
-  return claim?.income.socialSecurity?.pia ?? null
+  return claim ? piaOf(ctx, claim.income) : null
 }
 
 /** Withheld this year by the earnings test (nominal), before full retirement age only. */
@@ -69,9 +73,10 @@ function benefitFor(ctx: Ctx, entry: IncomeEntry, income: IncomeYear, withheld: 
   const fra = fullRetirementAge(person.birthYear)
   // Months withheld before full retirement age are credited back from then: as if claimed that much later.
   const credited = age >= fra && ss.claimAge < fra ? Math.min(fra, ss.claimAge + (withheld[entry.income.id] ?? 0) / MONTHS) : ss.claimAge
-  const own = ss.pia * MONTHS * claimFactor(person.birthYear, credited)
+  const pia = piaOf(ctx, entry.income)
+  const own = pia * MONTHS * claimFactor(person.birthYear, credited)
   const partner = partnerPia(ctx, person)
-  const spousal = partner === null ? 0 : spousalTopUp(ss.pia, partner, person.birthYear, Math.max(ss.claimAge, age))
+  const spousal = partner === null ? 0 : spousalTopUp(pia, partner, person.birthYear, Math.max(ss.claimAge, age))
   const scheduled = (own + spousal) * priceIndex(ctx.inflation, ctx.index) * paidShare(ctx.doc, ctx.doc.settings.startYear + ctx.index)
   const held = earningsTestWithheld(ctx, person, age, scheduled, income)
   return { paid: scheduled - held, withheldMonths: scheduled > 0 ? (held / scheduled) * MONTHS : 0 }

@@ -102,7 +102,13 @@ const income = z.object({
   contributions: z.array(contribution).max(PLAN_LIMITS.contributionsPerIncome),
   continues: id.optional(),
   personId: id.optional(),
-  socialSecurity: z.object({ pia: money, claimAge: z.number().int().min(62).max(70) }).optional(),
+  socialSecurity: z
+    .object({
+      pia: money,
+      claimAge: z.number().int().min(62).max(70),
+      earnings: z.array(z.tuple([z.number().int().min(1937).max(2200), money])).max(80).optional(),
+    })
+    .optional(),
   endBefore: timing.optional(),
   origin,
 })

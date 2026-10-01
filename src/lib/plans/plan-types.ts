@@ -150,7 +150,16 @@ export interface PlanIncome {
    * Social Security worked out by the engine each year: the benefit at full retirement age (per month, today's
    * dollars) and the claiming age. Adds the spousal top-up and the earnings test; `amount` is then only a display.
    */
-  socialSecurity?: { pia: number; claimAge: number }
+  socialSecurity?: {
+    pia: number
+    claimAge: number
+    /**
+     * Estimate the PIA from earnings instead: past years [year, amount in that year's dollars] (an SSA earnings
+     * record); years from the plan's start come from this person's salaries in the plan. `pia` then holds the
+     * last estimate, for display.
+     */
+    earnings?: [number, number][]
+  }
   /** Set on an income that picks up where another left off (career change/break); removing it restores that one's end. */
   continues?: string
   /** Set when a milestone (divorce) ended this income early: the end to restore if that milestone is deleted. */

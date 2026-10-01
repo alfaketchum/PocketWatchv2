@@ -5,6 +5,7 @@ import type { IncomeKind, PlanIncome } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Badge, Cell, CellCheck, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
+import { socialSecurityYearly } from "@/lib/plans/ss-plan-earnings"
 
 const KINDS: { value: IncomeKind; label: string }[] = [
   { value: "salary", label: "Salary" },
@@ -68,7 +69,7 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
           <Cell align="right">
             {inc.socialSecurity ? (
               <span className="block px-2 tabular-nums" title={`Claiming at ${inc.socialSecurity.claimAge}; change it in the detailed view`}>
-                {fmtMoney(inc.amount)}
+                {fmtMoney(socialSecurityYearly(doc, inc))}
               </span>
             ) : (
               <CellNumber label="Per year" prefix="$" min={0} value={inc.amount} onChange={(amount) => patch(inc.id, { amount })} />

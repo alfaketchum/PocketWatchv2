@@ -18,6 +18,7 @@ import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
 import { taxTrueUp, yearDeduction, yearPayroll, yearTax } from "./engine-tax"
 import { socialSecurityYear, type WithheldMonths } from "./engine-social-security"
+import { estimatedPia } from "../ss-plan-earnings"
 import { thresholdIndex } from "../tax/tax-calc"
 import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
@@ -61,6 +62,8 @@ interface Plan {
   transfers: TransferEntry[]
   adjustments: AdjustmentEntry[]
   deposits: DepositEntry[]
+  /** Social Security PIAs estimated from earnings records (plus the plan's own salaries), by income id. */
+  ssPia: Record<string, number>
 }
 
 interface State {
@@ -100,6 +103,12 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
     transfers: transferEntries(childTransfers(original), ctx),
     adjustments: adjustmentEntries(doc.adjustments ?? [], ctx),
     deposits: depositEntries(doc.deposits ?? [], ctx),
+    ssPia: Object.fromEntries(
+      doc.incomes.flatMap((i) => {
+        const estimate = estimatedPia(doc, i)
+        return estimate ? [[i.id, estimate.pia]] : []
+      }),
+    ),
   }
 }
 
@@ -144,7 +153,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { startYear } = plan.doc.settings
   const { inflation } = plan
   const ss = socialSecurityYear(
-    { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear) },
+    { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear), pia: plan.ssPia },
     incomeForYear(plan.incomes, plan.doc.accounts, index, inflation),
     state.ssWithheld,
   )
