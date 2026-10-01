@@ -1,40 +1,20 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react"
-import {
-  Bar,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-import { useChartTheme } from "@/hooks/use-chart-theme"
-import { fmtCompact } from "@/components/fire/fire-helpers"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { cn } from "@/lib/utils"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
-import { PlanBarTooltip } from "./plan-bar-tooltip"
+import { ChartPlot, ICON_ROW, ICON_STACK, MILESTONE_ICONS, type HoveredMark } from "./plan-chart-plot"
 import { PlanYearPanel } from "./plan-year-panel"
 import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
 import { usePlanColors } from "./use-plan-colors"
 import { useSteadySpending } from "./use-steady-spending"
 import { SpendingImpactChart } from "./spending-impact-chart"
 
-const DIMMED = 0.35
 const Y_HEADROOM = 1.03
-/** Space above the plot for milestone icons. */
-const ICON_ROW = 30
-/** Vertical distance between icons that share a year. */
-const ICON_STACK = 22
-
 /** Stack position of each milestone among those in the same year (0 = lowest). */
 function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: number }[] {
   const seen = new Map<number, number>()
@@ -44,61 +24,6 @@ function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: num
     return { mark, level }
   })
 }
-const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
-  retirement: "beach_access",
-  custom: "flag",
-  child: "child_care",
-  asset: "home",
-  income: "payments",
-  payoff: "credit_score",
-  depleted: "warning",
-}
-
-interface HoveredMark {
-  mark: ChartMilestone
-  x: number
-  y: number
-}
-
-/** Small round icon at the top of a milestone's line; hovering it shows a card with details. */
-function MilestoneMarker({
-  viewBox,
-  mark,
-  color,
-  level,
-  onHover,
-}: {
-  viewBox?: { x: number; y: number }
-  mark: ChartMilestone
-  color: string
-  level: number
-  onHover: (hovered: HoveredMark | null) => void
-}) {
-  if (!viewBox) return null
-  const cx = viewBox.x
-  const cy = viewBox.y - ICON_ROW / 2 - level * ICON_STACK
-  return (
-    <g
-      style={{ cursor: "help", pointerEvents: "all" }}
-      onMouseEnter={() => onHover({ mark, x: cx, y: cy })}
-      onMouseLeave={() => onHover(null)}
-    >
-      <circle cx={cx} cy={cy} r={10} fill={color} />
-      <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill="#fff"
-        fontSize={13}
-        fontFamily="Material Symbols Rounded"
-      >
-        {mark.icon ?? MILESTONE_ICONS[mark.kind]}
-      </text>
-    </g>
-  )
-}
-
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
   { value: "cashflow", label: "Cash flow" },
@@ -244,137 +169,6 @@ function withOwedLine(points: ChartRow[]): ChartRow[] {
   })
 }
 
-const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
-  const index = Number(state?.activeTooltipIndex)
-  return Number.isInteger(index) && index >= 0 ? index : null
-}
-
-interface ChartPlotProps {
-  points: ChartRow[]
-  series: Series[]
-  yAxis: { domain: [number, number]; ticks: number[] }
-  iconRoom: number
-  stacked: { mark: ChartMilestone; level: number }[]
-  mode: ChartMode
-  hasDebt: boolean
-  /** Draw the dashed all-steady spending line (Expenses view) */
-  showSteady: boolean
-  selected: number | null
-  markColor: (m: ChartMilestone) => string
-  onHover: (index: number | null) => void
-  onSelect: (index: number) => void
-  onHoverMark: (hovered: HoveredMark | null) => void
-}
-
-/**
- * The plot itself, memoized: hovering (which only changes the side panel and hover cards) must not
- * redraw hundreds of bar segments. It re-renders only when its data, selection or theme changes.
- */
-const ChartPlot = memo(function ChartPlot({
-  points,
-  series,
-  yAxis,
-  iconRoom,
-  stacked,
-  mode,
-  hasDebt,
-  showSteady,
-  selected,
-  markColor,
-  onHover,
-  onSelect,
-  onHoverMark,
-}: ChartPlotProps) {
-  const { error, foregroundMuted, border, foreground } = useChartTheme()
-  const barTops = useMemo(
-    () => new Map(points.map((p) => [p.age, series.reduce((sum, s) => sum + Math.max(0, p[s.key] ?? 0), 0)])),
-    [points, series],
-  )
-  const bars = ({ key, color }: Series) => (
-    <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
-      {points.map((_, i) => (
-        <Cell key={i} fillOpacity={selected === null || selected === i ? 0.85 : DIMMED} />
-      ))}
-    </Bar>
-  )
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart
-        data={points}
-        margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
-        stackOffset="sign"
-        barCategoryGap="8%"
-        onMouseMove={(state) => onHover(indexOf(state))}
-        onMouseLeave={() => onHover(null)}
-        onClick={(state) => {
-          const index = indexOf(state)
-          if (index !== null) onSelect(index)
-        }}
-      >
-        <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
-        <XAxis dataKey="age" tick={{ fontSize: 10, fill: foregroundMuted }} axisLine={false} tickLine={false} minTickGap={16} />
-        <YAxis
-          domain={yAxis.domain}
-          ticks={yAxis.ticks}
-          allowDataOverflow
-          tick={{ fontSize: 10, fill: foregroundMuted }}
-          tickFormatter={fmtCompact}
-          axisLine={false}
-          tickLine={false}
-          width={56}
-        />
-        {mode === "debt" && (
-          <YAxis
-            yAxisId="owed"
-            orientation="right"
-            tick={{ fontSize: 10, fill: foregroundMuted }}
-            tickFormatter={fmtCompact}
-            axisLine={false}
-            tickLine={false}
-            width={56}
-          />
-        )}
-        <Tooltip
-          content={<PlanBarTooltip series={series} mode={mode} />}
-          cursor={{ fill: foreground, fillOpacity: 0.06 }}
-          allowEscapeViewBox={{ x: false, y: true }}
-          wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}
-        />
-        <ReferenceLine y={0} stroke={border} />
-        {series.map(bars)}
-        {/* Net worth only differs from the bar tops when there's debt; mark it with a light dot then. */}
-        {mode === "networth" && hasDebt && (
-          <Line
-            dataKey="netWorth"
-            stroke="none"
-            dot={{ r: 2.5, fill: foregroundMuted, stroke: "none" }}
-            activeDot={false}
-            isAnimationActive={false}
-          />
-        )}
-        {mode === "debt" && (
-          <Line yAxisId="owed" dataKey="owedLine" stroke={foreground} strokeOpacity={0.5} strokeDasharray="4 3" strokeWidth={1.25} dot={false} activeDot={false} isAnimationActive={false} />
-        )}
-        {showSteady && (
-          <Line dataKey="steady" stroke={foreground} strokeOpacity={0.55} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />
-        )}
-        {/* Each milestone's line drops from its icon to the top of that year's bar, not through it. */}
-        {stacked.map(({ mark: m, level }) => (
-          <ReferenceLine
-            key={`${m.name}-${m.age}`}
-            segment={[{ x: m.age, y: barTops.get(m.age) ?? 0 }, { x: m.age, y: yAxis.domain[1] }]}
-            stroke={m.kind === "depleted" ? error : foregroundMuted}
-            strokeDasharray="2 3"
-            strokeWidth={0.75}
-            strokeOpacity={0.5}
-            label={<MilestoneMarker mark={m} level={level} color={markColor(m)} onHover={onHoverMark} />}
-          />
-        ))}
-      </ComposedChart>
-    </ResponsiveContainer>
-  )
-})
-
 interface Props {
   doc: PlanDocument
   projection: PlanProjection
@@ -408,6 +202,40 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
+  /** Bar isolation mode: one year fills the chart. Double-click a bar to enter; Back, Esc or a double-click outside leaves. */
+  const [isolated, setIsolatedState] = useState<number | null>(null)
+  /** Kept in step with `isolated` at once: a late click event must see isolation the moment it starts. */
+  const isolatedRef = useRef<number | null>(null)
+  const setIsolated = useCallback((index: number | null) => {
+    isolatedRef.current = index
+    setIsolatedState(index)
+  }, [])
+  const plotArea = useRef<HTMLDivElement>(null)
+  /** The bar under the pointer, kept in a ref so a fast double-click reads it before the hover state re-renders. */
+  const hoveredRef = useRef<number | null>(null)
+  /** The bar last clicked or tapped: touch has no hover, and a double-tap is two taps on the same bar. */
+  const clickedRef = useRef<number | null>(null)
+  const isolate = useCallback(() => {
+    const index = hoveredRef.current ?? clickedRef.current
+    if (index === null) return
+    // A double-click is two clicks first, which toggle the pin on and off again: pin the year here for good.
+    setSelected(index)
+    setIsolated(index)
+  }, [setIsolated])
+  const leaveIsolation = useCallback(() => setIsolated(null), [setIsolated])
+  useEffect(() => {
+    if (isolated === null) return
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && leaveIsolation()
+    const onDouble = (e: MouseEvent) => {
+      if (!plotArea.current?.contains(e.target as Node)) leaveIsolation()
+    }
+    document.addEventListener("keydown", onKey)
+    document.addEventListener("dblclick", onDouble)
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.removeEventListener("dblclick", onDouble)
+    }
+  }, [isolated, leaveIsolation])
   const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
   const { netWorth: nwColors } = usePlanColors()
   // Expenses view: the dashed line is the same plan with every spending line steady.
@@ -417,8 +245,37 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     if (view === "debt") return withOwedLine(points)
     return points
   }, [points, steady, view])
-  const yAxis = useMemo(() => fitAxis(plotPoints, series, steady ? Math.max(0, ...steady) : 0), [plotPoints, series, steady])
-  const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
+  // Isolated: just that year, its axis fitted to it alone so the bar fills the chart.
+  const shownPoints = useMemo(
+    () => (isolated === null || !plotPoints[isolated] ? plotPoints : plotPoints.slice(isolated, isolated + 1)),
+    [plotPoints, isolated],
+  )
+  const shownMarks = useMemo(
+    () => (isolated === null ? stacked : stacked.filter((s) => s.mark.age === plotPoints[isolated]?.age)),
+    [stacked, isolated, plotPoints],
+  )
+  const yAxis = useMemo(
+    () => fitAxis(shownPoints, series, steady && isolated === null ? Math.max(0, ...steady) : 0),
+    [shownPoints, series, steady, isolated],
+  )
+  // While isolated the plot holds one bar (index 0); map its hover and clicks back to the real year.
+  const onPlotHover = useCallback(
+    (i: number | null) => {
+      const year = i === null || isolated === null ? i : isolated
+      hoveredRef.current = year
+      setHovered(year)
+    },
+    [isolated],
+  )
+  const toggleSelected = useCallback(
+    (index: number) => {
+      // While isolated the plot has one bar, so its click index isn't a plan year: ignore it.
+      if (isolatedRef.current !== null) return
+      clickedRef.current = index
+      setSelected((cur) => (cur === index ? null : index))
+    },
+    [],
+  )
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
   const metrics = useMemo(
@@ -436,22 +293,40 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
-          <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+          <div
+            ref={plotArea}
+            onDoubleClick={isolated === null ? isolate : undefined}
+            className="relative h-[340px] select-none lg:h-[500px]"
+            style={{ filter: isHidden ? "blur(8px)" : undefined }}
+          >
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
+            {isolated !== null && (
+              <button
+                type="button"
+                onClick={leaveIsolation}
+                className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
+                  arrow_back
+                </span>
+                All years
+              </button>
+            )}
             <ChartPlot
-              points={plotPoints}
+              points={shownPoints}
               series={series}
               yAxis={yAxis}
               iconRoom={iconRoom}
-              stacked={stacked}
+              stacked={shownMarks}
               mode={view}
               hasDebt={hasDebt}
-              showSteady={steady !== null}
-              selected={selected}
+              showSteady={steady !== null && isolated === null}
+              selected={isolated === null ? selected : 0}
               markColor={markColor}
-              onHover={setHovered}
+              onHover={onPlotHover}
               onSelect={toggleSelected}
               onHoverMark={setHoveredMark}
+              isolated={isolated !== null}
             />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
