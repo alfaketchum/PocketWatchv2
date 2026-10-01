@@ -10,7 +10,6 @@ export type PlanTab =
   | "assets"
   | "cashflow"
   | "milestones"
-  | "stress"
   | "overview"
 
 /** In the order you'd build a plan: assumptions first, results last. */
@@ -22,8 +21,7 @@ export const PLAN_TABS: { value: PlanTab; label: string; icon: string }[] = [
   { value: "assets", label: "Assets & debts", icon: "home" },
   { value: "cashflow", label: "Cash flow", icon: "swap_vert" },
   { value: "milestones", label: "Milestones", icon: "flag" },
-  { value: "stress", label: "Stress test", icon: "thunderstorm" },
-  { value: "overview", label: "Overview", icon: "insights" },
+  { value: "overview", label: "Ledger Overview", icon: "insights" },
 ]
 
 export const DEFAULT_PLAN_TAB: PlanTab = "assumptions"

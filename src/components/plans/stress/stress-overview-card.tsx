@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import Link from "next/link"
 import { fmtSuccess } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { PlanDocument } from "@/lib/plans/plan-types"
@@ -8,8 +9,8 @@ import { summarize } from "@/lib/plans/stress/stress-test"
 import { stressVerdict } from "./stress-summary"
 import { useStressTest } from "./use-stress-test"
 
-/** Overview's one-line stress result (every historical start year, from today), linking to the full tab. */
-export function StressOverviewCard({ doc, onOpen }: { doc: PlanDocument; onOpen: () => void }) {
+/** Ledger Overview's one-line stress result (every historical start year, from today), linking to the stress test page. */
+export function StressOverviewCard({ doc, planId }: { doc: PlanDocument; planId: string }) {
   const { cohorts, loading } = useStressTest(doc, "start")
   const summary = useMemo(() => (cohorts ? summarize(cohorts, null) : null), [cohorts])
   const verdict = summary && summary.cohorts.length > 0 ? stressVerdict(summary.successRate) : null
@@ -17,9 +18,9 @@ export function StressOverviewCard({ doc, onOpen }: { doc: PlanDocument; onOpen:
     <FireSectionCard
       eyebrow="How safe is this plan?"
       right={
-        <button type="button" onClick={onOpen} className="btn-secondary text-xs">
+        <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs">
           Open stress test
-        </button>
+        </Link>
       }
     >
       {loading || !summary ? (

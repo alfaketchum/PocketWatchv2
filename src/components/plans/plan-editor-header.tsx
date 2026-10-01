@@ -53,6 +53,12 @@ export function PlanEditorHeader({
             </span>
             Trading
           </Link>
+          <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              thunderstorm
+            </span>
+            Stress test
+          </Link>
         </div>
         <DollarsToggle value={basis} onChange={onBasisChange} />
       </div>
