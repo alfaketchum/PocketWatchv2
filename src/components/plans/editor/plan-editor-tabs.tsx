@@ -35,18 +35,12 @@ export function isPlanTab(value: string | null): value is PlanTab {
   return PLAN_TABS.some((t) => t.value === value)
 }
 
-/** The step's number in a small circle, filled for the tab you're on. */
+/** The step's number as a small superscript at the label's top right, like a footnote mark. */
 function StepNumber({ n, active }: { n: number; active: boolean }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums",
-        active ? "bg-primary text-white" : "border border-card-border text-foreground-muted",
-      )}
-    >
+    <sup aria-hidden="true" className={cn("ml-0.5 -top-1.5 text-[9px] font-semibold tabular-nums", active ? "text-primary" : "text-foreground-muted/70")}>
       {n}
-    </span>
+    </sup>
   )
 }
 
@@ -73,9 +67,11 @@ export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: 
                 active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
               )}
             >
-              <StepNumber n={i + 1} active={active} />
               <span className="sr-only">Step {i + 1}:</span>
-              {tab.label}
+              <span>
+                {tab.label}
+                <StepNumber n={i + 1} active={active} />
+              </span>
             </button>
           </Fragment>
         )
