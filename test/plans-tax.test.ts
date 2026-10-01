@@ -32,7 +32,7 @@ test("retiree living on gains below the 0% threshold pays no federal tax", () =>
 
 test("state tax: none, flat and graduated", () => {
   close(stateTax(100_000, { ...single, state: "TX" }), 0)
-  close(stateTax(100_000, { ...single, state: "IL" }), 4_950)
+  close(stateTax(100_000, { ...single, state: "IL" }), (100_000 - 2_850) * 0.0495, 0.01) // $2,850 personal exemption
   // California single: taxable 94,460 through its brackets.
   const ca = stateTax(100_000, { ...single, state: "CA" })
   assert.ok(ca > 5_000 && ca < 7_000, `CA ${ca}`)
@@ -66,7 +66,7 @@ function plan(patch: Partial<PlanDocument> = {}, settings: Partial<PlanDocument[
 
 test("brackets: $100k salary pays 2026 federal tax, plus state tax where you live", () => {
   close(simulatePlan(plan({ incomes: [pay(100_000)] })).rows[0].incomeTax, 13_170)
-  close(simulatePlan(plan({ incomes: [pay(100_000)] }, { state: "IL" })).rows[0].incomeTax, 13_170 + 4_950)
+  close(simulatePlan(plan({ incomes: [pay(100_000)] }, { state: "IL" })).rows[0].incomeTax, 13_170 + (100_000 - 2_850) * 0.0495)
   close(simulatePlan(plan({ incomes: [pay(100_000)] }, { state: "TX" })).rows[0].incomeTax, 13_170)
 })
 

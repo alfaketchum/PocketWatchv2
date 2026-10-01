@@ -2,6 +2,10 @@ import type { Brackets, FilingStatus } from "./federal-2026"
 
 /**
  * 2026 state individual income tax (Tax Foundation, "2026 State Income Tax Rates and Brackets").
+ * Flat-tax states' standard deductions / personal exemptions: AZ and ID follow the federal standard
+ * deduction; GA $12k/$24k, NC $12,750/$25,500, LA $12,500/$25,000 (2025 reform), KY $3,270 each, MS $2,300
+ * standard + $6,000 exemption (single), MI $5,800 / IL $2,850 / IN $1,000 per person exemptions. CO and IA
+ * start from federal taxable income (see state-homeowner-2026.ts); PA and UT have none.
  * Simplified: deductions and exemptions are subtracted when they're deductions (credits are ignored),
  * capital gains follow state-gains-2026.ts, and retirement-income or Social Security exclusions,
  * local taxes and credits are not modeled.
@@ -22,7 +26,7 @@ const ded = (single: number, joint: number): Record<FilingStatus, number> => ({ 
 export const STATE_TAX: Record<string, StateTax> = {
   AL: { name: "Alabama", kind: "brackets", brackets: { single: [[0, 0.02], [500, 0.04], [3_000, 0.05]], joint: [[0, 0.02], [1_000, 0.04], [6_000, 0.05]] }, deduction: ded(4_500, 11_500) },
   AK: { name: "Alaska", kind: "none" },
-  AZ: { name: "Arizona", kind: "flat", rate: 0.025 },
+  AZ: { name: "Arizona", kind: "flat", rate: 0.025, deduction: ded(16_100, 32_200) },
   AR: { name: "Arkansas", kind: "brackets", brackets: same([[0, 0.02], [4_600, 0.039]]), deduction: ded(2_470, 4_940) },
   CA: {
     name: "California",
@@ -46,7 +50,7 @@ export const STATE_TAX: Record<string, StateTax> = {
   DE: { name: "Delaware", kind: "brackets", brackets: same([[0, 0], [2_000, 0.022], [5_000, 0.039], [10_000, 0.048], [20_000, 0.052], [25_000, 0.0555], [60_000, 0.066]]), deduction: ded(3_250, 6_500) },
   DC: { name: "District of Columbia", kind: "brackets", brackets: same([[0, 0.04], [10_000, 0.06], [40_000, 0.065], [60_000, 0.085], [250_000, 0.0925], [500_000, 0.0975], [1_000_000, 0.1075]]), deduction: ded(16_100, 32_200) },
   FL: { name: "Florida", kind: "none" },
-  GA: { name: "Georgia", kind: "flat", rate: 0.0519 },
+  GA: { name: "Georgia", kind: "flat", rate: 0.0519, deduction: ded(12_000, 24_000) },
   HI: {
     name: "Hawaii",
     kind: "brackets",
@@ -56,13 +60,13 @@ export const STATE_TAX: Record<string, StateTax> = {
     },
     deduction: ded(5_544, 11_088),
   },
-  ID: { name: "Idaho", kind: "flat", rate: 0.053 },
-  IL: { name: "Illinois", kind: "flat", rate: 0.0495 },
-  IN: { name: "Indiana", kind: "flat", rate: 0.0295 },
+  ID: { name: "Idaho", kind: "flat", rate: 0.053, deduction: ded(16_100, 32_200) },
+  IL: { name: "Illinois", kind: "flat", rate: 0.0495, deduction: ded(2_850, 5_700) },
+  IN: { name: "Indiana", kind: "flat", rate: 0.0295, deduction: ded(1_000, 2_000) },
   IA: { name: "Iowa", kind: "flat", rate: 0.038 },
   KS: { name: "Kansas", kind: "brackets", brackets: { single: [[0, 0.052], [23_000, 0.0558]], joint: [[0, 0.052], [46_000, 0.0558]] }, deduction: ded(12_765, 26_560) },
-  KY: { name: "Kentucky", kind: "flat", rate: 0.035 },
-  LA: { name: "Louisiana", kind: "flat", rate: 0.03 },
+  KY: { name: "Kentucky", kind: "flat", rate: 0.035, deduction: ded(3_270, 6_540) },
+  LA: { name: "Louisiana", kind: "flat", rate: 0.03, deduction: ded(12_500, 25_000) },
   ME: { name: "Maine", kind: "brackets", brackets: { single: [[0, 0.058], [27_399, 0.0675], [64_849, 0.0715]], joint: [[0, 0.058], [54_849, 0.0675], [129_749, 0.0715]] }, deduction: ded(13_650, 27_300) },
   MD: {
     name: "Maryland",
@@ -74,14 +78,14 @@ export const STATE_TAX: Record<string, StateTax> = {
     deduction: ded(6_550, 13_100),
   },
   MA: { name: "Massachusetts", kind: "brackets", brackets: same([[0, 0.05], [1_083_150, 0.09]]), deduction: ded(4_400, 8_800) },
-  MI: { name: "Michigan", kind: "flat", rate: 0.0425 },
+  MI: { name: "Michigan", kind: "flat", rate: 0.0425, deduction: ded(5_800, 11_600) },
   MN: {
     name: "Minnesota",
     kind: "brackets",
     brackets: { single: [[0, 0.0535], [33_310, 0.068], [109_430, 0.0785], [203_150, 0.0985]], joint: [[0, 0.0535], [48_700, 0.068], [193_480, 0.0785], [337_930, 0.0985]] },
     deduction: ded(15_300, 30_600),
   },
-  MS: { name: "Mississippi", kind: "flat", rate: 0.04 },
+  MS: { name: "Mississippi", kind: "flat", rate: 0.04, deduction: ded(8_300, 16_600) },
   MO: { name: "Missouri", kind: "brackets", brackets: same([[0, 0], [1_348, 0.02], [2_696, 0.025], [4_044, 0.03], [5_392, 0.035], [6_740, 0.04], [8_088, 0.045], [9_436, 0.047]]), deduction: ded(16_100, 32_200) },
   MT: { name: "Montana", kind: "brackets", brackets: { single: [[0, 0.047], [47_500, 0.0565]], joint: [[0, 0.047], [95_000, 0.0565]] }, deduction: ded(16_100, 32_200) },
   NE: { name: "Nebraska", kind: "brackets", brackets: { single: [[0, 0.0246], [4_130, 0.0351], [24_760, 0.0455]], joint: [[0, 0.0246], [8_250, 0.0351], [49_530, 0.0455]] }, deduction: ded(8_850, 17_700) },
@@ -111,7 +115,7 @@ export const STATE_TAX: Record<string, StateTax> = {
     },
     deduction: ded(8_000, 16_050),
   },
-  NC: { name: "North Carolina", kind: "flat", rate: 0.0399 },
+  NC: { name: "North Carolina", kind: "flat", rate: 0.0399, deduction: ded(12_750, 25_500) },
   ND: { name: "North Dakota", kind: "brackets", brackets: { single: [[0, 0], [48_475, 0.0195], [244_825, 0.025]], joint: [[0, 0], [80_975, 0.0195], [298_075, 0.025]] }, deduction: ded(16_100, 32_200) },
   OH: { name: "Ohio", kind: "brackets", brackets: same([[0, 0], [26_050, 0.0275]]) },
   OK: { name: "Oklahoma", kind: "brackets", brackets: { single: [[0, 0], [3_750, 0.025], [4_900, 0.035], [7_200, 0.045]], joint: [[0, 0], [7_500, 0.025], [9_800, 0.035], [14_400, 0.045]] }, deduction: ded(7_350, 14_700) },
