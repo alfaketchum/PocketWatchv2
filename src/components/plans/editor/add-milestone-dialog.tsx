@@ -5,7 +5,9 @@ import { toast } from "sonner"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
 import type { PlanEditorProps } from "../plans-helpers"
-import { applyTemplate, draftProblem, initialDraft, TemplateFields, type TemplateDraft } from "./milestone-template-forms"
+import { TemplateFields } from "./milestone-template-forms"
+import { applyTemplate, draftProblem } from "./template-apply"
+import { initialDraft, type TemplateDraft } from "./template-draft"
 
 /** Where each template's result shows up, for the confirmation toast. */
 const LANDS_ON: Partial<Record<TemplateKey, string>> = {
