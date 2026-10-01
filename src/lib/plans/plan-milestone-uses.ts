@@ -10,12 +10,13 @@ const ADJUSTMENT_LABELS: Record<PlanAdjustment["kind"], string> = {
   state: "State changes",
 }
 
-export type MilestoneSource = "yours" | "kids" | "assets" | "plan"
+export type MilestoneSource = "yours" | "kids" | "assets" | "income" | "plan"
 
 export const MILESTONE_SOURCE_LABELS: Record<MilestoneSource, string> = {
   yours: "Yours",
   kids: "Kids",
   assets: "Assets",
+  income: "Income",
   plan: "Plan",
 }
 
@@ -23,6 +24,7 @@ export function milestoneSource(m: PlanMilestone): MilestoneSource {
   if (m.id === FI_MILESTONE_ID) return "plan"
   if (m.kind === "child") return "kids"
   if (m.kind === "asset") return "assets"
+  if (m.kind === "income") return "income"
   return "yours"
 }
 
@@ -105,11 +107,9 @@ export function removeMilestoneWithItems(doc: PlanDocument, id: string): PlanDoc
       .filter((i) => !own(i))
       .map((i) => {
         const continuation = removedIncomes.find((r) => r.continues === i.id)
-        if (continuation) return { ...i, end: continuation.end }
-        if (i.endBefore && pointsAt(i.end, id)) {
-          const { endBefore, ...rest } = i
-          return { ...rest, end: endBefore }
-        }
+        const { endBefore, ...rest } = i
+        if (continuation) return { ...(pointsAt(i.end, id) ? rest : i), end: continuation.end }
+        if (endBefore && pointsAt(i.end, id)) return { ...rest, end: endBefore }
         return i
       }),
     expenses: next.expenses.filter((e) => !own(e)),

@@ -11,6 +11,7 @@ import {
   applyInheritance,
   applyMarried,
   applyDivorce,
+  applyWidowed,
   applyMove,
   applyWindfall,
   type InheritedPart,
@@ -73,13 +74,21 @@ const TEMPLATES: [string, (d: PlanDocument) => PlanDocument][] = [
       ],
     }, newId)],
   ["Divorce (income ends, split, costs, support)", (d) =>
-    applyDivorce(d, { when, endIncomeIds: ["sal"], exShare: 0.5, legalCost: 20_000, supportPerYear: 12_000, supportYears: 5, spendingChange: -0.2, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
+    applyDivorce(d, { when, endIncomeIds: ["sal"], exShare: 0.5, legalCost: 20_000, supportPerYear: 12_000, supportYears: 5, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
+  ["Partner passes away (step-up, insurance, costs)", (d) =>
+    applyWidowed(d, { personId: "p2", when, endIncomeIds: ["ss-p2", "sal"], survivorBenefit: true, lifeInsurance: 500_000, finalCosts: 15_000, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
   ["Custom", (d) => applyCustom(d, { name: "Sabbatical idea", when }, newId)],
 ]
 
+/** A couple, each with Social Security (theirs larger), for the survivor step-up. */
+function withSocialSecurity(doc: PlanDocument): PlanDocument {
+  const ss = (id: string, amount: number) => ({ id, name: id, kind: "social_security" as const, amount, growth: null, start: { type: "year" as const, year: 2050 }, end: { type: "planEnd" as const }, taxable: true, oneTime: false, contributions: [] })
+  return { ...doc, people: [...doc.people, { id: "p2", name: "Sam", birthYear: 1990, birthMonth: 1 }], incomes: [...doc.incomes, ss("ss-p1", 20_000), ss("ss-p2", 30_000)] }
+}
+
 for (const [label, apply] of TEMPLATES) {
   test(`${label}: adding then removing it (with its items) restores the plan exactly`, () => {
-    const before = base()
+    const before = label.startsWith("Partner passes away") ? withSocialSecurity(base()) : base()
     const after = apply(before)
     assert.ok(planDocumentSchema.safeParse(after).success, "the added plan is valid")
     assert.notDeepEqual(after, before)
@@ -135,7 +144,7 @@ test("Have a child: deleting the child restores the plan", () => {
 test("divorce: the ex's share of each account moves out untaxed; support runs its years; you file single", () => {
   const doc = base()
   const plain = simulatePlan(doc).rows
-  const divorced = applyDivorce(doc, { when, endIncomeIds: [], exShare: 0.5, legalCost: 0, supportPerYear: 12_000, supportYears: 5, spendingChange: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)
+  const divorced = applyDivorce(doc, { when, endIncomeIds: [], exShare: 0.5, legalCost: 0, supportPerYear: 12_000, supportYears: 5, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)
   const rows = simulatePlan(divorced).rows
   const i = 2030 - doc.settings.startYear
   assert.ok(rows[i].splitOut > 0)
@@ -145,4 +154,13 @@ test("divorce: the ex's share of each account moves out untaxed; support runs it
   const paid = rows.filter((r) => (r.expensesBy[support.id] ?? 0) > 0).length
   assert.equal(paid, 5)
   assert.equal((divorced.adjustments ?? []).some((a) => a.kind === "filingStatus" && a.status === "single"), true)
+})
+
+test("partner passes away: their income stops and your Social Security steps up to theirs", () => {
+  const couple = withSocialSecurity(base())
+  const after = applyWidowed(couple, { personId: "p2", when, endIncomeIds: ["ss-p2"], survivorBenefit: true, lifeInsurance: 0, finalCosts: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)
+  const survivor = after.incomes.find((i) => i.name === "Survivor Social Security")!
+  assert.equal(survivor.amount, 30_000)
+  assert.equal(after.incomes.find((i) => i.id === "ss-p1")!.end.type, "milestone")
+  assert.ok((after.adjustments ?? []).some((a) => a.kind === "filingStatus" && a.status === "single"))
 })

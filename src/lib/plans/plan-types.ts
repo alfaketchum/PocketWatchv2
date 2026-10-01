@@ -7,7 +7,7 @@ export type AssetKind = "home" | "vehicle" | "other"
 
 export type DebtKind = "mortgage" | "student" | "auto" | "credit" | "other"
 
-export type MilestoneKind = "retirement" | "custom" | "child" | "asset"
+export type MilestoneKind = "retirement" | "custom" | "child" | "asset" | "income"
 
 /** When something starts or ends. Ranges are [start, end): an item ending at a milestone stops that year. */
 export type Timing =

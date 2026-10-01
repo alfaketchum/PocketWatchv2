@@ -12,6 +12,7 @@ import {
   applyVehicle,
   applyMarried,
   applyDivorce,
+  applyWidowed,
   applyMove,
   applyRetire,
   applyWindfall,
@@ -24,7 +25,12 @@ import type { PaymentMode, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { newItemId } from "../plans-helpers"
 import { emptyPart, InheritanceFields } from "./inheritance-fields"
-import { DivorceFields, partnerIncomeIds } from "./divorce-fields"
+import { DivorceFields } from "./divorce-fields"
+import { personIncomeIds } from "./income-stop-picker"
+import { PensionFields } from "./pension-fields"
+import { SocialSecurityFields } from "./social-security-fields"
+import { WidowedFields } from "./widowed-fields"
+import { applyPension, applySocialSecurity } from "@/lib/plans/income-templates"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { TimingPicker } from "./timing-picker"
@@ -71,12 +77,26 @@ export interface TemplateDraft {
   exShare: number
   legalCost: number
   supportPerYear: number
+  /** Whose (Social Security, pension, partner passing away). */
+  personId: string
+  /** Social Security: monthly benefit at full retirement age. */
+  monthlyAtFra: number
+  /** Social Security claiming age, or a pension's starting age. */
+  age: number
+  /** Pension: cost-of-living raises. */
+  raises: boolean
+  survivorBenefit: boolean
+  lifeInsurance: number
+  finalCosts: number
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
   retire: "Retirement",
   married: "Get married",
   divorce: "Divorce",
+  widowed: "Partner passes away",
+  socialSecurity: "Social Security",
+  pension: "Pension",
   child: "New baby",
   home: "Home",
   vehicle: "Car",
@@ -113,8 +133,8 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
   return {
     name: DEFAULT_NAMES[key],
     when: key === "retire" && retirement ? retirement.timing : { type: "year", year: year + 2 },
-    amount: key === "career" ? Math.round((firstIncome?.amount ?? 80_000) * 1.2) : 100_000,
-    percent: key === "divorce" ? 0 : -0.1,
+    amount: key === "career" ? Math.round((firstIncome?.amount ?? 80_000) * 1.2) : key === "pension" ? 30_000 : 100_000,
+    percent: -0.1,
     years: key === "divorce" ? 5 : 1,
     startYear: year + 2,
     incomeId: firstIncome?.id ?? "",
@@ -131,10 +151,17 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     relationship: "child",
     decedentState: doc.settings.state ?? null,
     moveTo: SAME_STATE,
-    endIncomeIds: partnerIncomeIds(doc),
+    endIncomeIds: personIncomeIds(doc, doc.people[1]?.id),
     exShare: 0.5,
     legalCost: 20_000,
     supportPerYear: 0,
+    personId: key === "widowed" ? (doc.people[1]?.id ?? doc.people[0]?.id ?? "") : (doc.people[0]?.id ?? ""),
+    monthlyAtFra: 2_000,
+    age: key === "pension" ? 65 : 67,
+    raises: false,
+    survivorBenefit: true,
+    lifeInsurance: 0,
+    finalCosts: 15_000,
   }
 }
 
@@ -167,12 +194,30 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
           legalCost: d.legalCost,
           supportPerYear: d.supportPerYear,
           supportYears: d.years,
-          spendingChange: d.percent,
           incomeTaxRate: d.incomeTaxRate,
           capitalGainsRate: d.capitalGainsRate,
         },
         newItemId,
       )
+    case "widowed":
+      return applyWidowed(
+        doc,
+        {
+          personId: d.personId,
+          when: d.when,
+          endIncomeIds: d.endIncomeIds,
+          survivorBenefit: d.survivorBenefit,
+          lifeInsurance: d.lifeInsurance,
+          finalCosts: d.finalCosts,
+          incomeTaxRate: d.incomeTaxRate,
+          capitalGainsRate: d.capitalGainsRate,
+        },
+        newItemId,
+      )
+    case "socialSecurity":
+      return applySocialSecurity(doc, { personId: d.personId, monthlyAtFra: d.monthlyAtFra, claimAge: d.age }, newItemId)
+    case "pension":
+      return applyPension(doc, { name, personId: d.personId, amount: d.amount, startAge: d.age, raises: d.raises }, newItemId)
     case "child":
       return applyChild(doc, name, d.startYear, newItemId)
     case "home":
@@ -202,6 +247,9 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
 export function draftProblem(key: TemplateKey, d: TemplateDraft, doc: PlanDocument): string | null {
   if ((key === "career" || key === "break") && !doc.incomes.some((i) => i.id === d.incomeId)) return "Add an income first."
   if (key === "custom" && !d.name.trim()) return "Give it a name."
+  if (key === "widowed" && doc.people.length < 2) return "Add your partner first."
+  if (key === "socialSecurity" && d.monthlyAtFra <= 0) return "Enter your benefit."
+  if (key === "pension" && d.amount <= 0) return "Enter an amount."
   if (key === "inheritance" && !d.parts.some((p) => p.amount > 0)) return "Enter an amount."
   return null
 }
@@ -296,6 +344,12 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
       return <MarriedFields d={d} set={set} doc={doc} />
     case "divorce":
       return <DivorceFields d={d} set={set} doc={doc} />
+    case "widowed":
+      return <WidowedFields d={d} set={set} doc={doc} />
+    case "socialSecurity":
+      return <SocialSecurityFields d={d} set={set} doc={doc} />
+    case "pension":
+      return <PensionFields d={d} set={set} doc={doc} />
     case "child":
       return (
         <div className="grid grid-cols-2 gap-2">

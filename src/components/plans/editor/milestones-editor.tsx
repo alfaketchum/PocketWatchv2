@@ -59,7 +59,14 @@ function FiMilestoneCard({ doc }: { doc: PlanDocument }) {
   )
 }
 
-/** Milestones created by kids and by assets bought or sold; edited where they come from. */
+/** Where a generated milestone is edited: its tab and that tab's name. */
+function sourceTab(m: { kind: string }): { tab: string; label: string } {
+  if (m.kind === "child") return { tab: "expenses", label: "Expenses" }
+  if (m.kind === "income") return { tab: "income", label: "Income" }
+  return { tab: "assets", label: "Assets & debts" }
+}
+
+/** Milestones created by kids, assets bought or sold, and incomes like Social Security; edited where they come from. */
 function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
   const { milestones: groupColors } = usePlanColors()
   const payoffs = useMemo(() => payoffMilestones(doc), [doc])
@@ -67,12 +74,12 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
   if (marks.length === 0) return null
   return (
     <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">
-      <p className="text-xs font-semibold text-foreground">From your kids and assets</p>
+      <p className="text-xs font-semibold text-foreground">From your kids, assets and income</p>
       <p className="text-[11px] text-foreground-muted">Edit them where they come from.</p>
       {marks.map((m) => (
         <Link
           key={m.id}
-          href={m.kind === "child" ? "?tab=expenses" : "?tab=assets"}
+          href={`?tab=${sourceTab(m).tab}`}
           scroll={false}
           className="flex items-center gap-2 text-xs rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/5"
         >
@@ -82,7 +89,7 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
           <span className="text-foreground">{m.name}</span>
           <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
           <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
-          <span className="ml-auto text-[11px] text-primary">Edit on {m.kind === "child" ? "Expenses" : "Assets & debts"} →</span>
+          <span className="ml-auto text-[11px] text-primary">Edit on {sourceTab(m).label} →</span>
         </Link>
       ))}
     </div>

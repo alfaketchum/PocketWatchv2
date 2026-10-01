@@ -1,6 +1,6 @@
 import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principalKey } from "./plan-loan-parts"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
-import type { PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
+import type { MilestoneKind, PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 
 /** Stack order, bottom to top; debt (mortgages and car loans included) is drawn below zero. 529s sit right above tax-free. */
 export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssets"] as const
@@ -60,7 +60,7 @@ export interface ChartMilestone {
   /** The milestone's id; empty for "money runs out". */
   id: string
   name: string
-  kind: "retirement" | "custom" | "child" | "asset" | "payoff" | "depleted"
+  kind: MilestoneKind | "payoff" | "depleted"
   icon?: string
   age: number
   year: number
@@ -195,6 +195,8 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   work: "work",
   luggage: "work",
   favorite: "family",
+  heart_broken: "family",
+  local_florist: "family",
   child_care: "family",
   savings: "education",
   backpack: "education",
@@ -207,6 +209,8 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   autorenew: "property",
   sell: "property",
   credit_score: "money",
+  elderly: "money",
+  account_balance: "money",
 }
 
 export function milestoneGroup(m: Pick<ChartMilestone, "kind" | "icon">): MilestoneGroup {

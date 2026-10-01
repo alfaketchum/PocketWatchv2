@@ -33,8 +33,8 @@ const FIXED_PAY_KINDS = new Set<IncomeKind>(["pension", "other"])
 const NO_RAISES_HINT =
   "Pays the same dollar amount every year, like most private pensions and annuities. Inflation slowly shrinks what it buys: at 3% a year, $30,000 buys about $22,000 of today's goods after 10 years."
 
-/** Income changes offered from Add income (they also add a milestone to the timeline). */
-const INCOME_TEMPLATES: TemplateKey[] = ["career", "break", "windfall"]
+/** Income added from templates (each shows on the timeline: its own milestone, or a marker generated from the income). */
+const INCOME_TEMPLATES: TemplateKey[] = ["socialSecurity", "pension", "career", "break", "windfall"]
 
 function newIncome(hasRetirement: boolean): PlanIncome {
   const end: Timing = hasRetirement ? { type: "milestone", milestoneId: RETIREMENT_MILESTONE_ID } : { type: "planEnd" }

@@ -49,6 +49,7 @@ const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   custom: "flag",
   child: "child_care",
   asset: "home",
+  income: "payments",
   payoff: "credit_score",
   depleted: "warning",
 }
@@ -210,6 +211,7 @@ function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
   if (mark.kind === "depleted") return "Your accounts can't cover spending from this year on."
   if (mark.kind === "child") return "From Kids · edit on Expenses → Kids"
   if (mark.kind === "asset") return "From Assets & debts · edit it there"
+  if (mark.kind === "income") return "From Income · edit it there"
   if (mark.kind === "payoff") return "Last payment on this loan · change it on Assets & debts"
   const uses = milestoneUses(doc, mark.id)
   return uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to it yet"

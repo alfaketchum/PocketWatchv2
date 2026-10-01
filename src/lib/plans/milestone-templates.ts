@@ -12,6 +12,9 @@ export type TemplateKey =
   | "retire"
   | "married"
   | "divorce"
+  | "widowed"
+  | "socialSecurity"
+  | "pension"
   | "child"
   | "home"
   | "vehicle"
@@ -34,6 +37,9 @@ export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "retire", label: "Retire", icon: "beach_access", creates: "Moves your retirement date" },
   { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates" },
   { key: "divorce", label: "Divorce", icon: "heart_broken", creates: "Splits accounts, ends their income, single filing" },
+  { key: "widowed", label: "Partner passes away", icon: "local_florist", creates: "Their income stops, survivor benefit, single filing" },
+  { key: "socialSecurity", label: "Claim Social Security", icon: "elderly", creates: "Your benefit from the age you claim (62–70)" },
+  { key: "pension", label: "Pension", icon: "account_balance", creates: "A pension from an age, with or without raises" },
   { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids" },
   { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts" },
   { key: "vehicle", label: "Buy a vehicle", icon: "directions_car", creates: "A vehicle and its loan on Assets & debts" },
@@ -120,8 +126,6 @@ export interface DivorceInput {
   /** Alimony or child support you pay, per year in today's dollars, for `supportYears`. */
   supportPerYear: number
   supportYears: number
-  /** Your own spending afterwards changes by this share (−0.2 = 20% less). */
-  spendingChange: number
   /** Flat-rate plans: the new rates (filing single). */
   incomeTaxRate: number
   capitalGainsRate: number
@@ -149,7 +153,6 @@ export function applyDivorce(doc: PlanDocument, input: DivorceInput, newId: IdMa
       ...(next.adjustments ?? []),
       { id: newId("adj"), kind: "filingStatus", timing: when, status: "single", origin: msId },
       { id: newId("adj"), kind: "taxRates", timing: when, incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
-      ...(input.spendingChange !== 0 ? [{ id: newId("adj"), kind: "spending" as const, timing: when, percent: input.spendingChange, origin: msId }] : []),
     ],
   }
   const divorceYear = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
@@ -162,6 +165,65 @@ export function applyDivorce(doc: PlanDocument, input: DivorceInput, newId: IdMa
       : []),
   ]
   return { ...next, expenses: [...next.expenses, ...costs] }
+}
+
+export interface WidowedInput {
+  personId: string
+  when: Timing
+  /** Their incomes, which stop. */
+  endIncomeIds: string[]
+  /** Your Social Security steps up to theirs when theirs was larger (the survivor benefit). */
+  survivorBenefit: boolean
+  /** Life insurance paid out, tax-free; today's dollars. */
+  lifeInsurance: number
+  /** Funeral and final costs, today's dollars. */
+  finalCosts: number
+  /** Flat-rate plans: the new rates (filing single). */
+  incomeTaxRate: number
+  capitalGainsRate: number
+}
+
+/** The larger Social Security benefit among stopped vs continuing incomes, for the survivor step-up. */
+function survivorStepUp(doc: PlanDocument, stopping: Set<string>): { yours: PlanIncome; theirs: PlanIncome } | null {
+  const ss = doc.incomes.filter((i) => i.kind === "social_security" && !i.oneTime)
+  const theirs = ss.filter((i) => stopping.has(i.id)).sort((a, b) => b.amount - a.amount)[0]
+  const yours = ss.filter((i) => !stopping.has(i.id))
+  return theirs && yours.length === 1 && theirs.amount > yours[0].amount ? { yours: yours[0], theirs } : null
+}
+
+/**
+ * A partner passes away: their incomes stop, your Social Security steps up to theirs if it was larger, an
+ * optional tax-free life-insurance payout and final costs, and you file single from then on. Accounts stay
+ * yours (spouses inherit them).
+ */
+export function applyWidowed(doc: PlanDocument, input: WidowedInput, newId: IdMaker): PlanDocument {
+  const person = doc.people.find((p) => p.id === input.personId)
+  const msId = newId("ms-widowed")
+  const when = at(msId)
+  const name = person ? `${person.name} passes away` : "Partner passes away"
+  let next = addMilestone(doc, { id: msId, name, kind: "custom", icon: ICONS.widowed, timing: input.when })
+  const stopping = new Set(input.endIncomeIds)
+  const stepUp = input.survivorBenefit ? survivorStepUp(next, stopping) : null
+  const ending = new Set([...stopping, ...(stepUp ? [stepUp.yours.id] : [])])
+  next = { ...next, incomes: next.incomes.map((i) => (ending.has(i.id) ? { ...i, end: when, endBefore: i.end } : i)) }
+  const added: PlanIncome[] = [
+    ...(stepUp ? [{ ...stepUp.yours, id: newId("inc"), name: "Survivor Social Security", amount: stepUp.theirs.amount, start: when, end: stepUp.yours.end, origin: msId, continues: stepUp.yours.id }] : []),
+    ...(input.lifeInsurance > 0
+      ? [{ id: newId("inc"), name: "Life insurance", kind: "other" as const, amount: input.lifeInsurance, growth: null, start: when, end: when, taxable: false, oneTime: true, contributions: [], origin: msId }]
+      : []),
+  ]
+  next = {
+    ...next,
+    incomes: [...next.incomes, ...added],
+    adjustments: [
+      ...(next.adjustments ?? []),
+      { id: newId("adj"), kind: "filingStatus", timing: when, status: "single", origin: msId },
+      { id: newId("adj"), kind: "taxRates", timing: when, incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
+    ],
+  }
+  if (input.finalCosts <= 0) return next
+  const cost = { id: newId("exp"), name: "Funeral and final costs", category: null, amount: input.finalCosts, growth: null, start: when, end: when, oneTime: true, origin: msId }
+  return { ...next, expenses: [...next.expenses, cost] }
 }
 
 export function applyRetire(doc: PlanDocument, when: Timing): PlanDocument {
