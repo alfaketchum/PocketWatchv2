@@ -33,5 +33,7 @@ export function socialSecurityYearly(doc: PlanDocument, income: PlanIncome): num
   const ss = income.socialSecurity
   const person = doc.people.find((p) => p.id === income.personId) ?? doc.people[0]
   if (!ss || !person) return income.amount
-  return yearlyBenefit(estimatedPia(doc, income)?.pia ?? ss.pia, person.birthYear, ss.claimAge)
+  const estimate = estimatedPia(doc, income)
+  if (estimate && estimate.eligibleYear === null) return 0
+  return yearlyBenefit(estimate?.pia ?? ss.pia, person.birthYear, ss.claimAge)
 }

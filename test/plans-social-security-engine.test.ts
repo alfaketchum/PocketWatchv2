@@ -65,3 +65,9 @@ test("survivor benefit: their benefit with delay credits, at least 82.5% of PIA,
   close(survivorBenefit({ pia: 2_000, claimAge: 62, birthYear: 1966 }, 1966, 72), 2_000 * 0.825 * 12)
   close(survivorBenefit({ pia: 2_000, claimAge: 67, birthYear: 1966 }, 1966, 60), 2_000 * 0.715 * 12)
 })
+
+test("without 40 credits of their own, a spouse still gets the spousal benefit: half the partner's PIA", () => {
+  const short = { ...ss("b", "p2", 0, 67), socialSecurity: { pia: 0, claimAge: 67, earnings: [[2020, 30_000], [2021, 30_000]] as [number, number][] } }
+  const doc = couple([ss("a", "p1", 2_000, 67), short])
+  close(at(doc, 67, "b"), 1_000 * 12)
+})

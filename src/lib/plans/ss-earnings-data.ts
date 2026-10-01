@@ -164,3 +164,62 @@ export const LATEST_AWI_YEAR = 2024
 /** PIA bend points are 180 and 1,085 dollars scaled by the wage index two years before eligibility, relative to 1977. */
 export const BENDPOINTS_1977 = [180, 1_085] as const
 export const AWI_1977 = AWI[1977]
+
+/**
+ * Earnings for one Social Security credit (quarter of coverage), 1978–2026 (ssa.gov/oact/cola/QC.html); at most
+ * 4 credits a year, 40 needed for a retirement benefit. Before 1978, $50 per quarter (an approximation).
+ */
+export const EARNINGS_PER_CREDIT: Record<number, number> = {
+  1978: 250,
+  1979: 260,
+  1980: 290,
+  1981: 310,
+  1982: 340,
+  1983: 370,
+  1984: 390,
+  1985: 410,
+  1986: 440,
+  1987: 460,
+  1988: 470,
+  1989: 500,
+  1990: 520,
+  1991: 540,
+  1992: 570,
+  1993: 590,
+  1994: 620,
+  1995: 630,
+  1996: 640,
+  1997: 670,
+  1998: 700,
+  1999: 740,
+  2000: 780,
+  2001: 830,
+  2002: 870,
+  2003: 890,
+  2004: 900,
+  2005: 920,
+  2006: 970,
+  2007: 1000,
+  2008: 1050,
+  2009: 1090,
+  2010: 1120,
+  2011: 1120,
+  2012: 1130,
+  2013: 1160,
+  2014: 1200,
+  2015: 1220,
+  2016: 1260,
+  2017: 1300,
+  2018: 1320,
+  2019: 1360,
+  2020: 1410,
+  2021: 1470,
+  2022: 1510,
+  2023: 1640,
+  2024: 1730,
+  2025: 1810,
+  2026: 1890,
+}
+export const EARNINGS_PER_CREDIT_BEFORE_1978 = 50
+export const CREDITS_PER_YEAR = 4
+export const CREDITS_NEEDED = 40

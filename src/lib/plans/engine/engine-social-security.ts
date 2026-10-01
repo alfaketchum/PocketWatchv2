@@ -22,11 +22,20 @@ interface Ctx {
   inflation: Inflation
   /** Wage index for the year (the earnings-test limits rise with it). */
   wageIndex: number
-  /** PIAs estimated from earnings records, by income id (others use the entered PIA). */
-  pia: Record<string, number>
+  /** Estimated from earnings records, by income id: the PIA and the first year with 40 credits (null = never). */
+  estimates: Record<string, { pia: number; eligibleYear: number | null }>
 }
 
-const piaOf = (ctx: Ctx, income: PlanIncome): number => ctx.pia[income.id] ?? income.socialSecurity?.pia ?? 0
+/**
+ * The PIA on this record this year: an estimate counts only from the year it has 40 credits (no benefit on
+ * your own record before; spousal benefits still apply). An entered PIA is taken as earned.
+ */
+function piaOf(ctx: Ctx, income: PlanIncome): number {
+  const estimate = ctx.estimates[income.id]
+  if (!estimate) return income.socialSecurity?.pia ?? 0
+  const year = ctx.doc.settings.startYear + ctx.index
+  return estimate.eligibleYear !== null && year >= estimate.eligibleYear ? estimate.pia : 0
+}
 
 const personOf = (doc: PlanDocument, income: PlanIncome): PlanPerson | undefined =>
   doc.people.find((p) => p.id === income.personId) ?? doc.people[0]

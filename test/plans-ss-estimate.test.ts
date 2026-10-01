@@ -56,3 +56,26 @@ test("the plan's own salary counts toward the estimate, so retiring earlier lowe
   const benefit = (d: PlanDocument) => simulatePlan(d).rows[67 - 40].incomeBy.ss
   assert.ok(Math.abs(benefit(working) - estimatedPia(working, ss(working))!.pia * 12) < 1)
 })
+
+import { creditTally, creditsFor } from "@/lib/plans/ss-estimate"
+
+test("work credits: one per $1,890 in 2026 (at most 4 a year), 40 needed", () => {
+  assert.equal(creditsFor({ year: 2026, amount: 5_000 }), 2)
+  assert.equal(creditsFor({ year: 2026, amount: 500_000 }), 4)
+  assert.equal(creditsFor({ year: 1990, amount: 1_100 }), 2)
+  const nine = roughHistory(2016, 2024, 60_000)
+  assert.deepEqual(creditTally(nine), { credits: 36, eligibleYear: null })
+  assert.equal(creditTally(roughHistory(2015, 2024, 60_000)).eligibleYear, 2024)
+})
+
+test("under 40 credits there's no benefit on your own record; reaching 40 in the plan starts it then", () => {
+  const short = plan(40)
+  const ss = (d: PlanDocument) => d.incomes.find((i) => i.id === "ss")!
+  const shortRecord = { ...short, incomes: short.incomes.map((i) => (i.id === "ss" ? { ...i, socialSecurity: { ...i.socialSecurity!, earnings: roughHistory(2020, 2025, 70_000).map((e) => [e.year, e.amount] as [number, number]) } } : i)) }
+  assert.equal(estimatedPia(shortRecord, ss(shortRecord))!.eligibleYear, null)
+  assert.equal(simulatePlan(shortRecord).rows[67 - 40].incomeBy.ss ?? 0, 0)
+  // Six past years (24 credits) plus four more in the plan reach 40 in 2029.
+  const reaches = { ...shortRecord, incomes: shortRecord.incomes.map((i) => (i.id === "sal" ? { ...i, end: { type: "age" as const, personId: shortRecord.people[0].id, age: 44 } } : i)) }
+  assert.equal(estimatedPia(reaches, ss(reaches))!.eligibleYear, 2029)
+  assert.ok((simulatePlan(reaches).rows[67 - 40].incomeBy.ss ?? 0) > 0)
+})

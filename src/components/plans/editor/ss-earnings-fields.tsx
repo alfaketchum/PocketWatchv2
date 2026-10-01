@@ -8,6 +8,22 @@ import { estimatedPia, planEarnings } from "@/lib/plans/ss-plan-earnings"
 import type { PlanDocument, PlanIncome } from "@/lib/plans/plan-types"
 
 const START_AGE = 22
+const CREDITS_NEEDED = 40
+
+/** Work credits: 40 (about 10 years) are needed for a benefit on your own record. */
+function CreditsNote({ credits, eligibleYear, startYear }: { credits: number; eligibleYear: number | null; startYear: number }) {
+  if (eligibleYear !== null && eligibleYear < startYear) {
+    return <p className="text-[11px] text-success">{Math.min(credits, CREDITS_NEEDED)} of 40 work credits: eligible on your own record.</p>
+  }
+  if (eligibleYear !== null) {
+    return <p className="text-[11px] text-foreground-muted">{credits} work credits by the plan&apos;s end; 40 are reached in {eligibleYear}, so your own benefit counts from then.</p>
+  }
+  return (
+    <p className="text-[11px] text-warning">
+      Not eligible on your own record: {credits} of 40 work credits (about 10 years of work). Only a spousal benefit, if married, is paid.
+    </p>
+  )
+}
 const ROUGH_SALARY = 60_000
 
 /**
@@ -56,6 +72,7 @@ export function SsEarningsFields({ income, doc, onChange }: { income: PlanIncome
           <span className="font-medium text-foreground">{fmtMoney(estimate.pia)}/mo</span> at full retirement age, today&apos;s dollars.
         </p>
       )}
+      {estimate && <CreditsNote credits={estimate.credits} eligibleYear={estimate.eligibleYear} startYear={doc.settings.startYear} />}
     </div>
   )
 }

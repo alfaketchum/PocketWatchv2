@@ -62,8 +62,8 @@ interface Plan {
   transfers: TransferEntry[]
   adjustments: AdjustmentEntry[]
   deposits: DepositEntry[]
-  /** Social Security PIAs estimated from earnings records (plus the plan's own salaries), by income id. */
-  ssPia: Record<string, number>
+  /** Social Security estimated from earnings records (plus the plan's own salaries), by income id. */
+  ssEstimates: Record<string, { pia: number; eligibleYear: number | null }>
 }
 
 interface State {
@@ -103,10 +103,10 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
     transfers: transferEntries(childTransfers(original), ctx),
     adjustments: adjustmentEntries(doc.adjustments ?? [], ctx),
     deposits: depositEntries(doc.deposits ?? [], ctx),
-    ssPia: Object.fromEntries(
+    ssEstimates: Object.fromEntries(
       doc.incomes.flatMap((i) => {
         const estimate = estimatedPia(doc, i)
-        return estimate ? [[i.id, estimate.pia]] : []
+        return estimate ? [[i.id, { pia: estimate.pia, eligibleYear: estimate.eligibleYear }]] : []
       }),
     ),
   }
@@ -153,7 +153,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { startYear } = plan.doc.settings
   const { inflation } = plan
   const ss = socialSecurityYear(
-    { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear), pia: plan.ssPia },
+    { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear), estimates: plan.ssEstimates },
     incomeForYear(plan.incomes, plan.doc.accounts, index, inflation),
     state.ssWithheld,
   )

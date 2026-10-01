@@ -5,7 +5,17 @@
  * dollars. Future earnings come from the plan in today's dollars. Not included: future real wage growth (makes
  * younger people's estimates a little conservative) and freezing the indexing at age 60.
  */
-import { AWI, AWI_1977, BENDPOINTS_1977, LATEST_AWI_YEAR, MAX_TAXABLE_EARNINGS } from "./ss-earnings-data"
+import {
+  AWI,
+  AWI_1977,
+  BENDPOINTS_1977,
+  CREDITS_NEEDED,
+  CREDITS_PER_YEAR,
+  EARNINGS_PER_CREDIT,
+  EARNINGS_PER_CREDIT_BEFORE_1978,
+  LATEST_AWI_YEAR,
+  MAX_TAXABLE_EARNINGS,
+} from "./ss-earnings-data"
 
 const TOP_YEARS = 35
 const MONTHS = 12
@@ -26,6 +36,10 @@ export interface PiaEstimate {
   aime: number
   /** Years with earnings that count (of the top 35). */
   counted: number
+  /** Work credits earned over the record (40 needed for a retirement benefit on your own record). */
+  credits: number
+  /** First year with 40 credits, or null if never reached in the record and plan. */
+  eligibleYear: number | null
 }
 
 const latestMax = MAX_TAXABLE_EARNINGS[Math.max(...Object.keys(MAX_TAXABLE_EARNINGS).map(Number))]
@@ -38,6 +52,25 @@ export function indexedEarnings(e: EarningsYear, todayFromAwiLevel: number): num
   // Years after the latest published index are already near today's level.
   const level = e.year > LATEST_AWI_YEAR ? 1 : (AWI[LATEST_AWI_YEAR] / awi) * todayFromAwiLevel
   return capped * level
+}
+
+const latestPerCredit = EARNINGS_PER_CREDIT[Math.max(...Object.keys(EARNINGS_PER_CREDIT).map(Number))]
+
+/** Credits for a year's earnings: one per that year's amount (today's for plan years), at most four. */
+export function creditsFor(e: EarningsYear): number {
+  const per = e.today ? latestPerCredit : e.year < 1978 ? EARNINGS_PER_CREDIT_BEFORE_1978 : (EARNINGS_PER_CREDIT[e.year] ?? latestPerCredit)
+  return Math.min(CREDITS_PER_YEAR, Math.floor(Math.max(0, e.amount) / per))
+}
+
+/** Total credits, and the first year they reach 40 (earnings in year order). */
+export function creditTally(earnings: EarningsYear[]): { credits: number; eligibleYear: number | null } {
+  let credits = 0
+  let eligibleYear: number | null = null
+  for (const e of [...earnings].sort((a, b) => a.year - b.year)) {
+    credits += creditsFor(e)
+    if (eligibleYear === null && credits >= CREDITS_NEEDED) eligibleYear = e.year
+  }
+  return { credits, eligibleYear }
 }
 
 /** Today's bend points: SSA's 1977 values scaled by the latest wage index (the current year's published ones). */
@@ -60,7 +93,7 @@ export function estimatePia(earnings: EarningsYear[], todayFromAwiLevel = 1): Pi
   const indexed = earnings.map((e) => indexedEarnings(e, todayFromAwiLevel)).filter((v) => v > 0).sort((a, b) => b - a)
   const top = indexed.slice(0, TOP_YEARS)
   const aime = Math.floor(top.reduce((s, v) => s + v, 0) / (TOP_YEARS * MONTHS))
-  return { pia: piaFromAime(aime, bendPoints(todayFromAwiLevel)), aime, counted: top.length }
+  return { pia: piaFromAime(aime, bendPoints(todayFromAwiLevel)), aime, counted: top.length, ...creditTally(earnings) }
 }
 
 /** A rough record: working from `fromYear` to `toYear` at about `todaySalary` (today's dollars), wage-indexed back. */
