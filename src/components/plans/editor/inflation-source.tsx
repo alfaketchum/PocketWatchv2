@@ -7,7 +7,7 @@ import { fmtPct } from "@/components/fire/fire-helpers"
 import { useMarketInflation } from "@/hooks/plans/use-market-inflation"
 import { equivalentRate, marketPath, marketRateFor, marketSegments } from "@/lib/plans/plan-inflation"
 import { timingContext } from "@/lib/plans/plan-timing"
-import { nominalRate, realRate } from "@/lib/plans/plan-dollars"
+import { keepRealReturns, returnBasisOf, withSettings } from "@/lib/plans/plan-returns"
 import type { MarketInflation, PlanDocument, PlanSettings } from "@/lib/plans/plan-types"
 import type { PlanEditorProps } from "../plans-helpers"
 
@@ -36,15 +36,13 @@ function marketSettings(mode: Mode, m: MarketInflation, years: number): Partial<
  */
 export function InflationSource({ doc, update, compact }: { doc: PlanDocument; update: PlanEditorProps["update"]; compact?: boolean }) {
   const s = doc.settings
-  const set = (change: Partial<PlanSettings>) => update((d) => ({ ...d, settings: { ...d.settings, ...change } }))
+  const set = (change: Partial<PlanSettings>) => update((d) => withSettings(d, change))
   // The inflation the account returns were entered against; changing inflation offers to keep their real value.
   const [basis, setBasis] = useState(s.inflation)
-  const shift = s.inflation - basis
+  // With returns entered after inflation they re-base on their own; only before-inflation returns need asking.
+  const shift = returnBasisOf(s) === "real" ? 0 : s.inflation - basis
   const keepReal = () => {
-    update((d) => ({
-      ...d,
-      accounts: d.accounts.map((a) => ({ ...a, returnRate: Math.round(nominalRate(realRate(a.returnRate, basis), d.settings.inflation) * 10_000) / 10_000 })),
-    }))
+    update((d) => keepRealReturns(d, basis, d.settings.inflation))
     setBasis(s.inflation)
   }
   const mode: Mode = s.inflationMode ?? "custom"

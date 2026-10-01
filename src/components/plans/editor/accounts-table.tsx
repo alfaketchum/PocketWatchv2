@@ -4,17 +4,17 @@ import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
-import { realRate } from "@/lib/plans/plan-dollars"
+import { otherReturn, returnBasisOf, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { patchItem, type PlanEditorProps } from "../plans-helpers"
 import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 
 const TREATMENTS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({ value, label: TAX_TREATMENT_LABELS[value] }))
 
-const COLUMNS = [
+const columns = (real: boolean) => [
   { label: "Account" },
   { label: "Tax type", width: "w-44" },
   { label: "Balance today", align: "right" as const, width: "w-36" },
-  { label: "Return / yr (nominal)", align: "right" as const, width: "w-28" },
+  { label: real ? "Return / yr (after infl.)" : "Return / yr (before infl.)", align: "right" as const, width: "w-32" },
   { label: "Cost basis", align: "right" as const, width: "w-36" },
   { label: "Short-term gains", align: "right" as const, width: "w-28" },
   { label: "Realized / yr", align: "right" as const, width: "w-28" },
@@ -27,7 +27,7 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
   const total = doc.accounts.reduce((s, a) => s + a.balance, 0)
   return (
     <PlanTable
-      columns={COLUMNS}
+      columns={columns(returnBasisOf(doc.settings) === "real")}
       footer={
         <tr>
           <td className="px-2 py-2" colSpan={2}>
@@ -50,8 +50,10 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
             <CellNumber label="Balance" prefix="$" min={0} value={a.balance} onChange={(balance) => patch(a.id, { balance })} />
           </Cell>
           <Cell align="right">
-            <CellNumber label="Return" suffix="%" scale={100} min={-0.5} max={1} value={a.returnRate} onChange={(returnRate) => patch(a.id, { returnRate })} />
-            <span className="block px-2 text-[10px] text-foreground-muted">≈ {fmtPct(realRate(a.returnRate, doc.settings.inflation), 1)} real</span>
+            <CellNumber label="Return" suffix="%" scale={100} min={-0.5} max={1} value={shownReturn(a.returnRate, doc.settings)} onChange={(v) => patch(a.id, { returnRate: storedReturn(v, doc.settings) })} />
+            <span className="block px-2 text-[10px] text-foreground-muted">
+              ≈ {fmtPct(otherReturn(a.returnRate, doc.settings).value, 1)} {returnBasisOf(doc.settings) === "real" ? "before infl." : "after infl."}
+            </span>
           </Cell>
           <Cell align="right">
             {a.taxTreatment === "taxable" ? (

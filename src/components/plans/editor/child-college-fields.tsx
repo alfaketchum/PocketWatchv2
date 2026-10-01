@@ -1,5 +1,6 @@
 "use client"
 
+import { returnBasisOf, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { COLLEGE_PRESET_COSTS, COLLEGE_PRESET_LABELS, DEFAULT_529_RETURN } from "@/lib/plans/plan-children"
@@ -118,8 +119,9 @@ export function Child529Fields({ child, doc, patch, update }: Props) {
               scale={100}
               min={-0.5}
               max={1}
-              value={account.returnRate}
-              onChange={(returnRate) => setAccount({ returnRate })}
+              value={shownReturn(account.returnRate, doc.settings)}
+              hint={returnBasisOf(doc.settings) === "real" ? "After inflation" : "Before inflation"}
+              onChange={(v) => setAccount({ returnRate: storedReturn(v, doc.settings) })}
             />
           </>
         )}

@@ -65,6 +65,11 @@ export interface PlanSettings {
   inflationMode?: "custom" | "market" | "marketPath"
   /** The market's breakeven inflation when it was last applied. */
   marketInflation?: MarketInflation
+  /**
+   * How account returns are shown and entered: before inflation (nominal, default) or after it (real). Stored
+   * returns are always nominal; with "real", changing inflation moves them so real returns stay the same.
+   */
+  returnBasis?: "nominal" | "real"
 }
 
 /** Inflation the bond market expects (Treasury minus TIPS yields), FRED data. Rates are decimals. */

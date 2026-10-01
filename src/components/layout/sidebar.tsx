@@ -15,6 +15,7 @@ import {
   NAV_CATEGORIES,
 } from "@/hooks/use-sidebar-prefs"
 import { useReviewCount } from "@/hooks/use-finance"
+import Link from "next/link"
 import { LOGO_PATH } from "@/lib/brand"
 
 interface SidebarProps {
@@ -97,7 +98,12 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
           "h-14 flex items-center justify-between px-4 border-b border-card-border flex-shrink-0",
           collapsed && "lg:px-0 lg:justify-center",
         )}>
-          <div className={cn("flex items-center gap-2.5", collapsed && "lg:hidden")}>
+          <Link
+            href="/net-worth"
+            onClick={onClose}
+            aria-label="FlameFolio home"
+            className={cn("flex items-center gap-2.5 rounded-lg hover:opacity-80 transition-opacity", collapsed && "lg:hidden")}
+          >
             <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" className="text-primary" aria-hidden="true">
                 <path fillRule="evenodd" d={LOGO_PATH} />
@@ -106,7 +112,7 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
             <span className="text-sm font-semibold tracking-tight text-foreground">
               Flame<span className="text-foreground-muted font-normal">Folio</span>
             </span>
-          </div>
+          </Link>
           <div className={cn("flex items-center gap-1", collapsed && "lg:hidden")}>
             <button
               onClick={() => setIsEditing(!isEditing)}

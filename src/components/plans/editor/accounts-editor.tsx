@@ -2,11 +2,13 @@
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { fmtPct } from "@/components/fire/fire-helpers"
-import { nominalRate, realRate } from "@/lib/plans/plan-dollars"
+import { nominalRate } from "@/lib/plans/plan-dollars"
 import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { ReturnBasisToggle } from "./return-basis-toggle"
+import { otherReturn, returnBasisOf, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { RefreshBalancesButton } from "./refresh-balances-button"
 import { AccountsTable } from "./accounts-table"
@@ -43,7 +45,10 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: Pl
           onClick={() => update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))}
         />
       </EditorToolbar>
-      <RefreshBalancesButton doc={doc} update={update} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <RefreshBalancesButton doc={doc} update={update} />
+        <ReturnBasisToggle doc={doc} update={update} />
+      </div>
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
       {view === "compact" ? (
         <AccountsTable doc={doc} update={update} onEditItem={onEditItem} />
@@ -71,9 +76,9 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: Pl
               scale={100}
               min={-0.5}
               max={1}
-              value={a.returnRate}
-              hint={`Nominal. ≈ ${fmtPct(realRate(a.returnRate, doc.settings.inflation), 1)} real`}
-              onChange={(returnRate) => patch(a.id, { returnRate })}
+              value={shownReturn(a.returnRate, doc.settings)}
+              hint={`≈ ${fmtPct(otherReturn(a.returnRate, doc.settings).value, 1)} ${otherReturn(a.returnRate, doc.settings).label}`}
+              onChange={(v) => patch(a.id, { returnRate: storedReturn(v, doc.settings) })}
             />
             {a.drainByYear != null && (
               <div className="col-span-2 lg:col-span-4 flex flex-wrap items-end gap-3">
@@ -133,9 +138,9 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: Pl
         </ItemCard>
       ))}
       <p className="text-[11px] text-foreground-muted">
-        Returns are nominal (before inflation); the plan adds {fmtPct(doc.settings.inflation, 1)} inflation on top. To use a real
-        return, enter (1 + real) × (1 + inflation) − 1: 5% real is{" "}
-        {fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} here.
+        {returnBasisOf(doc.settings) === "real"
+          ? `Returns are after inflation: what your money grows in buying power. The plan adds ${fmtPct(doc.settings.inflation, 1)} inflation on top (5% real is ${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} before inflation), and they stay put if you change inflation.`
+          : `Returns are before inflation, as usually quoted. The plan takes ${fmtPct(doc.settings.inflation, 1)} inflation off to see what they buy (${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} here is 5% after inflation). Prefer to think after inflation? Switch "Returns are" above.`}
       </p>
     </div>
   )

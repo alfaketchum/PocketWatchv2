@@ -41,6 +41,7 @@ const settings = z.object({
   filingStatus: z.enum(["single", "joint"]).default("single"),
   spendingProfile: z.enum(["typical", "frontload", "conservative", "frugal", "reset"]).optional(),
   inflationMode: z.enum(["custom", "market", "marketPath"]).optional(),
+  returnBasis: z.enum(["nominal", "real"]).optional(),
   marketInflation: z
     .object({
       asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

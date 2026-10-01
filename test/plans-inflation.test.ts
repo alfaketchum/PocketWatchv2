@@ -4,6 +4,7 @@ import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { latestFromCsv, toMarketInflation } from "@/lib/plans/market-inflation-parse"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { equivalentRate, inflationOf, marketPath, marketRateFor, priceIndex, rateAt } from "@/lib/plans/plan-inflation"
+import { keepRealReturns, shownReturn, storedReturn, withSettings } from "@/lib/plans/plan-returns"
 import type { MarketInflation, PlanDocument } from "@/lib/plans/plan-types"
 
 const close = (a: number, b: number, tol = 1e-9) => assert.ok(Math.abs(a - b) < tol, `${a} ≈ ${b}`)
@@ -80,4 +81,17 @@ test("real vs nominal: on a varying inflation path, account returns keep their r
     const todays = r.accountsTotal / priceIndex(path, r.index + 1)
     close(todays, 1_000_000 * Math.pow(1 + real, r.index + 1), 1e-3)
   }
+})
+
+test("returns entered after inflation: shown real, stored nominal, and they stay real when inflation changes", () => {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 40)
+  const doc: PlanDocument = { ...base, settings: { ...base.settings, inflation: 0.03, returnBasis: "real" }, accounts: [{ ...base.accounts[1], returnRate: storedReturn(0.05, { inflation: 0.03, returnBasis: "real" }) }] }
+  close(doc.accounts[0].returnRate, 0.0815, 1e-4)
+  close(shownReturn(doc.accounts[0].returnRate, doc.settings), 0.05, 1e-4)
+  const lower = withSettings(doc, { inflation: 0.023 })
+  close(shownReturn(lower.accounts[0].returnRate, lower.settings), 0.05, 1e-4)
+  close(lower.accounts[0].returnRate, 1.05 * 1.023 - 1, 1e-4)
+  const nominalDoc = { ...doc, settings: { ...doc.settings, returnBasis: "nominal" as const } }
+  assert.equal(withSettings(nominalDoc, { inflation: 0.023 }).accounts[0].returnRate, doc.accounts[0].returnRate, "before-inflation returns stay as entered")
+  close(keepRealReturns(nominalDoc, 0.03, 0.023).accounts[0].returnRate, lower.accounts[0].returnRate, 1e-9)
 })
