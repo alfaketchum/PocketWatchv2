@@ -72,6 +72,7 @@ export const AI_NAV_ITEMS: NavItem[] = [
 
 export const PRODUCT_NAV_ITEMS: NavItem[] = [
   { id: "product-roadmap", label: "Roadmap", href: "/roadmap", icon: "map" },
+  { id: "product-methodology", label: "Methodology", href: "/methodology", icon: "functions" },
 ]
 
 export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
@@ -123,6 +124,12 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
   if (!prefs.categoryOrder.includes("product")) {
     prefs.categoryOrder.push("product")
     prefs.categories.product = { order: PRODUCT_NAV_ITEMS.map((i) => i.id), hidden: [] }
+    savePrefs(prefs)
+  }
+  // Inject methodology item if missing (after Roadmap)
+  const productCat = prefs.categories.product
+  if (productCat && !productCat.order.includes("product-methodology")) {
+    productCat.order.push("product-methodology")
     savePrefs(prefs)
   }
   // Inject travel category if missing
