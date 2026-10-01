@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import { db } from "@/lib/db"
 import { getAllExchangeCredentials } from "@/lib/portfolio/service-keys"
 import { fetchAllExchangeBalances } from "@/lib/portfolio/exchange-client"
@@ -8,6 +7,7 @@ import { withProviderPermit, isProviderThrottleError } from "@/lib/portfolio/pro
 import { getRefreshBudgetIntervalMs } from "@/lib/portfolio/provider-daily-budget"
 import { STABLECOIN_SET_VERSION, sumNetWorthStablecoins } from "@/lib/portfolio/stablecoins"
 import { snapshotAssetValues } from "@/lib/portfolio/asset-values"
+import { buildWalletFingerprint } from "@/lib/portfolio/snapshot-helpers"
 import { recordSupplementalToday, sumSupplemental, supplementalFromDistribution } from "@/lib/portfolio/supplemental-history"
 
 type RefreshJobStatus = "queued" | "running" | "completed" | "failed"
@@ -29,11 +29,6 @@ async function getEffectiveRefreshTtlMs(userId: string): Promise<number> {
   const baseTtl = parseRefreshTtlMs()
   const walletCount = await db.trackedWallet.count({ where: { userId } })
   return Math.max(baseTtl, getRefreshBudgetIntervalMs(walletCount))
-}
-
-function walletFingerprint(addresses: string[]): string {
-  const sorted = addresses.map((a) => a.toLowerCase()).sort().join("|")
-  return createHash("sha256").update(sorted).digest("hex").slice(0, 16)
 }
 
 function normalizeDate(value: Date | null | undefined): Date | null {
@@ -231,7 +226,7 @@ export async function runPortfolioRefreshJob(jobId: string): Promise<RunRefreshR
     ])
 
     const addresses = wallets.map((wallet) => wallet.address)
-    const fp = walletFingerprint(addresses)
+    const fp = buildWalletFingerprint(addresses)
 
     let walletData: Awaited<ReturnType<typeof getCachedMultiProviderPositions>>["wallets"] | null = null
     if (addresses.length > 0) {

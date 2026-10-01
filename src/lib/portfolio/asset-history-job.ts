@@ -97,6 +97,7 @@ async function runJob(userId: string, currentPairs: AssetPair[]): Promise<void> 
     console.info(`[asset-history] discovery: ${found.priced} priced, ${found.dead} dead → ${rebuilt.stored} rebuilt, ${rebuilt.rejected} rejected`)
   }
 
-  const fetched = await ensureAssetSeries(userId, await loadPairsByPriority(userId))
-  if (fetched > 0) console.info(`[asset-history] fetched history for ${fetched} pair(s)`)
+  const pairs = await loadPairsByPriority(userId)
+  const fetched = await ensureAssetSeries(userId, pairs)
+  console.info(`[asset-history] checked ${pairs.length} pair(s), fetched ${fetched}`)
 }

@@ -21,8 +21,10 @@ import { loadTrackedPairs, runAssetHistoryJob } from "./asset-history-job"
 import { currentAssetHoldings } from "./asset-pairs"
 import { isTokenSource, loadSupplementalSeriesBySource } from "./supplemental-history"
 import { symbolFromTokenSource } from "./dead-token-history"
-import { parseMetadata } from "./snapshot-helpers"
+import { buildWalletFingerprint, parseMetadata } from "./snapshot-helpers"
+import { snapshotsForWallets } from "./snapshot-fingerprint"
 import { normalizeWalletAddress } from "./utils"
+import { assetValueForDay } from "./asset-composition-values"
 import type { CompositionMode, CompositionResponse } from "@/types/composition"
 
 
@@ -70,14 +72,17 @@ async function stableComposition(userId: string, since: Date, daily: Daily, toda
 }
 
 async function snapshotAssetsByDay(userId: string, since: Date): Promise<Map<string, Record<string, number>>> {
-  const rows = await db.portfolioSnapshot.findMany({
-    where: { userId, source: "live_refresh", createdAt: { gte: since } },
-    orderBy: { createdAt: "asc" },
-    select: { createdAt: true, metadata: true },
-    take: MAX_SNAPSHOTS,
-  })
+  const [rows, wallets] = await Promise.all([
+    db.portfolioSnapshot.findMany({
+      where: { userId, source: "live_refresh", createdAt: { gte: since } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true, metadata: true },
+      take: MAX_SNAPSHOTS,
+    }),
+    db.trackedWallet.findMany({ where: { userId }, select: { address: true }, take: 500 }),
+  ])
   const byDay = new Map<string, Record<string, number>>()
-  for (const r of rows) {
+  for (const r of snapshotsForWallets(rows, buildWalletFingerprint(wallets.map((w) => w.address)))) {
     const values = parseMetadata(r.metadata)?.assetValues
     if (values && typeof values === "object") byDay.set(utcDayKey(r.createdAt.getTime()), values as Record<string, number>)
   }
@@ -137,7 +142,7 @@ async function assetComposition(userId: string, since: Date, daily: Daily): Prom
     for (const s of symbols) {
       const hist = fills.get(s)!(dayMs) // always advance the cursor
       const deadValue = (dead.get(s) ?? []).reduce((sum, f) => sum + f(dayMs / 1000), 0)
-      const zerionValue = day === todayKey ? today.get(s) ?? 0 : snap ? snap[s] ?? 0 : hist
+      const zerionValue = assetValueForDay(day, todayKey, s, today, snap, hist)
       values.set(s, zerionValue + deadValue)
     }
     return { t: dayMs, crypto, venues, values }

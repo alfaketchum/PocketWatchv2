@@ -276,6 +276,16 @@ export interface AssetPair {
   fungibleId: string
 }
 
+/** A new wallet needs its own series even if this token was already fetched for another wallet. */
+export function missingAssetPairs(
+  pairs: AssetPair[],
+  stored: Array<{ address: string; series: string }>,
+): AssetPair[] {
+  const have = new Set(stored.map((row) => `${row.address}|${row.series}`))
+  return pairs.filter((pair) =>
+    !have.has(`${normalizeWalletAddress(pair.address)}|asset:${pair.fungibleId}`))
+}
+
 /** Pairs tried per background run (2 requests each) — spreads a big backfill over runs */
 const ASSET_PAIRS_PER_RUN = 25
 /** Leave this much of today's Zerion quota for balances (~10 per refresh); resume tomorrow otherwise */
@@ -308,10 +318,9 @@ export async function ensureAssetSeries(userId: string, pairs: AssetPair[]): Pro
   if (pairs.length === 0) return 0
   const series = [...new Set(pairs.map((p) => `asset:${p.fungibleId}` as Series))]
   const stored = await db.walletChartCache.groupBy({ by: ["address", "series"], where: { userId, series: { in: series } } })
-  const have = new Set(stored.map((r) => `${r.address}|${r.series}`))
   const now = Date.now()
   const failureKey = (p: AssetPair) => `${userId}|${normalizeWalletAddress(p.address)}|${p.fungibleId}`
-  const missing = pairs.filter((p) => !have.has(`${normalizeWalletAddress(p.address)}|asset:${p.fungibleId}`))
+  const missing = missingAssetPairs(pairs, stored)
   const due = missing.filter((p) => now - (pairFailures.get(failureKey(p))?.at ?? 0) >= PAIR_RETRY_AFTER_MS)
 
   let attempted = 0
@@ -373,6 +382,14 @@ export async function loadAssetHistory(userId: string, pairs: AssetPair[]): Prom
     orderBy: { timestamp: "asc" },
     take: MAX_ROWS,
   })
+  return buildAssetHistory(pairs, rows)
+}
+
+/** Assemble the stored per-wallet series, including a missing count for newly added wallets. */
+export function buildAssetHistory(
+  pairs: AssetPair[],
+  rows: Array<{ address: string; series: string; timestamp: number; value: number }>,
+): { bySymbol: Map<string, [number, number][]>; missing: number } {
   // Group once (pairs × rows filtering is too slow with a large backfill)
   const rowsByKey = new Map<string, [number, number][]>()
   for (const r of rows) {

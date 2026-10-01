@@ -7,6 +7,7 @@
 
 import { fetchAllWalletBalances } from "./multi-balance-fetcher"
 import type { MultiWalletResult } from "./zerion-client"
+import { normalizeWalletAddress } from "./utils"
 
 const FULL_CACHE_TTL_MS = 5 * 60_000   // 5 min — all wallets succeeded
 const PARTIAL_CACHE_TTL_MS = 30_000     // 30s — some wallets failed (retry soon)
@@ -16,6 +17,7 @@ interface CacheEntry {
   data: MultiWalletResult
   timestamp: number
   ttl: number
+  walletSet: string
 }
 
 interface WalletInput {
@@ -27,9 +29,18 @@ interface WalletInput {
 // bundle. Separate copies meant separate caches and no in-flight dedupe across
 // routes, so concurrent routes collided on the Zerion lease and got partials.
 const g = globalThis as unknown as {
-  __pwMultiBalance?: { positionsCache: Map<string, CacheEntry>; inflight: Map<string, Promise<MultiWalletResult>> }
+  __pwMultiBalance?: {
+    positionsCache: Map<string, CacheEntry>
+    inflight: Map<string, { walletSet: string; promise: Promise<MultiWalletResult> }>
+  }
 }
 const { positionsCache, inflight } = (g.__pwMultiBalance ??= { positionsCache: new Map(), inflight: new Map() })
+
+export function balanceWalletSet(wallets: WalletInput[]): string {
+  return wallets.map((wallet) =>
+    `${normalizeWalletAddress(wallet.address)}:${[...wallet.chains].sort().join(",")}`
+  ).sort().join("|")
+}
 
 /**
  * Get wallet positions across all providers, using cache and in-flight deduplication.
@@ -38,15 +49,17 @@ export async function getCachedMultiProviderPositions(
   userId: string,
   wallets: WalletInput[],
 ): Promise<MultiWalletResult> {
+  const walletSet = balanceWalletSet(wallets)
   // Serve from cache if fresh
-  const cached = positionsCache.get(userId)
+  const entry = positionsCache.get(userId)
+  const cached = entry?.walletSet === walletSet ? entry : undefined
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data
   }
 
   // If a fetch is already in-flight for this user, wait for it
   const pending = inflight.get(userId)
-  if (pending) return pending
+  if (pending?.walletSet === walletSet) return pending.promise
 
   // Start a new fetch and register it as in-flight
   const promise = fetchAllWalletBalances(userId, wallets)
@@ -56,7 +69,7 @@ export async function getCachedMultiProviderPositions(
         const oldestKey = positionsCache.keys().next().value
         if (oldestKey) positionsCache.delete(oldestKey)
       }
-      positionsCache.set(userId, { data: result, timestamp: Date.now(), ttl })
+      positionsCache.set(userId, { data: result, timestamp: Date.now(), ttl, walletSet })
       return result
     })
     .catch((error) => {
@@ -69,10 +82,10 @@ export async function getCachedMultiProviderPositions(
       throw error
     })
     .finally(() => {
-      inflight.delete(userId)
+      if (inflight.get(userId)?.promise === promise) inflight.delete(userId)
     })
 
-  inflight.set(userId, promise)
+  inflight.set(userId, { walletSet, promise })
   return promise
 }
 

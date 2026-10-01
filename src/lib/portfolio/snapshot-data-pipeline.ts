@@ -7,6 +7,7 @@
  */
 
 import { db } from "@/lib/db"
+import { matchesSnapshotWallets } from "@/lib/portfolio/snapshot-fingerprint"
 import { reconstructPortfolioHistory } from "@/lib/portfolio/value-reconstructor"
 import { syncWalletCharts } from "@/lib/portfolio/wallet-chart-cache"
 import { smoothDefiDips } from "@/lib/portfolio/chart-defi-smoother"
@@ -67,7 +68,9 @@ export async function refreshZerionCache(params: RefreshZerionParams): Promise<C
       userId, zerionKey, addresses, walletFingerprint, previousFingerprint,
       hasChartCache: zerionPoints.length > 0, nowSec, force,
     })
-    if (!rebuilt) return zerionPoints
+    // Another request may be rebuilding the cache for a changed wallet set.
+    // Never serve the old set's points while that rebuild is in progress.
+    if (!rebuilt) return previousFingerprint === walletFingerprint ? zerionPoints : []
     zerionPoints = rebuilt
 
     if (staleReconstructedSnapshotIds.length > 0) {
@@ -153,7 +156,7 @@ export function buildSnapshotPoints(params: BuildSnapshotPointsParams): ChartPoi
 
     if (effectiveScope === "total" && source !== "live_refresh" && source !== "reconstructed") return []
     if (source === "live_refresh") {
-      if (snapshotWalletFingerprint && snapshotWalletFingerprint !== walletFingerprint) return []
+      if (snapshotWalletFingerprint && !matchesSnapshotWallets(snapshot.metadata, walletFingerprint)) return []
       if (!snapshotWalletFingerprint && ageSec > LEGACY_LIVE_SNAPSHOT_WINDOW_SEC) return []
     }
     if (source === "reconstructed") {
@@ -330,7 +333,7 @@ export function computeOnchainRef(params: ComputeRefParams): {
   const matchingLiveSnapshots = [...snapshots].reverse().filter((s) => {
     if (s.source !== "live_refresh") return false
     const fp = getSnapshotWalletFingerprint(s.metadata)
-    return !fp || fp === walletFingerprint
+    return !fp || matchesSnapshotWallets(s.metadata, walletFingerprint)
   })
 
   // Validate reference snapshot against recent history median.

@@ -1,5 +1,7 @@
 import { db } from "@/lib/db"
 import { snapshotSupplementalValue } from "./supplemental-history"
+import { buildWalletFingerprint } from "./snapshot-helpers"
+import { snapshotsForWallets } from "./snapshot-fingerprint"
 
 const MAX_SNAPSHOTS = 20_000
 
@@ -11,13 +13,16 @@ const MAX_SNAPSHOTS = 20_000
  * wallet and covers the history before tracking began.
  */
 export async function loadLiveSnapshotByDay(userId: string, since: Date): Promise<Map<string, number>> {
-  const rows = await db.portfolioSnapshot.findMany({
-    where: { userId, source: "live_refresh", createdAt: { gte: since } },
-    orderBy: { createdAt: "asc" },
-    select: { createdAt: true, totalValue: true, metadata: true },
-    take: MAX_SNAPSHOTS,
-  })
-  return new Map(rows.map((r) => [
+  const [rows, wallets] = await Promise.all([
+    db.portfolioSnapshot.findMany({
+      where: { userId, source: "live_refresh", createdAt: { gte: since } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true, totalValue: true, metadata: true },
+      take: MAX_SNAPSHOTS,
+    }),
+    db.trackedWallet.findMany({ where: { userId }, select: { address: true }, take: 500 }),
+  ])
+  return new Map(snapshotsForWallets(rows, buildWalletFingerprint(wallets.map((w) => w.address))).map((r) => [
     r.createdAt.toISOString().slice(0, 10),
     r.totalValue - snapshotSupplementalValue(r.metadata),
   ]))
