@@ -16,6 +16,7 @@ import {
   applyWindfall,
   type InheritedPart,
 } from "@/lib/plans/milestone-templates"
+import { applyElderCare } from "@/lib/plans/elder-care"
 import { removeAsset, removeChild } from "@/lib/plans/plan-edits"
 import { detachMilestone, milestoneCreations, removeMilestoneWithItems } from "@/lib/plans/plan-milestone-uses"
 import { planDocumentSchema } from "@/lib/plans/plan-schema"
@@ -77,6 +78,8 @@ const TEMPLATES: [string, (d: PlanDocument) => PlanDocument][] = [
     applyDivorce(d, { when, endIncomeIds: ["sal"], exShare: 0.5, legalCost: 20_000, supportPerYear: 12_000, supportYears: 5, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
   ["Partner passes away (step-up, insurance, costs)", (d) =>
     applyWidowed(d, { personId: "p2", when, endIncomeIds: ["ss-p2", "sal"], survivorBenefit: true, lifeInsurance: 500_000, finalCosts: 15_000, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
+  ["Elder care (move in, shared cost, cut back work)", (d) =>
+    applyElderCare(d, { parentName: "Mom", arrangement: "moveIn", startYear: 2030, years: 3, yearlyCost: 12_000, oneTimeCost: 15_000, aidePerYear: 20_000, payer: "shared", parentShare: 0.5, workCut: { incomeId: "sal", keep: 0.5 } }, "elderly_woman", newId)],
   ["Custom", (d) => applyCustom(d, { name: "Sabbatical idea", when }, newId)],
 ]
 

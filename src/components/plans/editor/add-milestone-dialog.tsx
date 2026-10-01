@@ -19,12 +19,13 @@ const LANDS_ON: Partial<Record<TemplateKey, string>> = {
   inheritance: "Inheritance added: see Income, Accounts and Assets",
   divorce: "Divorce added: see Income, Expenses and the account splits on Income",
   widowed: "Added: see Income and Expenses",
+  elderCare: "Elder care added: see Expenses (and Income if you cut back work)",
   socialSecurity: "Social Security added to Income",
   pension: "Pension added to Income",
 }
 
 /** Life events that change several parts of the plan at once; single items are added on their own tab. */
-export const MILESTONE_TAB_TEMPLATES: TemplateKey[] = ["retire", "married", "divorce", "widowed", "move", "inheritance", "custom"]
+export const MILESTONE_TAB_TEMPLATES: TemplateKey[] = ["retire", "married", "divorce", "widowed", "elderCare", "move", "inheritance", "custom"]
 
 /** A choice that acts right away instead of opening a template form (e.g. a plain new income). */
 export interface InstantChoice {

@@ -30,12 +30,15 @@ import { personIncomeIds } from "./income-stop-picker"
 import { PensionFields } from "./pension-fields"
 import { SocialSecurityFields } from "./social-security-fields"
 import { WidowedFields } from "./widowed-fields"
+import { ElderCareFields } from "./elder-care-fields"
+import { applyElderCare, careDefaults, surveyToToday, type CareArrangement, type CarePayer } from "@/lib/plans/elder-care"
 import { applyPension, applySocialSecurity } from "@/lib/plans/income-templates"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { TimingPicker } from "./timing-picker"
 
 const SAME_STATE = "same"
+const ELDER_CARE_ICON = "elderly_woman"
 /** Typical yearly value change once owned. */
 const VEHICLE_DEPRECIATION = -0.15
 const HOME_APPRECIATION = 0.03
@@ -88,6 +91,16 @@ export interface TemplateDraft {
   survivorBenefit: boolean
   lifeInsurance: number
   finalCosts: number
+  /** Elder care. */
+  careState: string | null
+  arrangement: CareArrangement
+  yearlyCost: number
+  oneTimeCost: number
+  aidePerYear: number
+  payer: CarePayer
+  parentShare: number
+  cutWork: boolean
+  workKeep: number
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
@@ -95,6 +108,7 @@ const DEFAULT_NAMES: Record<TemplateKey, string> = {
   married: "Get married",
   divorce: "Divorce",
   widowed: "Partner passes away",
+  elderCare: "Mom",
   socialSecurity: "Social Security",
   pension: "Pension",
   child: "New baby",
@@ -135,7 +149,7 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     when: key === "retire" && retirement ? retirement.timing : { type: "year", year: year + 2 },
     amount: key === "career" ? Math.round((firstIncome?.amount ?? 80_000) * 1.2) : key === "pension" ? 30_000 : 100_000,
     percent: -0.1,
-    years: key === "divorce" ? 5 : 1,
+    years: key === "divorce" ? 5 : key === "elderCare" ? 3 : 1,
     startYear: year + 2,
     incomeId: firstIncome?.id ?? "",
     taxable: false,
@@ -162,6 +176,15 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     survivorBenefit: true,
     lifeInsurance: 0,
     finalCosts: 15_000,
+    careState: doc.settings.state ?? null,
+    arrangement: "nursingHome",
+    yearlyCost: careDefaults("nursingHome", doc.settings.state, surveyToToday(doc.settings)).yearly,
+    oneTimeCost: 0,
+    aidePerYear: 0,
+    payer: "shared",
+    parentShare: 0.5,
+    cutWork: false,
+    workKeep: 0.5,
   }
 }
 
@@ -212,6 +235,24 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
           incomeTaxRate: d.incomeTaxRate,
           capitalGainsRate: d.capitalGainsRate,
         },
+        newItemId,
+      )
+    case "elderCare":
+      return applyElderCare(
+        doc,
+        {
+          parentName: d.name,
+          arrangement: d.arrangement,
+          startYear: d.startYear,
+          years: d.years,
+          yearlyCost: d.yearlyCost,
+          oneTimeCost: d.arrangement === "moveIn" ? d.oneTimeCost : 0,
+          aidePerYear: d.aidePerYear,
+          payer: d.payer,
+          parentShare: d.parentShare,
+          workCut: d.cutWork ? { incomeId: d.incomeId, keep: d.workKeep } : null,
+        },
+        ELDER_CARE_ICON,
         newItemId,
       )
     case "socialSecurity":
@@ -346,6 +387,8 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
       return <DivorceFields d={d} set={set} doc={doc} />
     case "widowed":
       return <WidowedFields d={d} set={set} doc={doc} />
+    case "elderCare":
+      return <ElderCareFields d={d} set={set} doc={doc} />
     case "socialSecurity":
       return <SocialSecurityFields d={d} set={set} doc={doc} />
     case "pension":

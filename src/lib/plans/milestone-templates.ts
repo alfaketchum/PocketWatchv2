@@ -13,6 +13,7 @@ export type TemplateKey =
   | "married"
   | "divorce"
   | "widowed"
+  | "elderCare"
   | "socialSecurity"
   | "pension"
   | "child"
@@ -38,6 +39,7 @@ export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates" },
   { key: "divorce", label: "Divorce", icon: "heart_broken", creates: "Splits accounts, ends their income, single filing" },
   { key: "widowed", label: "Partner passes away", icon: "local_florist", creates: "Their income stops, survivor benefit, single filing" },
+  { key: "elderCare", label: "Elder care", icon: "elderly_woman", creates: "Care for a parent: who pays, and any cut to your work" },
   { key: "socialSecurity", label: "Claim Social Security", icon: "elderly", creates: "Your benefit from the age you claim (62–70)" },
   { key: "pension", label: "Pension", icon: "account_balance", creates: "A pension from an age, with or without raises" },
   { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids" },

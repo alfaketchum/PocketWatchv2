@@ -155,6 +155,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
           "**Spending patterns** reshape a line by age on top of inflation: e.g. go-go, slow-go, no-go years in retirement, or healthcare that climbs with age.",
           "Plan-wide **spending changes** (a move, cutting back) scale spending from a chosen year; home and vehicle running costs aren't scaled by them.",
           "Social Security, pensions and other income are amounts you enter; they grow with inflation unless you set otherwise.",
+          "**Elder care** costs start from the Federal Long Term Care Insurance Program's 2024 Cost of Care Survey for the state the parent lives in (each state is the median of its surveyed regions: nursing home private room, assisted living one bedroom, home health aide hourly), brought to today's dollars at the plan's inflation. Only your share (after what the parent pays) becomes an expense.",
         ],
       },
       {
@@ -163,5 +164,6 @@ export const PLAN_SECTIONS: MethodSection[] = [
         caption: "In today's dollars. The milestone moves as you edit the plan.",
       },
     ],
+    sources: [{ label: "FLTCIP 2024 Cost of Care Survey", url: "https://cdn.ltcfeds.gov/planning-tools/downloads/Cost-of-Care-Survey.pdf" }],
   },
 ]

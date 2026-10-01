@@ -198,6 +198,7 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   favorite: "family",
   heart_broken: "family",
   local_florist: "family",
+  elderly_woman: "family",
   child_care: "family",
   savings: "education",
   backpack: "education",
