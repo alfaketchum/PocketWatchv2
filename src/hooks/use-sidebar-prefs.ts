@@ -81,11 +81,13 @@ export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
 
 const inSidebar = (items: NavItem[]) => items.filter((i) => i.sidebar !== false)
 
+/** FIRE and Plans rolled up under one Retirement Planning section. */
+const RETIREMENT_NAV_ITEMS: NavItem[] = [...FIRE_NAV_ITEMS, ...PLANS_NAV_ITEMS]
+
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
-  fire:      { label: "FIRE",          items: inSidebar(FIRE_NAV_ITEMS) },
-  plans:     { label: "Plans",         items: inSidebar(PLANS_NAV_ITEMS) },
+  retirement: { label: "Retirement Planning", items: inSidebar(RETIREMENT_NAV_ITEMS) },
   accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
@@ -95,12 +97,11 @@ export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }>
 
 function buildDefaultPrefs(): SidebarPrefs {
   return {
-    categoryOrder: ["netWorth", "finance", "fire", "plans", "accounts", "portfolio", "travel", "ai", "product"],
+    categoryOrder: ["netWorth", "finance", "retirement", "accounts", "portfolio", "travel", "ai", "product"],
     categories: {
       netWorth:  { order: NET_WORTH_NAV_ITEMS.map((i) => i.id), hidden: [] },
       finance:   { order: FINANCE_NAV_ITEMS.map((i) => i.id),   hidden: [] },
-      fire:      { order: FIRE_NAV_ITEMS.map((i) => i.id),      hidden: [] },
-      plans:     { order: PLANS_NAV_ITEMS.map((i) => i.id),     hidden: [] },
+      retirement: { order: RETIREMENT_NAV_ITEMS.map((i) => i.id), hidden: [] },
       accounts:  { order: ACCOUNTS_NAV_ITEMS.map((i) => i.id),  hidden: [] },
       portfolio: { order: PORTFOLIO_NAV_ITEMS.map((i) => i.id), hidden: [] },
       travel:    { order: TRAVEL_NAV_ITEMS.map((i) => i.id),    hidden: [] },
@@ -193,7 +194,7 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     savePrefs(prefs)
   }
   // Inject fire category if missing (FIRE planner, placed right after Finance)
-  if (!prefs.categoryOrder.includes("fire")) {
+  if (!prefs.categoryOrder.includes("fire") && !prefs.categoryOrder.includes("retirement")) {
     const finIdx = prefs.categoryOrder.indexOf("finance")
     prefs.categoryOrder.splice(finIdx >= 0 ? finIdx + 1 : prefs.categoryOrder.length, 0, "fire")
     prefs.categories.fire = { order: FIRE_NAV_ITEMS.map((i) => i.id), hidden: [] }
@@ -212,7 +213,7 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     savePrefs(prefs)
   }
   // Inject plans category if missing (manual Plans, placed right after FIRE)
-  if (!prefs.categoryOrder.includes("plans")) {
+  if (!prefs.categoryOrder.includes("plans") && !prefs.categoryOrder.includes("retirement")) {
     const fireIdx = prefs.categoryOrder.indexOf("fire")
     prefs.categoryOrder.splice(fireIdx >= 0 ? fireIdx + 1 : prefs.categoryOrder.length, 0, "plans")
     prefs.categories.plans = { order: PLANS_NAV_ITEMS.map((i) => i.id), hidden: [] }
@@ -231,7 +232,23 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     }
   }
   if (settingsRemoved) savePrefs(prefs)
+  if (rollUpRetirement(prefs)) savePrefs(prefs)
   return prefs
+}
+
+/** FIRE and Plans become one Retirement Planning section, where FIRE was, keeping their order and hidden items. */
+function rollUpRetirement(prefs: SidebarPrefs): boolean {
+  if (prefs.categoryOrder.includes("retirement")) return false
+  const fire = prefs.categories.fire ?? { order: FIRE_NAV_ITEMS.map((i) => i.id), hidden: [] }
+  const plans = prefs.categories.plans ?? { order: PLANS_NAV_ITEMS.map((i) => i.id), hidden: [] }
+  const at = [prefs.categoryOrder.indexOf("fire"), prefs.categoryOrder.indexOf("plans")].filter((i) => i >= 0)
+  const insertAt = at.length > 0 ? Math.min(...at) : prefs.categoryOrder.length
+  const order = prefs.categoryOrder.filter((k) => k !== "fire" && k !== "plans")
+  prefs.categoryOrder = [...order.slice(0, insertAt), "retirement", ...order.slice(insertAt)]
+  prefs.categories.retirement = { order: [...fire.order, ...plans.order], hidden: [...fire.hidden, ...plans.hidden] }
+  delete prefs.categories.fire
+  delete prefs.categories.plans
+  return true
 }
 
 function loadPrefs(): SidebarPrefs {

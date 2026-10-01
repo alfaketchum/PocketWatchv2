@@ -172,7 +172,7 @@ export const Sidebar = memo(function Sidebar({ isOpen = true, onClose, collapsed
               if (!category) return null
               const items = getOrderedItems(catKey, prefs)
               if (items.length === 0) return null
-              const baseHref = catKey === "finance" ? "/finance" : catKey === "fire" ? "/fire" : catKey === "plans" ? "/plans" : catKey === "accounts" ? "/accounts" : catKey === "travel" ? "/travel" : catKey === "ai" ? "/chat" : catKey === "product" ? "/roadmap" : catKey === "netWorth" ? "/net-worth" : "/portfolio"
+              const baseHref = catKey === "finance" ? "/finance" : catKey === "retirement" ? "/fire" : catKey === "accounts" ? "/accounts" : catKey === "travel" ? "/travel" : catKey === "ai" ? "/chat" : catKey === "product" ? "/roadmap" : catKey === "netWorth" ? "/net-worth" : "/portfolio"
 
               return (
                 <div key={catKey}>
