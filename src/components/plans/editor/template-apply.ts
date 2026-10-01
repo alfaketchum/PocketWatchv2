@@ -10,11 +10,11 @@ import {
   applyMove,
   applyRetire,
   applyVehicle,
-  applyWidowed,
   applyWindfall,
   type TemplateKey,
 } from "@/lib/plans/milestone-templates"
 import { applyElderCare } from "@/lib/plans/elder-care"
+import { applyWidowed } from "@/lib/plans/widowed"
 import { applyPension, applySocialSecurity } from "@/lib/plans/income-templates"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { newItemId } from "../plans-helpers"
@@ -70,6 +70,7 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
           incomeTaxRate: d.incomeTaxRate,
           capitalGainsRate: d.capitalGainsRate,
         },
+        "local_florist",
         newItemId,
       )
     case "elderCare":

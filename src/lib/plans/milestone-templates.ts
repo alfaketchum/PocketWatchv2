@@ -92,6 +92,7 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
         taxable: true,
         oneTime: false,
         contributions: [],
+        personId,
         origin: msId,
       }
       next = { ...next, incomes: [...next.incomes, income] }
@@ -167,65 +168,6 @@ export function applyDivorce(doc: PlanDocument, input: DivorceInput, newId: IdMa
       : []),
   ]
   return { ...next, expenses: [...next.expenses, ...costs] }
-}
-
-export interface WidowedInput {
-  personId: string
-  when: Timing
-  /** Their incomes, which stop. */
-  endIncomeIds: string[]
-  /** Your Social Security steps up to theirs when theirs was larger (the survivor benefit). */
-  survivorBenefit: boolean
-  /** Life insurance paid out, tax-free; today's dollars. */
-  lifeInsurance: number
-  /** Funeral and final costs, today's dollars. */
-  finalCosts: number
-  /** Flat-rate plans: the new rates (filing single). */
-  incomeTaxRate: number
-  capitalGainsRate: number
-}
-
-/** The larger Social Security benefit among stopped vs continuing incomes, for the survivor step-up. */
-function survivorStepUp(doc: PlanDocument, stopping: Set<string>): { yours: PlanIncome; theirs: PlanIncome } | null {
-  const ss = doc.incomes.filter((i) => i.kind === "social_security" && !i.oneTime)
-  const theirs = ss.filter((i) => stopping.has(i.id)).sort((a, b) => b.amount - a.amount)[0]
-  const yours = ss.filter((i) => !stopping.has(i.id))
-  return theirs && yours.length === 1 && theirs.amount > yours[0].amount ? { yours: yours[0], theirs } : null
-}
-
-/**
- * A partner passes away: their incomes stop, your Social Security steps up to theirs if it was larger, an
- * optional tax-free life-insurance payout and final costs, and you file single from then on. Accounts stay
- * yours (spouses inherit them).
- */
-export function applyWidowed(doc: PlanDocument, input: WidowedInput, newId: IdMaker): PlanDocument {
-  const person = doc.people.find((p) => p.id === input.personId)
-  const msId = newId("ms-widowed")
-  const when = at(msId)
-  const name = person ? `${person.name} passes away` : "Partner passes away"
-  let next = addMilestone(doc, { id: msId, name, kind: "custom", icon: ICONS.widowed, timing: input.when })
-  const stopping = new Set(input.endIncomeIds)
-  const stepUp = input.survivorBenefit ? survivorStepUp(next, stopping) : null
-  const ending = new Set([...stopping, ...(stepUp ? [stepUp.yours.id] : [])])
-  next = { ...next, incomes: next.incomes.map((i) => (ending.has(i.id) ? { ...i, end: when, endBefore: i.end } : i)) }
-  const added: PlanIncome[] = [
-    ...(stepUp ? [{ ...stepUp.yours, id: newId("inc"), name: "Survivor Social Security", amount: stepUp.theirs.amount, start: when, end: stepUp.yours.end, origin: msId, continues: stepUp.yours.id }] : []),
-    ...(input.lifeInsurance > 0
-      ? [{ id: newId("inc"), name: "Life insurance", kind: "other" as const, amount: input.lifeInsurance, growth: null, start: when, end: when, taxable: false, oneTime: true, contributions: [], origin: msId }]
-      : []),
-  ]
-  next = {
-    ...next,
-    incomes: [...next.incomes, ...added],
-    adjustments: [
-      ...(next.adjustments ?? []),
-      { id: newId("adj"), kind: "filingStatus", timing: when, status: "single", origin: msId },
-      { id: newId("adj"), kind: "taxRates", timing: when, incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
-    ],
-  }
-  if (input.finalCosts <= 0) return next
-  const cost = { id: newId("exp"), name: "Funeral and final costs", category: null, amount: input.finalCosts, growth: null, start: when, end: when, oneTime: true, origin: msId }
-  return { ...next, expenses: [...next.expenses, cost] }
 }
 
 export function applyRetire(doc: PlanDocument, when: Timing): PlanDocument {

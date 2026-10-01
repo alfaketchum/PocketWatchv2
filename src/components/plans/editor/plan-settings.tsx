@@ -9,6 +9,7 @@ import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
 import { AdjustmentsEditor } from "./adjustments-editor"
 import { TextField } from "./plan-editor-controls"
 import { PlanTaxSettings } from "./plan-tax-settings"
+import { SocialSecurityOutlook } from "./social-security-outlook"
 import { InflationSource } from "./inflation-source"
 
 function newPartner(birthYear: number): PlanPerson {
@@ -90,6 +91,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
             <InflationSource doc={doc} update={update} />
           </InputBlock>
           <PlanTaxSettings settings={s} set={set} />
+          <SocialSecurityOutlook settings={s} set={set} />
         </div>
       </div>
       <div className="border-t border-card-border pt-5">

@@ -9,6 +9,8 @@ import type { IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { DepositsEditor } from "./deposits-editor"
 import { GrowthField } from "./growth-field"
+import { SocialSecurityIncomeFields } from "./social-security-income-fields"
+import { SocialSecurityUpgrade } from "./social-security-upgrade"
 import { IncomeContributionsEditor } from "./income-contributions-editor"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
@@ -79,17 +81,35 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               <TextField label="Name" value={inc.name} onChange={(name) => patch(inc.id, { name })} />
             </div>
             <SelectField label="Type" value={inc.kind} options={KIND_OPTIONS} onChange={(kind) => patch(inc.id, { kind })} />
-            <FireNumberField
-              label={inc.oneTime ? "Amount (today's $)" : "Per year (today's $)"}
-              prefix="$"
-              min={0}
-              value={inc.amount}
-              onChange={(amount) => patch(inc.id, { amount })}
-            />
-            <GrowthField value={inc.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(inc.id, { growth })} />
+            {inc.socialSecurity ? (
+              <SocialSecurityIncomeFields income={inc} doc={doc} onChange={(change) => patch(inc.id, change)} />
+            ) : (
+              <>
+                <FireNumberField
+                  label={inc.oneTime ? "Amount (today's $)" : "Per year (today's $)"}
+                  prefix="$"
+                  min={0}
+                  value={inc.amount}
+                  onChange={(amount) => patch(inc.id, { amount })}
+                />
+                <GrowthField value={inc.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(inc.id, { growth })} />
+              </>
+            )}
+            {doc.people.length > 1 && (
+              <SelectField
+                label="Whose"
+                value={inc.personId ?? doc.people[0].id}
+                options={doc.people.map((p) => ({ value: p.id, label: p.name }))}
+                onChange={(personId) => patch(inc.id, { personId })}
+              />
+            )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <TimingPicker label={inc.oneTime ? "When" : "Starts"} value={inc.start} doc={doc} onChange={(start) => patch(inc.id, { start })} />
+            {inc.socialSecurity ? (
+              <p className="self-center text-[11px] text-foreground-muted">Starts at the claiming age above.</p>
+            ) : (
+              <TimingPicker label={inc.oneTime ? "When" : "Starts"} value={inc.start} doc={doc} onChange={(start) => patch(inc.id, { start })} />
+            )}
             {!inc.oneTime && (
               <TimingPicker
                 label="Stops"
@@ -100,6 +120,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               />
             )}
           </div>
+          <SocialSecurityUpgrade income={inc} doc={doc} onChange={(change) => patch(inc.id, change)} />
           <div className="flex flex-wrap gap-4">
             <Toggle label="Taxable" checked={inc.taxable} onChange={(taxable) => patch(inc.id, { taxable })} />
             <Toggle label="One-time" checked={inc.oneTime} onChange={(oneTime) => patch(inc.id, { oneTime })} />

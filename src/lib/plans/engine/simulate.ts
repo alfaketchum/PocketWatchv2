@@ -17,6 +17,8 @@ import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
 import { taxTrueUp, yearDeduction, yearPayroll, yearTax } from "./engine-tax"
+import { socialSecurityYear, type WithheldMonths } from "./engine-social-security"
+import { thresholdIndex } from "../tax/tax-calc"
 import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
 
@@ -64,6 +66,8 @@ interface Plan {
 interface State {
   holdings: Holdings
   debtBalances: Record<string, number>
+  /** Social Security months withheld by the earnings test so far, per income. */
+  ssWithheld: WithheldMonths
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -139,7 +143,12 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
 function yearFlows(plan: Plan, state: State, index: number) {
   const { startYear } = plan.doc.settings
   const { inflation } = plan
-  const grossIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
+  const ss = socialSecurityYear(
+    { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear) },
+    incomeForYear(plan.incomes, plan.doc.accounts, index, inflation),
+    state.ssWithheld,
+  )
+  const grossIncome = ss.income
   const payroll = yearPayroll(plan.doc, plan.incomes, plan.adjustments, index, grossIncome, inflation)
   // Half of self-employment tax comes off income before income tax.
   const baseIncome = payroll.seDeduction > 0 ? { ...grossIncome, taxableIncome: Math.max(0, grossIncome.taxableIncome - payroll.seDeduction) } : grossIncome
@@ -166,7 +175,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
   const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized) : earnedTax
-  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, payroll, rentalTaxable }
+  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld }
 }
 
 type Flows = ReturnType<typeof yearFlows>
@@ -303,7 +312,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     shortfall: moved.deficit?.shortfall ?? 0,
     milestones: plan.milestoneYears.filter((m) => m.index === index).map((m) => m.name),
   }
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances } }
+  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld } }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -323,7 +332,7 @@ function startTotals(plan: Plan): { netWorth: number; financial: number } {
 /** Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. */
 export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): PlanProjection {
   const plan = preparePlan(doc, opts)
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {} }
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {} }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)

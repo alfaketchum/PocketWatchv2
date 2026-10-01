@@ -70,6 +70,8 @@ export interface PlanSettings {
    * returns are always nominal; with "real", changing inflation moves them so real returns stay the same.
    */
   returnBasis?: "nominal" | "real"
+  /** Social Security paid at a share of scheduled benefits from a year on (a trust fund shortfall); missing = in full. */
+  ssCut?: { share: number; fromYear: number }
 }
 
 /** Inflation the bond market expects (Treasury minus TIPS yields), FRED data. Rates are decimals. */
@@ -142,6 +144,13 @@ export interface PlanIncome {
   /** Paid once, in the start year. */
   oneTime: boolean
   contributions: PlanContribution[]
+  /** Whose income it is (a person's id); missing = the plan's first person. */
+  personId?: string
+  /**
+   * Social Security worked out by the engine each year: the benefit at full retirement age (per month, today's
+   * dollars) and the claiming age. Adds the spousal top-up and the earnings test; `amount` is then only a display.
+   */
+  socialSecurity?: { pia: number; claimAge: number }
   /** Set on an income that picks up where another left off (career change/break); removing it restores that one's end. */
   continues?: string
   /** Set when a milestone (divorce) ended this income early: the end to restore if that milestone is deleted. */

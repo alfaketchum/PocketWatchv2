@@ -42,6 +42,7 @@ const settings = z.object({
   spendingProfile: z.enum(["typical", "frontload", "conservative", "frugal", "reset"]).optional(),
   inflationMode: z.enum(["custom", "market", "marketPath"]).optional(),
   returnBasis: z.enum(["nominal", "real"]).optional(),
+  ssCut: z.object({ share: z.number().min(0).max(1), fromYear: z.number().int().min(2000).max(2200) }).optional(),
   marketInflation: z
     .object({
       asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -100,6 +101,8 @@ const income = z.object({
   oneTime: z.boolean(),
   contributions: z.array(contribution).max(PLAN_LIMITS.contributionsPerIncome),
   continues: id.optional(),
+  personId: id.optional(),
+  socialSecurity: z.object({ pia: money, claimAge: z.number().int().min(62).max(70) }).optional(),
   endBefore: timing.optional(),
   origin,
 })

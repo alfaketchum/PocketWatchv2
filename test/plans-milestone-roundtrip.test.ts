@@ -11,12 +11,12 @@ import {
   applyInheritance,
   applyMarried,
   applyDivorce,
-  applyWidowed,
   applyMove,
   applyWindfall,
   type InheritedPart,
 } from "@/lib/plans/milestone-templates"
 import { applyElderCare } from "@/lib/plans/elder-care"
+import { applyWidowed } from "@/lib/plans/widowed"
 import { removeAsset, removeChild } from "@/lib/plans/plan-edits"
 import { detachMilestone, milestoneCreations, removeMilestoneWithItems } from "@/lib/plans/plan-milestone-uses"
 import { planDocumentSchema } from "@/lib/plans/plan-schema"
@@ -77,7 +77,7 @@ const TEMPLATES: [string, (d: PlanDocument) => PlanDocument][] = [
   ["Divorce (income ends, split, costs, support)", (d) =>
     applyDivorce(d, { when, endIncomeIds: ["sal"], exShare: 0.5, legalCost: 20_000, supportPerYear: 12_000, supportYears: 5, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
   ["Partner passes away (step-up, insurance, costs)", (d) =>
-    applyWidowed(d, { personId: "p2", when, endIncomeIds: ["ss-p2", "sal"], survivorBenefit: true, lifeInsurance: 500_000, finalCosts: 15_000, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
+    applyWidowed(d, { personId: "p2", when, endIncomeIds: ["ss-p2", "sal"], survivorBenefit: true, lifeInsurance: 500_000, finalCosts: 15_000, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, "local_florist", newId)],
   ["Elder care (move in, shared cost, cut back work)", (d) =>
     applyElderCare(d, { parentName: "Mom", arrangement: "moveIn", startYear: 2030, years: 3, yearlyCost: 12_000, oneTimeCost: 15_000, aidePerYear: 20_000, payer: "shared", parentShare: 0.5, workCut: { incomeId: "sal", keep: 0.5 } }, "elderly_woman", newId)],
   ["Custom", (d) => applyCustom(d, { name: "Sabbatical idea", when }, newId)],
@@ -161,7 +161,7 @@ test("divorce: the ex's share of each account moves out untaxed; support runs it
 
 test("partner passes away: their income stops and your Social Security steps up to theirs", () => {
   const couple = withSocialSecurity(base())
-  const after = applyWidowed(couple, { personId: "p2", when, endIncomeIds: ["ss-p2"], survivorBenefit: true, lifeInsurance: 0, finalCosts: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)
+  const after = applyWidowed(couple, { personId: "p2", when, endIncomeIds: ["ss-p2"], survivorBenefit: true, lifeInsurance: 0, finalCosts: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, "local_florist", newId)
   const survivor = after.incomes.find((i) => i.name === "Survivor Social Security")!
   assert.equal(survivor.amount, 30_000)
   assert.equal(after.incomes.find((i) => i.id === "ss-p1")!.end.type, "milestone")

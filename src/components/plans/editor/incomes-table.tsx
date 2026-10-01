@@ -66,18 +66,28 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
             <CellSelect label="Type" value={inc.kind} options={KINDS} onChange={(kind) => patch(inc.id, { kind })} />
           </Cell>
           <Cell align="right">
-            <CellNumber label="Per year" prefix="$" min={0} value={inc.amount} onChange={(amount) => patch(inc.id, { amount })} />
+            {inc.socialSecurity ? (
+              <span className="block px-2 tabular-nums" title={`Claiming at ${inc.socialSecurity.claimAge}; change it in the detailed view`}>
+                {fmtMoney(inc.amount)}
+              </span>
+            ) : (
+              <CellNumber label="Per year" prefix="$" min={0} value={inc.amount} onChange={(amount) => patch(inc.id, { amount })} />
+            )}
           </Cell>
           <Cell align="right">
-            <CellNumber
-              label="Growth"
-              suffix={inc.growth === null ? "% infl." : inc.growth === 0 ? "% fixed" : "%"}
-              scale={100}
-              min={-0.5}
-              max={1}
-              value={inc.growth ?? doc.settings.inflation}
-              onChange={(growth) => patch(inc.id, { growth })}
-            />
+            {inc.socialSecurity ? (
+              <span className="block px-2 text-xs text-foreground-muted">claim at {inc.socialSecurity.claimAge}</span>
+            ) : (
+              <CellNumber
+                label="Growth"
+                suffix={inc.growth === null ? "% infl." : inc.growth === 0 ? "% fixed" : "%"}
+                scale={100}
+                min={-0.5}
+                max={1}
+                value={inc.growth ?? doc.settings.inflation}
+                onChange={(growth) => patch(inc.id, { growth })}
+              />
+            )}
           </Cell>
           <Cell>
             <TimingCell timing={inc.start} doc={doc} />

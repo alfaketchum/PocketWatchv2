@@ -16,7 +16,10 @@ export interface SocialSecurityInput {
   claimAge: number
 }
 
-/** Social Security from the claiming age, adjusted for claiming early or late; rises with inflation (COLA). */
+/**
+ * Social Security from the claiming age. It carries its claiming details, so the engine works out each year's
+ * benefit (early/late factors, spousal top-up, earnings test); `amount` is the own benefit, for display.
+ */
 export function applySocialSecurity(doc: PlanDocument, input: SocialSecurityInput, newId: IdMaker): PlanDocument {
   const person = doc.people.find((p) => p.id === input.personId) ?? doc.people[0]
   if (!person) return doc
@@ -31,6 +34,8 @@ export function applySocialSecurity(doc: PlanDocument, input: SocialSecurityInpu
     taxable: true,
     oneTime: false,
     contributions: [],
+    personId: person.id,
+    socialSecurity: { pia: input.monthlyAtFra, claimAge: input.claimAge },
   })
 }
 
@@ -58,5 +63,6 @@ export function applyPension(doc: PlanDocument, input: PensionInput, newId: IdMa
     taxable: true,
     oneTime: false,
     contributions: [],
+    personId: person.id,
   })
 }
