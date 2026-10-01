@@ -3,11 +3,23 @@
 import { useMemo } from "react"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { mix } from "@/components/plans/results/use-plan-colors"
-import { outcomeBuckets, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
+import { DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
+import { outcomeBuckets, type OutcomeBucket, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6
+/** Cushions past this read as "50+ yrs". */
+const MAX_CUSHION = 50
+
+const yrs = (v: number) => (v >= MAX_CUSHION ? `${MAX_CUSHION}+ yrs` : `${v < 10 ? v.toFixed(1) : Math.round(v)} yrs`)
+
+/** "Lowest point 1.4 yrs of spending at 74 · 2.3 danger-years": how close the bucket's typical period came to running out. */
+function closenessLine(b: OutcomeBucket): string | null {
+  if (b.count === 0 || b.dangerArea === undefined) return null
+  const area = b.dangerArea < 0.05 ? `never under ${DANGER_YEARS} yrs` : `${b.dangerArea.toFixed(1)} danger-years`
+  return b.lowPoint ? `Lowest point ${yrs(b.lowPoint.years)} of spending at ${b.lowPoint.age} · ${area}` : area
+}
 
 /** The outcomes as a share bar, then one row each: share, count, the rule in this plan's numbers, and the years. */
 export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohorts: CohortResult[]; yardsticks: OutcomeYardsticks; isHidden: boolean }) {
@@ -31,7 +43,9 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
       </div>
       <p className="text-[11px] text-foreground-muted">
         Measured on the money in your accounts, whichever the chart shows: running out means your accounts couldn&apos;t pay a year&apos;s
-        spending. Your home and other property don&apos;t pay the bills unless the plan sells them.
+        spending. Your home and other property don&apos;t pay the bills unless the plan sells them. Lowest point is the fewest years
+        of spending your accounts held while you lived off them; each year under {DANGER_YEARS} years adds to the danger-years (a year at
+        $0 counts 1, a year at half that cushion counts half). Typical values shown.
       </p>
       <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={buckets.map((b) => `${b.label} ${Math.round(b.share * 100)}%`).join(", ")}>
         {buckets
@@ -58,6 +72,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
                   {b.years.length > MAX_YEARS && ` and ${b.years.length - MAX_YEARS} more`}
                 </span>
               )}
+              {closenessLine(b) && <span className="block text-foreground">{closenessLine(b)}</span>}
               {b.note && <span className="block text-foreground">{b.note}</span>}
             </span>
           </li>

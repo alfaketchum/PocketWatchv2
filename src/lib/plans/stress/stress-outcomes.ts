@@ -17,6 +17,10 @@ export interface OutcomeBucket {
   years: number[]
   /** Ran-out buckets: the typical home equity still left when the money ran out. */
   note?: string
+  /** Buckets that lasted: the typical (median) lowest point along the way. */
+  lowPoint?: { years: number; age: number }
+  /** The typical (median) area under the danger line, in danger-years. */
+  dangerArea?: number
 }
 
 export interface OutcomeYardsticks {
@@ -48,6 +52,19 @@ function equityNote(members: CohortResult[]): string | null {
   return typical >= 1 ? `Typically ${fmt(typical)} of home equity still left when it ran out` : null
 }
 
+/** The middle member's lowest point (so the age goes with it), for periods that lasted. */
+function typicalLow(members: CohortResult[]): OutcomeBucket["lowPoint"] {
+  const lows = members.flatMap((c) => (c.depletedAge === null && c.lowPoint ? [c.lowPoint] : [])).sort((a, b) => a.years - b.years)
+  return lows.length > 0 ? lows[Math.floor((lows.length - 1) / 2)] : undefined
+}
+
+/** Closeness to running out, typical for the bucket: its lowest point and its area under the danger line. */
+function closeness(members: CohortResult[]): Pick<OutcomeBucket, "lowPoint" | "dangerArea"> {
+  if (members.length === 0) return {}
+  const low = typicalLow(members)
+  return { ...(low ? { lowPoint: low } : {}), dangerArea: percentile(members.map((c) => c.dangerArea ?? 0), 0.5) }
+}
+
 /**
  * Every historical period sorted into six outcomes, measured against this plan: did the money last, and if so
  * with more than you have today, a cushion of years of spending, barely, or only by selling a home; if not, near the end or well before it.
@@ -76,6 +93,6 @@ export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): O
     const members = byKey.get(key)!
     const years = members.map((c) => c.year).sort((a, b) => a - b)
     const note = equityNote(members)
-    return { key, ...rules[key], count: years.length, share: cohorts.length ? years.length / cohorts.length : 0, years, ...(note ? { note } : {}) }
+    return { key, ...rules[key], count: years.length, share: cohorts.length ? years.length / cohorts.length : 0, years, ...(note ? { note } : {}), ...closeness(members) }
   })
 }

@@ -18,6 +18,7 @@ import { inflationOf, inflationPath, rateAt, type Inflation } from "../plan-infl
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument } from "../plan-types"
 import { CPI_RELIABLE_FROM, type AnnualHistory } from "./stress-history"
+import { closeCall, type CloseCall } from "./stress-close-calls"
 import { yearReturn } from "./stress-mix"
 
 /** History lines up with the plan's first year, or with the retirement year. */
@@ -41,6 +42,9 @@ export interface CohortResult {
   soldHome?: boolean
   /** When it ran out: home equity left, today's dollars. */
   equityAtDepletion?: number
+  /** Lowest point and area under the danger line (stress-close-calls). */
+  lowPoint?: CloseCall["lowPoint"]
+  dangerArea?: number
   /** Year-end values by plan year, today's dollars. */
   netWorth: number[]
   invested: number[]
@@ -116,6 +120,7 @@ export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: numbe
     depletedAge: failed ? age0 + failed.index : null,
     soldHome: (projection.homeSales?.length ?? 0) > 0,
     equityAtDepletion: failed ? real(homeEquity(expandPlan(doc, inflation), failed), failed.index) : 0,
+    ...closeCall(projection.rows, age0),
     netWorth: projection.rows.map((r) => real(r.netWorth, r.index)),
     invested: projection.rows.map((r) => real(r.accountsTotal, r.index)),
   }
