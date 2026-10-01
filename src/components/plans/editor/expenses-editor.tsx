@@ -1,34 +1,32 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
-import { overlapWarning, patternForNewLine, retirementAge } from "@/lib/plans/plan-spending-patterns"
+import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { PatternProfileMenu } from "./pattern-profile-menu"
-import { newItemId, patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
+import { patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
 import { ChildrenEditor } from "./children-editor"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
+import { AddExpenseDialog } from "./add-expense-dialog"
 import { ExpensesTable } from "./expenses-table"
 import { AssetCostList } from "./asset-cost-list"
 import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 
-function newExpense(): PlanExpense {
-  return {
-    id: newItemId("exp"),
-    name: "Living expenses",
-    category: null,
-    amount: 40_000,
-    growth: null,
-    start: { type: "planStart" },
-    end: { type: "planEnd" },
-    oneTime: false,
-  }
+function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <AddButton label="Add expense" disabled={doc.expenses.length >= PLAN_LIMITS.expenses} onClick={() => setOpen(true)} />
+      {open && <AddExpenseDialog doc={doc} update={update} onClose={() => setOpen(false)} />}
+    </>
+  )
 }
 
 /** Spending streams: everyday living costs, kids, travel, a one-time wedding or car. */
@@ -45,16 +43,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
   return (
     <div className="space-y-8">
       <EditorToolbar toggle={viewToggle}>
-        <AddButton
-          label="Add expense"
-          disabled={doc.expenses.length >= PLAN_LIMITS.expenses}
-          onClick={() =>
-            update((d) => {
-              const line = newExpense()
-              return { ...d, expenses: [...d.expenses, { ...line, pattern: patternForNewLine(d, line) }] }
-            })
-          }
-        />
+        <AddExpenseButton doc={doc} update={update} />
       </EditorToolbar>
       {view === "compact" ? (
         <p className="text-xs text-foreground-muted">
