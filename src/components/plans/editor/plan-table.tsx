@@ -118,6 +118,30 @@ export interface Column {
   align?: "left" | "right" | "center"
   /** Tailwind width class for the column. */
   width?: string
+  /** Sortable columns: the current direction (null = not sorted by this column) and what a click does. */
+  sort?: "asc" | "desc" | null
+  onSort?: () => void
+}
+
+const SORT_ICONS = { asc: "arrow_upward", desc: "arrow_downward" } as const
+
+/** A column header's label; a button with a direction arrow when the column is sortable. */
+function HeaderLabel({ column }: { column: Column }) {
+  if (!column.onSort) return <>{column.label}</>
+  const label = column.sort === "desc" ? "highest first" : column.sort === "asc" ? "lowest first" : "not sorted"
+  return (
+    <button
+      type="button"
+      onClick={column.onSort}
+      title={`Sort by ${column.label.toLowerCase()} (${label})`}
+      className={cn("inline-flex items-center gap-0.5 uppercase tracking-wider hover:text-foreground", column.sort && "text-primary")}
+    >
+      {column.label}
+      <span className="material-symbols-rounded" style={{ fontSize: 13 }}>
+        {column.sort ? SORT_ICONS[column.sort] : "unfold_more"}
+      </span>
+    </button>
+  )
 }
 
 /** Compact table shell: sticky header, horizontal scroll on narrow screens, optional totals row. */
@@ -143,7 +167,7 @@ export function PlanTable({
                 key={`${c.label}-${i}`}
                 className={cn("px-2 py-2 font-semibold whitespace-nowrap", c.width, c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : "text-left")}
               >
-                {c.label}
+                <HeaderLabel column={c} />
               </th>
             ))}
           </tr>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { childExpenses } from "@/lib/plans/plan-children"
 import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
@@ -12,17 +12,41 @@ import { TimingCell } from "./timing-cell"
 
 const MONTHS = 12
 
-const COLUMNS = [
-  { label: "Expense" },
-  { label: "As you age", width: "w-[27rem]" },
-  { label: "Per month", align: "right" as const, width: "w-28" },
-  { label: "Per year", align: "right" as const, width: "w-32" },
-  { label: "Grows / yr", align: "right" as const, width: "w-28" },
-  { label: "Starts", width: "w-32" },
-  { label: "Stops", width: "w-32" },
-  { label: "Once", align: "center" as const, width: "w-14" },
-  { label: "", width: "w-16" },
-]
+type SortKey = "name" | "amount"
+type Sort = { key: SortKey; dir: "asc" | "desc" } | null
+
+/** Clicking a sortable header: amounts start highest first, names A–Z; a third click goes back to your order. */
+function nextSort(current: Sort, key: SortKey): Sort {
+  const first = key === "amount" ? "desc" : "asc"
+  if (current?.key !== key) return { key, dir: first }
+  return current.dir === first ? { key, dir: first === "asc" ? "desc" : "asc" } : null
+}
+
+/** Sorted for display only (the saved order is untouched). By amount, one-time costs follow the recurring lines. */
+function sorted(expenses: PlanExpense[], sort: Sort): PlanExpense[] {
+  if (!sort) return expenses
+  const sign = sort.dir === "asc" ? 1 : -1
+  return [...expenses].sort((a, b) => {
+    if (sort.key === "name") return sign * a.name.localeCompare(b.name)
+    if (a.oneTime !== b.oneTime) return a.oneTime ? 1 : -1
+    return sign * (a.amount - b.amount)
+  })
+}
+
+function columns(sort: Sort, setSort: (s: Sort) => void) {
+  const by = (key: SortKey) => ({ sort: sort?.key === key ? sort.dir : null, onSort: () => setSort(nextSort(sort, key)) })
+  return [
+    { label: "Expense", ...by("name") },
+    { label: "As you age", width: "w-[27rem]" },
+    { label: "Per month", align: "right" as const, width: "w-28", ...by("amount") },
+    { label: "Per year", align: "right" as const, width: "w-32", ...by("amount") },
+    { label: "Grows / yr", align: "right" as const, width: "w-28" },
+    { label: "Starts", width: "w-32" },
+    { label: "Stops", width: "w-32" },
+    { label: "Once", align: "center" as const, width: "w-14" },
+    { label: "", width: "w-16" },
+  ]
+}
 
 const Dash = () => <span className="px-2 text-foreground-muted">—</span>
 
@@ -33,10 +57,11 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
     childExpenses({ ...doc, children: [child] }).map((expense) => ({ expense, childId: child.id })),
   )
   const ages = useMemo(() => ({ now: primaryAge(doc), retire: retirementAge(doc) }), [doc])
+  const [sort, setSort] = useState<Sort>(null)
   const today = doc.expenses.filter((e) => !e.oneTime && e.start.type === "planStart").reduce((s, e) => s + e.amount, 0)
   return (
     <PlanTable
-      columns={COLUMNS}
+      columns={columns(sort, setSort)}
       minWidth="min-w-[1080px]"
       footer={
         <tr>
@@ -48,7 +73,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
         </tr>
       }
     >
-      {doc.expenses.map((e) => (
+      {sorted(doc.expenses, sort).map((e) => (
         <Row key={e.id}>
           <Cell>
             <CellText label="Expense name" value={e.name} onChange={(name) => patch(e.id, { name })} />
