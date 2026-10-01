@@ -116,7 +116,15 @@ export async function loadCryptoValue(userId: string): Promise<number> {
 export async function loadImportRealAssets(userId: string): Promise<ImportRealAsset[]> {
   const now = new Date()
   const assets = await loadRealAssets(userId)
-  return assets.map((a) => ({ id: a.id, kind: a.kind, name: a.name, value: valueAt(a, now), appreciation: a.appreciation, loanAccountId: a.loanAccountId }))
+  return assets.map((a) => ({
+    id: a.id,
+    kind: a.kind,
+    name: a.name,
+    value: valueAt(a, now),
+    appreciation: a.appreciation,
+    loanAccountId: a.loanAccountId,
+    propertyTaxAnnual: a.propertyTaxAnnual,
+  }))
 }
 
 /** A plan pre-filled from the user's linked accounts, liabilities, homes and vehicles, income and spending. */
@@ -132,7 +140,7 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
   const cryptoAcct = cryptoAccount(crypto)
   const trading = await loadTradingActivity(userId, rows)
   const accounts = [...withDetectedTrading(accountsFromRows(rows), trading), ...(cryptoAcct ? [cryptoAcct] : [])]
-  const owned = assetsFromRealAssets(realAssets, debtsFromRows(rows, liabilities))
+  const owned = assetsFromRealAssets(realAssets, debtsFromRows(rows, liabilities), base.settings.state)
   const debts = owned.debts
   const income = incomeFromMonthly(budget.income.monthly)
   const spending = spendingOptions(budget.categories, budget.currentBudgets)

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
+import type { Prisma } from "@/generated/prisma/client"
 import { valueAt } from "@/lib/finance/real-assets"
 import { isOwnLoan, loadLoanAccounts, realAssetCreateSchema, todayUtc } from "@/lib/finance/real-assets-input"
 import { loadRealAssets, MAX_REAL_ASSETS } from "@/lib/finance/real-assets-store"
@@ -45,6 +46,12 @@ export async function POST(req: NextRequest) {
         purchasePrice: input.purchasePrice ?? null,
         purchaseDate: input.purchaseDate ?? null,
         loanAccountId: input.loanAccountId ?? null,
+        address: input.address ?? null,
+        propertyTaxAnnual: input.propertyTaxAnnual ?? null,
+        rentEstimate: input.rentEstimate ?? null,
+        homeDetails: (input.homeDetails ?? undefined) as Prisma.InputJsonValue | undefined,
+        dataSource: input.dataSource ?? null,
+        dataAsOf: input.dataAsOf ?? null,
         values: { create: { date: today, value: input.value } },
       },
       select: { id: true },

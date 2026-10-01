@@ -84,6 +84,13 @@ export const SUPPORTED_SERVICES = [
     description: "Unified API for token prices, wallet balances, and analytics across all chains",
     keyUrl: "https://www.codex.io/",
   },
+  {
+    id: "rentcast",
+    label: "RentCast",
+    domain: "rentcast.io",
+    description: "Home value, rent estimate and property tax bill by address (Homes & Vehicles)",
+    keyUrl: "https://app.rentcast.io/app/api",
+  },
 ] as const
 
 export const CURRENCIES = [

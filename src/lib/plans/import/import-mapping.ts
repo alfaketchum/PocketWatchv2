@@ -1,5 +1,5 @@
 import { DEFAULT_CASH_RETURN, DEFAULT_RETURN_RATE, RETIREMENT_MILESTONE_ID } from "../plan-constants"
-import { TYPICAL_RUNNING_COSTS } from "../plan-asset-costs"
+import { runningCostsFor } from "../plan-asset-costs"
 import type { AssetKind, DebtKind, PlanAccount, PlanAsset, PlanDebt, PlanExpense, PlanIncome, TaxTreatment } from "../plan-types"
 
 const MONTHS = 12
@@ -209,12 +209,14 @@ export interface ImportRealAsset {
   value: number
   appreciation: number
   loanAccountId: string | null
+  /** A looked-up home's yearly tax bill. */
+  propertyTaxAnnual?: number | null
 }
 
 const assetKindOf = (kind: string): AssetKind => (kind === "home" || kind === "vehicle" ? kind : "other")
 
 /** Homes and vehicles as plan assets owned now, each linked to its imported loan when it has one. */
-export function assetsFromRealAssets(items: ImportRealAsset[], debts: PlanDebt[]): { assets: PlanAsset[]; debts: PlanDebt[] } {
+export function assetsFromRealAssets(items: ImportRealAsset[], debts: PlanDebt[], state: string | null = null): { assets: PlanAsset[]; debts: PlanDebt[] } {
   const assets = items.map(
     (a): PlanAsset => ({
       id: `asset-${a.id}`,
@@ -224,7 +226,7 @@ export function assetsFromRealAssets(items: ImportRealAsset[], debts: PlanDebt[]
       appreciation: a.appreciation,
       start: { type: "planStart" },
       end: { type: "planEnd" },
-      runningCosts: TYPICAL_RUNNING_COSTS[assetKindOf(a.kind)],
+      runningCosts: runningCostsFor(assetKindOf(a.kind), state, a),
       source: { kind: "real-asset", refId: a.id },
     }),
   )

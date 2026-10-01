@@ -1,4 +1,4 @@
-import { TYPICAL_RUNNING_COSTS } from "./plan-asset-costs"
+import { runningCostsFor } from "./plan-asset-costs"
 import { TYPICAL_FINANCING } from "./plan-financing"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetKind, DebtKind, PlanAsset, PlanDebt, PlanDocument } from "./plan-types"
@@ -11,6 +11,7 @@ export interface KnownAsset {
   value: number
   appreciation: number
   loanAccountId: string | null
+  propertyTaxAnnual?: number | null
 }
 
 const kindOf = (kind: string): AssetKind => (kind === "home" || kind === "vehicle" ? kind : "other")
@@ -80,7 +81,7 @@ export function loanSuggestions(doc: PlanDocument, realLoans: PlanDebt[], known:
 }
 
 /** A home or vehicle from Homes & Vehicles as a plan asset owned now, linked back for "Refresh balances". */
-function assetFromKnown(k: KnownAsset, value: number, newId: (prefix: string) => string): PlanAsset {
+function assetFromKnown(k: KnownAsset, value: number, newId: (prefix: string) => string, state: string | null): PlanAsset {
   const kind = kindOf(k.kind)
   return {
     id: newId("asset"),
@@ -90,14 +91,14 @@ function assetFromKnown(k: KnownAsset, value: number, newId: (prefix: string) =>
     appreciation: k.appreciation,
     start: { type: "planStart" },
     end: { type: "planEnd" },
-    runningCosts: TYPICAL_RUNNING_COSTS[kind],
+    runningCosts: runningCostsFor(kind, state, { value: k.value, propertyTaxAnnual: k.propertyTaxAnnual }),
     source: { kind: "real-asset", refId: k.id },
   }
 }
 
 /** Adds a home or vehicle entered on Homes & Vehicles (no loan) to the plan, owned now. */
 export function applyOwnedAsset(doc: PlanDocument, k: KnownAsset, newId: (prefix: string) => string): PlanDocument {
-  return { ...doc, assets: [...doc.assets, assetFromKnown(k, Math.round(k.value), newId)] }
+  return { ...doc, assets: [...doc.assets, assetFromKnown(k, Math.round(k.value), newId, doc.settings.state)] }
 }
 
 /** Stop suggesting this home or vehicle from Homes & Vehicles for this plan. */
@@ -123,7 +124,7 @@ export function applyLoanAsAsset(
   newId: (prefix: string) => string,
   known?: KnownAsset,
 ): PlanDocument {
-  const asset: PlanAsset = known ? assetFromKnown(known, value, newId) : {
+  const asset: PlanAsset = known ? assetFromKnown(known, value, newId, doc.settings.state) : {
     id: newId("asset"),
     name: ASSET_NAME[kind],
     kind,
@@ -131,7 +132,7 @@ export function applyLoanAsAsset(
     appreciation: TYPICAL_VALUE_CHANGE[kind],
     start: { type: "planStart" },
     end: { type: "planEnd" },
-    runningCosts: TYPICAL_RUNNING_COSTS[kind],
+    runningCosts: runningCostsFor(kind, doc.settings.state),
   }
   return applyLoanLink({ ...doc, assets: [...doc.assets, asset] }, debt, asset.id)
 }

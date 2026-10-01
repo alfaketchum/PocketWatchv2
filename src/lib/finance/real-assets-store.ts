@@ -16,10 +16,26 @@ export const REAL_ASSET_SELECT = {
   purchasePrice: true,
   purchaseDate: true,
   loanAccountId: true,
+  address: true,
+  propertyTaxAnnual: true,
+  rentEstimate: true,
+  homeDetails: true,
+  dataSource: true,
+  dataAsOf: true,
   values: { select: { date: true, value: true }, orderBy: { date: "asc" as const }, take: MAX_VALUES_PER_ASSET },
 } as const
 
-export type StoredRealAsset = ValuedAsset & { id: string; name: string; loanAccountId: string | null }
+export type StoredRealAsset = ValuedAsset & {
+  id: string
+  name: string
+  loanAccountId: string | null
+  address: string | null
+  propertyTaxAnnual: number | null
+  rentEstimate: number | null
+  homeDetails: unknown
+  dataSource: string | null
+  dataAsOf: Date | null
+}
 
 export async function loadRealAssets(userId: string): Promise<StoredRealAsset[]> {
   return db.realAsset.findMany({

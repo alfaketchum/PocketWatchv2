@@ -28,6 +28,8 @@ const VALID_SERVICES = [
   "codex",
   // FIRE › Compare occupation wages
   "bls",
+  // Homes & Vehicles: home value, rent and property tax by address
+  "rentcast",
 ]
 
 async function getKeyHint(apiKeyEnc: string): Promise<string> {

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { BlurredValue } from "@/components/portfolio/blurred-value"
 import type { RealAssetItem, RealAssetLoan } from "@/hooks/finance/use-real-assets"
 import { formatCurrency } from "@/lib/utils"
+import { HomeFacts } from "./home-facts"
 
 const ICONS: Record<RealAssetItem["kind"], string> = { home: "home", vehicle: "directions_car", other: "category" }
 
@@ -49,6 +50,12 @@ export function RealAssetCard({
           <p className="text-[10px] text-foreground-muted">estimated today</p>
         </div>
       </div>
+      {asset.address && <p className="mt-2 text-[11px] text-foreground-muted truncate">{asset.address}</p>}
+      {asset.dataSource && (
+        <div className="mt-2">
+          <HomeFacts propertyTaxAnnual={asset.propertyTaxAnnual} rentEstimate={asset.rentEstimate} details={asset.homeDetails} dataSource={asset.dataSource} isHidden={isHidden} />
+        </div>
+      )}
       {loan && (
         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
           <span className="text-foreground-muted">

@@ -25,6 +25,17 @@ export function typicalRunningCosts(kind: AssetKind, state: string | null | unde
   return TYPICAL_RUNNING_COSTS[kind].map((c) => (c.kind === "propertyTax" ? { ...c, amount: propertyTaxRate(state) } : c))
 }
 
+/**
+ * Typical costs for an asset that may come with its real tax bill (a looked-up home): the bill becomes its
+ * own effective rate, so it follows the home's value from there; otherwise the state's average.
+ */
+export function runningCostsFor(kind: AssetKind, state: string | null | undefined, known?: { value: number; propertyTaxAnnual?: number | null }): AssetRunningCost[] {
+  const costs = typicalRunningCosts(kind, state)
+  const bill = known?.propertyTaxAnnual
+  if (kind !== "home" || !bill || !known || known.value <= 0) return costs
+  return costs.map((c) => (c.kind === "propertyTax" ? { ...c, name: "Property tax (your bill)", amount: bill / known.value } : c))
+}
+
 /** Property tax (itemizable): flagged, or named so in plans saved before the flag existed. */
 export function isPropertyTax(cost: AssetRunningCost): boolean {
   return cost.kind === "propertyTax" || /property tax/i.test(cost.name)

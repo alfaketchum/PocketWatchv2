@@ -356,6 +356,21 @@ async function verifyBlsKey(apiKey: string): Promise<ServiceVerifyResult> {
   }
 }
 
+/** RentCast (home values, rent and tax bills): one small property search; counts as a request on the plan. */
+async function verifyRentcastKey(apiKey: string): Promise<ServiceVerifyResult> {
+  try {
+    const res = await fetch("https://api.rentcast.io/v1/properties?city=Austin&state=TX&limit=1", {
+      headers: { Accept: "application/json", "X-Api-Key": apiKey },
+      signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
+    })
+    if (res.ok) return ok("RentCast key verified")
+    if (res.status === 401 || res.status === 403) return fail("invalid_key", "RentCast rejected the key")
+    return fail("upstream_error", `RentCast returned ${res.status}`)
+  } catch {
+    return fail("upstream_error", "Could not reach RentCast")
+  }
+}
+
 async function verifyCoinGeckoKey(apiKey: string): Promise<ServiceVerifyResult> {
   // Try pro endpoint first, then demo endpoint (free-tier keys use different host + header)
   const endpoints = [
@@ -430,6 +445,7 @@ export async function verifyServiceKey(
   if (normalized === "coingecko") return verifyCoinGeckoKey(trimmed)
   if (normalized === "bls") return verifyBlsKey(trimmed)
   if (normalized === "codex") return verifyCodexKey(trimmed)
+  if (normalized === "rentcast") return verifyRentcastKey(trimmed)
 
   // Etherscan-compatible explorers (bscscan, arbiscan, lineascan, etc.)
   const explorer = EXPLORER_APIS[normalized]

@@ -15,7 +15,7 @@ import { AssetRunningCostsFields } from "./asset-running-costs-fields"
 import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
-import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
+import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 import { generatedDebts } from "@/lib/plans/plan-expand"
 import { Badge } from "./plan-table"
@@ -55,13 +55,13 @@ function AddAssetButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">
 }
 
 /** Switching kind swaps in the new kind's typical costs, unless the costs were already changed by hand. */
-function kindChange(a: PlanAsset, kind: AssetKind): Partial<PlanAsset> {
+function kindChange(a: PlanAsset, kind: AssetKind, state: string | null): Partial<PlanAsset> {
   const costs = a.runningCosts ?? []
-  const untouched = costs.length === 0 || JSON.stringify(costs) === JSON.stringify(TYPICAL_RUNNING_COSTS[a.kind])
+  const untouched = costs.length === 0 || JSON.stringify(costs) === JSON.stringify(typicalRunningCosts(a.kind, state))
   return {
     kind,
     ...(kind === "vehicle" && a.appreciation >= 0 ? { appreciation: VEHICLE_DEPRECIATION } : {}),
-    ...(untouched ? { runningCosts: TYPICAL_RUNNING_COSTS[kind] } : {}),
+    ...(untouched ? { runningCosts: typicalRunningCosts(kind, state) } : {}),
   }
 }
 
@@ -99,7 +99,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               label="Type"
               value={a.kind}
               options={ASSET_KINDS}
-              onChange={(kind) => patch(a.id, kindChange(a, kind))}
+              onChange={(kind) => patch(a.id, kindChange(a, kind, doc.settings.state))}
             />
             <FireNumberField label="Value today" prefix="$" min={0} value={a.value} onChange={(value) => patch(a.id, { value })} />
             <FireNumberField

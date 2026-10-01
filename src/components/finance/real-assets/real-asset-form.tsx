@@ -5,6 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { SelectField, TextField } from "@/components/plans/editor/plan-editor-controls"
 import type { RealAssetInput, RealAssetItem, RealAssetLoan } from "@/hooks/finance/use-real-assets"
 import { TYPICAL_APPRECIATION, type RealAssetKind } from "@/lib/finance/real-assets"
+import { HomeLookupFields } from "./home-lookup-fields"
 
 const KIND_OPTIONS: { value: RealAssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -24,6 +25,12 @@ function draftFrom(asset: RealAssetItem | null, kind: RealAssetKind): RealAssetI
     purchasePrice: asset.purchasePrice,
     purchaseDate: asset.purchaseDate?.slice(0, 10) ?? null,
     loanAccountId: asset.loanAccountId,
+    address: asset.address,
+    propertyTaxAnnual: asset.propertyTaxAnnual,
+    rentEstimate: asset.rentEstimate,
+    homeDetails: asset.homeDetails,
+    dataSource: asset.dataSource,
+    dataAsOf: asset.dataAsOf?.slice(0, 10) ?? null,
   }
 }
 
@@ -61,6 +68,7 @@ export function RealAssetForm({
         onSave(asset && value === initial.value ? rest : d)
       }}
     >
+      {d.kind === "home" && <HomeLookupFields draft={d} onApply={set} />}
       <div className="grid grid-cols-2 gap-2 items-end">
         <SelectField label="Type" value={d.kind} options={KIND_OPTIONS} onChange={changeKind} />
         <TextField label="Name" value={d.name} onChange={(name) => set({ name })} />

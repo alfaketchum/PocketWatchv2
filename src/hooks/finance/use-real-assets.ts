@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { combinedNetWorthKeys } from "@/hooks/use-combined-net-worth"
 import type { RealAssetKind } from "@/lib/finance/real-assets"
+import type { HomeData } from "@/lib/finance/home-data/types"
+import type { HomeDetailsSnapshot } from "@/lib/finance/home-data/to-asset"
 import { financeFetch, financeKeys } from "./shared"
 
 export interface RealAssetItem {
@@ -16,6 +18,12 @@ export interface RealAssetItem {
   purchasePrice: number | null
   purchaseDate: string | null
   loanAccountId: string | null
+  address: string | null
+  propertyTaxAnnual: number | null
+  rentEstimate: number | null
+  homeDetails: HomeDetailsSnapshot | null
+  dataSource: string | null
+  dataAsOf: string | null
   estimatedValue: number
   values: { date: string; value: number }[]
 }
@@ -34,6 +42,22 @@ export interface RealAssetInput {
   purchasePrice?: number | null
   purchaseDate?: string | null
   loanAccountId?: string | null
+  address?: string | null
+  propertyTaxAnnual?: number | null
+  rentEstimate?: number | null
+  homeDetails?: HomeDetailsSnapshot | null
+  dataSource?: string | null
+  dataAsOf?: string | null
+}
+
+export type { HomeDetailsSnapshot }
+
+/** Look a home up by address (RentCast with a key, sample data without). */
+export function useHomeLookup() {
+  return useMutation({
+    mutationFn: (address: string) => financeFetch<{ home: HomeData }>("/real-assets/lookup", { method: "POST", body: JSON.stringify({ address }) }),
+    onError: (err: Error) => toast.error(err.message),
+  })
 }
 
 /** The user's homes, vehicles and other hand-valued assets, and the loans they can be linked to. */

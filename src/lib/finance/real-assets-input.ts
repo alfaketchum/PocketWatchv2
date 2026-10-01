@@ -13,7 +13,16 @@ export const realAssetCreateSchema = z.object({
   purchasePrice: money.nullable().optional(),
   purchaseDate: date.nullable().optional(),
   loanAccountId: z.string().max(50).nullable().optional(),
+  // From a home-data lookup (address search).
+  address: z.string().trim().max(200).nullable().optional(),
+  propertyTaxAnnual: money.nullable().optional(),
+  rentEstimate: money.nullable().optional(),
+  homeDetails: z.record(z.string(), z.unknown()).nullable().optional(),
+  dataSource: z.string().max(30).nullable().optional(),
+  dataAsOf: date.nullable().optional(),
 })
+
+export const homeLookupSchema = z.object({ address: z.string().trim().min(5).max(200) })
 
 export const realAssetUpdateSchema = realAssetCreateSchema.partial()
 

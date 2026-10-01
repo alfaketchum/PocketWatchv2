@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
+import { Prisma } from "@/generated/prisma/client"
 import { isOwnLoan, realAssetUpdateSchema, todayUtc } from "@/lib/finance/real-assets-input"
 
 type Params = { params: Promise<{ id: string }> }
@@ -20,12 +21,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const existing = await ownAsset(user.id, id)
     if (!existing) return apiError("RA13", "Asset not found", 404)
-    const { value, ...rest } = parsed.data
+    const { value, homeDetails, ...rest } = parsed.data
     if (!(await isOwnLoan(user.id, rest.loanAccountId))) return apiError("RA14", "Loan account not found", 404)
     const today = todayUtc()
     const revalued = value !== undefined && value !== existing.value
     await db.$transaction([
-      db.realAsset.update({ where: { id }, data: { ...rest, ...(revalued ? { value, valueAsOf: today } : {}) } }),
+      db.realAsset.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(homeDetails !== undefined ? { homeDetails: (homeDetails ?? Prisma.DbNull) as Prisma.InputJsonValue } : {}),
+          ...(revalued ? { value, valueAsOf: today } : {}),
+        },
+      }),
       ...(revalued
         ? [db.realAssetValue.upsert({ where: { assetId_date: { assetId: id, date: today } }, create: { assetId: id, date: today, value }, update: { value } })]
         : []),
