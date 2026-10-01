@@ -32,25 +32,30 @@ export interface TemplateMeta {
   icon: string
   /** Where the result lives: a stored milestone, or an item that generates its own milestones. */
   creates: string
+  /**
+   * The tabs whose items it adds or changes (elder care's Income: only if you cut back work; Expenses on home and
+   * vehicle: their running costs; inheritance's Expenses: any inheritance tax). Empty for a plain date.
+   */
+  changes: string[]
 }
 
 export const MILESTONE_TEMPLATES: TemplateMeta[] = [
-  { key: "retire", label: "Retire", icon: "beach_access", creates: "Moves your retirement date" },
-  { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates" },
-  { key: "divorce", label: "Divorce", icon: "heart_broken", creates: "Splits accounts, ends their income, single filing" },
-  { key: "widowed", label: "Partner passes away", icon: "local_florist", creates: "Their income stops, survivor benefit, single filing" },
-  { key: "elderCare", label: "Elder care", icon: "elderly_woman", creates: "Care for a parent: who pays, and any cut to your work" },
-  { key: "socialSecurity", label: "Claim Social Security", icon: "elderly", creates: "Your benefit from the age you claim (62–70)" },
-  { key: "pension", label: "Pension", icon: "account_balance", creates: "A pension from an age, with or without raises" },
-  { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids" },
-  { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts" },
-  { key: "vehicle", label: "Buy a vehicle", icon: "directions_car", creates: "A vehicle and its loan on Assets & debts" },
-  { key: "career", label: "Career change", icon: "work", creates: "Ends a salary and starts a new one" },
-  { key: "break", label: "Career break", icon: "luggage", creates: "Pauses a salary for a few years" },
-  { key: "move", label: "Move", icon: "moving", creates: "Changes your spending and state taxes from then on" },
-  { key: "inheritance", label: "Inheritance", icon: "volunteer_activism", creates: "Cash, stocks, property or retirement accounts" },
-  { key: "windfall", label: "Windfall", icon: "redeem", creates: "A one-time income (bonus, sale)" },
-  { key: "custom", label: "Custom", icon: "flag", creates: "Just a named date" },
+  { key: "retire", label: "Retire", icon: "beach_access", creates: "Moves your retirement date", changes: ["Anything set to retirement"] },
+  { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates", changes: ["Assumptions", "Income", "Expenses"] },
+  { key: "divorce", label: "Divorce", icon: "heart_broken", creates: "Splits accounts, ends their income, single filing", changes: ["Assumptions", "Accounts", "Income", "Expenses"] },
+  { key: "widowed", label: "Partner passes away", icon: "local_florist", creates: "Their income stops, survivor benefit, single filing", changes: ["Assumptions", "Income", "Expenses"] },
+  { key: "elderCare", label: "Elder care", icon: "elderly_woman", creates: "Care for a parent: who pays, and any cut to your work", changes: ["Expenses", "Income"] },
+  { key: "socialSecurity", label: "Claim Social Security", icon: "elderly", creates: "Your benefit from the age you claim (62–70)", changes: ["Income"] },
+  { key: "pension", label: "Pension", icon: "account_balance", creates: "A pension from an age, with or without raises", changes: ["Income"] },
+  { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids", changes: ["Expenses"] },
+  { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts", changes: ["Assets & debts", "Expenses"] },
+  { key: "vehicle", label: "Buy a vehicle", icon: "directions_car", creates: "A vehicle and its loan on Assets & debts", changes: ["Assets & debts", "Expenses"] },
+  { key: "career", label: "Career change", icon: "work", creates: "Ends a salary and starts a new one", changes: ["Income"] },
+  { key: "break", label: "Career break", icon: "luggage", creates: "Pauses a salary for a few years", changes: ["Income"] },
+  { key: "move", label: "Move", icon: "moving", creates: "Changes your spending and state taxes from then on", changes: ["Assumptions", "Expenses"] },
+  { key: "inheritance", label: "Inheritance", icon: "volunteer_activism", creates: "Cash, stocks, property or retirement accounts", changes: ["Accounts", "Assets & debts", "Income", "Expenses"] },
+  { key: "windfall", label: "Windfall", icon: "redeem", creates: "A one-time income (bonus, sale)", changes: ["Income"] },
+  { key: "custom", label: "Custom", icon: "flag", creates: "Just a named date", changes: [] },
 ]
 
 const ICONS = Object.fromEntries(MILESTONE_TEMPLATES.map((t) => [t.key, t.icon])) as Record<TemplateKey, string>

@@ -66,7 +66,26 @@ export interface InstantChoice {
   onPick: () => void
 }
 
-function ChoiceButton({ icon, label, detail, where, onClick }: { icon: string; label: string; detail: string; where?: string; onClick: () => void }) {
+/** Tabs in tab-bar order, so "Changes: …" always reads the same way round. */
+const TAB_ORDER = ["Assumptions", "Accounts", "Income", "Expenses", "Assets & debts"]
+const byTabOrder = (tabs: string[]) => [...tabs].sort((a, b) => (TAB_ORDER.indexOf(a) + 1 || 99) - (TAB_ORDER.indexOf(b) + 1 || 99))
+
+function ChoiceButton({
+  icon,
+  label,
+  detail,
+  where,
+  changes,
+  onClick,
+}: {
+  icon: string
+  label: string
+  detail: string
+  where?: string
+  /** The tabs it adds to or changes, shown on the Milestones picker. */
+  changes?: string[]
+  onClick: () => void
+}) {
   return (
     <button
       type="button"
@@ -78,6 +97,11 @@ function ChoiceButton({ icon, label, detail, where, onClick }: { icon: string; l
       </span>
       <span className="text-sm font-medium text-foreground">{label}</span>
       <span className="text-[11px] leading-snug text-foreground-muted">{detail}</span>
+      {changes && changes.length > 0 && (
+        <span className="text-[10px] leading-snug text-foreground-muted">
+          <span className="font-medium text-foreground">Changes:</span> {byTabOrder(changes).join(" · ")}
+        </span>
+      )}
       {where && (
         <span
           className={cn(
@@ -134,6 +158,7 @@ function TemplateGrid({
           label={t.label}
           detail={t.creates}
           where={labelled ? (EVENT_TABS[t.key] ? `Also on ${EVENT_TABS[t.key]}` : ONLY_HERE) : undefined}
+          changes={labelled ? t.changes : undefined}
           onClick={() => onPick(t.key)}
         />
       ))}
