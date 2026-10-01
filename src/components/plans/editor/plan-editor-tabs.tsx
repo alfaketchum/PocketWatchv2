@@ -2,9 +2,8 @@
 
 import { Fragment } from "react"
 import { cn } from "@/lib/utils"
-import type { BuildTab, TabStatus } from "@/lib/plans/plan-tab-status"
 
-export type PlanTab = BuildTab | "overview"
+export type PlanTab = "assumptions" | "milestones" | "accounts" | "income" | "expenses" | "assets" | "cashflow" | "overview"
 
 /**
  * In the order you'd build a plan, numbered as steps: assumptions, then the life story (milestones, which fill in
@@ -36,25 +35,6 @@ export function isPlanTab(value: string | null): value is PlanTab {
   return PLAN_TABS.some((t) => t.value === value)
 }
 
-const DOT: Record<TabStatus["state"], string> = {
-  empty: "border border-foreground-muted/60",
-  filled: "bg-success/70",
-  attention: "bg-warning",
-}
-const STATE_LABEL: Record<TabStatus["state"], string> = { empty: "Empty", filled: "Filled in", attention: "Needs attention" }
-
-/** A tiny mark on a tab: hollow while empty, green once filled in, amber when something needs fixing. */
-function StatusDot({ status }: { status: TabStatus }) {
-  return (
-    <span title={`${STATE_LABEL[status.state]}: ${status.note}`} className="inline-flex">
-      <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", DOT[status.state])} />
-      <span className="sr-only">
-        {STATE_LABEL[status.state]}: {status.note}
-      </span>
-    </span>
-  )
-}
-
 /** The step's number in a small circle, filled for the tab you're on. */
 function StepNumber({ n, active }: { n: number; active: boolean }) {
   return (
@@ -70,21 +50,12 @@ function StepNumber({ n, active }: { n: number; active: boolean }) {
   )
 }
 
-/** Editor section tabs for a plan as numbered steps, each build step with its status. */
-export function PlanEditorTabs({
-  value,
-  onChange,
-  statuses,
-}: {
-  value: PlanTab
-  onChange: (tab: PlanTab) => void
-  statuses: Record<BuildTab, TabStatus>
-}) {
+/** Editor section tabs for a plan as numbered steps. */
+export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: (tab: PlanTab) => void }) {
   return (
     <nav className="flex border-b border-card-border overflow-x-auto scrollbar-hide" role="tablist">
       {PLAN_TABS.map((tab, i) => {
         const active = tab.value === value
-        const status = tab.value === "overview" ? null : statuses[tab.value]
         return (
           <Fragment key={tab.value}>
             {i > 0 && (
@@ -105,7 +76,6 @@ export function PlanEditorTabs({
               <StepNumber n={i + 1} active={active} />
               <span className="sr-only">Step {i + 1}:</span>
               {tab.label}
-              {status && <StatusDot status={status} />}
             </button>
           </Fragment>
         )

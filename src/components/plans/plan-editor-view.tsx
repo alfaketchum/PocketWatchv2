@@ -1,13 +1,12 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useMemo, type ComponentType } from "react"
+import { useCallback, type ComponentType } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
 import { usePlanProjection } from "@/hooks/plans/use-plan-projection"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import { planTabStatus } from "@/lib/plans/plan-tab-status"
 import type { PlanEditorProps } from "./plans-helpers"
 import { AccountsEditor } from "./editor/accounts-editor"
 import { AssetsDebtsEditor } from "./editor/assets-debts-editor"
@@ -79,10 +78,9 @@ export function PlanEditorView({ planId }: { planId: string }) {
   )
   const { plan, document, update, isLoading, error, isSaving } = usePlanDocument(planId)
   const { projection, summary, rows, basis, setBasis, view } = usePlanProjection(document)
-  const statuses = useMemo(() => (document ? planTabStatus(document) : null), [document])
 
   if (isLoading) return <EditorSkeleton />
-  if (error || !plan || !document || !projection || !summary || !view || !statuses) {
+  if (error || !plan || !document || !projection || !summary || !view) {
     return (
       <EmptyState
         icon="error"
@@ -100,7 +98,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
       <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
-      <PlanEditorTabs value={tab} onChange={setTab} statuses={statuses} />
+      <PlanEditorTabs value={tab} onChange={setTab} />
       {Editor ? (
         <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
           <Editor
