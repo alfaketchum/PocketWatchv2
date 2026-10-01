@@ -40,7 +40,7 @@ const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
 ]
 const MEASURE_OPTIONS: { value: Measure; label: string }[] = [
   { value: "netWorth", label: "Net worth" },
-  { value: "invested", label: "Invested" },
+  { value: "invested", label: "Money in accounts" },
 ]
 
 const INFO =
@@ -68,7 +68,8 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     () => projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(inflationOf(doc.settings), r.index, "balance")),
     [projection, measure, doc.settings],
   )
-  // The outcome buckets' yardsticks, from this plan: what you have today and a year of spending at the end.
+  // The outcome buckets' yardsticks, from this plan: the money in your accounts today and a year of spending at the
+  // end. Always account money, whatever the chart shows: running out is about what can pay the bills.
   const yardsticks = useMemo(() => {
     const inflation = inflationOf(doc.settings)
     const spending = projection.rows
@@ -76,12 +77,12 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
       .filter((v) => v > 0)
     const invested = doc.accounts.reduce((s, a) => s + a.balance, 0)
     return {
-      startValue: measure === "netWorth" ? projection.startNetWorth : invested,
+      startValue: invested,
       yearlySpending: spending.at(-1) ?? 0,
       endAge: doc.settings.endAge,
-      measure,
+      measure: "invested" as const,
     }
-  }, [projection, doc.settings, doc.accounts, measure])
+  }, [projection, doc.settings, doc.accounts])
   const capeOptions: { value: Cape; label: string }[] = [
     { value: "all", label: "All years" },
     { value: "20", label: "CAPE ≥ 20" },

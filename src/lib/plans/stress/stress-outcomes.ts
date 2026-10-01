@@ -42,7 +42,7 @@ function bucketOf(c: CohortResult, y: OutcomeYardsticks): OutcomeKey {
  * with more than you have today, a cushion of years of spending, or barely; if not, near the end or well before it.
  */
 export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): OutcomeBucket[] {
-  const what = y.measure === "netWorth" ? "net worth" : "invested money"
+  const what = y.measure === "netWorth" ? "net worth" : "money in your accounts"
   const cushion = y.yearlySpending * CUSHION_YEARS
   const rules: Record<OutcomeKey, { label: string; rule: string }> = {
     surplus: { label: "Surplus", rule: `Lasted and ended with more ${what} than today's ${fmt(y.startValue)}` },

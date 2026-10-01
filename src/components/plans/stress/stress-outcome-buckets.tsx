@@ -27,6 +27,10 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">How the {total} periods ended</p>
       </div>
+      <p className="text-[11px] text-foreground-muted">
+        Measured on the money in your accounts, whichever the chart shows: running out means your accounts couldn&apos;t pay a year&apos;s
+        spending. Your home and other property don&apos;t pay the bills unless the plan sells them.
+      </p>
       <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={buckets.map((b) => `${b.label} ${Math.round(b.share * 100)}%`).join(", ")}>
         {buckets
           .filter((b) => b.count > 0)
