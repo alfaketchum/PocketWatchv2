@@ -112,7 +112,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
       ) : (
         <>
           <StressOverviewCard doc={document} planId={planId} />
-          <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} />
+          <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
         </>
       )}
     </div>
