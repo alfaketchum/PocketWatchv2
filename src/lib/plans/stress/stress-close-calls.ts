@@ -11,6 +11,8 @@ export interface CloseCall {
    * danger-year is a year at $0; a year at half the cushion counts half.
    */
   dangerArea: number
+  /** Each year's cushion in years of spending; null in years you weren't living off your accounts. */
+  cushion: (number | null)[]
 }
 
 /** A year's cushion: the money in your accounts over that year's bills and debt payments. Ratios, so dollars don't matter. */
@@ -25,11 +27,12 @@ function cushion(r: YearRow): number | null {
 export function closeCall(rows: YearRow[], age0: number): CloseCall {
   let lowPoint: CloseCall["lowPoint"] = null
   let dangerArea = 0
+  const series = rows.map(cushion)
   for (const r of rows) {
-    const c = cushion(r)
+    const c = series[r.index]
     if (c === null) continue
     if (!lowPoint || c < lowPoint.years) lowPoint = { years: c, age: age0 + r.index }
     dangerArea += Math.max(0, DANGER_YEARS - c) / DANGER_YEARS
   }
-  return { lowPoint, dangerArea }
+  return { lowPoint, dangerArea, cushion: series }
 }

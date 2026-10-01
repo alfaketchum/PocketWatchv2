@@ -45,6 +45,7 @@ export interface CohortResult {
   /** Lowest point and area under the danger line (stress-close-calls). */
   lowPoint?: CloseCall["lowPoint"]
   dangerArea?: number
+  cushion?: CloseCall["cushion"]
   /** Year-end values by plan year, today's dollars. */
   netWorth: number[]
   invested: number[]

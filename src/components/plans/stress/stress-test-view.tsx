@@ -7,10 +7,12 @@ import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { deflator } from "@/lib/plans/plan-dollars"
 import { ageAtStart } from "@/lib/plans/plan-timing"
+import { closeCall, DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
 import type { PlanProjection } from "@/lib/plans/plan-types"
 import { anchorIndex, summarize, type StressAlign, type StressInflation } from "@/lib/plans/stress/stress-test"
 import type { PlanEditorProps } from "../plans-helpers"
 import { StressCohortBars } from "./stress-cohort-bars"
+import { StressCushionChart } from "./stress-cushion-chart"
 import { StressFanChart } from "./stress-fan-chart"
 import { StressOutcomeBuckets } from "./stress-outcome-buckets"
 import { StressPathsChart } from "./stress-paths-chart"
@@ -68,6 +70,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     () => projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(inflationOf(doc.settings), r.index, "balance")),
     [projection, measure, doc.settings],
   )
+  const planCushion = useMemo(() => closeCall(projection.rows, age0).cushion, [projection, age0])
   // The outcome buckets' yardsticks, from this plan: the money in your accounts today and a year of spending at the
   // end. Always account money, whatever the chart shows: running out is about what can pay the bills.
   const yardsticks = useMemo(() => {
@@ -154,6 +157,13 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
             ) : (
               <StressPathsChart cohorts={summary.cohorts} age0={age0} plan={plan} measure={measure} isHidden={isHidden} />
             )}
+          </FireSectionCard>
+          <FireSectionCard
+            eyebrow="Close calls"
+            title="Years of spending in your accounts, by age"
+            info={`How long the money in your accounts would pay that year's bills and debt payments, counted only once you're living off them (blank while income pays the bills). Shaded red: under ${DANGER_YEARS} years, the danger zone; the area a line spends in it is the danger-years. Bands: the middle 80% and 50% of periods. Solid: the median. Dashed: your plan with steady returns. Red line: the worst start year. Drawn up to 25 years.`}
+          >
+            <StressCushionChart cohorts={summary.cohorts} age0={age0} plan={planCushion} worst={summary.worst} isHidden={isHidden} />
           </FireSectionCard>
           <div className="grid gap-5 xl:grid-cols-2">
             <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year; red where the money ran out before the plan's end.">

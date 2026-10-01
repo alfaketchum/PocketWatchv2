@@ -37,3 +37,16 @@ test("each bucket gives its typical lowest point and danger-years", () => {
   assert.equal(by.catastrophic.dangerArea, 6)
   assert.equal(by.steady.dangerArea, undefined)
 })
+
+test("cushion bands skip ages when most periods are still working", async () => {
+  const { cushionBands } = await import("@/lib/plans/stress/stress-cushion")
+  const b = cushionBands([
+    [null, 10, 2],
+    [null, 20, 0],
+    [5, null, 4],
+  ])
+  assert.equal(b[0], null, "only 1 of 3 living off their accounts")
+  assert.equal(b[1]![2], 15, "median of 10 and 20")
+  assert.equal(b[2]![2], 2)
+  assert.deepEqual(closeCall([row(0, 10_000, false), row(1, 100_000)], 40).cushion, [null, 2])
+})
