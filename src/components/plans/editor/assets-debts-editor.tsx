@@ -16,6 +16,7 @@ import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
 import { AddDebtDialog } from "./add-debt-dialog"
+import { DisposeAssetDialog } from "./dispose-asset-dialog"
 import { VehicleValueFields } from "./vehicle-value-fields"
 import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
@@ -75,6 +76,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
   const remove = (id: string) =>
     update((d) => removeAsset(d, id))
+  const [disposeId, setDisposeId] = useState<string | null>(null)
   return (
     <InputBlock
       title="Assets"
@@ -151,11 +153,18 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               onChange={(end) => patch(a.id, { end })}
             />
           </div>
+          <button type="button" onClick={() => setDisposeId(a.id)} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
+              sell
+            </span>
+            {a.kind === "home" ? "Sell or downsize" : "Sell"}
+          </button>
           {a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
           <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
           <AssetRunningCostsFields asset={a} state={doc.settings.state} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
         </ItemCard>
       ))}
+      {disposeId && <DisposeAssetDialog doc={doc} update={update} assetId={disposeId} onClose={() => setDisposeId(null)} />}
     </InputBlock>
   )
 }

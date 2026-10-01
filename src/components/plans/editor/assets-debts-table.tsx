@@ -11,6 +11,7 @@ import { removeAsset } from "@/lib/plans/plan-edits"
 import { generatedDebts } from "@/lib/plans/plan-expand"
 import { scheduledPayment } from "@/lib/plans/plan-debt-payments"
 import { DEBT_KINDS, withDebtKind } from "./debt-constants"
+import { DisposeAssetDialog } from "./dispose-asset-dialog"
 import { LoanScheduleDialog } from "./loan-schedule-lazy"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
@@ -27,7 +28,7 @@ const ASSET_COLUMNS = [
   { label: "Owned from", width: "w-32" },
   { label: "Sold", width: "w-32" },
   { label: "Paid with", width: "w-32" },
-  { label: "", width: "w-16" },
+  { label: "", width: "w-24" },
 ]
 
 const DEBT_COLUMNS = [
@@ -47,16 +48,19 @@ function Actions({
   onEditItem,
   onRemove,
   onSchedule,
+  onDispose,
 }: {
   name: string
   anchor: string
   onEditItem?: (id: string) => void
   onRemove: () => void
   onSchedule?: () => void
+  onDispose?: () => void
 }) {
   return (
     <span className="flex">
       {onSchedule && <RowButton icon="table_chart" label={`See the amortization schedule for ${name}`} onClick={onSchedule} />}
+      {onDispose && <RowButton icon="sell" label={`Sell ${name}`} onClick={onDispose} />}
       <RowButton icon="edit" label={`Edit ${name} in detailed view`} onClick={() => onEditItem?.(anchor)} />
       <RowButton icon="delete" label={`Remove ${name}`} danger onClick={onRemove} />
     </span>
@@ -71,6 +75,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
   // Loans from financed purchases: listed read-only, edited on their asset.
   const generated = useMemo(() => generatedDebts(doc), [doc])
   const [scheduleId, setScheduleId] = useState<string | null>(null)
+  const [disposeId, setDisposeId] = useState<string | null>(null)
   return (
     <div className="space-y-5">
       <PlanTable
@@ -124,6 +129,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
                 anchor={planItemAnchor(a.id)}
                 onEditItem={onEditItem}
                 onRemove={() => update((d) => removeAsset(d, a.id))}
+                onDispose={() => setDisposeId(a.id)}
               />
             </Cell>
           </Row>
@@ -218,6 +224,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Row>
         ))}
       </PlanTable>
+      {disposeId && <DisposeAssetDialog doc={doc} update={update} assetId={disposeId} onClose={() => setDisposeId(null)} />}
       {scheduleId && <LoanScheduleDialog doc={doc} debtId={scheduleId} onClose={() => setScheduleId(null)} />}
     </div>
   )
