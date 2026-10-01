@@ -1,5 +1,6 @@
 "use client"
 
+import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo, useState } from "react"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
@@ -12,6 +13,7 @@ import { StressCohortBars } from "./stress-cohort-bars"
 import { StressFanChart } from "./stress-fan-chart"
 import { StressPathsChart } from "./stress-paths-chart"
 import { StressMixTable } from "./stress-mix-table"
+import { InflationSource } from "../editor/inflation-source"
 import { StressPeriodsTable } from "./stress-periods-table"
 import { StressSummary } from "./stress-summary"
 import { useStressTest } from "./use-stress-test"
@@ -54,8 +56,8 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
   const plan = useMemo(
-    () => projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(doc.settings.inflation, r.index, "balance")),
-    [projection, measure, doc.settings.inflation],
+    () => projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(inflationOf(doc.settings), r.index, "balance")),
+    [projection, measure, doc.settings],
   )
   const capeOptions: { value: Cape; label: string }[] = [
     { value: "all", label: "All years" },
@@ -133,7 +135,10 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         </>
       )}
 
-      <FireSectionCard eyebrow="Assumptions" title="What each account holds" info="Used only for the stress test. Stocks and bonds earn their historical returns after inflation, cash earns nothing after inflation, and crypto swings twice as hard as stocks around its own assumed return.">
+      <FireSectionCard eyebrow="Assumptions" title="Inflation and what each account holds" info="Inflation is the plan's own (shared with Assumptions). The mix is used only for the stress test. Stocks and bonds earn their historical returns after inflation, cash earns nothing after inflation, and crypto swings twice as hard as stocks around its own assumed return.">
+        <div className="mb-4">
+          <InflationSource doc={doc} update={update} compact />
+        </div>
         <StressMixTable doc={doc} update={update} />
       </FireSectionCard>
     </div>

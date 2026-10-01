@@ -1,3 +1,4 @@
+import { priceIndex, type Inflation } from "../plan-inflation"
 import { livesIn } from "../plan-asset-costs"
 import { resolveRange, resolveTiming, type ResolvedRange, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDebt } from "../plan-types"
@@ -8,7 +9,7 @@ export interface AssetEntry {
   asset: PlanAsset
   range: ResolvedRange
   /** The plan's inflation: a future purchase costs today's value grown by it. */
-  inflation: number
+  inflation: Inflation
 }
 
 export interface DebtEntry {
@@ -17,7 +18,7 @@ export interface DebtEntry {
   start: number
 }
 
-export function assetEntries(assets: PlanAsset[], ctx: TimingContext, inflation: number): AssetEntry[] {
+export function assetEntries(assets: PlanAsset[], ctx: TimingContext, inflation: Inflation): AssetEntry[] {
   return assets.map((asset) => ({ asset, range: resolveRange(asset.start, asset.end, ctx), inflation }))
 }
 
@@ -29,9 +30,9 @@ export function debtEntries(debts: PlanDebt[], ctx: TimingContext): DebtEntry[] 
  * Value at the start of year `index` of an asset first owned in year `start`. `value` is in today's
  * dollars: a future purchase costs it grown by inflation, and only then gains or loses its own rate.
  */
-export function assetValue(asset: PlanAsset, start: number, index: number, inflation: number): number {
+export function assetValue(asset: PlanAsset, start: number, index: number, inflation: Inflation): number {
   const bought = Math.max(0, start)
-  return asset.value * Math.pow(1 + inflation, bought) * Math.pow(1 + asset.appreciation, index - bought)
+  return asset.value * priceIndex(inflation, bought) * Math.pow(1 + asset.appreciation, index - bought)
 }
 
 export function assetValueAt(entry: AssetEntry, index: number): number {

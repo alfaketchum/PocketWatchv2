@@ -57,6 +57,26 @@ export interface PlanSettings {
   filingStatus: "single" | "joint"
   /** The spending profile last applied to every line; new lines follow it. Missing = none picked. */
   spendingProfile?: PatternProfile
+  /**
+   * Where `inflation` comes from. custom (default): your number. market: the TIPS breakeven matching the
+   * plan's length. marketPath: a different rate each year from the breakeven curve (`inflation` then holds
+   * the equivalent single rate, for display).
+   */
+  inflationMode?: "custom" | "market" | "marketPath"
+  /** The market's breakeven inflation when it was last applied. */
+  marketInflation?: MarketInflation
+}
+
+/** Inflation the bond market expects (Treasury minus TIPS yields), FRED data. Rates are decimals. */
+export interface MarketInflation {
+  /** Date of the data, YYYY-MM-DD. */
+  asOf: string
+  /** 5-year breakeven; the 5 years after that (5y5y forward); 10-, 20- and 30-year breakevens. */
+  y5: number
+  y5y5: number
+  y10: number
+  y20: number
+  y30: number
 }
 
 export interface PlanAccount {
@@ -430,6 +450,9 @@ export interface PlanSummary {
   lifetimeTaxes: number
   /** Net worth per year in today's dollars, for sparklines. */
   spark: number[]
+  /** The inflation the plan uses (a market path's equivalent single rate) and where it comes from. */
+  inflation?: number
+  inflationMode?: "custom" | "market" | "marketPath"
 }
 
 export type DollarBasis = "today" | "future"

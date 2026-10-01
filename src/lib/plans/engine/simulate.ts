@@ -1,3 +1,5 @@
+import { inflationOf, priceIndex, rateAt, type Inflation } from "../plan-inflation"
+import { nominalRate, realRate } from "../plan-dollars"
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
 import type { PlanAccount, PlanDocument, PlanProjection, YearRow } from "../plan-types"
 import {
@@ -41,6 +43,8 @@ export interface SimulateOptions {
 
 interface Plan {
   doc: PlanDocument
+  /** The plan's inflation: one rate, or a rate per year when following the market's curve. */
+  inflation: Inflation
   returnFor?: SimulateOptions["returnFor"]
   ctx: TimingContext
   incomes: IncomeEntry[]
@@ -60,16 +64,28 @@ interface State {
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
 
+/**
+ * On a year-by-year inflation path, account returns keep their real value: each is nominal at the plan's single
+ * (equivalent) rate, so its real return is fixed and its nominal return moves with each year's inflation.
+ * With one rate everywhere, returns are used as entered.
+ */
+function realReturnsOnPath(doc: PlanDocument, inflation: Inflation): SimulateOptions["returnFor"] {
+  if (typeof inflation === "number") return undefined
+  const base = doc.settings.inflation
+  return (account, index) => nominalRate(realRate(account.returnRate, base), rateAt(inflation, index))
+}
+
 function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
   const doc = expandPlan(original)
   const ctx = timingContext(doc)
   return {
     doc,
-    returnFor: opts.returnFor,
+    inflation: inflationOf(doc.settings, ctx.length),
+    returnFor: opts.returnFor ?? realReturnsOnPath(doc, inflationOf(doc.settings, ctx.length)),
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
     expenses: expenseEntries(doc.expenses, ctx),
-    assets: assetEntries(doc.assets, ctx, doc.settings.inflation),
+    assets: assetEntries(doc.assets, ctx, inflationOf(doc.settings, ctx.length)),
     debts: debtEntries(doc.debts, ctx),
     milestoneYears: doc.milestones.map((m) => ({ name: m.name, index: resolveTiming(m.timing, ctx) })),
     transfers: transferEntries(childTransfers(original), ctx),
@@ -116,7 +132,8 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
  * and property tax and mortgage interest itemized where that helps.
  */
 function yearFlows(plan: Plan, state: State, index: number) {
-  const { inflation, startYear } = plan.doc.settings
+  const { startYear } = plan.doc.settings
+  const { inflation } = plan
   const baseIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
   const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome)
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
@@ -153,7 +170,7 @@ type Flows = ReturnType<typeof yearFlows>
  */
 function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraTax = 0) {
   const { doc } = flows
-  const inflationFactor = Math.pow(1 + doc.settings.inflation, index)
+  const inflationFactor = priceIndex(plan.inflation, index)
   const grownState = growHoldings(state.holdings, doc, index, plan.returnFor)
   const trading = realizeTrading(state.holdings, grownState.holdings, doc)
   let holdings = trading.holdings
@@ -161,9 +178,9 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
     const payroll = flows.income.deposits[account.id]
     if (payroll) holdings = deposit(holdings, account, payroll)
   }
-  const transfers = applyTransfers(plan.transfers, doc.accounts, holdings, index, doc.settings.inflation)
+  const transfers = applyTransfers(plan.transfers, doc.accounts, holdings, index, plan.inflation)
   const earmarked = drawEarmarked(doc.expenses, flows.expenses.byId, transfers.holdings)
-  const deposits = applyDeposits(plan.deposits, doc.accounts, earmarked.holdings, index, doc.settings.inflation)
+  const deposits = applyDeposits(plan.deposits, doc.accounts, earmarked.holdings, index, plan.inflation)
   const drained = drainInherited(doc.accounts, deposits.holdings, doc.settings.startYear + index, doc.settings.incomeTaxRate)
   holdings = drained.holdings
   const { income, expenses, debts, events, incomeTax } = flows

@@ -1,4 +1,5 @@
 import type { DollarBasis, YearRow } from "./plan-types"
+import { priceIndex, type Inflation } from "./plan-inflation"
 
 const FLOW_FIELDS = [
   "income",
@@ -34,12 +35,12 @@ function scaleRecord(record: Record<string, number>, factor: number): Record<str
  * Deflator for year `index`: flows during the year are in year-`index` dollars;
  * year-end balances are one year further out.
  */
-export function deflator(inflation: number, index: number, kind: "flow" | "balance"): number {
-  return Math.pow(1 + inflation, kind === "flow" ? index : index + 1)
+export function deflator(inflation: Inflation, index: number, kind: "flow" | "balance"): number {
+  return priceIndex(inflation, kind === "flow" ? index : index + 1)
 }
 
 /** A row expressed in today's dollars. */
-export function rowInTodaysDollars(row: YearRow, inflation: number): YearRow {
+export function rowInTodaysDollars(row: YearRow, inflation: Inflation): YearRow {
   const flow = deflator(inflation, row.index, "flow")
   const balance = deflator(inflation, row.index, "balance")
   const out: YearRow = {
@@ -64,7 +65,7 @@ export function rowInTodaysDollars(row: YearRow, inflation: number): YearRow {
   return out
 }
 
-export function rowsForBasis(rows: YearRow[], basis: DollarBasis, inflation: number): YearRow[] {
+export function rowsForBasis(rows: YearRow[], basis: DollarBasis, inflation: Inflation): YearRow[] {
   return basis === "future" ? rows : rows.map((r) => rowInTodaysDollars(r, inflation))
 }
 

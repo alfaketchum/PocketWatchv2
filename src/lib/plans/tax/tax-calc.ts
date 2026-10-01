@@ -10,6 +10,7 @@ import {
 } from "./federal-2026"
 import { STATE_GAINS } from "./state-gains-2026"
 import { STATE_TAX, type StateTax } from "./state-2026"
+import { priceIndex, rateAt, type Inflation } from "../plan-inflation"
 import { interestWithinLimit, MORTGAGE_DEBT_LIMIT, saltCap, type Itemized } from "./itemized-2026"
 import { STATE_HOMEOWNER, type StateHomeownerRules } from "./state-homeowner-2026"
 
@@ -32,9 +33,13 @@ export function marginalRate(income: number, brackets: Brackets, index = 1): num
   return rate
 }
 
-/** Inflation index for tax thresholds in `year` (2026 dollars → that year's dollars). */
-export function thresholdIndex(year: number, inflation: number): number {
-  return Math.pow(1 + inflation, year - TAX_BASE_YEAR)
+/**
+ * Inflation index for tax thresholds in `year` (2026 dollars → that year's dollars). A yearly path starts at
+ * `startYear` (the plan's first year); years between 2026 and it use the path's first rate.
+ */
+export function thresholdIndex(year: number, inflation: Inflation, startYear = TAX_BASE_YEAR): number {
+  const lead = Math.pow(1 + rateAt(inflation, 0), startYear - TAX_BASE_YEAR)
+  return lead * priceIndex(inflation, year - startYear)
 }
 
 export interface TaxSituation {

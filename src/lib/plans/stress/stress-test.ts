@@ -7,6 +7,7 @@
 
 import { simulatePlan } from "../engine/simulate"
 import { deflator } from "../plan-dollars"
+import { inflationOf, rateAt } from "../plan-inflation"
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument } from "../plan-types"
 import type { AnnualHistory } from "./stress-history"
@@ -47,13 +48,13 @@ export function cohortStarts(doc: PlanDocument, annual: AnnualHistory, anchor: n
 
 /** One cohort: the plan with history position `start` lined up with plan year `anchor`. */
 export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: number, anchor: number): CohortResult {
-  const { inflation } = doc.settings
+  const inflation = inflationOf(doc.settings, timingContext(doc).length)
   const projection = simulatePlan(doc, {
     returnFor: (account, index) => {
       const h = start + index - anchor
       // Before the record begins (only when lining up with retirement): the account's assumed return.
       if (h < 0) return account.returnRate
-      return yearReturn(account, { stockReal: annual.stocks[h], bondReal: annual.bonds[h], stockLogMean: annual.stockLogMean }, inflation)
+      return yearReturn(account, { stockReal: annual.stocks[h], bondReal: annual.bonds[h], stockLogMean: annual.stockLogMean }, rateAt(inflation, index), doc.settings.inflation)
     },
   })
   const person = doc.people[0]

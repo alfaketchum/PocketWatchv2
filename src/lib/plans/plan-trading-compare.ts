@@ -1,3 +1,4 @@
+import { inflationOf } from "./plan-inflation"
 import { simulatePlan } from "./engine/simulate"
 import { deflator } from "./plan-dollars"
 import type { PlanAccount, PlanDocument } from "./plan-types"
@@ -61,7 +62,7 @@ function simulateFor(doc: PlanDocument, years: number | null) {
 
 export function tradingOutcome(doc: PlanDocument, years: number | null = null): TradingOutcome {
   const rows = simulateFor(doc, years)
-  const inflation = doc.settings.inflation
+  const inflation = inflationOf(doc.settings)
   const last = rows[rows.length - 1]
   const short = rows.find((r) => r.shortfall > 0)
   return {
@@ -77,7 +78,7 @@ export function tradingOutcome(doc: PlanDocument, years: number | null = null): 
 /** Ending wealth net of any unfunded spending, so plans that run out still rank below ones that don't. */
 function score(doc: PlanDocument, years: number | null): number {
   const rows = simulateFor(doc, years)
-  const inflation = doc.settings.inflation
+  const inflation = inflationOf(doc.settings)
   const last = rows[rows.length - 1]
   const unfunded = rows.reduce((s, r) => s + r.shortfall / deflator(inflation, r.index, "flow"), 0)
   return (last ? last.accountsTotal / deflator(inflation, last.index, "balance") : 0) - unfunded

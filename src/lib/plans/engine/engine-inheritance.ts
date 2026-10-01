@@ -1,3 +1,4 @@
+import type { Inflation } from "../plan-inflation"
 import { resolveTiming, type TimingContext } from "../plan-timing"
 import type { PlanAccount, PlanDeposit } from "../plan-types"
 import { deposit, type Holdings } from "./engine-cashflow"
@@ -21,7 +22,7 @@ export function applyDeposits(
   accounts: PlanAccount[],
   holdings: Holdings,
   index: number,
-  inflation: number,
+  inflation: Inflation,
 ): { holdings: Holdings; total: number; byAccount: Record<string, number> } {
   const byId = new Map(accounts.map((a) => [a.id, a]))
   let current = holdings

@@ -1,3 +1,4 @@
+import { inflationOf } from "./plan-inflation"
 import { assetValue } from "./engine/engine-assets"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetFinancing, AssetKind, DebtKind, PaymentMode, PlanAsset, PlanDebt, PlanDocument } from "./plan-types"
@@ -66,7 +67,7 @@ export function financingDebts(doc: PlanDocument): PlanDebt[] {
     const terms = effectiveFinancing(asset)
     const start = resolveTiming(asset.start, ctx)
     if (!terms || linked.has(asset.id) || !isFuturePurchase(asset, start)) return []
-    const price = assetValue(asset, start ?? 0, start ?? 0, doc.settings.inflation)
+    const price = assetValue(asset, start ?? 0, start ?? 0, inflationOf(doc.settings))
     const { loan, monthly } = loanSummary(price, terms)
     if (loan <= 0) return []
     return [

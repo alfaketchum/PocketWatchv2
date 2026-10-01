@@ -1,3 +1,4 @@
+import { inflationOf } from "./plan-inflation"
 import { simulatePlan } from "./engine/simulate"
 import { deflator } from "./plan-dollars"
 import { retirementAge } from "./plan-spending-patterns"
@@ -30,7 +31,7 @@ export function spendingImpact(doc: PlanDocument): SpendingImpact {
   const steadyRows = simulatePlan(steadyDoc).rows
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
-  const real = (nominal: number, index: number) => nominal / deflator(doc.settings.inflation, index, "flow")
+  const real = (nominal: number, index: number) => nominal / deflator(inflationOf(doc.settings), index, "flow")
   const points = withRows.map((r, i) => ({
     age: age0 + r.index,
     year: r.year,

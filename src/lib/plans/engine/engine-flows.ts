@@ -1,4 +1,5 @@
 import { ageAtStart, isActive, resolveRange, type ResolvedRange, type TimingContext } from "../plan-timing"
+import { priceIndex, type Inflation } from "../plan-inflation"
 import { ASSET_COSTS_CATEGORY } from "../plan-asset-costs"
 import { patternFactor, retirementAge } from "../plan-spending-patterns"
 import type { PlanAccount, PlanExpense, PlanIncome } from "../plan-types"
@@ -31,8 +32,8 @@ export function expenseEntries(expenses: PlanExpense[], ctx: TimingContext): Exp
 }
 
 /** Nominal amount in year `index` for a today's-dollars amount growing at `growth` (null = inflation). */
-export function grown(amount: number, growth: number | null, inflation: number, index: number): number {
-  return amount * Math.pow(1 + (growth ?? inflation), index)
+export function grown(amount: number, growth: number | null, inflation: Inflation, index: number): number {
+  return amount * (growth === null ? priceIndex(inflation, index) : Math.pow(1 + growth, index))
 }
 
 export interface IncomeYear {
@@ -58,7 +59,7 @@ export function incomeForYear(
   entries: IncomeEntry[],
   accounts: PlanAccount[],
   index: number,
-  inflation: number,
+  inflation: Inflation,
 ): IncomeYear {
   const accountIds = new Set(accounts.map((a) => a.id))
   let result: IncomeYear = {
@@ -109,7 +110,7 @@ export interface ExpenseYear {
 /** Generated costs that spending-level changes (moving, etc.) don't scale: kids, and owning a home or car. */
 const FIXED_CATEGORIES = new Set(["Kids", ASSET_COSTS_CATEGORY])
 
-export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: number, spendingFactor = 1): ExpenseYear {
+export function expensesForYear(entries: ExpenseEntry[], index: number, inflation: Inflation, spendingFactor = 1): ExpenseYear {
   return entries.reduce<ExpenseYear>(
     (acc, { expense, range, pattern }) => {
       if (!isActive(range, index, expense.oneTime)) return acc

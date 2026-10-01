@@ -1,3 +1,4 @@
+import { inflationOf, priceIndex } from "./plan-inflation"
 import { NATIONAL_PROPERTY_TAX_RATE, propertyTaxRate } from "./tax/property-tax-rates"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetKind, AssetRunningCost, PlanAsset, PlanDocument, PlanExpense } from "./plan-types"
@@ -68,7 +69,7 @@ export function totalYearlyCost(asset: PlanAsset): number {
  */
 export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
   const ctx = timingContext(doc)
-  const inflation = doc.settings.inflation
+  const inflation = inflationOf(doc.settings)
   const existing = new Set(doc.expenses.map((e) => e.id))
   return doc.assets.flatMap((asset) => {
     const bought = Math.max(0, resolveTiming(asset.start, ctx) ?? 0)
@@ -76,7 +77,7 @@ export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
       const id = `cost-${asset.id}-${i}`
       if (cost.amount <= 0 || existing.has(id)) return []
       const byValue = cost.basis === "percentOfValue"
-      const amount = byValue ? cost.amount * asset.value * Math.pow((1 + inflation) / (1 + asset.appreciation), bought) : cost.amount
+      const amount = byValue ? (cost.amount * asset.value * priceIndex(inflation, bought)) / Math.pow(1 + asset.appreciation, bought) : cost.amount
       return [
         {
           id,

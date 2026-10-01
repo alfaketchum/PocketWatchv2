@@ -1,3 +1,4 @@
+import { inflationOf } from "../plan-inflation"
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
 import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
@@ -39,7 +40,7 @@ export function yearTax(doc: PlanDocument, adjustments: AdjustmentEntry[], index
   const situation: TaxSituation = {
     status: filingStatusAt(adjustments, settings, index),
     state: stateAt(adjustments, settings, index),
-    index: thresholdIndex(settings.startYear + index, settings.inflation),
+    index: thresholdIndex(settings.startYear + index, inflationOf(settings), settings.startYear),
     ...(itemized ? { itemized } : {}),
   }
   const earnedOrdinary = earnedOrdinaryIncome(doc, income, true)

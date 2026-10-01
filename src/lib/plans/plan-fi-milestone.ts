@@ -1,3 +1,4 @@
+import { inflationOf } from "./plan-inflation"
 import { simulatePlan } from "./engine/simulate"
 import { FI_MILESTONE_ID, FI_SAFE_WITHDRAWAL_RATE } from "./plan-constants"
 import { rowInTodaysDollars } from "./plan-dollars"
@@ -20,7 +21,7 @@ export interface FiMilestone {
  * shifts. Null when the plan has no spending years.
  */
 export function fiMilestone(doc: PlanDocument): FiMilestone | null {
-  const rows = simulatePlan(doc).rows.map((r) => rowInTodaysDollars(r, doc.settings.inflation))
+  const rows = simulatePlan(doc).rows.map((r) => rowInTodaysDollars(r, inflationOf(doc.settings)))
   const spendingYears = rows.filter((r) => r.expenses > 0)
   if (spendingYears.length === 0) return null
   const averageExpenses = spendingYears.reduce((sum, r) => sum + r.expenses, 0) / spendingYears.length

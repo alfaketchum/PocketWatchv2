@@ -22,6 +22,8 @@ const timing = z.discriminatedUnion("type", [
 
 const source = z.object({ kind: z.enum(["finance-account", "crypto", "real-asset"]), refId: z.string().min(1).max(128) }).nullable()
 
+const breakeven = z.number().min(-0.05).max(0.2)
+
 const settings = z.object({
   startYear: year,
   startMonth: month,
@@ -38,6 +40,17 @@ const settings = z.object({
   state: stateCode.nullable().default(null),
   filingStatus: z.enum(["single", "joint"]).default("single"),
   spendingProfile: z.enum(["typical", "frontload", "conservative", "frugal", "reset"]).optional(),
+  inflationMode: z.enum(["custom", "market", "marketPath"]).optional(),
+  marketInflation: z
+    .object({
+      asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      y5: breakeven,
+      y5y5: breakeven,
+      y10: breakeven,
+      y20: breakeven,
+      y30: breakeven,
+    })
+    .optional(),
 })
 
 const person = z.object({ id, name, birthYear: year, birthMonth: month, origin })

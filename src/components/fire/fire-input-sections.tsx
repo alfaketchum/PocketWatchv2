@@ -10,6 +10,7 @@ import { FireLumpSumsEditor } from "./fire-lump-sums-editor"
 import { FireNumberField } from "./fire-number-field"
 import { ChoiceChips, InputBlock, Toggle } from "./fire-input-controls"
 import { FireBaristaCheck, FireBaristaFields } from "./fire-barista-fields"
+import { FireRealReturnHelper } from "./fire-real-return-helper"
 
 type SectionProps = { state: FirePlanState }
 
@@ -62,6 +63,7 @@ export function MoneySection({ state }: SectionProps) {
         />
         <FireNumberField label="Real return" suffix="%" scale={100} value={inputs.realReturn} min={-0.05} max={0.15} onChange={set("realReturn")} hint="After inflation" />
       </div>
+      <FireRealReturnHelper horizonYears={inputs.horizonYears} onUse={set("realReturn")} />
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <span className="text-xs text-foreground-muted">Also count as invested:</span>
         <Toggle label={`Cash (${fmtMoney(b.cash)})`} checked={inputs.includeCash} onChange={set("includeCash")} />

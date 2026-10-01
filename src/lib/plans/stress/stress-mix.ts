@@ -36,12 +36,14 @@ export interface MarketYear {
  * real return, cash earns nothing real (ERN's convention), and crypto earns its own assumed real return with
  * twice the stock market's swing that year, never worse than −90%. Swings are doubled in log terms so crypto's
  * long-run compounded return stays at its assumption (doubling plain returns would drag it far below, since
- * bigger swings compound to less). Real → nominal with the plan's inflation.
+ * bigger swings compound to less). Real and nominal never mix: crypto's assumed nominal return is made real at
+ * the plan's single rate (`assumedInflation`), and the year's real total is made nominal at that year's
+ * inflation (`yearInflation`; the same number unless the plan follows the market year by year).
  */
-export function yearReturn(account: PlanAccount, market: MarketYear, inflation: number): number {
+export function yearReturn(account: PlanAccount, market: MarketYear, yearInflation: number, assumedInflation = yearInflation): number {
   const mix = mixFor(account)
   const swing = Math.exp(CRYPTO_BETA * (Math.log(1 + market.stockReal) - market.stockLogMean))
-  const cryptoReal = Math.max(CRYPTO_FLOOR, (1 + realRate(account.returnRate, inflation)) * swing - 1)
+  const cryptoReal = Math.max(CRYPTO_FLOOR, (1 + realRate(account.returnRate, assumedInflation)) * swing - 1)
   const real = mix.stocks * market.stockReal + mix.bonds * market.bondReal + mix.crypto * cryptoReal
-  return (1 + real) * (1 + inflation) - 1
+  return (1 + real) * (1 + yearInflation) - 1
 }

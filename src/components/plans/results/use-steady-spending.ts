@@ -1,5 +1,6 @@
 "use client"
 
+import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo } from "react"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { expensesView } from "@/lib/plans/plan-chart-detail"
@@ -14,7 +15,7 @@ export function useSteadySpending(doc: PlanDocument, basis: DollarBasis, enabled
   return useMemo(() => {
     if (!enabled || !doc.expenses.some((e) => !e.oneTime && e.pattern)) return null
     const steady: PlanDocument = { ...doc, expenses: doc.expenses.map((e) => (e.pattern ? { ...e, pattern: undefined } : e)) }
-    const rows = rowsForBasis(simulatePlan(steady).rows, basis, doc.settings.inflation)
+    const rows = rowsForBasis(simulatePlan(steady).rows, basis, inflationOf(doc.settings))
     return expensesView(steady, rows, false).points.map((p) => p.spent ?? 0)
   }, [doc, basis, enabled])
 }

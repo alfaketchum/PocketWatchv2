@@ -1,3 +1,4 @@
+import type { Inflation } from "../plan-inflation"
 import { isActive, resolveRange, type ResolvedRange, type TimingContext } from "../plan-timing"
 import type { PlanTransfer } from "../plan-children"
 import type { PlanAccount, PlanExpense } from "../plan-types"
@@ -19,7 +20,7 @@ export function applyTransfers(
   accounts: PlanAccount[],
   holdings: Holdings,
   index: number,
-  inflation: number,
+  inflation: Inflation,
 ): { holdings: Holdings; total: number; byAccount: Record<string, number> } {
   const byId = new Map(accounts.map((a) => [a.id, a]))
   let current = holdings

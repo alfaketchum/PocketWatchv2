@@ -1,5 +1,6 @@
 "use client"
 
+import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo, useState } from "react"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { rowsForBasis } from "@/lib/plans/plan-dollars"
@@ -20,7 +21,7 @@ export function usePlanProjection(document: PlanDocument | null) {
     [document, projection],
   )
   const rows = useMemo(
-    () => (document && projection ? rowsForBasis(projection.rows, basis, document.settings.inflation) : []),
+    () => (document && projection ? rowsForBasis(projection.rows, basis, inflationOf(document.settings)) : []),
     [document, projection, basis],
   )
   return { projection, summary, rows, basis, setBasis, view }

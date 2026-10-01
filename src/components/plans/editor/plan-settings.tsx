@@ -9,6 +9,7 @@ import { newItemId, patchItem, type PlanEditorProps } from "../plans-helpers"
 import { AdjustmentsEditor } from "./adjustments-editor"
 import { TextField } from "./plan-editor-controls"
 import { PlanTaxSettings } from "./plan-tax-settings"
+import { InflationSource } from "./inflation-source"
 
 function newPartner(birthYear: number): PlanPerson {
   return { id: newItemId("person"), name: "Partner", birthYear, birthMonth: 1 }
@@ -82,8 +83,10 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
           <FireNumberField label="Plan starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
           <FireNumberField label="Start month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
           <FireNumberField label="Plan until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
-          <FireNumberField label="Inflation" suffix="%" scale={100} min={-0.05} max={0.2} value={s.inflation} onChange={(inflation) => set({ inflation })} />
         </div>
+      </InputBlock>
+      <InputBlock title="Inflation" description="How fast prices rise. Use your own number, or what the bond market expects (refreshed daily).">
+        <InflationSource doc={doc} update={update} />
       </InputBlock>
       <PlanTaxSettings settings={s} set={set} />
       <AdjustmentsEditor doc={doc} update={update} />

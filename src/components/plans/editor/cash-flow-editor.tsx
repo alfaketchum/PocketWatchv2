@@ -1,5 +1,6 @@
 "use client"
 
+import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo } from "react"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { rowInTodaysDollars } from "@/lib/plans/plan-dollars"
@@ -27,7 +28,7 @@ function exampleYears(rows: YearRow[]): { surplus: YearRow | null; shortfall: Ye
 export function CashFlowEditor(props: PlanEditorProps) {
   const { doc } = props
   const examples = useMemo(
-    () => exampleYears(simulatePlan(doc).rows.map((r) => rowInTodaysDollars(r, doc.settings.inflation))),
+    () => exampleYears(simulatePlan(doc).rows.map((r) => rowInTodaysDollars(r, inflationOf(doc.settings)))),
     [doc],
   )
   return (

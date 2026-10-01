@@ -1,3 +1,4 @@
+import { inflationOf } from "./plan-inflation"
 import { rowInTodaysDollars } from "./plan-dollars"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, PlanSummary } from "./plan-types"
@@ -5,7 +6,7 @@ import type { PlanDocument, PlanProjection, PlanSummary } from "./plan-types"
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
   const { settings } = doc
-  const rows = projection.rows.map((r) => rowInTodaysDollars(r, settings.inflation))
+  const rows = projection.rows.map((r) => rowInTodaysDollars(r, inflationOf(settings)))
   const ctx = timingContext(doc)
   const retirement = doc.milestones.find((m) => m.kind === "retirement")
   const retireIndex = retirement ? resolveTiming(retirement.timing, ctx) : null
@@ -31,5 +32,7 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     endingNetWorth: last ? last.netWorth : projection.startNetWorth,
     lifetimeTaxes: rows.reduce((s, r) => s + r.incomeTax + r.withdrawalTax + r.saleTax + r.tradingTax, 0),
     spark: rows.map((r) => r.netWorth),
+    inflation: settings.inflation,
+    inflationMode: settings.inflationMode ?? "custom",
   }
 }
