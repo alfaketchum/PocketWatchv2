@@ -13,9 +13,24 @@ export function depositEntries(deposits: PlanDeposit[], ctx: TimingContext): Dep
   return deposits.map((d) => ({ deposit: d, index: resolveTiming(d.timing, ctx) }))
 }
 
+/** Moves `share` of an account's balance out, with its cost basis in proportion. */
+function moveShareOut(holdings: Holdings, accountId: string, share: number): { holdings: Holdings; amount: number } {
+  const balance = holdings.balances[accountId] ?? 0
+  const amount = balance * share
+  const basis = holdings.basis[accountId]
+  return {
+    amount,
+    holdings: {
+      balances: { ...holdings.balances, [accountId]: balance - amount },
+      basis: basis === undefined ? holdings.basis : { ...holdings.basis, [accountId]: basis * (1 - share) },
+    },
+  }
+}
+
 /**
  * One-time deposits that land in their account this year, outside cash flow. Into a taxable account
- * the whole amount is cost basis: inherited investments get a stepped-up basis.
+ * the whole amount is cost basis: inherited investments get a stepped-up basis. A deposit with a `share`
+ * moves that share of the balance out instead (a divorce split).
  */
 export function applyDeposits(
   entries: DepositEntry[],
@@ -23,20 +38,27 @@ export function applyDeposits(
   holdings: Holdings,
   index: number,
   inflation: Inflation,
-): { holdings: Holdings; total: number; byAccount: Record<string, number> } {
+): { holdings: Holdings; total: number; byAccount: Record<string, number>; splitOut: number } {
   const byId = new Map(accounts.map((a) => [a.id, a]))
   let current = holdings
   let total = 0
+  let splitOut = 0
   const byAccount: Record<string, number> = {}
   for (const { deposit: d, index: at } of entries) {
     const account = byId.get(d.accountId)
     if (!account || at !== index) continue
+    if (d.share !== undefined) {
+      const moved = moveShareOut(current, account.id, d.share)
+      current = moved.holdings
+      splitOut += moved.amount
+      continue
+    }
     const amount = grown(d.amount, null, inflation, index)
     current = deposit(current, account, amount)
     byAccount[account.id] = (byAccount[account.id] ?? 0) + amount
     total += amount
   }
-  return { holdings: current, total, byAccount }
+  return { holdings: current, total, byAccount, splitOut }
 }
 
 export interface DrainResult {

@@ -48,7 +48,7 @@ export const NET_WORTH_NAV_ITEMS: NavItem[] = [
 ]
 
 export const FIRE_NAV_ITEMS: NavItem[] = [
-  { id: "fire-plan", label: "F.I.R.E. Plan", href: "/fire", icon: "local_fire_department" },
+  { id: "fire-plan", label: "F.I.R.E.", href: "/fire", icon: "local_fire_department" },
   { id: "fire-portfolio", label: "FIRE Portfolio", href: "/fire/portfolio", icon: "donut_small", sidebar: false },
   { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science", sidebar: false },
   { id: "fire-compare", label: "How You Compare", href: "/fire/compare", icon: "groups", sidebar: false },

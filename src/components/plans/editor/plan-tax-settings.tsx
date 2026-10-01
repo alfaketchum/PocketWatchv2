@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { ChoiceChips, InputBlock } from "@/components/fire/fire-input-controls"
 import type { PlanSettings } from "@/lib/plans/plan-types"
@@ -44,11 +45,7 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
   return (
     <InputBlock
       title="Taxes"
-      description={
-        brackets
-          ? "2026 federal and state brackets and standard deduction, rising with inflation. Long-term gains at 0/15/20%, short-term as income, plus 3.8% NIIT on high incomes. 85% of Social Security taxed."
-          : "One effective rate for income (and short-term gains) and one for long-term gains."
-      }
+      description={brackets ? "2026 federal and state brackets, rising with inflation." : "One effective rate for income (and short-term gains) and one for long-term gains."}
     >
       <ChoiceChips label="Tax model" options={MODES} value={s.taxMode} onChange={(taxMode) => set({ taxMode })} />
       {brackets ? (
@@ -57,7 +54,10 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
             <SelectField label="State you live in" value={s.state ?? NO_STATE} options={STATE_OPTIONS} onChange={(v) => set({ state: v === NO_STATE ? null : v })} />
             <p className="text-[10px] text-foreground-muted mt-1">{stateNote(s.state)}</p>
           </div>
-          <SelectField label="Filing status" value={s.filingStatus} options={STATUSES} onChange={(filingStatus) => set({ filingStatus })} />
+          <div>
+            <SelectField label="Filing status" value={s.filingStatus} options={STATUSES} onChange={(filingStatus) => set({ filingStatus })} />
+            <p className="text-[10px] text-foreground-muted mt-1">Marriage and divorce milestones change it later.</p>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2">
@@ -74,6 +74,9 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
           <FireNumberField label="Long-term gains tax" suffix="%" scale={100} min={0} max={1} value={s.capitalGainsRate} onChange={(capitalGainsRate) => set({ capitalGainsRate })} />
         </div>
       )}
+      <Link href="/methodology#taxes" className="inline-block text-[11px] text-primary hover:underline">
+        How taxes are calculated
+      </Link>
     </InputBlock>
   )
 }

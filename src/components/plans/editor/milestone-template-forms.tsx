@@ -11,6 +11,7 @@ import {
   applyHome,
   applyVehicle,
   applyMarried,
+  applyDivorce,
   applyMove,
   applyRetire,
   applyWindfall,
@@ -23,6 +24,7 @@ import type { PaymentMode, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { newItemId } from "../plans-helpers"
 import { emptyPart, InheritanceFields } from "./inheritance-fields"
+import { DivorceFields, partnerIncomeIds } from "./divorce-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { NO_STATE, STATE_OPTIONS } from "./plan-tax-settings"
 import { TimingPicker } from "./timing-picker"
@@ -64,11 +66,17 @@ export interface TemplateDraft {
   decedentState: string | null
   /** Move: the new state code, NO_STATE, or SAME_STATE. */
   moveTo: string
+  /** Divorce: incomes that stop, your ex's share of each account, costs and support. */
+  endIncomeIds: string[]
+  exShare: number
+  legalCost: number
+  supportPerYear: number
 }
 
 const DEFAULT_NAMES: Record<TemplateKey, string> = {
   retire: "Retirement",
   married: "Get married",
+  divorce: "Divorce",
   child: "New baby",
   home: "Home",
   vehicle: "Car",
@@ -106,8 +114,8 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     name: DEFAULT_NAMES[key],
     when: key === "retire" && retirement ? retirement.timing : { type: "year", year: year + 2 },
     amount: key === "career" ? Math.round((firstIncome?.amount ?? 80_000) * 1.2) : 100_000,
-    percent: -0.1,
-    years: 1,
+    percent: key === "divorce" ? 0 : -0.1,
+    years: key === "divorce" ? 5 : 1,
     startYear: year + 2,
     incomeId: firstIncome?.id ?? "",
     taxable: false,
@@ -123,6 +131,10 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     relationship: "child",
     decedentState: doc.settings.state ?? null,
     moveTo: SAME_STATE,
+    endIncomeIds: partnerIncomeIds(doc),
+    exShare: 0.5,
+    legalCost: 20_000,
+    supportPerYear: 0,
   }
 }
 
@@ -142,6 +154,22 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
           incomeTaxRate: d.incomeTaxRate,
           capitalGainsRate: d.capitalGainsRate,
           weddingCost: d.weddingCost,
+        },
+        newItemId,
+      )
+    case "divorce":
+      return applyDivorce(
+        doc,
+        {
+          when: d.when,
+          endIncomeIds: d.endIncomeIds,
+          exShare: d.exShare,
+          legalCost: d.legalCost,
+          supportPerYear: d.supportPerYear,
+          supportYears: d.years,
+          spendingChange: d.percent,
+          incomeTaxRate: d.incomeTaxRate,
+          capitalGainsRate: d.capitalGainsRate,
         },
         newItemId,
       )
@@ -266,6 +294,8 @@ export function TemplateFields({ template, d, set, doc }: { template: TemplateKe
       return when
     case "married":
       return <MarriedFields d={d} set={set} doc={doc} />
+    case "divorce":
+      return <DivorceFields d={d} set={set} doc={doc} />
     case "child":
       return (
         <div className="grid grid-cols-2 gap-2">

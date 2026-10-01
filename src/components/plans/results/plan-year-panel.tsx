@@ -156,6 +156,9 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
         {m.received >= 0.5 && (
           <Line label="Received into accounts" value={fmtMoney(m.received)} tone="good" hint="Inherited investments or accounts, gifts: not part of cash flow" />
         )}
+        {m.splitOut >= 0.5 && (
+          <Line label="Split out in divorce" value={fmtMoney(m.splitOut)} tone="bad" hint="Your ex-spouse's share of the accounts: moved out untaxed, not part of cash flow" />
+        )}
         <Line label="Withdrawals" value={fmtMoney(m.withdrawals)} hint="Taken from your accounts to cover spending, including the tax on those withdrawals" />
         <Line
           label="Withdrawal rate"

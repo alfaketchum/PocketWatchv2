@@ -65,7 +65,7 @@ function AdjustmentFields({
   )
 }
 
-/** Tax-rate and spending-level changes from a date onward (marriage, moving, retiring abroad…). */
+/** Changes from a date onward: state or tax rates here; milestones (marriage, divorce, moves) add their own. */
 export function AdjustmentsEditor({ doc, update }: PlanEditorProps) {
   const adjustments = doc.adjustments ?? []
   const ctx = timingContext(doc)
@@ -76,23 +76,19 @@ export function AdjustmentsEditor({ doc, update }: PlanEditorProps) {
   const when = { type: "year" as const, year: doc.settings.startYear + 5 }
   const full = adjustments.length >= PLAN_LIMITS.adjustments
   const brackets = doc.settings.taxMode === "brackets"
-  const addOptions: { label: string; make: () => PlanAdjustment }[] = [
-    ...(brackets
-      ? [
-          { label: "Filing status change", make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "filingStatus", timing: when, status: "joint" }) },
-          { label: "State change", make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "state", timing: when, state: doc.settings.state }) },
-        ]
-      : [
-          {
-            label: "Tax rate change",
-            make: (): PlanAdjustment => ({ id: newItemId("adj"), kind: "taxRates", timing: when, incomeTaxRate: doc.settings.incomeTaxRate, capitalGainsRate: doc.settings.capitalGainsRate }),
-          },
-        ]),
-    { label: "Spending change", make: () => ({ id: newItemId("adj"), kind: "spending", timing: when, percent: -0.1 }) },
-  ]
+  // Spending lives on Expenses; marriage, divorce and moves are milestones that add their own changes.
+  const addOption: { label: string; make: () => PlanAdjustment } = brackets
+    ? { label: "State change", make: () => ({ id: newItemId("adj"), kind: "state", timing: when, state: doc.settings.state }) }
+    : {
+        label: "Tax rate change",
+        make: () => ({ id: newItemId("adj"), kind: "taxRates", timing: when, incomeTaxRate: doc.settings.incomeTaxRate, capitalGainsRate: doc.settings.capitalGainsRate }),
+      }
 
   return (
-    <InputBlock title="Changes over time" description="From a date on, the latest change wins. Marriage and Move milestones add these for you.">
+    <InputBlock
+      title="Changes over time"
+      description="From a date on (the latest change wins). Marriage, divorce and moves are milestones: add them on the Milestones tab and they set these for you."
+    >
       {sorted.map((a) => (
         <div key={a.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-card-border px-3 py-2">
           <span className="material-symbols-rounded self-center text-foreground-muted" style={{ fontSize: 18 }}>
@@ -107,13 +103,9 @@ export function AdjustmentsEditor({ doc, update }: PlanEditorProps) {
           </span>
         </div>
       ))}
-      <div className="flex flex-wrap gap-3">
-        {addOptions.map((o) => (
-          <button key={o.label} type="button" disabled={full} onClick={() => set([...adjustments, o.make()])} className="text-[11px] text-primary hover:underline disabled:opacity-50">
-            + {o.label}
-          </button>
-        ))}
-      </div>
+      <button type="button" disabled={full} onClick={() => set([...adjustments, addOption.make()])} className="text-[11px] text-primary hover:underline disabled:opacity-50">
+        + {addOption.label}
+      </button>
     </InputBlock>
   )
 }

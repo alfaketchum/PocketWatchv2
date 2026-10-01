@@ -51,6 +51,8 @@ export interface YearMetrics {
   employerMatch: number
   /** Inherited or gifted money that landed straight in accounts. */
   received: number
+  /** Account shares moved to an ex-spouse (divorce split). */
+  splitOut: number
   /** Gross withdrawals from accounts (taxes on them included). */
   withdrawals: number
   /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
@@ -115,6 +117,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
       .filter((c) => c.value >= 0.5),
     employerMatch: row.employerMatch,
     received: row.deposits,
+    splitOut: row.splitOut,
     withdrawals: row.withdrawals,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree + layers.taxFree529 },

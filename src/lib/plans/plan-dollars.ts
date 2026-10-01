@@ -10,6 +10,7 @@ const FLOW_FIELDS = [
   "tradingTax",
   "realizedGains",
   "deposits",
+  "splitOut",
   "taxableIncome",
   "assetAppreciation",
   "assetDepreciation",

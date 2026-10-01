@@ -10,6 +10,7 @@ import {
   applyVehicle,
   applyInheritance,
   applyMarried,
+  applyDivorce,
   applyMove,
   applyWindfall,
   type InheritedPart,
@@ -71,6 +72,8 @@ const TEMPLATES: [string, (d: PlanDocument) => PlanDocument][] = [
         part({ kind: "retirement", amount: 80_000, roth: true }),
       ],
     }, newId)],
+  ["Divorce (income ends, split, costs, support)", (d) =>
+    applyDivorce(d, { when, endIncomeIds: ["sal"], exShare: 0.5, legalCost: 20_000, supportPerYear: 12_000, supportYears: 5, spendingChange: -0.2, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)],
   ["Custom", (d) => applyCustom(d, { name: "Sabbatical idea", when }, newId)],
 ]
 
@@ -127,4 +130,19 @@ test("Have a child: deleting the child restores the plan", () => {
   const before = base()
   const after = applyChild(before, "Maya", 2029, newId)
   assert.deepEqual(removeChild(after, after.children[0].id), before)
+})
+
+test("divorce: the ex's share of each account moves out untaxed; support runs its years; you file single", () => {
+  const doc = base()
+  const plain = simulatePlan(doc).rows
+  const divorced = applyDivorce(doc, { when, endIncomeIds: [], exShare: 0.5, legalCost: 0, supportPerYear: 12_000, supportYears: 5, spendingChange: 0, incomeTaxRate: 0.2, capitalGainsRate: 0.15 }, newId)
+  const rows = simulatePlan(divorced).rows
+  const i = 2030 - doc.settings.startYear
+  assert.ok(rows[i].splitOut > 0)
+  assert.equal(rows[i - 1].splitOut, 0)
+  assert.equal(rows[i].withdrawalTax, plain[i].withdrawalTax, "the split itself isn't taxed")
+  const support = divorced.expenses.find((e) => e.name.startsWith("Alimony"))!
+  const paid = rows.filter((r) => (r.expensesBy[support.id] ?? 0) > 0).length
+  assert.equal(paid, 5)
+  assert.equal((divorced.adjustments ?? []).some((a) => a.kind === "filingStatus" && a.status === "single"), true)
 })

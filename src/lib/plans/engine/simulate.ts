@@ -265,6 +265,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     realizedGains: moved.trading.shortGains + moved.trading.longGains,
     deposits: moved.deposits.total,
     depositsBy: moved.deposits.byAccount,
+    splitOut: moved.deposits.splitOut,
     taxableIncome:
       income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable +
       moved.trading.shortGains + moved.trading.longGains,

@@ -80,7 +80,7 @@ export function milestoneCreations(doc: PlanDocument, id: string): string[] {
   return [
     ...doc.incomes.filter(own).map((i) => `${i.name} (income)`),
     ...doc.expenses.filter(own).map((e) => `${e.name} (expense)`),
-    ...(doc.deposits ?? []).filter(own).map((d) => `${d.name} (received)`),
+    ...(doc.deposits ?? []).filter(own).map((d) => (d.share === undefined ? `${d.name} (received)` : d.name)),
     ...doc.accounts.filter(own).map((a) => `${a.name} (account)`),
     ...doc.assets.filter(own).map((a) => `${a.name} (asset)`),
     ...doc.debts.filter(own).map((d) => `${d.name} (debt)`),
@@ -105,7 +105,12 @@ export function removeMilestoneWithItems(doc: PlanDocument, id: string): PlanDoc
       .filter((i) => !own(i))
       .map((i) => {
         const continuation = removedIncomes.find((r) => r.continues === i.id)
-        return continuation ? { ...i, end: continuation.end } : i
+        if (continuation) return { ...i, end: continuation.end }
+        if (i.endBefore && pointsAt(i.end, id)) {
+          const { endBefore, ...rest } = i
+          return { ...rest, end: endBefore }
+        }
+        return i
       }),
     expenses: next.expenses.filter((e) => !own(e)),
     deposits: (next.deposits ?? []).filter((d) => !own(d)),

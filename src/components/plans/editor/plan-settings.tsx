@@ -56,40 +56,45 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
 
   return (
     <div className="space-y-6">
-      <InputBlock
-        title="People"
-        description="Birth dates, not ages, so the plan stays right as years pass. The plan runs until the first person reaches the end age."
-      >
-        {doc.people.map((p, i) => (
-          <PersonFields
-            key={p.id}
-            person={p}
-            onChange={(change) => update((d) => ({ ...d, people: patchItem(d.people, p.id, change) }))}
-            onRemove={i === 0 ? undefined : () => update((d) => removePerson(d, p.id))}
-          />
-        ))}
-        {doc.people.length < PLAN_LIMITS.people && (
-          <button
-            type="button"
-            onClick={() => update((d) => ({ ...d, people: [...d.people, newPartner(d.people[0]?.birthYear ?? d.settings.startYear - 35)] }))}
-            className="text-[11px] text-primary hover:underline"
-          >
-            + Add partner
-          </button>
-        )}
-      </InputBlock>
-      <InputBlock title="Timeline" description="The cash buffer (emergency fund) is on the Cash flow tab.">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <FireNumberField label="Plan starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
-          <FireNumberField label="Start month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
-          <FireNumberField label="Plan until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
+      <div className="grid gap-x-10 gap-y-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <InputBlock title="People" description="Birth dates keep everyone's age right as the years pass.">
+            {doc.people.map((p, i) => (
+              <PersonFields
+                key={p.id}
+                person={p}
+                onChange={(change) => update((d) => ({ ...d, people: patchItem(d.people, p.id, change) }))}
+                onRemove={i === 0 ? undefined : () => update((d) => removePerson(d, p.id))}
+              />
+            ))}
+            {doc.people.length < PLAN_LIMITS.people && (
+              <button
+                type="button"
+                onClick={() => update((d) => ({ ...d, people: [...d.people, newPartner(d.people[0]?.birthYear ?? d.settings.startYear - 35)] }))}
+                className="text-[11px] text-primary hover:underline"
+              >
+                + Add partner
+              </button>
+            )}
+          </InputBlock>
+          <InputBlock title="Timeline" description="The plan ends when the first person reaches the end age.">
+            <div className="grid grid-cols-3 gap-2">
+              <FireNumberField label="Starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
+              <FireNumberField label="Month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
+              <FireNumberField label="Until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
+            </div>
+          </InputBlock>
         </div>
-      </InputBlock>
-      <InputBlock title="Inflation" description="How fast prices rise. Use your own number, or what the bond market expects (refreshed daily).">
-        <InflationSource doc={doc} update={update} />
-      </InputBlock>
-      <PlanTaxSettings settings={s} set={set} />
-      <AdjustmentsEditor doc={doc} update={update} />
+        <div className="space-y-6">
+          <InputBlock title="Inflation" description="How fast prices rise: your own number, or what the bond market expects (refreshed daily).">
+            <InflationSource doc={doc} update={update} />
+          </InputBlock>
+          <PlanTaxSettings settings={s} set={set} />
+        </div>
+      </div>
+      <div className="border-t border-card-border pt-5">
+        <AdjustmentsEditor doc={doc} update={update} />
+      </div>
     </div>
   )
 }

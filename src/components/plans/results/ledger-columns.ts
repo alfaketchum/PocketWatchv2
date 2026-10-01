@@ -26,6 +26,7 @@ const liquidTreatments = new Set(["cash", "taxable"])
 export const LEDGER_COLUMNS: LedgerColumn[] = [
   { id: "income", label: "Income", hint: "Pay, business, rent, pensions, Social Security", kind: "flow", value: (r) => r.income },
   { id: "received", label: "Received", hint: "Inherited or gifted money landing in accounts (not income)", kind: "flow", value: (r) => r.deposits },
+  { id: "splitOut", label: "Split out", hint: "Account shares moved to an ex-spouse in a divorce (not taxed)", kind: "flow", tone: "neg", value: (r) => -r.splitOut },
   { id: "withdrawals", label: "Withdrawn", hint: "Taken from accounts to cover the year, tax on those withdrawals included", kind: "flow", tone: "neg", value: (r) => -r.withdrawals },
   { id: "assetSales", label: "Asset sales", hint: "Proceeds from selling homes, cars and other assets", kind: "flow", value: (r) => Math.max(0, r.assetSales) },
   { id: "spending", label: "Spending", hint: "Every spending line, kids and home/vehicle running costs", kind: "flow", tone: "neg", value: (r) => -r.expenses },
@@ -75,7 +76,7 @@ export const LEDGER_VIEWS = {
   summary: { label: "Summary", columns: ["income", "taxes", "spending", "debtPayments", "contributions", "withdrawals", "invested", "netWorth"] },
   cashflow: {
     label: "Cash flow",
-    columns: ["income", "received", "withdrawals", "assetSales", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
+    columns: ["income", "received", "splitOut", "withdrawals", "assetSales", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
   },
   taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "withdrawalTax", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
   balances: {

@@ -11,6 +11,7 @@ export { monthlyPayment }
 export type TemplateKey =
   | "retire"
   | "married"
+  | "divorce"
   | "child"
   | "home"
   | "vehicle"
@@ -32,6 +33,7 @@ export interface TemplateMeta {
 export const MILESTONE_TEMPLATES: TemplateMeta[] = [
   { key: "retire", label: "Retire", icon: "beach_access", creates: "Moves your retirement date" },
   { key: "married", label: "Get married", icon: "favorite", creates: "Partner, their income, new tax rates" },
+  { key: "divorce", label: "Divorce", icon: "heart_broken", creates: "Splits accounts, ends their income, single filing" },
   { key: "child", label: "Have a child", icon: "child_care", creates: "A child on Expenses → Kids" },
   { key: "home", label: "Buy a home", icon: "home", creates: "A home and mortgage on Assets & debts" },
   { key: "vehicle", label: "Buy a vehicle", icon: "directions_car", creates: "A vehicle and its loan on Assets & debts" },
@@ -105,6 +107,61 @@ export function applyMarried(doc: PlanDocument, input: MarriedInput, newId: IdMa
     }
   }
   return next
+}
+
+export interface DivorceInput {
+  when: Timing
+  /** Incomes that stop at the divorce (your ex's). */
+  endIncomeIds: string[]
+  /** Share (0–1) of each account your ex keeps; moved out untaxed. */
+  exShare: number
+  /** One-time legal and moving costs, today's dollars. */
+  legalCost: number
+  /** Alimony or child support you pay, per year in today's dollars, for `supportYears`. */
+  supportPerYear: number
+  supportYears: number
+  /** Your own spending afterwards changes by this share (−0.2 = 20% less). */
+  spendingChange: number
+  /** Flat-rate plans: the new rates (filing single). */
+  incomeTaxRate: number
+  capitalGainsRate: number
+}
+
+/**
+ * Divorce: your ex's income stops, they keep a share of every account (moved out untaxed, as transfers
+ * incident to divorce are), you file single again, plus legal costs and any support you pay.
+ */
+export function applyDivorce(doc: PlanDocument, input: DivorceInput, newId: IdMaker): PlanDocument {
+  const msId = newId("ms-divorce")
+  const when = at(msId)
+  let next = addMilestone(doc, { id: msId, name: "Divorce", kind: "custom", icon: ICONS.divorce, timing: input.when })
+  const ending = new Set(input.endIncomeIds)
+  next = { ...next, incomes: next.incomes.map((i) => (ending.has(i.id) ? { ...i, end: when, endBefore: i.end } : i)) }
+  if (input.exShare > 0) {
+    const splits = next.accounts
+      .filter((a) => a.taxTreatment !== "education")
+      .map((a) => ({ id: newId("dep"), name: `Divorce split: ${a.name}`, accountId: a.id, amount: 0, share: input.exShare, timing: when, origin: msId }))
+    next = { ...next, deposits: [...(next.deposits ?? []), ...splits] }
+  }
+  next = {
+    ...next,
+    adjustments: [
+      ...(next.adjustments ?? []),
+      { id: newId("adj"), kind: "filingStatus", timing: when, status: "single", origin: msId },
+      { id: newId("adj"), kind: "taxRates", timing: when, incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
+      ...(input.spendingChange !== 0 ? [{ id: newId("adj"), kind: "spending" as const, timing: when, percent: input.spendingChange, origin: msId }] : []),
+    ],
+  }
+  const divorceYear = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
+  const costs = [
+    ...(input.legalCost > 0
+      ? [{ id: newId("exp"), name: "Divorce: legal and moving", category: null, amount: input.legalCost, growth: null, start: when, end: when, oneTime: true, origin: msId }]
+      : []),
+    ...(input.supportPerYear > 0 && input.supportYears > 0
+      ? [{ id: newId("exp"), name: "Alimony / child support", category: null, amount: input.supportPerYear, growth: null, start: when, end: { type: "year" as const, year: divorceYear + input.supportYears }, oneTime: false, origin: msId }]
+      : []),
+  ]
+  return { ...next, expenses: [...next.expenses, ...costs] }
 }
 
 export function applyRetire(doc: PlanDocument, when: Timing): PlanDocument {

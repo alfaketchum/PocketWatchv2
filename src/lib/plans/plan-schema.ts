@@ -100,6 +100,7 @@ const income = z.object({
   oneTime: z.boolean(),
   contributions: z.array(contribution).max(PLAN_LIMITS.contributionsPerIncome),
   continues: id.optional(),
+  endBefore: timing.optional(),
   origin,
 })
 
@@ -231,7 +232,7 @@ export const planDocumentSchema = z.object({
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
   children: z.array(child).max(PLAN_LIMITS.children),
   adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
-  deposits: z.array(z.object({ id, name, accountId: id, amount: money, timing, origin })).max(PLAN_LIMITS.deposits),
+  deposits: z.array(z.object({ id, name, accountId: id, amount: money, share: z.number().min(0).max(1).optional(), timing, origin })).max(PLAN_LIMITS.deposits),
   ignoredSources: z.array(z.string().max(100)).max(200).optional(),
 })
 

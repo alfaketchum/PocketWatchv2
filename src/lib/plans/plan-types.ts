@@ -144,6 +144,8 @@ export interface PlanIncome {
   contributions: PlanContribution[]
   /** Set on an income that picks up where another left off (career change/break); removing it restores that one's end. */
   continues?: string
+  /** Set when a milestone (divorce) ended this income early: the end to restore if that milestone is deleted. */
+  endBefore?: Timing
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
 }
@@ -337,6 +339,11 @@ export interface PlanDeposit {
   accountId: string
   /** Today's dollars. */
   amount: number
+  /**
+   * Instead of `amount`: this share (0–1) of the account's balance at the time moves out, untaxed and outside
+   * cash flow (a divorce split; transfers between spouses in a divorce aren't taxed).
+   */
+  share?: number
   timing: Timing
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
@@ -394,6 +401,8 @@ export interface YearRow {
   /** One-time deposits straight into accounts (inheritance, gifts); not part of cash flow. */
   deposits: number
   depositsBy: Record<string, number>
+  /** Account shares moved out this year (a divorce split); not taxed, not part of cash flow. */
+  splitOut: number
   /** Taxable earned income after pre-tax contributions, plus traditional withdrawals and realized gains. */
   taxableIncome: number
   expenses: number
