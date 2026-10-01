@@ -48,14 +48,14 @@ export const NET_WORTH_NAV_ITEMS: NavItem[] = [
 ]
 
 export const FIRE_NAV_ITEMS: NavItem[] = [
-  { id: "fire-plan", label: "FIRE Plan", href: "/fire", icon: "local_fire_department" },
+  { id: "fire-plan", label: "F.I.R.E. Plan", href: "/fire", icon: "local_fire_department" },
   { id: "fire-portfolio", label: "FIRE Portfolio", href: "/fire/portfolio", icon: "donut_small", sidebar: false },
   { id: "fire-lab", label: "Safe Withdrawal Lab", href: "/fire/research", icon: "science", sidebar: false },
   { id: "fire-compare", label: "How You Compare", href: "/fire/compare", icon: "groups", sidebar: false },
 ]
 
 export const PLANS_NAV_ITEMS: NavItem[] = [
-  { id: "plans-list", label: "Roadmap", href: "/plans", icon: "route" },
+  { id: "plans-list", label: "Planner", href: "/plans", icon: "route" },
   { id: "plans-compare", label: "Compare Plans", href: "/plans/compare", icon: "compare_arrows", sidebar: false },
   { id: "plans-progress", label: "Plan vs Actual", href: "/plans/progress", icon: "track_changes", sidebar: false },
 ]
@@ -81,13 +81,13 @@ export const ACCOUNTS_NAV_ITEMS: NavItem[] = [
 
 const inSidebar = (items: NavItem[]) => items.filter((i) => i.sidebar !== false)
 
-/** FIRE and Plans rolled up under one Retirement Planning section. */
+/** FIRE and Plans rolled up under one Retirement section. */
 const RETIREMENT_NAV_ITEMS: NavItem[] = [...FIRE_NAV_ITEMS, ...PLANS_NAV_ITEMS]
 
 export const NAV_CATEGORIES: Record<string, { label: string; items: NavItem[] }> = {
   netWorth:  { label: "",              items: NET_WORTH_NAV_ITEMS },
   finance:   { label: "Finance",       items: FINANCE_NAV_ITEMS },
-  retirement: { label: "Retirement Planning", items: inSidebar(RETIREMENT_NAV_ITEMS) },
+  retirement: { label: "Retirement", items: inSidebar(RETIREMENT_NAV_ITEMS) },
   accounts:  { label: "Email Accounts", items: ACCOUNTS_NAV_ITEMS },
   portfolio: { label: "Digital Assets", items: PORTFOLIO_NAV_ITEMS },
   travel:    { label: "Travel",        items: TRAVEL_NAV_ITEMS },
@@ -236,7 +236,7 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
   return prefs
 }
 
-/** FIRE and Plans become one Retirement Planning section, where FIRE was, keeping their order and hidden items. */
+/** FIRE and Plans become one Retirement section, where FIRE was, keeping their order and hidden items. */
 function rollUpRetirement(prefs: SidebarPrefs): boolean {
   if (prefs.categoryOrder.includes("retirement")) return false
   const fire = prefs.categories.fire ?? { order: FIRE_NAV_ITEMS.map((i) => i.id), hidden: [] }
