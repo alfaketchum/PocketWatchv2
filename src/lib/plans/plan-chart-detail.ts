@@ -24,6 +24,7 @@ export type DetailRow = { age: number; year: number } & Record<string, number>
 
 const TAX_PARTS = [
   { key: "tax:income", label: "Income tax", field: "incomeTax" },
+  { key: "tax:payroll", label: "Payroll tax", field: "payrollTax" },
   { key: "tax:withdrawal", label: "Tax on withdrawals", field: "withdrawalTax" },
   { key: "tax:sale", label: "Tax on asset sales", field: "saleTax" },
   { key: "tax:trading", label: "Tax on trading gains", field: "tradingTax" },

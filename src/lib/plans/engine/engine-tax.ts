@@ -4,7 +4,8 @@ import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
 import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
 import type { Itemized } from "../tax/itemized-2026"
 import type { PlanDocument } from "../plan-types"
-import type { IncomeYear } from "./engine-flows"
+import type { IncomeEntry, IncomeYear } from "./engine-flows"
+import { payrollTax, type PayrollTax } from "../tax/payroll-2026"
 
 export interface YearTax {
   /** The plan with this year's withdrawal tax rates (flat rates, or marginal rates under brackets). */
@@ -60,6 +61,23 @@ export function yearTax(
     incomeTax: totalTax(earned, situation),
     earnedOrdinary,
   }
+}
+
+/**
+ * Payroll tax for the year: taxable salaries are wages (Social Security up to the wage base, Medicare on all),
+ * taxable business income is self-employment. Pre-tax 401(k) contributions don't lower it.
+ */
+export function yearPayroll(
+  doc: PlanDocument,
+  entries: IncomeEntry[],
+  adjustments: AdjustmentEntry[],
+  index: number,
+  income: IncomeYear,
+  inflation: Inflation,
+): PayrollTax {
+  const amounts = (kind: string) => entries.filter((e) => e.income.kind === kind && e.income.taxable).map((e) => income.byId[e.income.id] ?? 0).filter((v) => v > 0)
+  const { settings } = doc
+  return payrollTax(amounts("salary"), amounts("business"), filingStatusAt(adjustments, settings, index), thresholdIndex(settings.startYear + index, inflation, settings.startYear))
 }
 
 export interface TaxedAmounts {

@@ -59,7 +59,7 @@ test("expenses view: groups and every-line detail add up to the same total spent
     const byLine = sumParent(detailed.points[i], detailed.series.map((s) => s.key))
     close(byGroup, p.spent, 1e-4)
     close(byLine, p.spent, 1e-4)
-    close(p.spent, rows[i].expenses + rows[i].debtPayments + rows[i].incomeTax + rows[i].withdrawalTax + rows[i].saleTax + rows[i].tradingTax, 1e-4)
+    close(p.spent, rows[i].expenses + rows[i].debtPayments + rows[i].incomeTax + rows[i].payrollTax + rows[i].withdrawalTax + rows[i].saleTax + rows[i].tradingTax, 1e-4)
   })
   assert.ok(detailed.series.some((s) => s.group === "debt"))
 })

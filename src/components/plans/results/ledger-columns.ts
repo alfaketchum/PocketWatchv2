@@ -1,4 +1,5 @@
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
+import { afterTaxIncome, rowTaxes } from "@/lib/plans/plan-row-taxes"
 
 /** What a column holds: money that flows during the year (totals add up), a year-end balance, or a rate. */
 export type LedgerKind = "flow" | "balance" | "rate"
@@ -19,7 +20,7 @@ export interface LedgerColumn {
   value: (row: YearRow, ctx: LedgerContext) => number | null
 }
 
-const taxes = (r: YearRow) => r.incomeTax + r.withdrawalTax + r.saleTax + r.tradingTax
+const taxes = rowTaxes
 const interest = (r: YearRow) => Math.min(r.debtPayments, r.debtInterest)
 const liquidTreatments = new Set(["cash", "taxable"])
 
@@ -30,8 +31,9 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
   { id: "withdrawals", label: "Withdrawn", hint: "Taken from accounts to cover the year, tax on those withdrawals included", kind: "flow", tone: "neg", value: (r) => -r.withdrawals },
   { id: "assetSales", label: "Asset sales", hint: "Proceeds from selling homes, cars and other assets", kind: "flow", value: (r) => Math.max(0, r.assetSales) },
   { id: "spending", label: "Spending", hint: "Every spending line, kids and home/vehicle running costs", kind: "flow", tone: "neg", value: (r) => -r.expenses },
-  { id: "taxes", label: "Taxes", hint: "All taxes: income, withdrawals, asset sales and trading", kind: "flow", tone: "neg", value: (r) => -taxes(r) },
+  { id: "taxes", label: "Taxes", hint: "All taxes: income, payroll, withdrawals, asset sales and trading", kind: "flow", tone: "neg", value: (r) => -taxes(r) },
   { id: "incomeTax", label: "Income tax", hint: "Federal and state tax on earned income (after the bracket true-up)", kind: "flow", tone: "neg", value: (r) => -r.incomeTax },
+  { id: "payrollTax", label: "Payroll tax", hint: "Social Security and Medicare on wages (6.2% to the wage base + 1.45%), and self-employment tax", kind: "flow", tone: "neg", value: (r) => -r.payrollTax },
   { id: "withdrawalTax", label: "Withdrawal tax", hint: "Tax on money taken from tax-deferred and taxable accounts", kind: "flow", tone: "neg", value: (r) => -r.withdrawalTax },
   { id: "saleTax", label: "Sale tax", hint: "Capital-gains tax on assets sold", kind: "flow", tone: "neg", value: (r) => -r.saleTax },
   { id: "tradingTax", label: "Trading tax", hint: "Tax on gains realized by active trading", kind: "flow", tone: "neg", value: (r) => -r.tradingTax },
@@ -54,7 +56,7 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
     hint: "Share of after-tax income not spent or used on debt",
     kind: "rate",
     value: (r) => {
-      const afterTax = r.income - r.incomeTax
+      const afterTax = afterTaxIncome(r)
       return afterTax > 0.5 ? (afterTax - r.expenses - r.debtPayments) / afterTax : null
     },
   },
@@ -78,7 +80,7 @@ export const LEDGER_VIEWS = {
     label: "Cash flow",
     columns: ["income", "received", "splitOut", "withdrawals", "assetSales", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
   },
-  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "withdrawalTax", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
+  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "payrollTax", "withdrawalTax", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
   balances: {
     label: "Balances & debt",
     columns: ["growth", "returnRate", "invested", "liquid", "property", "principal", "interest", "debtOwed", "netWorth", "savingsRate", "withdrawalRate"],

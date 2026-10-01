@@ -103,7 +103,6 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Required minimum distributions** from traditional accounts after age 73 aren't forced.",
           "**Early-withdrawal penalties** (before 59½) aren't charged.",
           "**Medicare IRMAA** surcharges and the **alternative minimum tax** aren't included.",
-          "**Payroll taxes** (Social Security 6.2% and Medicare 1.45% on wages) aren't deducted yet, so take-home pay is overstated.",
           "**Social Security** uses the benefit you enter at full retirement age with SSA's early and delayed factors (62–70). Spousal benefits, the earnings test and the exact taxation formula (85% is assumed taxable) aren't modeled yet; the survivor benefit is a simple step-up to the larger benefit.",
           "**Years, not months**: plans step a year at a time (FIRE's history engine is monthly).",
           "**Tax law** is 2026's, carried forward; scheduled changes in the 2025 law (SALT cap) are included, future legislation isn't.",

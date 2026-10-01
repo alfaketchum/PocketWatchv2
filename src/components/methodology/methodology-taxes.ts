@@ -19,6 +19,7 @@ export const TAX_SECTIONS: MethodSection[] = [
           "**Long-term gains** are stacked on top of ordinary income and taxed at 0 / 15 / 20%. Short-term gains are taxed as ordinary income.",
           "**Net investment income tax**: 3.8% on gains above $200,000 (single) / $250,000 (joint) of income. These lines are set by law and don't rise with inflation.",
           "**Social Security**: 85% of benefits counts as taxable income (the usual case once other income is meaningful).",
+          "**Payroll taxes** on every salary, in both tax modes: 6.2% Social Security up to the wage base ($184,500 in 2026, rising with inflation; each job has its own) plus 1.45% Medicare, and 0.9% more Medicare on combined wages above $200,000 single / $250,000 joint (not indexed). Business income pays self-employment tax instead: 15.3% on 92.35% of profit, half of it deductible from income. Pre-tax 401(k) contributions don't lower payroll tax.",
           "**Brackets and deductions rise with the plan's inflation** each year, as the IRS indexes them.",
           "**State tax** for all 50 states and DC, with each state's brackets and standard deduction. Most states tax gains like other income; the exceptions are modeled (e.g. AR, AZ, ND, SC and WI exclude part of long-term gains, HI caps their rate, MT has separate gains brackets, WA taxes large long-term gains though it has no income tax).",
           "Moving states or changing filing status partway through is supported through plan changes.",

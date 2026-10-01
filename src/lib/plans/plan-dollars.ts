@@ -5,6 +5,7 @@ const FLOW_FIELDS = [
   "income",
   "employerMatch",
   "incomeTax",
+  "payrollTax",
   "withdrawalTax",
   "saleTax",
   "tradingTax",

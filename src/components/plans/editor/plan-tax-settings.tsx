@@ -45,7 +45,11 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
   return (
     <InputBlock
       title="Taxes"
-      description={brackets ? "2026 federal and state brackets, rising with inflation." : "One effective rate for income (and short-term gains) and one for long-term gains."}
+      description={
+        brackets
+          ? "2026 federal and state brackets, rising with inflation, plus payroll tax (Social Security and Medicare) on wages."
+          : "One effective rate for income (and short-term gains) and one for long-term gains. Payroll tax on wages is added on top."
+      }
     >
       <ChoiceChips label="Tax model" options={MODES} value={s.taxMode} onChange={(taxMode) => set({ taxMode })} />
       {brackets ? (

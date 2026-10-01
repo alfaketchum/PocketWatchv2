@@ -158,8 +158,10 @@ test("pre-tax payroll contributions lower income tax and employer match is added
   })
   const first = simulatePlan(d).rows[0]
   assertClose(first.incomeTax, 18_000)
+  // Payroll tax is on the full 100k: pre-tax 401(k) contributions don't lower it.
+  assertClose(first.payrollTax, 7_650)
   assertClose(first.balances.k401, 15_000)
-  assertClose(first.balances.cash, 100_000 - 10_000 - 18_000)
+  assertClose(first.balances.cash, 100_000 - 10_000 - 18_000 - 7_650)
 })
 
 test("running out of money sets a shortfall and the depleted age", () => {

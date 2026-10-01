@@ -17,7 +17,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
         kind: "list",
         items: [
           "**Income** for the year: pay, business, pensions, Social Security, rent. Pre-tax payroll contributions and employer match go straight into their accounts.",
-          "**Tax on that income** (flat rates, or brackets: see Taxes).",
+          "**Tax on that income**: income tax (flat rates, or brackets) and payroll tax on wages (see Taxes).",
           "**Assets and loans**: purchases, sales (with capital-gains tax), and this year's loan payments split into principal and interest.",
           "**Spending**: every expense line, grown by inflation (or its own growth rate) and shaped by its spending pattern.",
           "**Growth**: each account grows by its return on the balance it started the year with.",

@@ -41,6 +41,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Investment growth", value: row.growth },
           { label: "Employer match", value: row.employerMatch },
           { label: "Income tax", value: row.incomeTax },
+          { label: "Payroll tax (Social Security, Medicare)", value: row.payrollTax },
           { label: "Tax on withdrawals", value: row.withdrawalTax },
           { label: "Tax on asset sales", value: row.saleTax },
           { label: "Gains realized by trading", value: row.realizedGains },

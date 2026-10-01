@@ -16,7 +16,7 @@ import {
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
-import { taxTrueUp, yearDeduction, yearTax } from "./engine-tax"
+import { taxTrueUp, yearDeduction, yearPayroll, yearTax } from "./engine-tax"
 import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
 
@@ -139,7 +139,10 @@ function assetValuesAtEnd(plan: Plan, index: number): Record<string, number> {
 function yearFlows(plan: Plan, state: State, index: number) {
   const { startYear } = plan.doc.settings
   const { inflation } = plan
-  const baseIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
+  const grossIncome = incomeForYear(plan.incomes, plan.doc.accounts, index, inflation)
+  const payroll = yearPayroll(plan.doc, plan.incomes, plan.adjustments, index, grossIncome, inflation)
+  // Half of self-employment tax comes off income before income tax.
+  const baseIncome = payroll.seDeduction > 0 ? { ...grossIncome, taxableIncome: Math.max(0, grossIncome.taxableIncome - payroll.seDeduction) } : grossIncome
   const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome, inflation)
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
     capitalGainsRate: earnedTax.doc.settings.capitalGainsRate,
@@ -163,7 +166,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
   const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized) : earnedTax
-  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, rentalTaxable }
+  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, payroll, rentalTaxable }
 }
 
 type Flows = ReturnType<typeof yearFlows>
@@ -190,7 +193,7 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   holdings = drained.holdings
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
-    income.total - income.employeeContributions - incomeTax - extraTax - trading.tax - expenses.total - debts.paid -
+    income.total - income.employeeContributions - incomeTax - flows.payroll.total - extraTax - trading.tax - expenses.total - debts.paid -
     events.purchases + events.sales - events.saleTax - transfers.total + earmarked.drawn + drained.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
   const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
@@ -259,6 +262,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     employerMatch: income.employerMatch,
     employerMatchBy: income.matchBy,
     incomeTax: incomeTax + trueUp,
+    payrollTax: flows.payroll.total,
     withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax,
     saleTax: events.saleTax,
     tradingTax: moved.trading.tax,

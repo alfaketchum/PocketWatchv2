@@ -2,6 +2,7 @@ import { TAX_TREATMENT_LABELS } from "./plan-constants"
 import { layersFor } from "./plan-chart"
 import { loanPayments, type LoanPayment } from "./plan-loan-parts"
 import type { PlanDocument, TaxTreatment, YearRow } from "./plan-types"
+import { afterTaxIncome, rowTaxes } from "./plan-row-taxes"
 
 export interface Allocation {
   id: string
@@ -88,9 +89,9 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
   if (!row) return null
   const previous = index > 0 ? rows[index - 1].netWorth : startNetWorth
   const layers = layersFor(doc, { accounts: row.balances, assets: row.assetValues, debts: row.debtBalances })
-  const taxes = row.incomeTax + row.withdrawalTax + row.saleTax + row.tradingTax
-  const afterTaxIncome = row.income - row.incomeTax
-  const kept = afterTaxIncome - row.expenses - row.debtPayments
+  const taxes = rowTaxes(row)
+  const afterTax = afterTaxIncome(row)
+  const kept = afterTax - row.expenses - row.debtPayments
   const startBalance = index > 0 ? rows[index - 1].accountsTotal : doc.accounts.reduce((sum, a) => sum + a.balance, 0)
   return {
     netWorth: row.netWorth,
@@ -110,7 +111,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     assetPurchases: row.assetPurchases,
     expenses: row.expenses + row.debtPayments + taxes + row.assetPurchases,
     loans: loanPayments(doc, row),
-    savingsRate: afterTaxIncome > 0.5 ? kept / afterTaxIncome : null,
+    savingsRate: afterTax > 0.5 ? kept / afterTax : null,
     contributions: row.contributions - row.employerMatch,
     contributionsBy: doc.accounts
       .map((a) => ({ id: a.id, name: a.name, value: (row.contributionsBy[a.id] ?? 0) - (row.employerMatchBy[a.id] ?? 0) }))

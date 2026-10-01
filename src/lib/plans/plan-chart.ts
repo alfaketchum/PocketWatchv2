@@ -1,6 +1,7 @@
 import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principalKey } from "./plan-loan-parts"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { MilestoneKind, PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
+import { rowTaxes } from "./plan-row-taxes"
 
 /** Stack order, bottom to top; debt (mortgages and car loans included) is drawn below zero. 529s sit right above tax-free. */
 export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssets"] as const
@@ -145,7 +146,7 @@ export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashF
     assetSales: Math.max(0, row.assetSales),
     unfunded: row.shortfall,
     spending: -row.expenses,
-    taxes: -(row.incomeTax + row.withdrawalTax + row.saleTax + row.tradingTax),
+    taxes: -rowTaxes(row),
     debtPayments: -row.debtPayments,
     assetPurchases: -(row.assetPurchases + Math.max(0, -row.assetSales)),
     saved: -(row.contributions - row.employerMatch),

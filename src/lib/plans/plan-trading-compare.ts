@@ -2,6 +2,7 @@ import { inflationOf } from "./plan-inflation"
 import { simulatePlan } from "./engine/simulate"
 import { deflator } from "./plan-dollars"
 import type { PlanAccount, PlanDocument } from "./plan-types"
+import { rowTaxes } from "./plan-row-taxes"
 
 /** Extra return per year from trading, before tax, over the account's buy-and-hold return. */
 export const TRADING_EDGES = [0, 0.02, 0.05, 0.1, 0.2, 0.5] as const
@@ -68,7 +69,7 @@ export function tradingOutcome(doc: PlanDocument, years: number | null = null): 
   return {
     endWealth: last ? last.accountsTotal / deflator(inflation, last.index, "balance") : 0,
     lifetimeTax: rows.reduce(
-      (s, r) => s + (r.incomeTax + r.withdrawalTax + r.saleTax + r.tradingTax) / deflator(inflation, r.index, "flow"),
+      (s, r) => s + rowTaxes(r) / deflator(inflation, r.index, "flow"),
       0,
     ),
     runsOutAge: short ? (short.ages[0] ?? null) : null,

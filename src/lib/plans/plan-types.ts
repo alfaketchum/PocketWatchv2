@@ -391,6 +391,8 @@ export interface YearRow {
   employerMatch: number
   employerMatchBy: Record<string, number>
   incomeTax: number
+  /** Social Security and Medicare on wages, and self-employment tax. */
+  payrollTax: number
   withdrawalTax: number
   /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */
   saleTax: number

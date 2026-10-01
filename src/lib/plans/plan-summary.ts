@@ -2,6 +2,7 @@ import { inflationOf } from "./plan-inflation"
 import { rowInTodaysDollars } from "./plan-dollars"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, PlanSummary } from "./plan-types"
+import { rowTaxes } from "./plan-row-taxes"
 
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
@@ -30,7 +31,7 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     endYear: last ? last.year : settings.startYear,
     endAge: startAge + rows.length,
     endingNetWorth: last ? last.netWorth : projection.startNetWorth,
-    lifetimeTaxes: rows.reduce((s, r) => s + r.incomeTax + r.withdrawalTax + r.saleTax + r.tradingTax, 0),
+    lifetimeTaxes: rows.reduce((s, r) => s + rowTaxes(r), 0),
     spark: rows.map((r) => r.netWorth),
     inflation: settings.inflation,
     inflationMode: settings.inflationMode ?? "custom",
