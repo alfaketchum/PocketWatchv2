@@ -14,3 +14,5 @@ export type { ImportDraftResponse, SourceBalancesResponse } from "./use-plan-imp
 export { useTradingActivity } from "./use-trading-activity"
 export { useLinkedLoans } from "./use-linked-loans"
 export { useMarketInflation } from "./use-market-inflation"
+export { useCategorySpending } from "./use-category-spending"
+export type { CategorySpendingItem } from "./use-category-spending"

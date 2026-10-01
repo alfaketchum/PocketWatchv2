@@ -50,6 +50,7 @@ export const plansKeys = {
   tradingActivity: () => [...plansKeys.all, "trading-activity"] as const,
   linkedLoans: () => [...plansKeys.all, "linked-loans"] as const,
   marketInflation: () => [...plansKeys.all, "market-inflation"] as const,
+  categorySpending: () => [...plansKeys.all, "category-spending"] as const,
 }
 
 export interface PlanMeta {

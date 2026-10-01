@@ -12,12 +12,15 @@ import { patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
 import { ChildrenEditor } from "./children-editor"
-import { AddButton, EditorToolbar, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
+import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { useExpenseCategories } from "./use-expense-categories"
 import { TimingPicker } from "./timing-picker"
 import { AddExpenseDialog } from "./add-expense-dialog"
 import { ExpensesTable } from "./expenses-table"
 import { AssetCostList } from "./asset-cost-list"
 import { assetCostLines } from "@/lib/plans/plan-asset-costs"
+
+const NO_CATEGORY = "none"
 
 function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
   const [open, setOpen] = useState(false)
@@ -38,6 +41,13 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
     [doc.expenses],
   )
   const ages = useMemo(() => ({ from: primaryAge(doc), to: doc.settings.endAge, retire: retirementAge(doc) }), [doc])
+  const categories = useExpenseCategories()
+  // Your categories, keeping a line's own category listed even if it's no longer one of them.
+  const categoryOptions = (current: string | null) => [
+    { value: NO_CATEGORY, label: "None" },
+    ...categories.map((c) => ({ value: c.label, label: c.label })),
+    ...(current && !categories.some((c) => c.label === current) ? [{ value: current, label: current }] : []),
+  ]
 
 
   return (
@@ -92,7 +102,13 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
               />
               <GrowthField value={e.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(e.id, { growth })} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <SelectField
+                label="Category"
+                value={e.category ?? NO_CATEGORY}
+                options={categoryOptions(e.category)}
+                onChange={(v) => patch(e.id, { category: v === NO_CATEGORY ? null : v })}
+              />
               <TimingPicker
                 label={e.oneTime ? "When" : "Starts"}
                 value={e.start}
