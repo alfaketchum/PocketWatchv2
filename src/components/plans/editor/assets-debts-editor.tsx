@@ -235,8 +235,16 @@ function DebtsList({ doc, update }: PlanEditorProps) {
                 />
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <TimingPicker label={heloc ? "Drawn" : "Starts"} value={debt.start} doc={doc} onChange={(start) => patch(debt.id, { start })} />
+              <FireNumberField
+                label="Extra each month"
+                prefix="$"
+                min={0}
+                value={debt.extraMonthly ?? 0}
+                onChange={(v) => patch(debt.id, { extraMonthly: v > 0 ? v : undefined })}
+                hint="Extra principal on top of the payment, until it's paid off"
+              />
               {doc.assets.length > 0 && (
                 <SelectField
                   label="Finances asset"

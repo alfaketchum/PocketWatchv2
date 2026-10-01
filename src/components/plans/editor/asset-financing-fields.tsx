@@ -33,13 +33,20 @@ export function AssetFinancingFields({
   const loan = terms ? loanSummary(asset.value, terms) : null
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
         <SelectField label="How you'll pay" value={financing.mode} options={PAY_OPTIONS} onChange={(mode) => set({ mode })} />
         {financing.mode === "loan" && (
           <>
             <FireNumberField label="Down payment" suffix="%" scale={100} min={0} max={1} value={financing.downShare} onChange={(downShare) => set({ downShare })} />
             <FireNumberField label="Loan rate" suffix="%" scale={100} min={0} max={1} value={financing.rate} onChange={(rate) => set({ rate })} />
-            <FireNumberField label="Term (years)" min={1} max={50} value={financing.termYears} onChange={(termYears) => set({ termYears })} />
+            <FireNumberField label="Term (years)" min={1} max={50} value={financing.termYears} onChange={(termYears) => set({ termYears: Math.max(1, Math.round(termYears)) })} />
+            <FireNumberField
+              label="Extra / month (today's $)"
+              prefix="$"
+              min={0}
+              value={financing.extraMonthly ?? 0}
+              onChange={(v) => set({ extraMonthly: v > 0 ? v : undefined })}
+            />
           </>
         )}
       </div>

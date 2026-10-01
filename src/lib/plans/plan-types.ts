@@ -223,6 +223,8 @@ export interface AssetFinancing {
   /** Annual loan rate. */
   rate: number
   termYears: number
+  /** Extra principal paid each month, today's dollars (the loan's first-year dollars once bought). */
+  extraMonthly?: number
 }
 
 /** A yearly cost of owning an asset: dollars a year (today's, rising with inflation) or a share of its value. */
@@ -307,6 +309,8 @@ export interface PlanDebt {
   rate: number
   /** Ignored for a HELOC: its payment follows `heloc`. */
   monthlyPayment: number
+  /** Extra principal paid each month on top of the payment, until it's paid off. */
+  extraMonthly?: number
   start: Timing
   /** Only for kind "heloc". */
   heloc?: HelocTerms

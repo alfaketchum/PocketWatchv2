@@ -154,6 +154,7 @@ const asset = z.object({
       downShare: share,
       rate: z.number().min(0).max(1),
       termYears: z.number().int().min(1).max(50),
+      extraMonthly: money.optional(),
     })
     .optional(),
   runningCosts: z
@@ -188,6 +189,7 @@ const debt = z.object({
   balance: money,
   rate: z.number().min(0).max(1),
   monthlyPayment: money,
+  extraMonthly: money.optional(),
   start: timing,
   heloc: z
     .object({ drawYears: z.number().int().min(0).max(30), repayYears: z.number().int().min(1).max(30), forHome: z.boolean() })

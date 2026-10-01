@@ -1,4 +1,4 @@
-import { inflationOf, type Inflation } from "./plan-inflation"
+import { inflationOf, priceIndex, type Inflation } from "./plan-inflation"
 import { monthlyPayment } from "./plan-debt-payments"
 import { assetValue } from "./engine/engine-assets"
 import { resolveTiming, timingContext } from "./plan-timing"
@@ -74,6 +74,7 @@ export function financingDebts(doc: PlanDocument, inflation: Inflation = inflati
         balance: loan,
         rate: terms.rate,
         monthlyPayment: monthly,
+        ...(asset.financing?.extraMonthly ? { extraMonthly: asset.financing.extraMonthly * priceIndex(inflation, start ?? 0) } : {}),
         start: asset.start,
         assetId: asset.id,
         source: null,

@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useMemo, useState } from "react"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { fmtMoney } from "@/components/fire/fire-helpers"
@@ -94,6 +96,7 @@ function Notes({ schedule, nominal, basis }: { schedule: LoanSchedule; nominal: 
 /** A loan's payment schedule: the split between interest and principal, year by year and month by month. */
 export function LoanScheduleDialog({ doc, debtId, onClose }: { doc: PlanDocument; debtId: string; onClose: () => void }) {
   const [basis, setBasis] = useState<DollarBasis>("today")
+  const pathname = usePathname()
   const colors = usePlanColors().loan
   const inflation = useMemo(() => inflationOf(doc.settings), [doc.settings])
   const schedule = useMemo(() => loanSchedule(expandPlan(doc, inflation), debtId), [doc, inflation, debtId])
@@ -106,9 +109,14 @@ export function LoanScheduleDialog({ doc, debtId, onClose }: { doc: PlanDocument
       title={schedule ? `${schedule.debt.name}: payment schedule` : "Payment schedule"}
       onClose={onClose}
       footer={
-        <button type="button" onClick={onClose} className="btn-secondary text-sm">
-          Close
-        </button>
+        <>
+          <Link href={`${pathname}/loans`} className="btn-ghost text-sm mr-auto text-primary">
+            Pay extra or invest? Compare →
+          </Link>
+          <button type="button" onClick={onClose} className="btn-secondary text-sm">
+            Close
+          </button>
+        </>
       }
     >
       {!shown || shown.years.length === 0 ? (

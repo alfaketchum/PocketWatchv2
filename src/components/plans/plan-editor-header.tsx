@@ -40,7 +40,7 @@ export function PlanEditorHeader({
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               account_tree
@@ -52,6 +52,12 @@ export function PlanEditorHeader({
               candlestick_chart
             </span>
             Trading
+          </Link>
+          <Link href={`/plans/${planId}/loans`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              request_quote
+            </span>
+            Loans
           </Link>
           <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>

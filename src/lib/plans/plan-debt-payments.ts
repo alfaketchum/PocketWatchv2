@@ -17,15 +17,22 @@ export function helocTerms(debt: Pick<PlanDebt, "kind" | "heloc">): HelocTerms |
   return debt.kind === "heloc" ? debt.heloc ?? HELOC_DEFAULTS : null
 }
 
+type PaymentFields = Pick<PlanDebt, "kind" | "heloc" | "balance" | "rate" | "monthlyPayment" | "extraMonthly">
+
 /**
- * Monthly payment due `yearsIn` years after the debt starts. A HELOC pays only interest through its draw
- * period (so the balance holds), then a level payment that clears it over the repayment years.
+ * Monthly payment due `yearsIn` years after the debt starts, before any extra. A HELOC pays only interest
+ * through its draw period (so the balance holds), then a level payment that clears it over the repayment years.
  */
-export function scheduledPayment(debt: Pick<PlanDebt, "kind" | "heloc" | "balance" | "rate" | "monthlyPayment">, yearsIn: number): number {
+export function requiredPayment(debt: PaymentFields, yearsIn: number): number {
   const terms = helocTerms(debt)
   if (!terms) return debt.monthlyPayment
   if (yearsIn < terms.drawYears) return (debt.balance * debt.rate) / MONTHS_PER_YEAR
   return monthlyPayment(debt.balance, debt.rate, terms.repayYears * MONTHS_PER_YEAR)
+}
+
+/** What's paid each month `yearsIn` years after the debt starts: the required payment plus any extra principal. */
+export function scheduledPayment(debt: PaymentFields, yearsIn: number): number {
+  return requiredPayment(debt, yearsIn) + (debt.extraMonthly ?? 0)
 }
 
 /** Whether a debt's interest counts as home mortgage interest when it's against a home you live in. */
