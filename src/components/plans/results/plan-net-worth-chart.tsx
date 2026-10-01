@@ -211,9 +211,29 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     if (view === "debt") return withOwedLine(points)
     return points
   }, [points, steady, view])
-  const yAxis = useMemo(() => fitAxis(plotPoints, series, steady ? Math.max(0, ...steady) : 0), [plotPoints, series, steady])
-  const clearSelected = useCallback(() => setSelected(null), [])
-  const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
+  /** Year view: the pinned year alone, its bar filling the chart. Entered from the header, left with All years. */
+  const [focus, setFocus] = useState<number | null>(null)
+  const focused = focus !== null && plotPoints[focus] ? focus : null
+  const shownPoints = useMemo(() => (focused === null ? plotPoints : plotPoints.slice(focused, focused + 1)), [plotPoints, focused])
+  const shownMarks = useMemo(
+    () => (focused === null ? stacked : stacked.filter((s) => s.mark.age === plotPoints[focused]?.age)),
+    [stacked, focused, plotPoints],
+  )
+  const yAxis = useMemo(
+    () => fitAxis(shownPoints, series, steady && focused === null ? Math.max(0, ...steady) : 0),
+    [shownPoints, series, steady, focused],
+  )
+  // In the year view the plot holds one bar: hovering it means that year, and clicks leave the pin alone.
+  const onPlotHover = useCallback((i: number | null) => setHovered(i === null || focused === null ? i : focused), [focused])
+  const clearSelected = useCallback(() => {
+    if (focused === null) setSelected(null)
+  }, [focused])
+  const toggleSelected = useCallback(
+    (index: number) => {
+      if (focused === null) setSelected((cur) => (cur === index ? null : index))
+    },
+    [focused],
+  )
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
   const metrics = useMemo(
@@ -227,27 +247,56 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
       center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "expenses", "debt"] : ["networth", "cashflow", "expenses"]} />}
-      right={<DetailToggle checked={detail} onChange={setDetail} />}
+      right={
+        <div className="flex items-center gap-3">
+          {selected !== null && focused === null && nwPoints[selected] && (
+            <button
+              type="button"
+              onClick={() => setFocus(selected)}
+              className="inline-flex items-center gap-1 rounded-lg border border-card-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-foreground/5"
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">
+                open_in_full
+              </span>
+              View {nwPoints[selected].year} alone
+            </button>
+          )}
+          <DetailToggle checked={detail} onChange={setDetail} />
+        </div>
+      }
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
           <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
+            {focused !== null && (
+              <button
+                type="button"
+                onClick={() => setFocus(null)}
+                className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
+                  arrow_back
+                </span>
+                All years
+              </button>
+            )}
             <ChartPlot
-              points={plotPoints}
+              points={shownPoints}
               series={series}
               yAxis={yAxis}
               iconRoom={iconRoom}
-              stacked={stacked}
+              stacked={shownMarks}
               mode={view}
               hasDebt={hasDebt}
-              showSteady={steady !== null}
-              selected={selected}
+              showSteady={steady !== null && focused === null}
+              selected={focused === null ? selected : 0}
               markColor={markColor}
-              onHover={setHovered}
+              onHover={onPlotHover}
               onSelect={toggleSelected}
               onClear={clearSelected}
               onHoverMark={setHoveredMark}
+              focused={focused !== null}
             />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
