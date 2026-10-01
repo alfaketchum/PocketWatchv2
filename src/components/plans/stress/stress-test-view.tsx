@@ -10,6 +10,7 @@ import { anchorIndex, summarize, type StressAlign } from "@/lib/plans/stress/str
 import type { PlanEditorProps } from "../plans-helpers"
 import { StressCohortBars } from "./stress-cohort-bars"
 import { StressFanChart } from "./stress-fan-chart"
+import { StressPathsChart } from "./stress-paths-chart"
 import { StressMixTable } from "./stress-mix-table"
 import { StressPeriodsTable } from "./stress-periods-table"
 import { StressSummary } from "./stress-summary"
@@ -17,10 +18,15 @@ import { useStressTest } from "./use-stress-test"
 
 type Cape = "all" | "20" | "30"
 type Measure = "netWorth" | "invested"
+type ChartView = "range" | "years"
 
 const ALIGN_OPTIONS: { value: StressAlign; label: string }[] = [
   { value: "start", label: "From today" },
   { value: "retirement", label: "From retirement" },
+]
+const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
+  { value: "range", label: "Range" },
+  { value: "years", label: "Each start year" },
 ]
 const MEASURE_OPTIONS: { value: Measure; label: string }[] = [
   { value: "netWorth", label: "Net worth" },
@@ -42,6 +48,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const align = canAlignRetirement ? alignChoice : "start"
   const [cape, setCape] = useState<Cape>("all")
   const [measure, setMeasure] = useState<Measure>("netWorth")
+  const [chartView, setChartView] = useState<ChartView>("range")
   const { annual, cohorts, running, loading, error } = useStressTest(doc, align)
   const summary = useMemo(() => (cohorts ? summarize(cohorts, cape === "all" ? null : Number(cape)) : null), [cohorts, cape])
   const person = doc.people[0]
@@ -88,19 +95,32 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
       {summary && summary.cohorts.length > 0 && (
         <>
           <FireSectionCard
-            eyebrow="Range of outcomes"
+            eyebrow={chartView === "range" ? "Range of outcomes" : "Every historical start year"}
             title="Today's dollars, by age"
-            info="Shaded: the middle 80% and middle 50% of historical periods. Solid: the median. Dashed: your plan with its steady assumed returns. Red: the worst start year."
-            right={<ChoiceChips label="Measure" options={MEASURE_OPTIONS} value={measure} onChange={setMeasure} />}
+            info={
+              chartView === "range"
+                ? "Shaded: the middle 80% and middle 50% of historical periods. Solid: the median. Dashed: your plan with its steady assumed returns. Red: the worst start year."
+                : "Each line is your plan starting in one historical year. Red lines ran out of money; crisis years (1929, 1937, 1966, 1973, 2000, 2007) are highlighted. Dashed: your plan with steady returns."
+            }
+            right={
+              <div className="flex flex-wrap items-center gap-3">
+                <ChoiceChips label="Chart" options={VIEW_OPTIONS} value={chartView} onChange={setChartView} />
+                <ChoiceChips label="Measure" options={MEASURE_OPTIONS} value={measure} onChange={setMeasure} />
+              </div>
+            }
           >
-            <StressFanChart
-              bands={measure === "netWorth" ? summary.netWorthBands : summary.investedBands}
-              age0={age0}
-              plan={plan}
-              worst={summary.worst}
-              measure={measure}
-              isHidden={isHidden}
-            />
+            {chartView === "range" ? (
+              <StressFanChart
+                bands={measure === "netWorth" ? summary.netWorthBands : summary.investedBands}
+                age0={age0}
+                plan={plan}
+                worst={summary.worst}
+                measure={measure}
+                isHidden={isHidden}
+              />
+            ) : (
+              <StressPathsChart cohorts={summary.cohorts} age0={age0} plan={plan} measure={measure} isHidden={isHidden} />
+            )}
           </FireSectionCard>
           <div className="grid gap-5 xl:grid-cols-2">
             <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year; red where the money ran out before the plan's end.">
