@@ -94,3 +94,25 @@ export function assetCostExpenses(doc: PlanDocument): PlanExpense[] {
     })
   })
 }
+
+/** A home or vehicle running cost as the Expenses tab shows it (read-only; edited on the asset). */
+export interface AssetCostLine {
+  expense: PlanExpense
+  asset: PlanAsset
+  /** Per year in today's dollars when it starts (a share of value: at today's value). */
+  yearly: number
+  /** Follows the asset's value (a share of value) rather than inflation. */
+  followsValue: boolean
+}
+
+/** The running costs the plan generates from homes and vehicles, with the asset each belongs to. */
+export function assetCostLines(doc: PlanDocument): AssetCostLine[] {
+  const byId = new Map(doc.assets.map((a) => [a.id, a]))
+  return assetCostExpenses(doc).flatMap((expense) => {
+    const asset = expense.costOf ? byId.get(expense.costOf.assetId) : undefined
+    const index = Number(expense.id.split("-").at(-1))
+    const cost = asset?.runningCosts?.[index]
+    if (!asset || !cost) return []
+    return [{ expense, asset, yearly: yearlyCost(cost, asset.value), followsValue: cost.basis === "percentOfValue" }]
+  })
+}

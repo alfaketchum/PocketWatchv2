@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { childExpenses } from "@/lib/plans/plan-children"
+import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
 import { PatternChips } from "./expense-pattern-field"
 import { Badge, Cell, CellCheck, CellNumber, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
+import { AssetCostRows } from "./asset-cost-rows"
 
 const MONTHS = 12
 
@@ -50,13 +52,14 @@ function columns(sort: Sort, setSort: (s: Sort) => void) {
 
 const Dash = () => <span className="px-2 text-foreground-muted">—</span>
 
-/** Expenses as an editable table, with kids' generated lines shown read-only. */
+/** Expenses as an editable table, with kids' and home & vehicle generated lines shown read-only. */
 export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanExpense>) => update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const kidLines = (doc.children ?? []).flatMap((child) =>
     childExpenses({ ...doc, children: [child] }).map((expense) => ({ expense, childId: child.id })),
   )
   const ages = useMemo(() => ({ now: primaryAge(doc), retire: retirementAge(doc) }), [doc])
+  const assetLines = useMemo(() => assetCostLines(doc), [doc])
   const [sort, setSort] = useState<Sort>(null)
   const today = doc.expenses.filter((e) => !e.oneTime && e.start.type === "planStart").reduce((s, e) => s + e.amount, 0)
   return (
@@ -65,7 +68,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
       minWidth="min-w-[1080px]"
       footer={
         <tr>
-          <td className="px-2 py-2">Spending today (excl. kids)</td>
+          <td className="px-2 py-2">Spending today (excl. kids, home &amp; vehicle)</td>
           <td />
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today / MONTHS)}</td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today)}</td>
@@ -158,6 +161,7 @@ export function ExpensesTable({ doc, update, onEditItem }: PlanEditorProps) {
           </Cell>
         </Row>
       ))}
+      <AssetCostRows lines={assetLines} doc={doc} />
     </PlanTable>
   )
 }

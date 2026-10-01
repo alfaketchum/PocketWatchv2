@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { assetValue } from "@/lib/plans/engine/engine-assets"
-import { assetCostExpenses, totalYearlyCost, TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
+import { assetCostExpenses, assetCostLines, totalYearlyCost, TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { expandPlan } from "@/lib/plans/plan-expand"
 import type { PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
@@ -60,4 +60,18 @@ test("typical costs, totals, and expanding twice doesn't double them", () => {
   assert.equal(assetCostExpenses(d).length, 3)
   assert.equal(expandPlan(expandPlan(d)).expenses.length, 3)
   assert.equal(assetCostExpenses(plan([{ ...house, runningCosts: undefined }])).length, 0)
+})
+
+
+test("Expenses lists home and vehicle running costs read-only, at today's cost and tied to their asset", () => {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 40)
+  const doc = {
+    ...base,
+    assets: [
+      { id: "h", name: "House", kind: "home" as const, value: 500_000, appreciation: 0.03, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, runningCosts: [{ name: "Insurance", amount: 0.004, basis: "percentOfValue" as const }] },
+      { id: "c", name: "Car", kind: "vehicle" as const, value: 30_000, appreciation: -0.15, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, runningCosts: [{ name: "Insurance", amount: 1_800, basis: "dollars" as const }] },
+    ],
+  }
+  const lines = assetCostLines(doc)
+  assert.deepEqual(lines.map((l) => [l.asset.id, l.yearly, l.followsValue]), [["h", 2_000, true], ["c", 1_800, false]])
 })

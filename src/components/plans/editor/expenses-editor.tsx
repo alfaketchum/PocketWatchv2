@@ -15,6 +15,8 @@ import { ChildrenEditor } from "./children-editor"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { ExpensesTable } from "./expenses-table"
+import { AssetCostList } from "./asset-cost-list"
+import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 
 function newExpense(): PlanExpense {
   return {
@@ -56,7 +58,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
       </EditorToolbar>
       {view === "compact" ? (
         <p className="text-xs text-foreground-muted">
-          Kids&apos; costs are listed below as read-only lines.{" "}
+          Kids&apos; and home &amp; vehicle costs are listed below as read-only lines.{" "}
           <button type="button" onClick={() => onEditItem?.(planItemAnchor("kids"))} className="text-primary hover:underline">
             Add or change kids in Detailed view
           </button>
@@ -131,6 +133,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
             )}
           </ItemCard>
         ))}
+        {view !== "compact" && <AssetCostList lines={assetCostLines(doc)} />}
       </div>
     </div>
   )
