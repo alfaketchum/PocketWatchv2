@@ -61,6 +61,7 @@ export const financeKeys = {
   all: ["finance"] as const,
   accounts: () => [...financeKeys.all, "accounts"] as const,
   realAssets: () => [...financeKeys.all, "real-assets"] as const,
+  creditScores: () => [...financeKeys.all, "credit-scores"] as const,
   transactions: (filters: TxFilters) =>
     [...financeKeys.all, "transactions", filters] as const,
   budgets: (rangeKey?: string) =>

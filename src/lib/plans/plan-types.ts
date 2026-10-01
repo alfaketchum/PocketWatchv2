@@ -72,6 +72,16 @@ export interface PlanSettings {
   returnBasis?: "nominal" | "real"
   /** Social Security paid at a share of scheduled benefits from a year on (a trust fund shortfall); missing = in full. */
   ssCut?: { share: number; fromYear: number }
+  /** Credit score at plan start: prices loans the plan hasn't fixed, and is projected year by year. */
+  credit?: PlanCredit
+}
+
+export interface PlanCredit {
+  score: number
+  /** When it was checked, YYYY-MM-DD. */
+  asOf: string
+  /** Total credit-card limits then, for utilization on card debt; missing = not counted. */
+  cardLimit?: number
 }
 
 /** Inflation the bond market expects (Treasury minus TIPS yields), FRED data. Rates are decimals. */

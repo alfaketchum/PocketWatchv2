@@ -40,6 +40,7 @@ export const FINANCE_NAV_ITEMS: NavItem[] = [
   { id: "fin-budgets",       label: "Budgets",        href: "/finance/budgets",        icon: "savings" },
   { id: "fin-investments",   label: "Investments",    href: "/finance/investments",    icon: "show_chart" },
   { id: "fin-cards",         label: "Cards & Bills",  href: "/finance/cards",          icon: "credit_card" },
+  { id: "fin-credit",        label: "Credit",         href: "/finance/credit",         icon: "credit_score" },
   { id: "fin-subscriptions", label: "Subscriptions",  href: "/finance/subscriptions",  icon: "subscriptions" },
 ]
 
@@ -165,6 +166,13 @@ function migratePrefs(prefs: SidebarPrefs): SidebarPrefs {
     const cardsIdx = financeCat.order.indexOf("fin-cards")
     if (cardsIdx >= 0) financeCat.order.splice(cardsIdx + 1, 0, "fin-subscriptions")
     else financeCat.order.push("fin-subscriptions")
+    savePrefs(prefs)
+  }
+  // Inject fin-credit item if missing (Credit page, after Cards & Bills).
+  if (financeCat && !financeCat.order.includes("fin-credit")) {
+    const cardsIdx = financeCat.order.indexOf("fin-cards")
+    if (cardsIdx >= 0) financeCat.order.splice(cardsIdx + 1, 0, "fin-credit")
+    else financeCat.order.push("fin-credit")
     savePrefs(prefs)
   }
   // Inject roi item if missing (ROI page, after Staking).

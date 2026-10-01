@@ -2,7 +2,8 @@
 
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { FireNumberField } from "@/components/fire/fire-number-field"
-import { effectiveFinancing, loanSummary, PAYMENT_MODE_LABELS, TYPICAL_FINANCING } from "@/lib/plans/plan-financing"
+import { projectedScoreAt } from "@/lib/plans/credit-projection"
+import { effectiveFinancing, loanSummary, PAYMENT_MODE_LABELS, TYPICAL_FINANCING, typicalTerms } from "@/lib/plans/plan-financing"
 import type { AssetFinancing, PaymentMode, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
 import { SelectField } from "./plan-editor-controls"
 
@@ -29,7 +30,9 @@ export function AssetFinancingFields({
   }
   const financing: AssetFinancing = asset.financing ?? { mode: "cash", ...TYPICAL_FINANCING[asset.kind] }
   const set = (change: Partial<AssetFinancing>) => onChange({ ...financing, ...change })
-  const terms = effectiveFinancing({ ...asset, financing })
+  const score = projectedScoreAt(doc, asset.start)
+  const terms = effectiveFinancing({ ...asset, financing }, score)
+  const scored = score === null ? null : typicalTerms(asset, score).rate
   const loan = terms ? loanSummary(asset.value, terms) : null
   return (
     <div className="space-y-2">
@@ -50,13 +53,24 @@ export function AssetFinancingFields({
           </>
         )}
       </div>
+      {financing.mode === "loan" && scored !== null && Math.abs(scored - financing.rate) >= 0.00005 && (
+        <p className="text-[11px] text-foreground-muted">
+          Typical for your projected score of {score}: {(scored * 100).toFixed(2)}%.{" "}
+          <button type="button" onClick={() => set({ rate: scored })} className="text-primary hover:underline">
+            Use it
+          </button>
+        </p>
+      )}
       <p className="text-xs text-foreground-muted">
         {!loan || !terms ? (
           <>The full price comes out of your cash flow the year you buy it.</>
         ) : (
           <>
             {financing.mode === "undecided" && (
-              <>Estimated with typical terms ({Math.round(terms.downShare * 100)}% down, {(terms.rate * 100).toFixed(1)}%, {terms.termYears} years). </>
+              <>
+                Estimated with typical terms ({Math.round(terms.downShare * 100)}% down, {(terms.rate * 100).toFixed(2)}%
+                {score !== null && ` at a projected ${score} score`}, {terms.termYears} years).{" "}
+              </>
             )}
             In today&apos;s dollars: {fmtMoney(loan.down)} down, then about {fmtMoney(loan.monthly)}/mo for {terms.termYears} years (
             {fmtMoney(loan.totalInterest)} interest). Cash instead: {fmtMoney(asset.value)} that year.

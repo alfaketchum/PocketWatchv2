@@ -42,6 +42,7 @@ export const FINANCE_NAV_TABS = [
   { label: "Transactions",  href: "/finance/transactions",  icon: "receipt_long" },
   { label: "Budgets",       href: "/finance/budgets",       icon: "savings" },
   { label: "Cards & Bills", href: "/finance/cards",         icon: "credit_card" },
+  { label: "Credit",        href: "/finance/credit",        icon: "credit_score" },
   { label: "Income",        href: "/finance/income",        icon: "payments" },
   { label: "Investments",   href: "/finance/investments",   icon: "show_chart" },
 ]

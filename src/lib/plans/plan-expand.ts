@@ -1,5 +1,6 @@
 import { assetCostExpenses } from "./plan-asset-costs"
 import { childExpenses } from "./plan-children"
+import { planCreditPath } from "./credit-projection"
 import { financingDebts } from "./plan-financing"
 import type { Inflation } from "./plan-inflation"
 import { allMilestones } from "./plan-milestones"
@@ -17,11 +18,12 @@ import type { PlanDebt, PlanDocument } from "./plan-types"
  */
 export function expandPlan(doc: PlanDocument, inflation?: Inflation): PlanDocument {
   const withAssets = { ...doc, assets: withReplacements(doc) }
+  const credit = planCreditPath(doc, inflation)
   return {
     ...withAssets,
     incomes: [...doc.incomes, ...rentalIncomes(withAssets)],
     expenses: [...doc.expenses, ...childExpenses(doc), ...assetCostExpenses(withAssets)],
-    debts: [...doc.debts, ...financingDebts(withAssets, inflation)],
+    debts: [...doc.debts, ...financingDebts(withAssets, inflation, (i) => credit?.[i]?.pricing ?? null)],
     milestones: allMilestones(withAssets),
     children: [],
   }

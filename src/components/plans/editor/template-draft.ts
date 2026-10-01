@@ -1,6 +1,7 @@
 import type { InheritedPart, TemplateKey } from "@/lib/plans/milestone-templates"
 import { careDefaults, surveyToToday, type CareArrangement, type CarePayer } from "@/lib/plans/elder-care"
-import { TYPICAL_FINANCING } from "@/lib/plans/plan-financing"
+import { projectedScoreAt } from "@/lib/plans/credit-projection"
+import { TYPICAL_FINANCING, typicalTerms } from "@/lib/plans/plan-financing"
 import { VEHICLE_CONDITIONS } from "@/lib/plans/vehicle-depreciation"
 import type { PaymentMode, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
@@ -113,13 +114,22 @@ function purchaseDefaults(
   }
 }
 
+/** A purchase's starting rate, from the plan's projected credit score in the year it's bought, when there is one. */
+function scoredRate(key: TemplateKey, doc: PlanDocument, when: Timing, fallback: number): number {
+  if (key !== "home" && key !== "vehicle") return fallback
+  const score = projectedScoreAt(doc, when)
+  return score === null ? fallback : typicalTerms({ kind: key, vehicleAge: key === "vehicle" ? VEHICLE_CONDITIONS.new.age : undefined }, score).rate
+}
+
 export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft {
   const year = doc.settings.startYear
   const retirement = doc.milestones.find((m) => m.kind === "retirement")
   const firstIncome = doc.incomes.find((i) => !i.oneTime)
+  const when: Timing = key === "retire" && retirement ? retirement.timing : { type: "year", year: year + 2 }
+  const purchase = purchaseDefaults(key)
   return {
     name: DEFAULT_NAMES[key],
-    when: key === "retire" && retirement ? retirement.timing : { type: "year", year: year + 2 },
+    when,
     amount: key === "career" ? Math.round((firstIncome?.amount ?? 80_000) * 1.2) : key === "pension" ? 30_000 : 100_000,
     percent: -0.1,
     years: key === "divorce" ? 5 : key === "elderCare" ? 3 : 1,
@@ -133,7 +143,8 @@ export function initialDraft(key: TemplateKey, doc: PlanDocument): TemplateDraft
     incomeTaxRate: doc.settings.incomeTaxRate,
     capitalGainsRate: doc.settings.capitalGainsRate,
     weddingCost: 30_000,
-    ...purchaseDefaults(key),
+    ...purchase,
+    rate: scoredRate(key, doc, when, purchase.rate),
     parts: [emptyPart("cash")],
     relationship: "child",
     decedentState: doc.settings.state ?? null,

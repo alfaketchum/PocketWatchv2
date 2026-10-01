@@ -2,7 +2,9 @@
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { fmtMoney } from "@/components/fire/fire-helpers"
-import { loanSummary, PAYMENT_MODE_LABELS, TYPICAL_FINANCING } from "@/lib/plans/plan-financing"
+import { projectedScoreAt } from "@/lib/plans/credit-projection"
+import { loanSummary, PAYMENT_MODE_LABELS, typicalTerms } from "@/lib/plans/plan-financing"
+import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PaymentMode, PlanDocument } from "@/lib/plans/plan-types"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
@@ -13,7 +15,9 @@ const PAY_OPTIONS = (Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[]).map((val
 
 /** Buy a home or vehicle: price, when, and how it's paid (with the loan it implies). */
 export function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: SetDraft; doc: PlanDocument; kind: "home" | "vehicle" }) {
-  const typical = TYPICAL_FINANCING[kind]
+  const score = projectedScoreAt(doc, d.when)
+  const typical = typicalTerms({ kind, vehicleAge: d.vehicleAge }, score)
+  const index = resolveTiming(d.when, timingContext(doc))
   const terms = d.payWith === "undecided" ? typical : { downShare: d.price > 0 ? d.downPayment / d.price : 0, rate: d.rate, termYears: d.termYears }
   const loan = loanSummary(d.price, terms)
   return (
@@ -41,6 +45,15 @@ export function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: S
           <FireNumberField label={kind === "home" ? "Mortgage rate" : "Loan rate"} suffix="%" scale={100} min={0} max={1} value={d.rate} onChange={(rate) => set({ rate })} />
           <FireNumberField label="Term (years)" min={1} max={50} value={d.termYears} onChange={(termYears) => set({ termYears })} />
         </div>
+      )}
+      {d.payWith === "loan" && score !== null && Math.abs(typical.rate - d.rate) >= 0.00005 && (
+        <p className="text-[11px] text-foreground-muted">
+          Typical for your projected score of {score}
+          {index !== null && ` in ${doc.settings.startYear + index}`}: {(typical.rate * 100).toFixed(2)}%.{" "}
+          <button type="button" onClick={() => set({ rate: typical.rate })} className="text-primary hover:underline">
+            Use it
+          </button>
+        </p>
       )}
       <p className="text-xs text-foreground-muted">
         {d.payWith === "cash" ? (

@@ -2,6 +2,7 @@
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { InputBlock } from "@/components/fire/fire-input-controls"
+import { PlanCreditSettings } from "./plan-credit-settings"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanPerson, PlanSettings } from "@/lib/plans/plan-types"
 import { removePerson } from "@/lib/plans/plan-edits"
@@ -92,6 +93,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
           </InputBlock>
           <PlanTaxSettings settings={s} set={set} />
           <SocialSecurityOutlook settings={s} set={set} />
+          <PlanCreditSettings doc={doc} set={set} />
         </div>
       </div>
       <div className="border-t border-card-border pt-5">

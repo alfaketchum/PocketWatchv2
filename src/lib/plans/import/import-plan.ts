@@ -3,7 +3,7 @@ import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { blankPlanForUser } from "../plan-records"
 import type { SourceBalances } from "../plan-refresh"
-import type { PlanDebt, PlanDocument, PlanExpense } from "../plan-types"
+import type { PlanCredit, PlanDebt, PlanDocument, PlanExpense } from "../plan-types"
 import { withDetectedTrading } from "../trading-detect"
 import {
   accountsFromRows,
@@ -14,6 +14,7 @@ import {
   type ImportLiability,
 } from "./import-mapping"
 import { loadTradingActivity } from "./trading-activity"
+import { CARD_ACCOUNT_TYPES } from "@/lib/finance/credit-scores"
 import { valueAt } from "@/lib/finance/real-assets"
 import { loadRealAssets } from "@/lib/finance/real-assets-store"
 import { assetsFromRealAssets, spendingOptions, type ImportRealAsset, type SpendingBasis } from "./import-mapping"
@@ -127,15 +128,27 @@ export async function loadImportRealAssets(userId: string): Promise<ImportRealAs
   }))
 }
 
+/** The latest logged credit score with today's total card limits, for the plan's Assumptions; null when none is logged. */
+async function loadImportCredit(userId: string): Promise<PlanCredit | null> {
+  const [latest, cards] = await Promise.all([
+    db.creditScore.findFirst({ where: { userId }, orderBy: { date: "desc" }, select: { score: true, date: true } }),
+    db.financeAccount.findMany({ where: { userId, type: { in: CARD_ACCOUNT_TYPES }, isHidden: false, creditLimit: { gt: 0 } }, select: { creditLimit: true }, take: 100 }),
+  ])
+  if (!latest) return null
+  const cardLimit = cards.reduce((s, c) => s + (c.creditLimit ?? 0), 0)
+  return { score: latest.score, asOf: latest.date.toISOString().slice(0, 10), ...(cardLimit > 0 ? { cardLimit } : {}) }
+}
+
 /** A plan pre-filled from the user's linked accounts, liabilities, homes and vehicles, income and spending. */
 export async function buildImportDraft(userId: string): Promise<ImportDraft> {
-  const [base, rows, liabilities, crypto, budget, realAssets] = await Promise.all([
+  const [base, rows, liabilities, crypto, budget, realAssets, credit] = await Promise.all([
     blankPlanForUser(userId),
     loadImportAccounts(userId),
     loadLiabilities(userId),
     loadCryptoValue(userId),
     gatherBudgetContext(userId),
     loadImportRealAssets(userId),
+    loadImportCredit(userId),
   ])
   const cryptoAcct = cryptoAccount(crypto)
   const trading = await loadTradingActivity(userId, rows)
@@ -146,6 +159,7 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
   const spending = spendingOptions(budget.categories, budget.currentBudgets)
   const document: PlanDocument = {
     ...base,
+    settings: credit ? { ...base.settings, credit } : base.settings,
     accounts,
     assets: owned.assets,
     debts,

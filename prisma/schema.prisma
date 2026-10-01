@@ -80,6 +80,7 @@ model User {
   plans                         Plan[]
   roadmapItems                  RoadmapItem[]
   realAssets                    RealAsset[]
+  creditScores                  CreditScore[]
   calendarTokenVersion          Int?                           @default(1)
 
 }
@@ -249,6 +250,23 @@ model RealAsset {
   values        RealAssetValue[]
 
   @@index([userId])
+}
+
+/// A credit score the user looked up and logged by hand (no bureau feed).
+model CreditScore {
+  id        String   @id @default(cuid())
+  userId    String
+  score     Int
+  /// "fico8" | "fico-mortgage" | "fico-auto" | "vantage3" | "vantage4" | "other"
+  model     String
+  /// "experian" | "equifax" | "transunion", when known
+  bureau    String?
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
 }
 
 /// One recorded value of a RealAsset (the latest also lives on the asset).

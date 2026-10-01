@@ -43,6 +43,9 @@ const settings = z.object({
   inflationMode: z.enum(["custom", "market", "marketPath"]).optional(),
   returnBasis: z.enum(["nominal", "real"]).optional(),
   ssCut: z.object({ share: z.number().min(0).max(1), fromYear: z.number().int().min(2000).max(2200) }).optional(),
+  credit: z
+    .object({ score: z.number().int().min(300).max(850), asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), cardLimit: money.optional() })
+    .optional(),
   marketInflation: z
     .object({
       asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

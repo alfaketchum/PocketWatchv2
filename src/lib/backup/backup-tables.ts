@@ -54,6 +54,7 @@ export const BACKUP_TABLES: BackupTable[] = [
   { name: "ManualPrice", tier: 2, updatedAtField: "updatedAt" },
   { name: "CostBasisLot", tier: 2 },
   { name: "RealizedGain", tier: 2 },
+  { name: "CreditScore", tier: 2 },
   { name: "CapitalFlow", tier: 2 },
   { name: "StakingSnapshot", tier: 2 },
   { name: "StakingPosition", tier: 2, updatedAtField: "updatedAt" },
