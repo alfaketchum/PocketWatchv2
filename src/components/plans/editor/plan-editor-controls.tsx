@@ -96,7 +96,7 @@ export function ItemCard({
 
 export function AddButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className="btn-secondary text-xs disabled:opacity-50">
+    <button type="button" onClick={onClick} disabled={disabled} className="btn-primary text-xs inline-flex items-center gap-1 disabled:opacity-50">
       <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
         add
       </span>

@@ -7,7 +7,7 @@ const MONTHS = 12
 export const MIN_CATEGORY_MONTHLY = 25
 /** Credit-card payment when no minimum is known: pay the balance off over a year. */
 const CARD_PAYOFF_MONTHS = 12
-const DEFAULT_CARD_APR = 0.22
+export const DEFAULT_CARD_APR = 0.22
 const DEFAULT_LOAN_MONTHS = 60
 
 const CASH_TYPES = new Set(["checking", "savings", "business_checking", "business_savings", "depository", "cash"])

@@ -6,7 +6,7 @@ import { fmtMoney } from "@/components/fire/fire-helpers"
 import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
-import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
@@ -15,6 +15,7 @@ import { AssetRunningCostsFields } from "./asset-running-costs-fields"
 import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
+import { AddDebtDialog } from "./add-debt-dialog"
 import { VehicleValueFields } from "./vehicle-value-fields"
 import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
@@ -60,18 +61,14 @@ function kindChange(a: PlanAsset, kind: AssetKind, state: string | null): Partia
   }
 }
 
-function newDebt(): PlanDebt {
-  return {
-    id: newItemId("debt"),
-    name: "Mortgage",
-    kind: "mortgage",
-    balance: 300_000,
-    rate: 0.06,
-    monthlyPayment: 1_800,
-    start: { type: "planStart" },
-    assetId: null,
-    source: null,
-  }
+function AddDebtButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <AddButton label="Add debt" disabled={doc.debts.length >= PLAN_LIMITS.debts} onClick={() => setOpen(true)} />
+      {open && <AddDebtDialog doc={doc} update={update} onClose={() => setOpen(false)} />}
+    </>
+  )
 }
 
 function AssetsList({ doc, update }: PlanEditorProps) {
@@ -273,11 +270,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
   const toolbar = (
     <EditorToolbar toggle={props.viewToggle}>
       <AddAssetButton doc={doc} update={update} />
-      <AddButton
-        label="Add debt"
-        disabled={doc.debts.length >= PLAN_LIMITS.debts}
-        onClick={() => update((d) => ({ ...d, debts: [...d.debts, newDebt()] }))}
-      />
+      <AddDebtButton doc={doc} update={update} />
     </EditorToolbar>
   )
   if (props.view === "compact") {
