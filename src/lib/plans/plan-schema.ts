@@ -42,6 +42,14 @@ const settings = z.object({
 
 const person = z.object({ id, name, birthYear: year, birthMonth: month, origin })
 
+/** Stress test asset mix; normalized so the shares add up to 1 (all zero falls back to the default mix). */
+const mix = z
+  .object({ stocks: share, bonds: share, cash: share, crypto: share })
+  .transform((m) => {
+    const total = m.stocks + m.bonds + m.cash + m.crypto
+    return total > 0 ? { stocks: m.stocks / total, bonds: m.bonds / total, cash: m.cash / total, crypto: m.crypto / total } : undefined
+  })
+
 const account = z.object({
   id,
   name,
@@ -54,6 +62,7 @@ const account = z.object({
   drainByYear: year.nullable().optional(),
   shortTermShare: share.optional(),
   realizedShare: share.optional(),
+  mix: mix.optional(),
   origin,
 })
 

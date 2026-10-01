@@ -21,6 +21,16 @@ export const EQUITY_STEPS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] 
 /** Notable bad-sequence retirement cohorts highlighted in charts. */
 export const NOTABLE_COHORTS = ["1929-09", "1937-03", "1965-12", "1973-01", "2000-01", "2007-10"] as const
 
+/** Bad starting years, with names, for stress tests that run year by year. */
+export const NOTABLE_PERIODS: { year: number; label: string }[] = [
+  { year: 1929, label: "1929 crash" },
+  { year: 1937, label: "1937 relapse" },
+  { year: 1966, label: "1966 stagflation" },
+  { year: 1973, label: "1973 oil shock" },
+  { year: 2000, label: "2000 dot-com bust" },
+  { year: 2007, label: "2007 financial crisis" },
+]
+
 export const SWR_PRESET_RATES: Record<Exclude<SwrPreset, "cape" | "custom">, number> = {
   "4": 0.04,
   "3.5": 0.035,

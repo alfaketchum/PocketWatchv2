@@ -1,0 +1,47 @@
+import { realRate } from "../plan-dollars"
+import type { AccountMix, PlanAccount } from "../plan-types"
+
+export const DEFAULT_STOCK_SHARE = 0.8
+/** Crypto swings this many times as hard as US stocks, around its own assumed return. */
+export const CRYPTO_BETA = 2
+/** Worst crypto year allowed (−90%). */
+const CRYPTO_FLOOR = -0.9
+
+export const MIX_KEYS = ["stocks", "bonds", "cash", "crypto"] as const
+
+/** What an account holds when no mix is set: crypto is crypto, cash is cash, everything else 80/20 stocks/bonds. */
+export function defaultMix(account: Pick<PlanAccount, "source" | "taxTreatment">): AccountMix {
+  if (account.source?.kind === "crypto") return { stocks: 0, bonds: 0, cash: 0, crypto: 1 }
+  if (account.taxTreatment === "cash") return { stocks: 0, bonds: 0, cash: 1, crypto: 0 }
+  return { stocks: DEFAULT_STOCK_SHARE, bonds: 1 - DEFAULT_STOCK_SHARE, cash: 0, crypto: 0 }
+}
+
+/** The account's mix scaled to add up to 1 (edits may not, until saved); the default when unset or empty. */
+export function mixFor(account: PlanAccount): AccountMix {
+  const mix = account.mix
+  const total = mix ? MIX_KEYS.reduce((s, k) => s + mix[k], 0) : 0
+  if (!mix || total <= 0) return defaultMix(account)
+  return { stocks: mix.stocks / total, bonds: mix.bonds / total, cash: mix.cash / total, crypto: mix.crypto / total }
+}
+
+export interface MarketYear {
+  stockReal: number
+  bondReal: number
+  /** Long-run average of ln(1 + real stock return) (crypto's swings are measured from it). */
+  stockLogMean: number
+}
+
+/**
+ * An account's nominal return in one historical year, in the plan's terms: stocks and bonds earn that year's
+ * real return, cash earns nothing real (ERN's convention), and crypto earns its own assumed real return with
+ * twice the stock market's swing that year, never worse than −90%. Swings are doubled in log terms so crypto's
+ * long-run compounded return stays at its assumption (doubling plain returns would drag it far below, since
+ * bigger swings compound to less). Real → nominal with the plan's inflation.
+ */
+export function yearReturn(account: PlanAccount, market: MarketYear, inflation: number): number {
+  const mix = mixFor(account)
+  const swing = Math.exp(CRYPTO_BETA * (Math.log(1 + market.stockReal) - market.stockLogMean))
+  const cryptoReal = Math.max(CRYPTO_FLOOR, (1 + realRate(account.returnRate, inflation)) * swing - 1)
+  const real = mix.stocks * market.stockReal + mix.bonds * market.bondReal + mix.crypto * cryptoReal
+  return (1 + real) * (1 + inflation) - 1
+}

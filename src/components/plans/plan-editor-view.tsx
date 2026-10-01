@@ -18,16 +18,22 @@ import { DEFAULT_PLAN_TAB, PlanEditorTabs, planTabFrom, type PlanTab } from "./e
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
-import { PlanBacktestCard } from "./results/plan-backtest-card"
+import { StressOverviewCard } from "./stress/stress-overview-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
+
+const StressTestView = dynamic(() => import("./stress/stress-test-view").then((m) => m.StressTestView), {
+  ssr: false,
+  loading: () => <div className="h-[420px] animate-shimmer rounded-2xl" />,
+})
 
 const PlanNetWorthChart = dynamic(
   () => import("./results/plan-net-worth-chart").then((m) => m.PlanNetWorthChart),
   { ssr: false, loading: () => <div className="h-[380px] animate-shimmer rounded-2xl" /> },
 )
 
-const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProps>> = {
+/** Tabs that edit the plan; Stress test and Overview show results instead. */
+const EDITORS: Record<Exclude<PlanTab, "overview" | "stress">, ComponentType<PlanEditorProps>> = {
   accounts: AccountsEditor,
   income: IncomesEditor,
   expenses: ExpensesEditor,
@@ -92,7 +98,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
     )
   }
 
-  const Editor = tab === "overview" ? null : EDITORS[tab]
+  const Editor = tab === "overview" || tab === "stress" ? null : EDITORS[tab]
   return (
     <div className="space-y-5">
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
@@ -109,9 +115,11 @@ export function PlanEditorView({ planId }: { planId: string }) {
             viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
           />
         </div>
+      ) : tab === "stress" ? (
+        <StressTestView doc={document} update={update} projection={projection} isHidden={isHidden} />
       ) : (
         <>
-          <PlanBacktestCard doc={view} projection={projection} isHidden={isHidden} />
+          <StressOverviewCard doc={document} onOpen={() => setTab("stress")} />
           <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} />
         </>
       )}

@@ -1,5 +1,5 @@
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
-import type { PlanDocument, PlanProjection, YearRow } from "../plan-types"
+import type { PlanAccount, PlanDocument, PlanProjection, YearRow } from "../plan-types"
 import {
   applyAssetEvents,
   assetEntries,
@@ -33,8 +33,14 @@ import {
   type IncomeEntry,
 } from "./engine-flows"
 
+/** Options for one run: `returnFor` overrides each account's nominal return per plan year (stress tests). */
+export interface SimulateOptions {
+  returnFor?: (account: PlanAccount, index: number) => number
+}
+
 interface Plan {
   doc: PlanDocument
+  returnFor?: SimulateOptions["returnFor"]
   ctx: TimingContext
   incomes: IncomeEntry[]
   expenses: ExpenseEntry[]
@@ -53,11 +59,12 @@ interface State {
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
 
-function preparePlan(original: PlanDocument): Plan {
+function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
   const doc = expandPlan(original)
   const ctx = timingContext(doc)
   return {
     doc,
+    returnFor: opts.returnFor,
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
     expenses: expenseEntries(doc.expenses, ctx),
@@ -79,12 +86,17 @@ function initialHoldings(doc: PlanDocument): Holdings {
   }
 }
 
-/** Grow every account by its return. Flows are applied at year end, after growth. */
-function growHoldings(holdings: Holdings, doc: PlanDocument): { holdings: Holdings; growth: number } {
+/** Grow every account by its return (or this year's override). Flows are applied at year end, after growth. */
+function growHoldings(
+  holdings: Holdings,
+  doc: PlanDocument,
+  index: number,
+  returnFor?: SimulateOptions["returnFor"],
+): { holdings: Holdings; growth: number } {
   let growth = 0
   const balances = { ...holdings.balances }
   for (const account of doc.accounts) {
-    const gain = (balances[account.id] ?? 0) * account.returnRate
+    const gain = (balances[account.id] ?? 0) * (returnFor ? returnFor(account, index) : account.returnRate)
     balances[account.id] = (balances[account.id] ?? 0) + gain
     growth += gain
   }
@@ -123,7 +135,7 @@ type Flows = ReturnType<typeof yearFlows>
 function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraTax = 0) {
   const { doc } = flows
   const inflationFactor = Math.pow(1 + doc.settings.inflation, index)
-  const grownState = growHoldings(state.holdings, doc)
+  const grownState = growHoldings(state.holdings, doc, index, plan.returnFor)
   const trading = realizeTrading(state.holdings, grownState.holdings, doc)
   let holdings = trading.holdings
   for (const account of doc.accounts) {
@@ -254,8 +266,8 @@ function startTotals(plan: Plan): { netWorth: number; financial: number } {
 }
 
 /** Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. */
-export function simulatePlan(doc: PlanDocument): PlanProjection {
-  const plan = preparePlan(doc)
+export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): PlanProjection {
+  const plan = preparePlan(doc, opts)
   let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {} }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {

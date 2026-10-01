@@ -28,8 +28,8 @@ test("progressStatus: ahead of plan is positive; before the plan starts is null"
 import { readFileSync } from "node:fs"
 import { parseDataset } from "@/lib/fire/swr-simulation"
 import type { ShillerDataset } from "@/lib/fire/fire-types"
-import { backtestInput, planSuccessRate } from "@/lib/plans/plan-backtest"
-import { simulatePlan } from "@/lib/plans/engine/simulate"
+import { annualHistory } from "@/lib/plans/stress/stress-history"
+import { cohortStarts, runCohort, summarize } from "@/lib/plans/stress/stress-test"
 import { blankPlanDocument, PRIMARY_PERSON_ID } from "@/lib/plans/plan-constants"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
@@ -46,20 +46,11 @@ function retiredPlan(spend: number): PlanDocument {
   }
 }
 
-test("backtestInput turns retirement spending into monthly draws on the retirement portfolio", () => {
-  const doc = retiredPlan(40_000)
-  const input = backtestInput(doc, simulatePlan(doc))
-  assert.ok(input)
-  assert.equal(input.portfolio, 1_000_000)
-  assert.equal(input.horizonMonths, 30 * 12)
-  assert.ok(Math.abs(input.flows[0].amount - -40_000 / 12 / 1_000_000) < 1e-12)
-})
-
-test("historical success: 3% spending survives far more often than 8%", () => {
-  const h = parseDataset(JSON.parse(readFileSync("src/lib/fire/data/shiller-monthly.json", "utf8")) as ShillerDataset)
+test("stress test on real history: 3% spending survives far more often than 8%", () => {
+  const annual = annualHistory(parseDataset(JSON.parse(readFileSync("src/lib/fire/data/shiller-monthly.json", "utf8")) as ShillerDataset))
   const rate = (spend: number) => {
     const doc = retiredPlan(spend)
-    return planSuccessRate(h, backtestInput(doc, simulatePlan(doc))!, 0.75) ?? 0
+    return summarize(cohortStarts(doc, annual, 0).map((s) => runCohort(doc, annual, s, 0)), null).successRate
   }
   const safe = rate(30_000)
   const risky = rate(80_000)

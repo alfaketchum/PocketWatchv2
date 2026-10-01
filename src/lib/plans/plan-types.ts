@@ -77,8 +77,18 @@ export interface PlanAccount {
   shortTermShare?: number
   /** Taxable accounts: share of each year's growth sold that year (active trading), taxed yearly. */
   realizedShare?: number
+  /** Stress test: what the account holds (shares add up to 1); unset uses `defaultMix`. */
+  mix?: AccountMix
   /** The milestone that created this (templates); deleting that milestone can remove it too. */
   origin?: string
+}
+
+/** Shares of an account in each asset class, for replaying market history. */
+export interface AccountMix {
+  stocks: number
+  bonds: number
+  cash: number
+  crypto: number
 }
 
 /** Payroll contribution from an income stream into an account. */
