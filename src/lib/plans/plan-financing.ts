@@ -1,9 +1,12 @@
 import { inflationOf, type Inflation } from "./plan-inflation"
+import { monthlyPayment } from "./plan-debt-payments"
 import { assetValue } from "./engine/engine-assets"
 import { resolveTiming, timingContext } from "./plan-timing"
 import type { AssetFinancing, AssetKind, DebtKind, PaymentMode, PlanAsset, PlanDebt, PlanDocument } from "./plan-types"
 
 const MONTHS_PER_YEAR = 12
+
+export { monthlyPayment }
 
 /** Typical terms when a purchase is financed but the loan isn't picked yet. */
 export const TYPICAL_FINANCING: Record<AssetKind, Omit<AssetFinancing, "mode">> = {
@@ -20,13 +23,6 @@ export const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
 
 const LOAN_KIND: Record<AssetKind, DebtKind> = { home: "mortgage", vehicle: "auto", other: "other" }
 const LOAN_NAME: Record<AssetKind, string> = { home: "mortgage", vehicle: "loan", other: "loan" }
-
-/** Level monthly payment that pays `loan` off over `months` at `annualRate`. */
-export function monthlyPayment(loan: number, annualRate: number, months: number): number {
-  if (loan <= 0 || months <= 0) return 0
-  const r = annualRate / MONTHS_PER_YEAR
-  return r === 0 ? loan / months : (loan * r) / (1 - Math.pow(1 + r, -months))
-}
 
 /** The terms that apply: undecided uses the typical ones for the kind; null when paid in cash. */
 export function effectiveFinancing(asset: PlanAsset): Omit<AssetFinancing, "mode"> | null {

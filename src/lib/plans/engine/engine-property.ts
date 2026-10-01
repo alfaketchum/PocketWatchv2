@@ -4,6 +4,7 @@
  */
 
 import { livesIn } from "../plan-asset-costs"
+import { isHomeLoanInterest } from "../plan-debt-payments"
 import { BUILDING_SHARE, RENTAL_DEPRECIATION_YEARS, rentIncomeId } from "../plan-rentals"
 import { resolveTiming, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDocument } from "../plan-types"
@@ -71,7 +72,7 @@ export function propertyYear(p: PropertyInputs): PropertyYear {
     const asset = d.assetId ? byId.get(d.assetId) : undefined
     if (interest <= 0) continue
     if (rented(asset)) rentalCosts[asset!.id] = (rentalCosts[asset!.id] ?? 0) + interest
-    else if (d.kind === "mortgage" || asset?.kind === "home") {
+    else if ((d.kind === "mortgage" || asset?.kind === "home") && isHomeLoanInterest(d)) {
       mortgageInterest += interest
       mortgageDebt += p.balanceBy[d.id] ?? 0
     }

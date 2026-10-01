@@ -184,11 +184,14 @@ const asset = z.object({
 const debt = z.object({
   id,
   name,
-  kind: z.enum(["mortgage", "student", "auto", "credit", "other"]),
+  kind: z.enum(["mortgage", "heloc", "student", "auto", "credit", "other"]),
   balance: money,
   rate: z.number().min(0).max(1),
   monthlyPayment: money,
   start: timing,
+  heloc: z
+    .object({ drawYears: z.number().int().min(0).max(30), repayYears: z.number().int().min(1).max(30), forHome: z.boolean() })
+    .optional(),
   assetId: id.nullable(),
   source,
   origin,

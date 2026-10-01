@@ -96,7 +96,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
 }
 
 /** Money in (above zero) and out (below zero) per year. They balance: in = out. */
-export const CASH_IN_LAYERS = ["income", "wdCash", "wdTaxable", "wdTaxDeferred", "wdTaxFree", "wdTaxFree529", "assetSales", "unfunded"] as const
+export const CASH_IN_LAYERS = ["income", "wdCash", "wdTaxable", "wdTaxDeferred", "wdTaxFree", "wdTaxFree529", "assetSales", "borrowed", "unfunded"] as const
 export const CASH_OUT_LAYERS = ["spending", "taxes", "debtPayments", "assetPurchases", "saved"] as const
 
 export type CashFlowLayer = (typeof CASH_IN_LAYERS)[number] | (typeof CASH_OUT_LAYERS)[number]
@@ -109,6 +109,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   wdTaxFree: "Withdrawals · tax-free",
   wdTaxFree529: "Withdrawals · tax-free (529)",
   assetSales: "Asset sales",
+  borrowed: "Borrowed (HELOC)",
   unfunded: "Unfunded (money ran out)",
   spending: "Spending",
   taxes: "Taxes",
@@ -144,6 +145,7 @@ export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashF
     wdTaxFree: 0,
     wdTaxFree529: 0,
     assetSales: Math.max(0, row.assetSales),
+    borrowed: row.borrowed,
     unfunded: row.shortfall,
     spending: -row.expenses,
     taxes: -rowTaxes(row),

@@ -21,6 +21,7 @@ const FLOW_FIELDS = [
   "rentalTaxable",
   "assetPurchases",
   "assetSales",
+  "borrowed",
   "contributions",
   "withdrawals",
   "growth",

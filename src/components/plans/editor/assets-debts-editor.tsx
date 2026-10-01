@@ -5,7 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
-import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
+import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
@@ -20,18 +20,13 @@ import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 import { generatedDebts } from "@/lib/plans/plan-expand"
 import { Badge } from "./plan-table"
+import { DEBT_KINDS, withDebtKind } from "./debt-constants"
+import { HelocFields } from "./heloc-fields"
+import { LoanScheduleDialog } from "./loan-schedule-lazy"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
   { value: "vehicle", label: "Vehicle" },
-  { value: "other", label: "Other" },
-]
-
-const DEBT_KINDS: { value: DebtKind; label: string }[] = [
-  { value: "mortgage", label: "Mortgage" },
-  { value: "student", label: "Student loan" },
-  { value: "auto", label: "Auto loan" },
-  { value: "credit", label: "Credit card" },
   { value: "other", label: "Other" },
 ]
 
@@ -168,10 +163,22 @@ function AssetsList({ doc, update }: PlanEditorProps) {
   )
 }
 
+function ScheduleButton({ name, onClick, label }: { name: string; onClick: () => void; label?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={`See the payment schedule for ${name}`} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
+      <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
+        table_chart
+      </span>
+      {label && "Payment schedule"}
+    </button>
+  )
+}
+
 function DebtsList({ doc, update }: PlanEditorProps) {
   const generated = useMemo(() => generatedDebts(doc), [doc])
   const patch = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))
   const assetOptions = [{ value: NO_ASSET, label: "None" }, ...doc.assets.map((a) => ({ value: a.id, label: a.name }))]
+  const [scheduleId, setScheduleId] = useState<string | null>(null)
   return (
     <InputBlock
       title="Debts"
@@ -182,62 +189,72 @@ function DebtsList({ doc, update }: PlanEditorProps) {
         <div className="space-y-1 rounded-xl border border-card-border p-3">
           <p className="text-[11px] text-foreground-muted">From your financed purchases. Edit them on the asset&apos;s &ldquo;How you&apos;ll pay&rdquo;.</p>
           {generated.map(({ debt, assetId, year }) => (
-            <button
-              key={debt.id}
-              type="button"
-              onClick={() => assetId && document.getElementById(planItemAnchor(assetId))?.scrollIntoView({ behavior: "smooth", block: "center" })}
-              className="flex w-full items-center gap-2 rounded-md -mx-1 px-1 py-0.5 text-left text-xs hover:bg-foreground/5"
-            >
-              <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }}>request_quote</span>
-              <span className="text-foreground">{debt.name}</span>
-              <span className="text-foreground-muted tabular-nums">
-                {fmtMoney(debt.balance)} at {(debt.rate * 100).toFixed(2)}% · {fmtMoney(debt.monthlyPayment)}/mo
-                {year !== null && ` · from ${year} (${year} dollars)`}
-              </span>
-              <Badge>From asset</Badge>
-              <span className="ml-auto text-[11px] text-primary">Edit on the asset →</span>
-            </button>
+            <div key={debt.id} className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => assetId && document.getElementById(planItemAnchor(assetId))?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md -mx-1 px-1 py-0.5 text-left text-xs hover:bg-foreground/5"
+              >
+                <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }}>request_quote</span>
+                <span className="text-foreground">{debt.name}</span>
+                <span className="text-foreground-muted tabular-nums">
+                  {fmtMoney(debt.balance)} at {(debt.rate * 100).toFixed(2)}% · {fmtMoney(debt.monthlyPayment)}/mo
+                  {year !== null && ` · from ${year} (${year} dollars)`}
+                </span>
+                <Badge>From asset</Badge>
+                <span className="ml-auto text-[11px] text-primary">Edit on the asset →</span>
+              </button>
+              <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} />
+            </div>
           ))}
         </div>
       )}
-      {doc.debts.map((debt) => (
-        <ItemCard
-          key={debt.id} anchorId={planItemAnchor(debt.id)}
-          title={debt.name || "Untitled debt"}
-          removeLabel={`Remove ${debt.name}`}
-          onRemove={() => update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }))}
-        >
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
-            <div className="col-span-2 lg:col-span-1">
-              <TextField label="Name" value={debt.name} onChange={(name) => patch(debt.id, { name })} />
+      {doc.debts.map((debt) => {
+        const heloc = debt.kind === "heloc"
+        return (
+          <ItemCard
+            key={debt.id} anchorId={planItemAnchor(debt.id)}
+            title={debt.name || "Untitled debt"}
+            removeLabel={`Remove ${debt.name}`}
+            onRemove={() => update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }))}
+          >
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 items-end">
+              <div className="col-span-2 lg:col-span-1">
+                <TextField label="Name" value={debt.name} onChange={(name) => patch(debt.id, { name })} />
+              </div>
+              <SelectField label="Type" value={debt.kind} options={DEBT_KINDS} onChange={(kind) => patch(debt.id, withDebtKind(debt, kind, doc))} />
+              <FireNumberField label={heloc ? "Amount drawn" : "Balance"} prefix="$" min={0} value={debt.balance} onChange={(balance) => patch(debt.id, { balance })} />
+              <FireNumberField label="Interest" suffix="%" scale={100} min={0} max={1} value={debt.rate} onChange={(rate) => patch(debt.id, { rate })} />
+              {!heloc && (
+                <FireNumberField
+                  label="Monthly payment"
+                  prefix="$"
+                  min={0}
+                  value={debt.monthlyPayment}
+                  onChange={(monthlyPayment) => patch(debt.id, { monthlyPayment })}
+                />
+              )}
             </div>
-            <SelectField label="Type" value={debt.kind} options={DEBT_KINDS} onChange={(kind) => patch(debt.id, { kind })} />
-            <FireNumberField label="Balance" prefix="$" min={0} value={debt.balance} onChange={(balance) => patch(debt.id, { balance })} />
-            <FireNumberField label="Interest" suffix="%" scale={100} min={0} max={1} value={debt.rate} onChange={(rate) => patch(debt.id, { rate })} />
-            <FireNumberField
-              label="Monthly payment"
-              prefix="$"
-              min={0}
-              value={debt.monthlyPayment}
-              onChange={(monthlyPayment) => patch(debt.id, { monthlyPayment })}
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <TimingPicker label="Starts" value={debt.start} doc={doc} onChange={(start) => patch(debt.id, { start })} />
-            {doc.assets.length > 0 && (
-              <SelectField
-                label="Finances asset"
-                value={debt.assetId ?? NO_ASSET}
-                options={assetOptions}
-                onChange={(v) => patch(debt.id, { assetId: v === NO_ASSET ? null : v })}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <TimingPicker label={heloc ? "Drawn" : "Starts"} value={debt.start} doc={doc} onChange={(start) => patch(debt.id, { start })} />
+              {doc.assets.length > 0 && (
+                <SelectField
+                  label="Finances asset"
+                  value={debt.assetId ?? NO_ASSET}
+                  options={assetOptions}
+                  onChange={(v) => patch(debt.id, { assetId: v === NO_ASSET ? null : v })}
+                />
+              )}
+            </div>
+            {heloc && <HelocFields debt={debt} doc={doc} onChange={(change) => patch(debt.id, change)} />}
+            {!heloc && debt.balance > 0 && debt.monthlyPayment <= (debt.balance * debt.rate) / 12 && (
+              <p className="text-[11px] text-warning">This payment doesn&apos;t cover the interest, so the balance grows.</p>
             )}
-          </div>
-          {debt.balance > 0 && debt.monthlyPayment <= (debt.balance * debt.rate) / 12 && (
-            <p className="text-[11px] text-warning">This payment doesn&apos;t cover the interest, so the balance grows.</p>
-          )}
-        </ItemCard>
-      ))}
+            <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} label />
+          </ItemCard>
+        )
+      })}
+      {scheduleId && <LoanScheduleDialog doc={doc} debtId={scheduleId} onClose={() => setScheduleId(null)} />}
     </InputBlock>
   )
 }

@@ -44,7 +44,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
     blocks: [
       {
         kind: "formula",
-        formula: "Left over = income − payroll contributions − taxes − spending − loan payments − purchases + sales",
+        formula: "Left over = income − payroll contributions − taxes − spending − loan payments − purchases + sales + HELOC draws",
       },
       { kind: "text", text: "**When money is left over**, it is saved in this order:" },
       {

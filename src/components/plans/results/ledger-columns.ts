@@ -30,6 +30,7 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
   { id: "splitOut", label: "Split out", hint: "Account shares moved to an ex-spouse in a divorce (not taxed)", kind: "flow", tone: "neg", value: (r) => -r.splitOut },
   { id: "withdrawals", label: "Withdrawn", hint: "Taken from accounts to cover the year, tax on those withdrawals included", kind: "flow", tone: "neg", value: (r) => -r.withdrawals },
   { id: "assetSales", label: "Asset sales", hint: "Proceeds from selling homes, cars and other assets", kind: "flow", value: (r) => Math.max(0, r.assetSales) },
+  { id: "borrowed", label: "Borrowed", hint: "Cash drawn from a HELOC", kind: "flow", value: (r) => r.borrowed },
   { id: "spending", label: "Spending", hint: "Every spending line, kids and home/vehicle running costs", kind: "flow", tone: "neg", value: (r) => -r.expenses },
   { id: "taxes", label: "Taxes", hint: "All taxes: income, payroll, withdrawals, asset sales and trading", kind: "flow", tone: "neg", value: (r) => -taxes(r) },
   { id: "incomeTax", label: "Income tax", hint: "Federal and state tax on earned income (after the bracket true-up)", kind: "flow", tone: "neg", value: (r) => -r.incomeTax },
@@ -78,7 +79,7 @@ export const LEDGER_VIEWS = {
   summary: { label: "Summary", columns: ["income", "taxes", "spending", "debtPayments", "contributions", "withdrawals", "invested", "netWorth"] },
   cashflow: {
     label: "Cash flow",
-    columns: ["income", "received", "splitOut", "withdrawals", "assetSales", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
+    columns: ["income", "received", "splitOut", "withdrawals", "assetSales", "borrowed", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
   },
   taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "payrollTax", "withdrawalTax", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
   balances: {

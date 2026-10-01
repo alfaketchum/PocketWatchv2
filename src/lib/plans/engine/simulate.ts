@@ -212,7 +212,7 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
     income.total - income.employeeContributions - incomeTax - flows.payroll.total - extraTax - trading.tax - expenses.total - debts.paid -
-    events.purchases + events.sales - events.saleTax - transfers.total + earmarked.drawn + drained.net
+    events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
   const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
   return {
@@ -301,6 +301,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     deduction: yearDeduction(flows.tax, taxedAmounts(flows, moved)),
     assetPurchases: events.purchases,
     assetSales: events.sales,
+    borrowed: events.borrowed,
     contributions: sum(moved.contributionsBy),
     contributionsBy: moved.contributionsBy,
     withdrawals: sum(moved.withdrawalsBy),

@@ -105,6 +105,7 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Medicare IRMAA** surcharges and the **alternative minimum tax** aren't included.",
           "**Social Security** estimates leave out future real wage growth (about 1% a year, so younger people's estimates are a little low) and freezing the wage indexing at age 60. Not modeled: divorced-spouse benefits, children's and family-maximum rules, the earnings test on survivor benefits, and a survivor benefit when the deceased hadn't claimed yet (their claiming age is used).",
           "**Years, not months**: plans step a year at a time (FIRE's history engine is monthly).",
+          "**Loans** have fixed rates. Variable-rate loans, refinancing, extra principal payments and a HELOC drawn in several pieces aren't modeled yet.",
           "**Tax law** is 2026's, carried forward; scheduled changes in the 2025 law (SALT cap) are included, future legislation isn't.",
         ],
       },

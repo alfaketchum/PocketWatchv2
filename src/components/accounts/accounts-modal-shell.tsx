@@ -8,13 +8,15 @@ interface AccountsModalShellProps {
   onClose: () => void
   children: ReactNode
   footer: ReactNode
+  /** Wider frame for tables. */
+  wide?: boolean
 }
 
 /**
  * Dialog frame for the directory's edit/add forms. Portaled to <body> so the
  * fixed overlay escapes transformed page-transition ancestors.
  */
-export function AccountsModalShell({ title, onClose, children, footer }: AccountsModalShellProps) {
+export function AccountsModalShell({ title, onClose, children, footer, wide }: AccountsModalShellProps) {
   if (typeof document === "undefined") return null
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
@@ -22,7 +24,7 @@ export function AccountsModalShell({ title, onClose, children, footer }: Account
         role="dialog"
         aria-modal="true"
         aria-labelledby="accounts-modal-title"
-        className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-card-border bg-card"
+        className={`flex max-h-[90dvh] w-full ${wide ? "max-w-3xl" : "max-w-md"} flex-col overflow-hidden rounded-2xl border border-card-border bg-card`}
         style={{ boxShadow: "var(--shadow-lg)" }}
         onClick={(e) => e.stopPropagation()}
       >

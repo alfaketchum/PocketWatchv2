@@ -5,7 +5,7 @@ export type IncomeKind = "salary" | "business" | "social_security" | "pension" |
 
 export type AssetKind = "home" | "vehicle" | "other"
 
-export type DebtKind = "mortgage" | "student" | "auto" | "credit" | "other"
+export type DebtKind = "mortgage" | "heloc" | "student" | "auto" | "credit" | "other"
 
 export type MilestoneKind = "retirement" | "custom" | "child" | "asset" | "income"
 
@@ -287,6 +287,16 @@ export interface PlanAsset {
   origin?: string
 }
 
+/** A home equity line: interest-only while you can draw on it, then paid down like a mortgage. */
+export interface HelocTerms {
+  /** Years of the draw period left from the debt's start; only interest is due. */
+  drawYears: number
+  /** Years to repay the balance once the draw period ends. */
+  repayYears: number
+  /** Spent buying, building or improving the home it's against: only then is its interest deductible. */
+  forHome: boolean
+}
+
 export interface PlanDebt {
   id: string
   name: string
@@ -295,8 +305,11 @@ export interface PlanDebt {
   balance: number
   /** Annual interest rate. */
   rate: number
+  /** Ignored for a HELOC: its payment follows `heloc`. */
   monthlyPayment: number
   start: Timing
+  /** Only for kind "heloc". */
+  heloc?: HelocTerms
   /** The asset this debt finances; it is paid off when the asset is sold. */
   assetId: string | null
   source: PlanSource | null
@@ -444,6 +457,8 @@ export interface YearRow {
   deduction: { amount: number; itemized: boolean } | null
   assetPurchases: number
   assetSales: number
+  /** Cash drawn this year from loans that start during the plan and don't pay for a purchase (a HELOC). */
+  borrowed: number
   /** Everything deposited into accounts: your payroll contributions, employer match and leftover cash flow. */
   contributions: number
   contributionsBy: Record<string, number>

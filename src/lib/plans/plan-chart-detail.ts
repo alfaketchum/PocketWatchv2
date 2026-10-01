@@ -63,6 +63,7 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
       age: age0 + r.index,
       year: r.year,
       assetSales: Math.max(0, r.assetSales),
+      borrowed: r.borrowed,
       unfunded: r.shortfall,
       assetPurchases: -(r.assetPurchases + Math.max(0, -r.assetSales)),
     }
@@ -88,6 +89,7 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     ...doc.incomes.map((i) => ({ key: `in:${i.id}`, label: i.name, parent: "income" as const })),
     ...doc.accounts.map((a) => ({ key: `wd:${a.id}`, label: `From ${a.name}`, parent: withdrawalParent(a.id) })),
     { key: "assetSales", label: "Asset sales", parent: "assetSales" },
+    { key: "borrowed", label: "Borrowed (HELOC)", parent: "borrowed" },
     { key: "unfunded", label: "Unfunded (money ran out)", parent: "unfunded" },
     ...doc.expenses.map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const })),
     ...TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const })),

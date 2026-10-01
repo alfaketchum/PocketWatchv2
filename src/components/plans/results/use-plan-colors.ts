@@ -89,6 +89,7 @@ function buildPlanColors(t: {
       wdTaxFree: netWorth.taxFree,
       wdTaxFree529: netWorth.taxFree529,
       assetSales: netWorth.realAssets,
+      borrowed: mix(error, warning, 0.5),
       // Darker than spending's red so the gap reads differently from the spending it covers.
       unfunded: mix(error, foreground, 0.4),
       spending: error,

@@ -27,7 +27,7 @@ export interface PlanSankey {
   total: number
 }
 
-const EXTRA_SOURCES = ["assetSales", "unfunded"] as const
+const EXTRA_SOURCES = ["assetSales", "borrowed", "unfunded"] as const
 const OUT_GROUPS = ["taxes", "spending", "debtPayments", "assetPurchases", "saved"] as const
 
 class Builder {

@@ -55,6 +55,7 @@ export const TAX_SECTIONS: MethodSection[] = [
         items: [
           "**SALT cap** (2025 tax law): $40,000 in 2025, rising 1% a year through 2029, reduced by 30% of income above $500,000 (that line also rises 1% a year), never below $10,000. From 2030 it returns to $10,000.",
           "**Mortgage interest** is deductible on up to $750,000 of mortgage; above that, a proportional share.",
+          "**HELOC interest** counts only when the money was spent buying, building or improving the home it's against (you mark this on the HELOC). Spent on anything else, it isn't deductible.",
           "Only homes you live in count. A rented-out home's costs come off its rent instead (see Homes).",
           "**States** follow their own rules: some don't allow itemizing, some use their own itemized deductions with their own caps, some start from the federal amount, and some give a property-tax deduction or credit that phases out with income. Each state's rule is checked against its revenue department's guidance.",
         ],
@@ -73,7 +74,8 @@ export const TAX_SECTIONS: MethodSection[] = [
           "**Value**: an asset bought in a future year costs today's price grown by inflation to that year, then changes at its own appreciation (or depreciation) rate.",
           "**Vehicles** can follow a depreciation curve by age instead of a flat rate: about 20% the first year, 45% by year 5 and 72% by year 10, never below 5% of the new price. Buying brand new, pre-owned (about 3 years old) or used (about 6) sets a typical price and loan rate (new $50,300, used $26,000; loans 6.35% new, 11.19% used) and where the car starts on the curve.",
           "**Running costs** (property tax, insurance, maintenance) are either fixed amounts that rise with inflation or a share of the home's value that follows its value. \"Use typical costs\" fills in your state's average effective property-tax rate, or a looked-up home's actual tax bill.",
-          "**Loans** use a level monthly payment; each year's payments are split into interest (on the balance owed) and principal. A financed purchase creates its loan automatically; a real linked loan always takes its place.",
+          "**Loans** use a level monthly payment; each year's payments are split into interest (on the balance owed) and principal. A financed purchase creates its loan automatically; a real linked loan always takes its place. Any loan's **payment schedule** shows the split year by year and month by month, the payment where principal first passes interest, and amounts in today's dollars (payments deflated by their year's prices, balances by the prices at the end of their month) or future dollars.",
+          "**HELOCs** are one draw: the amount drawn arrives as cash in the year it's drawn (one already open when the plan starts brings none). Only interest is due through the draw period, so the balance holds; then a level payment repays it over the repayment years. Selling the home pays it off. The rate is fixed; variable rates and repeated draws aren't modeled.",
           "**Selling**: the gain over what you paid is taxed as a capital gain. A home you have lived in for at least two years gets the home-sale exclusion: $250,000 single, $500,000 joint (set by law, not indexed).",
           "**Renting out**: rent is taxable after the home's costs, mortgage interest and depreciation (80% of the price, the building's typical share, over 27.5 years). A rental loss isn't used against other income, as passive-loss rules usually prevent that.",
         ],

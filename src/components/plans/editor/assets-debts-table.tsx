@@ -1,26 +1,21 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
-import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
+import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Badge, Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 import { paidWithLabel } from "@/lib/plans/plan-financing"
 import { removeAsset } from "@/lib/plans/plan-edits"
 import { generatedDebts } from "@/lib/plans/plan-expand"
+import { scheduledPayment } from "@/lib/plans/plan-debt-payments"
+import { DEBT_KINDS, withDebtKind } from "./debt-constants"
+import { LoanScheduleDialog } from "./loan-schedule-lazy"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
   { value: "vehicle", label: "Vehicle" },
-  { value: "other", label: "Other" },
-]
-
-const DEBT_KINDS: { value: DebtKind; label: string }[] = [
-  { value: "mortgage", label: "Mortgage" },
-  { value: "student", label: "Student loan" },
-  { value: "auto", label: "Auto loan" },
-  { value: "credit", label: "Credit card" },
   { value: "other", label: "Other" },
 ]
 
@@ -43,12 +38,25 @@ const DEBT_COLUMNS = [
   { label: "Monthly", align: "right" as const, width: "w-32" },
   { label: "Starts", width: "w-28" },
   { label: "Finances", width: "w-32" },
-  { label: "", width: "w-16" },
+  { label: "", width: "w-24" },
 ]
 
-function Actions({ name, anchor, onEditItem, onRemove }: { name: string; anchor: string; onEditItem?: (id: string) => void; onRemove: () => void }) {
+function Actions({
+  name,
+  anchor,
+  onEditItem,
+  onRemove,
+  onSchedule,
+}: {
+  name: string
+  anchor: string
+  onEditItem?: (id: string) => void
+  onRemove: () => void
+  onSchedule?: () => void
+}) {
   return (
     <span className="flex">
+      {onSchedule && <RowButton icon="table_chart" label={`See the payment schedule for ${name}`} onClick={onSchedule} />}
       <RowButton icon="edit" label={`Edit ${name} in detailed view`} onClick={() => onEditItem?.(anchor)} />
       <RowButton icon="delete" label={`Remove ${name}`} danger onClick={onRemove} />
     </span>
@@ -62,6 +70,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
   const assetName = (id: string | null) => doc.assets.find((a) => a.id === id)?.name ?? "—"
   // Loans from financed purchases: listed read-only, edited on their asset.
   const generated = useMemo(() => generatedDebts(doc), [doc])
+  const [scheduleId, setScheduleId] = useState<string | null>(null)
   return (
     <div className="space-y-5">
       <PlanTable
@@ -129,7 +138,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
             </td>
             <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(doc.debts.reduce((s, d) => s + d.balance, 0))}</td>
             <td />
-            <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(doc.debts.reduce((s, d) => s + d.monthlyPayment, 0))}</td>
+            <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(doc.debts.reduce((s, d) => s + scheduledPayment(d, 0), 0))}</td>
             <td colSpan={3} />
           </tr>
         }
@@ -140,7 +149,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <CellText label="Debt name" value={debt.name} onChange={(name) => patchDebt(debt.id, { name })} />
             </Cell>
             <Cell>
-              <CellSelect label="Type" value={debt.kind} options={DEBT_KINDS} onChange={(kind) => patchDebt(debt.id, { kind })} />
+              <CellSelect label="Type" value={debt.kind} options={DEBT_KINDS} onChange={(kind) => patchDebt(debt.id, withDebtKind(debt, kind, doc))} />
             </Cell>
             <Cell align="right">
               <CellNumber label="Balance" prefix="$" min={0} value={debt.balance} onChange={(balance) => patchDebt(debt.id, { balance })} />
@@ -149,7 +158,13 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <CellNumber label="Interest" suffix="%" scale={100} min={0} max={1} value={debt.rate} onChange={(rate) => patchDebt(debt.id, { rate })} />
             </Cell>
             <Cell align="right">
-              <CellNumber label="Monthly payment" prefix="$" min={0} value={debt.monthlyPayment} onChange={(monthlyPayment) => patchDebt(debt.id, { monthlyPayment })} />
+              {debt.kind === "heloc" ? (
+                <span className="block px-2 tabular-nums" title="Interest only during the draw period, then paid down; change the terms in the detailed view">
+                  {fmtMoney(scheduledPayment(debt, 0))}
+                </span>
+              ) : (
+                <CellNumber label="Monthly payment" prefix="$" min={0} value={debt.monthlyPayment} onChange={(monthlyPayment) => patchDebt(debt.id, { monthlyPayment })} />
+              )}
             </Cell>
             <Cell>
               <TimingCell timing={debt.start} doc={doc} />
@@ -163,6 +178,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
                 anchor={planItemAnchor(debt.id)}
                 onEditItem={onEditItem}
                 onRemove={() => update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }))}
+                onSchedule={() => setScheduleId(debt.id)}
               />
             </Cell>
           </Row>
@@ -194,11 +210,15 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <span className="block truncate px-2 text-xs text-foreground-muted">{assetName(assetId)}</span>
             </Cell>
             <Cell align="center">
-              {assetId && <RowButton icon="edit" label={`Edit the financing on ${assetName(assetId)}`} onClick={() => onEditItem?.(planItemAnchor(assetId))} />}
+              <span className="flex">
+                <RowButton icon="table_chart" label={`See the payment schedule for ${debt.name}`} onClick={() => setScheduleId(debt.id)} />
+                {assetId && <RowButton icon="edit" label={`Edit the financing on ${assetName(assetId)}`} onClick={() => onEditItem?.(planItemAnchor(assetId))} />}
+              </span>
             </Cell>
           </Row>
         ))}
       </PlanTable>
+      {scheduleId && <LoanScheduleDialog doc={doc} debtId={scheduleId} onClose={() => setScheduleId(null)} />}
     </div>
   )
 }
