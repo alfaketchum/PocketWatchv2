@@ -78,7 +78,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
 
   return (
     <div className="space-y-8">
-      <EditorToolbar toggle={viewToggle}>
+      <EditorToolbar toggle={viewToggle} center={doc.expenses.length > 0 ? <PatternProfileMenu doc={doc} update={update} /> : undefined}>
         <AddExpenseButton doc={doc} update={update} />
       </EditorToolbar>
       <div className="space-y-3">
@@ -86,12 +86,9 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
         {doc.expenses.length === 0 ? (
           <EmptyNote>No expenses yet. Start with one line for everyday living costs; split it up later if you want.</EmptyNote>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-foreground-muted">
-              Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
-            </p>
-            <PatternProfileMenu doc={doc} update={update} />
-          </div>
+          <p className="text-xs text-foreground-muted">
+            Spending today: <span className="font-semibold text-foreground tabular-nums">{fmtMoney(recurringTotal)}</span> / yr
+          </p>
         )}
         {view === "compact" ? (
         <ExpensesTable doc={doc} update={update} onEditItem={onEditItem} onEditChild={setEditingChild} />

@@ -106,7 +106,17 @@ export function AddButton({ label, onClick, disabled }: { label: string; onClick
 }
 
 /** Top of a list tab: its Add buttons on the left, the Compact / Detailed switch on the right. */
-export function EditorToolbar({ children, toggle }: { children?: ReactNode; toggle?: ReactNode }) {
+export function EditorToolbar({ children, toggle, center }: { children?: ReactNode; toggle?: ReactNode; center?: ReactNode }) {
+  if (center) {
+    // Three columns so the middle control sits in the true center, whatever the widths on either side.
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr]">
+        <div className="flex flex-wrap items-center gap-2">{children}</div>
+        <div className="flex justify-center">{center}</div>
+        <div className="flex justify-end">{toggle}</div>
+      </div>
+    )
+  }
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-2">{children}</div>
