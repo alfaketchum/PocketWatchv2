@@ -10,7 +10,8 @@ import {
 } from "./federal-2026"
 import { STATE_GAINS } from "./state-gains-2026"
 import { STATE_TAX, type StateTax } from "./state-2026"
-import { saltCap, STATE_PROPERTY_TAX_DEDUCTION, type Itemized } from "./itemized-2026"
+import { interestWithinLimit, MORTGAGE_DEBT_LIMIT, saltCap, type Itemized } from "./itemized-2026"
+import { STATE_HOMEOWNER, type StateHomeownerRules } from "./state-homeowner-2026"
 
 /** Tax on `income` over progressive `brackets` whose thresholds are scaled by `index`. */
 export function bracketTax(income: number, brackets: Brackets, index = 1): number {
@@ -77,10 +78,14 @@ export function federalDeduction(b: TaxBase, s: TaxSituation, stateIncomeTax: nu
   const standard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
   const it = s.itemized
   if (!it) return { amount: standard, itemized: false }
-  const magi = b.ordinary + b.shortGains + b.longGains
-  const salt = Math.min(saltCap(it.year, magi), stateIncomeTax + it.propertyTax)
-  const itemized = salt + it.mortgageInterest
+  const itemized = federalItemized(b, it, stateIncomeTax)
   return itemized > standard ? { amount: itemized, itemized: true } : { amount: standard, itemized: false }
+}
+
+/** Federal itemized deductions: SALT under the year's cap plus mortgage interest on up to $750,000. */
+function federalItemized(b: TaxBase, it: Itemized, stateIncomeTax: number): number {
+  const magi = b.ordinary + b.shortGains + b.longGains
+  return Math.min(saltCap(it.year, magi), stateIncomeTax + it.propertyTax) + interestWithinLimit(it, MORTGAGE_DEBT_LIMIT)
 }
 
 /**
@@ -99,48 +104,81 @@ export function federalTax(b: TaxBase, s: TaxSituation, stateIncomeTax = 0): num
   return bracketTax(ordinaryTaxable, FEDERAL_ORDINARY[s.status], s.index) + gainsTax + netInvestmentIncomeTax(b, s)
 }
 
-/** The state's regular income tax on `income`. */
-function regularStateTax(table: StateTax | undefined, income: number, s: TaxSituation): number {
+/** The state's regular income tax on `income`, after `deduction`. */
+function regularStateTax(table: StateTax | undefined, income: number, s: TaxSituation, deduction: number): number {
   if (!table || table.kind === "none") return 0
-  const taxable = Math.max(0, income - (table.deduction?.[s.status] ?? 0) * s.index)
+  const taxable = Math.max(0, income - deduction)
   if (table.kind === "flat") return taxable * (table.rate ?? 0)
   return table.brackets ? bracketTax(taxable, table.brackets[s.status], s.index) : 0
 }
 
 /** Montana-style: long-term gains on their own brackets, stacked on other taxable income. */
-function separateGainsTax(table: StateTax | undefined, b: TaxBase, s: TaxSituation, brackets: Brackets): number {
+function separateGainsTax(table: StateTax | undefined, b: TaxBase, s: TaxSituation, brackets: Brackets, deduction: number): number {
   const other = b.ordinary + b.shortGains
-  const deduction = (table?.deduction?.[s.status] ?? 0) * s.index
   const otherTaxable = Math.max(0, other - deduction)
   const gainsTaxable = Math.max(0, b.longGains - Math.max(0, deduction - other))
-  return regularStateTax(table, other, s) + bracketTax(otherTaxable + gainsTaxable, brackets, s.index) - bracketTax(otherTaxable, brackets, s.index)
+  return regularStateTax(table, other, s, deduction) + bracketTax(otherTaxable + gainsTaxable, brackets, s.index) - bracketTax(otherTaxable, brackets, s.index)
 }
 
-/** A state's homeowner property-tax deduction (NJ), taken off ordinary income. */
-function withStatePropertyTaxDeduction(b: TaxBase, s: TaxSituation): TaxBase {
-  const limit = s.state ? STATE_PROPERTY_TAX_DEDUCTION[s.state] : undefined
-  if (!limit || !s.itemized) return b
-  return { ...b, ordinary: Math.max(0, b.ordinary - Math.min(limit, s.itemized.residenceTax)) }
+/** A state's own itemized deductions for a homeowner: property tax and mortgage interest within its limits. */
+function stateItemized(rules: StateHomeownerRules, it: Itemized): number {
+  const propertyTax = Math.min(it.propertyTax, rules.caps?.propertyTax ?? Infinity)
+  const interest = interestWithinLimit(it, rules.mortgageDebtLimit ?? MORTGAGE_DEBT_LIMIT)
+  return Math.min(propertyTax + interest, rules.caps?.mortgageAndPropertyTax ?? Infinity, rules.caps?.total ?? Infinity)
 }
 
-/** State tax: gains are taxed like other income, except in the states in STATE_GAINS. */
-export function stateTax(base: TaxBase, s: TaxSituation): number {
-  const b = withStatePropertyTaxDeduction(base, s)
+/**
+ * The state deduction: its standard deduction, or itemizing when the state allows it and that's larger
+ * (federal-base states: the federal deduction less the state income tax in it), plus any homeowner's
+ * property-tax deduction.
+ */
+export function stateDeduction(b: TaxBase, s: TaxSituation, table: StateTax | undefined): number {
+  const rules = s.state ? STATE_HOMEOWNER[s.state] : undefined
+  const it = s.itemized
+  const federalStandard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
+  const standard = table?.deduction ? table.deduction[s.status] * s.index : rules?.itemize === "federal" ? federalStandard : 0
+  if (!rules || !it) return standard
+  let deduction = standard
+  if (rules.itemize === "own" && (!rules.requiresFederalItemizing || federalItemized(b, it, 0) > federalStandard)) {
+    deduction = Math.max(standard, stateItemized(rules, it))
+  } else if (rules.itemize === "federal") {
+    deduction = Math.max(standard, federalItemized(b, it, 0))
+  }
+  return deduction + Math.min(rules.propertyTaxDeduction?.max ?? 0, it.residenceTax)
+}
+
+/** A state's property-tax credit on your home, when income is under its limit. */
+function statePropertyTaxCredit(b: TaxBase, s: TaxSituation): number {
+  const credit = s.state ? STATE_HOMEOWNER[s.state]?.propertyTaxCredit : undefined
+  if (!credit || !s.itemized) return 0
+  const income = b.ordinary + b.shortGains + b.longGains
+  if (credit.incomeLimit && income > credit.incomeLimit[s.status]) return 0
+  return Math.min(credit.rate * s.itemized.residenceTax, credit.max ?? Infinity)
+}
+
+/** State tax: gains are taxed like other income, except in the states in STATE_GAINS; less any homeowner credit. */
+export function stateTax(b: TaxBase, s: TaxSituation): number {
   const table = s.state ? STATE_TAX[s.state] : undefined
+  const deduction = stateDeduction(b, s, table)
+  return Math.max(0, stateTaxBeforeCredits(b, s, table, deduction) - statePropertyTaxCredit(b, s))
+}
+
+function stateTaxBeforeCredits(b: TaxBase, s: TaxSituation, table: StateTax | undefined, deduction: number): number {
   const rule = s.state ? STATE_GAINS[s.state] : undefined
   const all = b.ordinary + b.shortGains + b.longGains
-  if (!rule) return regularStateTax(table, all, s)
+  const regular = (income: number) => regularStateTax(table, income, s, deduction)
+  if (!rule) return regular(all)
   switch (rule.kind) {
     case "exclude":
-      return regularStateTax(table, all - b.longGains * rule.share, s)
+      return regular(all - b.longGains * rule.share)
     case "deduct":
-      return regularStateTax(table, all - Math.min(b.longGains, rule.amount), s)
+      return regular(all - Math.min(b.longGains, rule.amount))
     case "maxRate":
-      return Math.min(regularStateTax(table, all, s), regularStateTax(table, all - b.longGains, s) + b.longGains * rule.rate)
+      return Math.min(regular(all), regular(all - b.longGains) + b.longGains * rule.rate)
     case "separate":
-      return separateGainsTax(table, b, s, rule.brackets[s.status])
+      return separateGainsTax(table, b, s, rule.brackets[s.status], deduction)
     case "shortSurcharge":
-      return regularStateTax(table, all, s) + b.shortGains * rule.extra
+      return regular(all) + b.shortGains * rule.extra
     case "gainsOnly":
       return bracketTax(Math.max(0, b.longGains - b.realEstateGains - rule.deduction * s.index), rule.brackets, s.index)
   }

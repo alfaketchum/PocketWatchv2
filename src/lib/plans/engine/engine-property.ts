@@ -7,7 +7,7 @@ import { livesIn } from "../plan-asset-costs"
 import { BUILDING_SHARE, RENTAL_DEPRECIATION_YEARS, rentIncomeId } from "../plan-rentals"
 import { resolveTiming, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDocument } from "../plan-types"
-import { MORTGAGE_DEBT_LIMIT, type Itemized } from "../tax/itemized-2026"
+import type { Itemized } from "../tax/itemized-2026"
 import { assetBasis, isOwned, type AssetEntry } from "./engine-assets"
 
 export interface PropertyYear {
@@ -65,14 +65,15 @@ export function propertyYear(p: PropertyInputs): PropertyYear {
     }
   }
   let mortgageInterest = 0
+  let mortgageDebt = 0
   for (const d of p.doc.debts) {
     const interest = p.interestBy[d.id] ?? 0
     const asset = d.assetId ? byId.get(d.assetId) : undefined
     if (interest <= 0) continue
     if (rented(asset)) rentalCosts[asset!.id] = (rentalCosts[asset!.id] ?? 0) + interest
     else if (d.kind === "mortgage" || asset?.kind === "home") {
-      const balance = p.balanceBy[d.id] ?? 0
-      mortgageInterest += interest * (balance > MORTGAGE_DEBT_LIMIT ? MORTGAGE_DEBT_LIMIT / balance : 1)
+      mortgageInterest += interest
+      mortgageDebt += p.balanceBy[d.id] ?? 0
     }
   }
   let rentalTaxable = 0
@@ -83,5 +84,5 @@ export function propertyYear(p: PropertyInputs): PropertyYear {
     const dep = depreciation(entry, rentalStart(asset, entry, p.ctx), p.index)
     rentalTaxable += Math.max(0, rent - (rentalCosts[asset.id] ?? 0) - dep)
   }
-  return { itemized: { year: p.year, propertyTax, residenceTax, mortgageInterest }, rentalTaxable }
+  return { itemized: { year: p.year, propertyTax, residenceTax, mortgageInterest, mortgageDebt }, rentalTaxable }
 }

@@ -15,9 +15,6 @@ const SALT_PHASEOUT_RATE = 0.3
 /** Mortgage interest is deductible on up to this much acquisition debt (permanent from 2026). */
 export const MORTGAGE_DEBT_LIMIT = 750_000
 
-/** States that let homeowners deduct property tax on their state return: the most per year. */
-export const STATE_PROPERTY_TAX_DEDUCTION: Record<string, number> = { NJ: 15_000 }
-
 /** The SALT cap for `year` at this income (MAGI); before 2025 the old $10,000 cap. */
 export function saltCap(year: number, magi: number): number {
   if (year < 2025 || year > SALT_LAST_HIGH_YEAR) return SALT_FLOOR
@@ -34,6 +31,13 @@ export interface Itemized {
   propertyTax: number
   /** Of that: on homes you live in (state property-tax deductions need a principal residence). */
   residenceTax: number
-  /** Deductible mortgage interest (within the debt limit). */
+  /** Interest on mortgages against homes you keep for yourself (each tax system applies its own debt limit). */
   mortgageInterest: number
+  /** Those mortgages' balance going into the year. */
+  mortgageDebt: number
+}
+
+/** Mortgage interest deductible under a debt limit: the share of interest on the first `limit` of debt. */
+export function interestWithinLimit(it: Pick<Itemized, "mortgageInterest" | "mortgageDebt">, limit: number): number {
+  return it.mortgageDebt > limit ? it.mortgageInterest * (limit / it.mortgageDebt) : it.mortgageInterest
 }
