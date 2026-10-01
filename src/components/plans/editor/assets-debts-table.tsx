@@ -56,7 +56,7 @@ function Actions({
 }) {
   return (
     <span className="flex">
-      {onSchedule && <RowButton icon="table_chart" label={`See the payment schedule for ${name}`} onClick={onSchedule} />}
+      {onSchedule && <RowButton icon="table_chart" label={`See the amortization schedule for ${name}`} onClick={onSchedule} />}
       <RowButton icon="edit" label={`Edit ${name} in detailed view`} onClick={() => onEditItem?.(anchor)} />
       <RowButton icon="delete" label={`Remove ${name}`} danger onClick={onRemove} />
     </span>
@@ -211,7 +211,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
             </Cell>
             <Cell align="center">
               <span className="flex">
-                <RowButton icon="table_chart" label={`See the payment schedule for ${debt.name}`} onClick={() => setScheduleId(debt.id)} />
+                <RowButton icon="table_chart" label={`See the amortization schedule for ${debt.name}`} onClick={() => setScheduleId(debt.id)} />
                 {assetId && <RowButton icon="edit" label={`Edit the financing on ${assetName(assetId)}`} onClick={() => onEditItem?.(planItemAnchor(assetId))} />}
               </span>
             </Cell>

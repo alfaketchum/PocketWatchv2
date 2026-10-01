@@ -74,7 +74,7 @@ export function LoanScheduleTable({ schedule, age0, colors }: { schedule: LoanSc
                       <span className="material-symbols-rounded align-middle text-foreground-muted" style={{ fontSize: 14 }} aria-hidden="true">
                         {expanded ? "expand_more" : "chevron_right"}
                       </span>
-                      {y.year} <span className="text-foreground-muted">· {age0 + y.index}</span>
+                      {y.year} <span className="hidden sm:inline text-foreground-muted">· {age0 + y.index}</span>
                       {crossover && <span className="ml-1.5 rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">Crossover</span>}
                     </td>
                     <td className="hidden sm:table-cell px-2 py-1.5">

@@ -165,11 +165,11 @@ function AssetsList({ doc, update }: PlanEditorProps) {
 
 function ScheduleButton({ name, onClick, label }: { name: string; onClick: () => void; label?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-label={`See the payment schedule for ${name}`} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
+    <button type="button" onClick={onClick} aria-label={`See the amortization schedule for ${name}`} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
       <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
         table_chart
       </span>
-      {label && "Payment schedule"}
+      {label && "Amortization schedule"}
     </button>
   )
 }

@@ -10,6 +10,7 @@ import type { PlanDocument } from "@/lib/plans/plan-types"
 import type { DocUpdater } from "../plans-helpers"
 import { SelectField } from "../editor/plan-editor-controls"
 import { LoanCompare } from "./loan-compare"
+import { LoanSchedulePanels } from "./loan-schedule-panels"
 
 /** A first custom extra: what clears the loan in 15 years, rounded to $50, or $200. */
 const ROUND_TO = 50
@@ -83,10 +84,11 @@ export function PlanLoansView({ planId }: { planId: string }) {
         </Link>
         <div>
           <h1 className="text-2xl text-foreground font-semibold">Loans</h1>
-          <p className="text-xs text-foreground-muted mt-0.5">Pay extra, invest the difference, or take a shorter loan: what each does to your whole plan</p>
+          <p className="text-xs text-foreground-muted mt-0.5">Each loan&apos;s amortization, and what paying extra, investing the difference or a shorter loan does to your whole plan</p>
         </div>
       </div>
       <LoanPicker doc={doc} update={update} planId={planId} isHidden={isHidden} />
+      <LoanSchedulePanels doc={doc} isHidden={isHidden} />
     </div>
   )
 }
