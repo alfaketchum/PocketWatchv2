@@ -14,6 +14,16 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   )
 }
 
+/** Under "Money lasts": when it runs out (and the home equity left then), or a home a backup plan sold. */
+function moneyLastsNote(summary: PlanSummary, lasts: boolean): string {
+  const sale = summary.homeSales?.[0]
+  if (lasts) return sale ? `by selling ${sale.name} at ${sale.age} (${sale.year})` : "through the end of the plan"
+  const eq = summary.equityAtDepletion
+  const left = eq ? ` · ${fmtCompact(eq.value)} home equity left (~${Math.round(eq.years)} yrs of spending)` : ""
+  const after = sale ? ` even after selling ${sale.name} (${sale.year})` : ""
+  return `runs out in ${summary.depletedYear}${after}${left}`
+}
+
 /** Headline numbers, always in today's dollars. */
 export function PlanSummaryStrip({ summary, isHidden }: { summary: PlanSummary; isHidden: boolean }) {
   const blur = isHidden ? { filter: "blur(8px)" } : undefined
@@ -38,7 +48,7 @@ export function PlanSummaryStrip({ summary, isHidden }: { summary: PlanSummary; 
       <Stat
         label="Money lasts"
         value={lasts ? `Past ${summary.endAge}` : `Until ${summary.depletedAge}`}
-        sub={lasts ? "through the end of the plan" : `runs out in ${summary.depletedYear}`}
+        sub={moneyLastsNote(summary, lasts)}
         tone={lasts ? "good" : "bad"}
       />
       <div style={blur}>

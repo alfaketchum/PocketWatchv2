@@ -173,6 +173,7 @@ const asset = z.object({
     .optional(),
   replaceEveryYears: z.number().int().min(1).max(50).nullable().optional(),
   primaryResidence: z.boolean().optional(),
+  fallback: z.object({ then: z.enum(["rent", "smaller"]), monthlyRent: money, price: money }).optional(),
   rental: z
     .object({
       monthlyRent: money,

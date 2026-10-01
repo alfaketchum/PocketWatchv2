@@ -9,15 +9,17 @@ import type { CohortResult } from "@/lib/plans/stress/stress-test"
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6
 
-/** Five outcomes as a share bar, then one row each: share, count, the rule in this plan's numbers, and the years. */
+/** The outcomes as a share bar, then one row each: share, count, the rule in this plan's numbers, and the years. */
 export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohorts: CohortResult[]; yardsticks: OutcomeYardsticks; isHidden: boolean }) {
-  const { success, warning, error, card } = useChartTheme()
-  const buckets = useMemo(() => outcomeBuckets(cohorts, yardsticks), [cohorts, yardsticks])
-  // Good to bad: green, faded green, light amber, amber, red; theme tokens, so dark mode follows.
+  const { success, warning, error, card, primary } = useChartTheme()
+  // "Lasted by selling the home" only shows when a home's backup plan actually kicked in.
+  const buckets = useMemo(() => outcomeBuckets(cohorts, yardsticks).filter((b) => b.key !== "soldHome" || b.count > 0), [cohorts, yardsticks])
+  // Good to bad: green, faded green, light amber, amber, red; selling the home is its own (accent) case. Theme tokens, so dark mode follows.
   const colors: Record<OutcomeKey, string> = {
     surplus: success,
     steady: mix(success, card, 0.5),
     justMadeIt: mix(warning, card, 0.5),
+    soldHome: primary,
     almostSurvived: warning,
     catastrophic: error,
   }
@@ -56,6 +58,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
                   {b.years.length > MAX_YEARS && ` and ${b.years.length - MAX_YEARS} more`}
                 </span>
               )}
+              {b.note && <span className="block text-foreground">{b.note}</span>}
             </span>
           </li>
         ))}

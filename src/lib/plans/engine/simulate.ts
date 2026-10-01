@@ -1,7 +1,8 @@
 import { inflationOf, priceIndex, rateAt, type Inflation } from "../plan-inflation"
 import { nominalRate, realRate } from "../plan-dollars"
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
-import type { PlanAccount, PlanDocument, PlanProjection, YearRow } from "../plan-types"
+import type { HomeSale, PlanAccount, PlanDocument, PlanProjection, YearRow } from "../plan-types"
+import { fallbackHomeAt, SHORTFALL, withHomeSold } from "../plan-home-fallback"
 import {
   applyAssetEvents,
   assetEntries,
@@ -339,8 +340,29 @@ function startTotals(plan: Plan): { netWorth: number; financial: number } {
   return { netWorth: accounts + assets - debts, financial: accounts - debts }
 }
 
-/** Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. */
+/** Most homes whose backup plans one run can carry out (each sale is one re-run). */
+const MAX_HOME_SALES = 5
+
+/**
+ * Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. When the accounts would run
+ * dry and a home has a backup plan ("if the money runs out"), that home is sold at the start of that year and the plan
+ * runs again, once per home.
+ */
 export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): PlanProjection {
+  let current = doc
+  const homeSales: HomeSale[] = []
+  for (let sales = 0; ; sales++) {
+    const projection = simulateOnce(current, opts)
+    const short = projection.rows.find((r) => r.shortfall > SHORTFALL)
+    const home = short && sales < MAX_HOME_SALES ? fallbackHomeAt(current, short.index) : null
+    if (!short || !home) return homeSales.length > 0 ? { ...projection, homeSales } : projection
+    const sold = withHomeSold(current, home, short.index)
+    current = sold.doc
+    homeSales.push(sold.sale)
+  }
+}
+
+function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
   let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {} }
   const rows: YearRow[] = []

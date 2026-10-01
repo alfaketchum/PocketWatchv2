@@ -22,3 +22,14 @@ test("each period lands in one bucket by this plan's own yardsticks", () => {
   assert.ok(Math.abs(b.reduce((s, x) => s + x.share, 0) - 1) < 1e-9)
   assert.match(b[1].rule, /\$250k–\$1\.0M/)
 })
+
+test("selling the home is its own outcome, and ran-out buckets say what home equity was left", () => {
+  const sold = { ...run(1970, 300_000), soldHome: true }
+  const broke = (year: number, equity: number) => ({ ...run(year, 0, 70), equityAtDepletion: equity })
+  const b = outcomeBuckets([sold, broke(1929, 200_000), broke(1937, 400_000), broke(1966, 300_000)], yard)
+  const by = Object.fromEntries(b.map((x) => [x.key, x]))
+  assert.deepEqual(by.soldHome.years, [1970])
+  assert.deepEqual(by.steady.years, [])
+  assert.match(by.catastrophic.note ?? "", /\$300k of home equity/)
+  assert.equal(by.surplus.note, undefined)
+})

@@ -90,6 +90,9 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
     return [{ id: m.id, name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
   })
   marks.push(...payoffMarks(doc, projection, age0))
+  for (const sale of projection.homeSales ?? []) {
+    marks.push({ id: "", name: `Sold ${sale.name} (money ran low)`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
+  }
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
   if (depleted) marks.push({ id: "", name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   return marks

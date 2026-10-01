@@ -1,0 +1,64 @@
+import test from "node:test"
+import assert from "node:assert/strict"
+import { simulatePlan } from "@/lib/plans/engine/simulate"
+import { blankPlanDocument } from "@/lib/plans/plan-constants"
+import { summarizePlan } from "@/lib/plans/plan-summary"
+import type { HomeFallback, PlanDocument } from "@/lib/plans/plan-types"
+
+const SHORT = 0.5
+
+/** $100k in the bank, $50k a year of spending, no income, a paid-off $500k home; no inflation, no taxes, 2026 start. */
+function plan(fallback?: HomeFallback): PlanDocument {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 60)
+  return {
+    ...base,
+    settings: { ...base.settings, taxMode: "flat", inflation: 0, incomeTaxRate: 0, capitalGainsRate: 0, cashBuffer: 0, endAge: 80 },
+    incomes: [],
+    expenses: [{ id: "e", name: "Living", category: "Living", amount: 50_000, growth: null, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
+    accounts: [{ ...base.accounts[0], balance: 100_000, returnRate: 0 }],
+    assets: [{ id: "h", name: "Home", kind: "home", value: 500_000, appreciation: 0, start: { type: "planStart" }, end: { type: "planEnd" }, costBasis: 100_000, primaryResidence: true, runningCosts: [], ...(fallback ? { fallback } : {}) }],
+    debts: [],
+  }
+}
+const shortYear = (doc: PlanDocument) => simulatePlan(doc).rows.find((r) => r.shortfall > SHORT)?.year
+
+test("without a backup plan the money runs out and nothing changes", () => {
+  const p = simulatePlan(plan())
+  assert.equal(p.homeSales, undefined)
+  assert.equal(shortYear(plan()), 2028)
+  const s = summarizePlan(plan(), p)
+  assert.ok(s.equityAtDepletion && Math.abs(s.equityAtDepletion.value - 500_000) < 1, "the whole home is equity")
+  assert.ok(Math.abs(s.equityAtDepletion.years - 10) < 0.01, "$500k is ~10 years of $50k spending")
+})
+
+test("sell and rent: sold in the year the money would run out, then rent from then on", () => {
+  const doc = plan({ then: "rent", monthlyRent: 1_000, price: 0 })
+  const p = simulatePlan(doc)
+  assert.deepEqual(p.homeSales?.map((s) => [s.name, s.year, s.then]), [["Home", 2028, "rent"]])
+  const sold = p.rows.find((r) => r.year === 2028)!
+  assert.ok(sold.assetSales > 400_000)
+  assert.equal(shortYear(doc), 2036, "$500k at $62k a year from 2028 lasts through 2035")
+  assert.ok(p.rows.find((r) => r.year === 2030)!.expenses >= 62_000 - 1, "rent added to spending")
+  const s = summarizePlan(doc, p)
+  assert.deepEqual(s.homeSales, [{ name: "Home", year: 2028, age: 62 }])
+})
+
+test("sell and buy smaller: a cash purchase that year, the rest keeps paying the bills", () => {
+  const doc = plan({ then: "smaller", monthlyRent: 0, price: 200_000 })
+  const p = simulatePlan(doc)
+  assert.equal(p.homeSales?.length, 1)
+  const r = p.rows.find((x) => x.year === 2028)!
+  assert.ok(Math.abs(r.assetPurchases - 200_000) < 1)
+  assert.ok(Object.keys(r.assetValues).some((id) => id.endsWith("~fallback-home")))
+  const later = shortYear(doc)
+  assert.ok(later === undefined || later > 2030, "the money lasts longer than without it")
+  const s = summarizePlan(doc, p)
+  if (s.equityAtDepletion) assert.ok(s.equityAtDepletion.value > 150_000, "the smaller home counts as equity")
+})
+
+test("a backup plan that isn't needed never fires", () => {
+  const rich = { ...plan({ then: "rent", monthlyRent: 1_000, price: 0 }), accounts: [{ ...plan().accounts[0], balance: 5_000_000 }] }
+  const p = simulatePlan(rich)
+  assert.equal(p.homeSales, undefined)
+  assert.deepEqual(p.rows, simulatePlan({ ...rich, assets: rich.assets.map((a) => ({ ...a, fallback: undefined })) }).rows)
+})

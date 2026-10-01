@@ -74,6 +74,8 @@ export const PLAN_SECTIONS: MethodSection[] = [
           "A protected cash buffer is spent last, only after every other account is empty.",
           "529 accounts only pay the education costs earmarked for them, never general shortfalls.",
           "If every account is empty, the unfunded amount is recorded as a **shortfall**: the plan has run out of money that year.",
+          "A home with a **backup plan** (\"If my money runs out\" on its card) is sold at the start of the first year that would run out (half or more of the year's spending unfunded); its loans are paid off from the sale, then you rent or buy a smaller home with cash, and the whole plan runs again. Each home's backup plan is used at most once, and the chart marks the year.",
+          "When a plan still runs out, the summary shows the **home equity left** that year (home values less their loans), in today's dollars and as years of that year's spending. It's not counted as spendable: your home only pays the bills if the plan sells it.",
         ],
       },
       {

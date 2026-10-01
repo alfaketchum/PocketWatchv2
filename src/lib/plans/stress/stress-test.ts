@@ -12,6 +12,8 @@
 
 import { simulatePlan } from "../engine/simulate"
 import { deflator } from "../plan-dollars"
+import { expandPlan } from "../plan-expand"
+import { homeEquity, SHORTFALL } from "../plan-home-fallback"
 import { inflationOf, inflationPath, rateAt, type Inflation } from "../plan-inflation"
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument } from "../plan-types"
@@ -27,9 +29,6 @@ export type StressInflation = "plan" | "history"
 /** Years of a period's inflation summarized in the worst-periods table. */
 const INFLATION_SUMMARY_YEARS = 10
 
-/** A year counts as having run out of money when spending this much (or more) goes unfunded. */
-const SHORTFALL = 0.5
-
 export interface CohortResult {
   /** History year lined up with the anchor. */
   year: number
@@ -38,6 +37,10 @@ export interface CohortResult {
   avgInflation: number | null
   /** Age the money ran out, or null when it lasted. */
   depletedAge: number | null
+  /** A home's backup plan sold it to keep the money going. */
+  soldHome?: boolean
+  /** When it ran out: home equity left, today's dollars. */
+  equityAtDepletion?: number
   /** Year-end values by plan year, today's dollars. */
   netWorth: number[]
   invested: number[]
@@ -111,6 +114,8 @@ export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: numbe
     cape: annual.cape[start],
     avgInflation: averageInflation(annual, start),
     depletedAge: failed ? age0 + failed.index : null,
+    soldHome: (projection.homeSales?.length ?? 0) > 0,
+    equityAtDepletion: failed ? real(homeEquity(expandPlan(doc, inflation), failed), failed.index) : 0,
     netWorth: projection.rows.map((r) => real(r.netWorth, r.index)),
     invested: projection.rows.map((r) => real(r.accountsTotal, r.index)),
   }

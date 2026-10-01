@@ -3,6 +3,8 @@ import { rowInTodaysDollars } from "./plan-dollars"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanProjection, PlanSummary } from "./plan-types"
 import { rowTaxes } from "./plan-row-taxes"
+import { expandPlan } from "./plan-expand"
+import { homeEquity } from "./plan-home-fallback"
 
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
@@ -22,12 +24,15 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
         : rows[retireIndex - 1].netWorth
   const depleted = rows.find((r) => r.shortfall > 0.5)
   const last = rows[rows.length - 1]
+  const equity = depleted ? homeEquity(expandPlan(doc), depleted) : 0
   return {
     retirementYear: retireIndex === null ? null : settings.startYear + retireIndex,
     retirementAge: retireIndex === null ? null : startAge + retireIndex,
     netWorthAtRetirement: atRetirement,
     depletedAge: depleted ? startAge + depleted.index : null,
     depletedYear: depleted ? depleted.year : null,
+    equityAtDepletion: depleted && equity > 0 ? { value: equity, years: depleted.expenses > 0 ? equity / depleted.expenses : 0 } : null,
+    homeSales: (projection.homeSales ?? []).map((s) => ({ name: s.name, year: s.year, age: startAge + s.index })),
     endYear: last ? last.year : settings.startYear,
     endAge: startAge + rows.length,
     endingNetWorth: last ? last.netWorth : projection.startNetWorth,

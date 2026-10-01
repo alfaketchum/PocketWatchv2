@@ -292,6 +292,8 @@ export interface PlanAsset {
   primaryResidence?: boolean
   /** Homes: rented out (then it isn't your residence; its costs count against the rent). */
   rental?: AssetRental
+  /** Homes: a backup plan if the money in your accounts runs out (off when missing). */
+  fallback?: HomeFallback
   /** Generated only: the asset this one replaces (a later car in a replacement cycle). */
   replacementOf?: string
   /** Generated only: sold because a replacement takes over, not sold outright. */
@@ -501,8 +503,27 @@ export interface YearRow {
   milestones: string[]
 }
 
+/** If the accounts run dry, sell this home that year, then rent or buy a smaller one (today's dollars). */
+export interface HomeFallback {
+  then: "rent" | "smaller"
+  monthlyRent: number
+  price: number
+}
+
+/** A backup plan the simulation used: the home sold the year the money would have run out. */
+export interface HomeSale {
+  assetId: string
+  name: string
+  /** Plan year index of the sale. */
+  index: number
+  year: number
+  then: HomeFallback["then"]
+}
+
 export interface PlanProjection {
   rows: YearRow[]
+  /** Homes sold by their backup plan, in the order they were needed. */
+  homeSales?: HomeSale[]
   /** Balances at plan start, before the first year. */
   startNetWorth: number
   startFinancialNetWorth: number
@@ -515,6 +536,10 @@ export interface PlanSummary {
   netWorthAtRetirement: number | null
   depletedAge: number | null
   depletedYear: number | null
+  /** When the money runs out: home equity left (today's dollars) and how many years of that year's spending it is. */
+  equityAtDepletion?: { value: number; years: number } | null
+  /** Homes sold by their backup plan when the money would have run out. */
+  homeSales?: { name: string; year: number; age: number }[]
   endYear: number
   endAge: number
   /** Today's dollars. */
