@@ -15,6 +15,7 @@ import {
 import { fetchNativeTokenPrices } from "@/lib/tracker/chains"
 import { normalizeWalletAddress } from "./utils"
 import { filterValidPoints } from "./snapshot-validation"
+import { runReconstructionOnce } from "./reconstruction-guard"
 import type { ChartPoint } from "./snapshot-helpers"
 
 const DAY_SECONDS = 86400
@@ -29,6 +30,13 @@ const DAY_SECONDS = 86400
  * Returns the number of new snapshots created.
  */
 export async function reconstructPortfolioHistory(userId: string): Promise<{
+  snapshotsCreated: number
+  priceResolution: { resolved: number; failed: number; total: number }
+}> {
+  return runReconstructionOnce(userId, () => reconstructPortfolioHistoryWork(userId))
+}
+
+async function reconstructPortfolioHistoryWork(userId: string): Promise<{
   snapshotsCreated: number
   priceResolution: { resolved: number; failed: number; total: number }
 }> {
