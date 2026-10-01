@@ -254,6 +254,8 @@ export interface PurchaseInput {
   appreciation: number
   /** Replace it every this many years; null keeps it. */
   replaceEveryYears?: number | null
+  /** Vehicles: age when bought (0 = brand new); follows the depreciation curve by age. */
+  vehicleAge?: number
 }
 
 /** A future purchase (home, vehicle): the asset with how it's paid; its loan and "Buy …" milestone are generated. */
@@ -274,6 +276,7 @@ function applyPurchase(doc: PlanDocument, kind: AssetKind, input: PurchaseInput,
         financing: { mode: input.payWith, downShare, rate: input.rate, termYears: input.termYears },
         runningCosts: typicalRunningCosts(kind, doc.settings.state),
         ...(input.replaceEveryYears ? { replaceEveryYears: input.replaceEveryYears } : {}),
+        ...(kind === "vehicle" && input.vehicleAge !== undefined ? { vehicleAge: input.vehicleAge } : {}),
       },
     ],
   }

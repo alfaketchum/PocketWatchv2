@@ -1,6 +1,7 @@
 import type { InheritedPart, TemplateKey } from "@/lib/plans/milestone-templates"
 import { careDefaults, surveyToToday, type CareArrangement, type CarePayer } from "@/lib/plans/elder-care"
 import { TYPICAL_FINANCING } from "@/lib/plans/plan-financing"
+import { VEHICLE_CONDITIONS } from "@/lib/plans/vehicle-depreciation"
 import type { PaymentMode, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import type { Relationship } from "@/lib/plans/tax/inheritance-tax"
 import { emptyPart } from "./inheritance-fields"
@@ -36,6 +37,8 @@ export interface TemplateDraft {
   rate: number
   termYears: number
   appreciation: number
+  /** Buy a vehicle: its age when bought (0 = brand new), for the depreciation curve. */
+  vehicleAge: number
   /** Buy a vehicle: replace it every this many years (0 = keep it). */
   replaceEvery: number
   parts: InheritedPart[]
@@ -93,15 +96,17 @@ export const DEFAULT_NAMES: Record<TemplateKey, string> = {
 /** Starting price and loan for a purchase template; other templates ignore these. */
 function purchaseDefaults(
   key: TemplateKey,
-): Pick<TemplateDraft, "price" | "payWith" | "downPayment" | "rate" | "termYears" | "appreciation" | "replaceEvery"> {
+): Pick<TemplateDraft, "price" | "payWith" | "downPayment" | "rate" | "termYears" | "appreciation" | "replaceEvery" | "vehicleAge"> {
   const vehicle = key === "vehicle"
-  const price = vehicle ? 40_000 : 500_000
+  const brandNew = VEHICLE_CONDITIONS.new
+  const price = vehicle ? brandNew.price : 500_000
   const terms = TYPICAL_FINANCING[vehicle ? "vehicle" : "home"]
   return {
     price,
     payWith: "loan",
     downPayment: price * terms.downShare,
-    rate: terms.rate,
+    rate: vehicle ? brandNew.loanRate : terms.rate,
+    vehicleAge: brandNew.age,
     termYears: terms.termYears,
     appreciation: vehicle ? VEHICLE_DEPRECIATION : HOME_APPRECIATION,
     replaceEvery: vehicle ? VEHICLE_REPLACE_YEARS : 0,

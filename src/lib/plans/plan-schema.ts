@@ -133,6 +133,7 @@ const asset = z.object({
   kind: z.enum(["home", "vehicle", "other"]),
   value: money,
   appreciation: rate,
+  vehicleAge: z.number().int().min(0).max(50).optional(),
   start: timing,
   end: timing,
   acquired: z.enum(["purchase", "received"]).optional(),

@@ -15,6 +15,7 @@ import { AssetRunningCostsFields } from "./asset-running-costs-fields"
 import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
+import { VehicleValueFields } from "./vehicle-value-fields"
 import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
 import { generatedDebts } from "@/lib/plans/plan-expand"
@@ -40,8 +41,6 @@ const ACQUIRED: { value: "purchase" | "received"; label: string }[] = [
   { value: "purchase", label: "Bought (paid from cash flow)" },
   { value: "received", label: "Inherited or gifted (no cost)" },
 ]
-/** Typical yearly value loss for a car, applied when an asset is switched to "Vehicle". */
-const VEHICLE_DEPRECIATION = -0.15
 
 /** "Add asset" opens a pop-out asking what it is: owned now, or a home or vehicle to buy later. */
 function AddAssetButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
@@ -60,7 +59,8 @@ function kindChange(a: PlanAsset, kind: AssetKind, state: string | null): Partia
   const untouched = costs.length === 0 || JSON.stringify(costs) === JSON.stringify(typicalRunningCosts(a.kind, state))
   return {
     kind,
-    ...(kind === "vehicle" && a.appreciation >= 0 ? { appreciation: VEHICLE_DEPRECIATION } : {}),
+    ...(kind === "vehicle" && a.vehicleAge === undefined ? { vehicleAge: 0 } : {}),
+    ...(kind !== "vehicle" ? { vehicleAge: undefined } : {}),
     ...(untouched ? { runningCosts: typicalRunningCosts(kind, state) } : {}),
   }
 }
@@ -91,7 +91,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
       {doc.assets.length === 0 && <EmptyNote>No assets yet.</EmptyNote>}
       {doc.assets.map((a) => (
         <ItemCard key={a.id} anchorId={planItemAnchor(a.id)} title={a.name || "Untitled asset"} removeLabel={`Remove ${a.name}`} onRemove={() => remove(a.id)}>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 items-end">
+          <div className={`grid grid-cols-2 ${a.kind === "vehicle" ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-2 items-end`}>
             <div className="col-span-2 lg:col-span-1">
               <TextField label="Name" value={a.name} onChange={(name) => patch(a.id, { name })} />
             </div>
@@ -102,15 +102,24 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               onChange={(kind) => patch(a.id, kindChange(a, kind, doc.settings.state))}
             />
             <FireNumberField label="Value today" prefix="$" min={0} value={a.value} onChange={(value) => patch(a.id, { value })} />
-            <FireNumberField
-              label="Value change / yr"
-              suffix="%"
-              scale={100}
-              min={-0.5}
-              max={1}
-              value={a.appreciation}
-              onChange={(appreciation) => patch(a.id, { appreciation })}
-            />
+            {a.kind === "vehicle" ? (
+              <VehicleValueFields
+                vehicleAge={a.vehicleAge}
+                appreciation={a.appreciation}
+                later={a.start.type !== "planStart"}
+                onChange={(change) => patch(a.id, change)}
+              />
+            ) : (
+              <FireNumberField
+                label="Value change / yr"
+                suffix="%"
+                scale={100}
+                min={-0.5}
+                max={1}
+                value={a.appreciation}
+                onChange={(appreciation) => patch(a.id, { appreciation })}
+              />
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 items-end">
             <SelectField

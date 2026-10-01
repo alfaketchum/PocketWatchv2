@@ -71,6 +71,7 @@ export const TAX_SECTIONS: MethodSection[] = [
         kind: "list",
         items: [
           "**Value**: an asset bought in a future year costs today's price grown by inflation to that year, then changes at its own appreciation (or depreciation) rate.",
+          "**Vehicles** can follow a depreciation curve by age instead of a flat rate: about 20% the first year, 45% by year 5 and 72% by year 10, never below 5% of the new price. Buying brand new, pre-owned (about 3 years old) or used (about 6) sets a typical price and loan rate (new $50,300, used $26,000; loans 6.35% new, 11.19% used) and where the car starts on the curve.",
           "**Running costs** (property tax, insurance, maintenance) are either fixed amounts that rise with inflation or a share of the home's value that follows its value. \"Use typical costs\" fills in your state's average effective property-tax rate, or a looked-up home's actual tax bill.",
           "**Loans** use a level monthly payment; each year's payments are split into interest (on the balance owed) and principal. A financed purchase creates its loan automatically; a real linked loan always takes its place.",
           "**Selling**: the gain over what you paid is taxed as a capital gain. A home you have lived in for at least two years gets the home-sale exclusion: $250,000 single, $500,000 joint (set by law, not indexed).",
@@ -85,6 +86,13 @@ export const TAX_SECTIONS: MethodSection[] = [
         kind: "note",
         text: "Home values, rent estimates and tax bills for a looked-up address come from a property-data provider (RentCast). They're estimates, refreshed when you look the home up again.",
       },
+    ],
+    sources: [
+      { label: "LendingTree: first-year depreciation", url: "https://www.lendingtree.com/auto/how-much-do-new-cars-depreciate/" },
+      { label: "iSeeCars: 5-year depreciation", url: "https://cars.zone/depreciation-resale-value/" },
+      { label: "Kelley Blue Book average transaction price", url: "https://www.coxautoinc.com/insights/dec-2025-atp-report/" },
+      { label: "Cox Automotive used listing price", url: "https://www.coxautoinc.com/insights/used-vehicle-inventory-december-2025/" },
+      { label: "Experian auto loan rates", url: "https://www.experian.com/blogs/ask-experian/average-car-loan-interest-rates-by-credit-score/" },
     ],
   },
 ]

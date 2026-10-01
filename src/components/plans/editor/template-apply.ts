@@ -101,6 +101,7 @@ export function applyTemplate(key: TemplateKey, d: TemplateDraft, doc: PlanDocum
       const input = {
         name, when: d.when, price: d.price, payWith: d.payWith, downPayment: d.downPayment, rate: d.rate, termYears: d.termYears,
         appreciation: d.appreciation, replaceEveryYears: key === "vehicle" && d.replaceEvery >= 1 ? Math.round(d.replaceEvery) : null,
+        ...(key === "vehicle" ? { vehicleAge: d.vehicleAge } : {}),
       }
       return key === "home" ? applyHome(doc, input, newItemId) : applyVehicle(doc, input, newItemId)
     }

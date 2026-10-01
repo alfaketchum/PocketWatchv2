@@ -7,6 +7,7 @@ import type { PaymentMode, PlanDocument } from "@/lib/plans/plan-types"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 import { WHEN_TYPES, type SetDraft, type TemplateDraft } from "./template-draft"
+import { VehicleConditionChips } from "./vehicle-condition-chips"
 
 const PAY_OPTIONS = (Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[]).map((value) => ({ value, label: PAYMENT_MODE_LABELS[value] }))
 
@@ -23,13 +24,14 @@ export function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: S
         <FireNumberField label="Price (today's $)" prefix="$" min={0} value={d.price} onChange={(price) => set({ price })} />
         <SelectField label="How you'll pay" value={d.payWith} options={PAY_OPTIONS} onChange={(payWith) => set({ payWith })} />
       </div>
+      {kind === "vehicle" && <VehicleConditionChips d={d} set={set} />}
       {kind === "vehicle" && (
         <FireNumberField
           label="Replace every (years)"
           min={0}
           max={50}
           value={d.replaceEvery}
-          hint="0 = keep it. Each time, it's sold at its value and a like one bought at today's price plus inflation."
+          hint="0 = keep it. Each time, it's sold at its value and a like one (same age when bought) bought at today's price plus inflation."
           onChange={(replaceEvery) => set({ replaceEvery })}
         />
       )}

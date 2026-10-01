@@ -12,6 +12,7 @@ import { TemplateFields } from "./milestone-template-forms"
 import { applyTemplate } from "./template-apply"
 import { initialDraft, type TemplateDraft } from "./template-draft"
 import { TextField } from "./plan-editor-controls"
+import { VehicleValueFields } from "./vehicle-value-fields"
 
 type Choice = "own-home" | "own-vehicle" | "own-other" | "buy-home" | "buy-vehicle"
 
@@ -23,9 +24,9 @@ const CHOICES: { key: Choice; icon: string; label: string; detail: string }[] = 
   { key: "buy-vehicle", icon: "car_rental", label: "Buy a vehicle", detail: "Later in the plan, with how you'll pay" },
 ]
 
-const OWNED: Record<"own-home" | "own-vehicle" | "own-other", { kind: AssetKind; name: string; value: number; appreciation: number }> = {
+const OWNED: Record<"own-home" | "own-vehicle" | "own-other", { kind: AssetKind; name: string; value: number; appreciation: number; vehicleAge?: number }> = {
   "own-home": { kind: "home", name: "Home", value: 400_000, appreciation: 0.03 },
-  "own-vehicle": { kind: "vehicle", name: "Car", value: 30_000, appreciation: -0.15 },
+  "own-vehicle": { kind: "vehicle", name: "Car", value: 30_000, appreciation: -0.15, vehicleAge: 4 },
   "own-other": { kind: "other", name: "Asset", value: 10_000, appreciation: 0 },
 }
 
@@ -75,6 +76,7 @@ export function AddAssetDialog({ doc, update, onClose }: Pick<PlanEditorProps, "
         kind: owned.kind,
         value: owned.value,
         appreciation: owned.appreciation,
+        ...(owned.kind === "vehicle" && owned.vehicleAge !== undefined ? { vehicleAge: owned.vehicleAge } : {}),
         start: { type: "planStart" },
         end: { type: "planEnd" },
         runningCosts: typicalRunningCosts(owned.kind, doc.settings.state),
@@ -116,15 +118,19 @@ export function AddAssetDialog({ doc, update, onClose }: Pick<PlanEditorProps, "
           <TextField label="Name" value={owned.name} onChange={(name) => setOwned({ ...owned, name })} />
           <div className="grid grid-cols-2 gap-2">
             <FireNumberField label="Worth today" prefix="$" min={0} value={owned.value} onChange={(value) => setOwned({ ...owned, value })} />
-            <FireNumberField
-              label="Value change / yr"
-              suffix="%"
-              scale={100}
-              min={-0.5}
-              max={1}
-              value={owned.appreciation}
-              onChange={(appreciation) => setOwned({ ...owned, appreciation })}
-            />
+            {owned.kind === "vehicle" ? (
+              <VehicleValueFields vehicleAge={owned.vehicleAge} appreciation={owned.appreciation} later={false} onChange={(change) => setOwned({ ...owned, ...change })} />
+            ) : (
+              <FireNumberField
+                label="Value change / yr"
+                suffix="%"
+                scale={100}
+                min={-0.5}
+                max={1}
+                value={owned.appreciation}
+                onChange={(appreciation) => setOwned({ ...owned, appreciation })}
+              />
+            )}
           </div>
           <p className="text-xs text-foreground-muted">
             {typicalRunningCosts(owned.kind, null).length > 0 ? "Typical running costs are added; edit them on its card. " : ""}

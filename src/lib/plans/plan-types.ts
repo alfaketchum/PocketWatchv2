@@ -236,6 +236,11 @@ export interface PlanAsset {
   /** Value today; a future start buys it at this value grown by `appreciation`. */
   value: number
   appreciation: number
+  /**
+   * Vehicles: the car's age in years when it enters the plan (bought, or today if already owned). When set, it
+   * loses value along the typical depreciation curve for its age instead of the flat `appreciation`.
+   */
+  vehicleAge?: number
   start: Timing
   /** Sold in this year; proceeds after linked debts flow back in. */
   end: Timing

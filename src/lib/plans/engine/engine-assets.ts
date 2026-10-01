@@ -1,5 +1,5 @@
 import { priceIndex, type Inflation } from "../plan-inflation"
-import { realRate } from "../plan-dollars"
+import { vehicleValueRatio } from "../vehicle-depreciation"
 import { livesIn } from "../plan-asset-costs"
 import { resolveRange, resolveTiming, type ResolvedRange, type TimingContext } from "../plan-timing"
 import type { PlanAsset, PlanDebt } from "../plan-types"
@@ -33,10 +33,18 @@ export function debtEntries(debts: PlanDebt[], ctx: TimingContext): DebtEntry[] 
  * Value at the start of year `index` of an asset first owned in year `start`. `value` is in today's
  * dollars: a future purchase costs it grown by inflation, and only then gains or loses its own rate.
  */
+/** A vehicle that follows the depreciation curve by age. */
+function curved(asset: PlanAsset): asset is PlanAsset & { vehicleAge: number } {
+  return asset.kind === "vehicle" && asset.vehicleAge !== undefined
+}
+
 export function assetValue(asset: PlanAsset, start: number, index: number, inflation: Inflation, baseRate: number): number {
   const bought = Math.max(0, start)
-  // Appreciation keeps its real value: on one rate equal to `baseRate` this is value × (1 + i)^bought × (1 + a)^owned.
-  return asset.value * priceIndex(inflation, index) * Math.pow(1 + realRate(asset.appreciation, baseRate), index - bought)
+  const owned = index - bought
+  // Value changes keep their real size: on one rate equal to `baseRate` this is value × (1 + i)^bought × change over
+  // the years owned (a flat (1 + a)^owned, or the vehicle curve, both nominal at `baseRate`).
+  const nominalChange = curved(asset) ? vehicleValueRatio(asset.vehicleAge, owned) : Math.pow(1 + asset.appreciation, owned)
+  return asset.value * priceIndex(inflation, index) * (nominalChange / Math.pow(1 + baseRate, owned))
 }
 
 export function assetValueAt(entry: AssetEntry, index: number): number {

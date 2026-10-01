@@ -88,7 +88,13 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <CellNumber label="Value" prefix="$" min={0} value={a.value} onChange={(value) => patchAsset(a.id, { value })} />
             </Cell>
             <Cell align="right">
-              <CellNumber label="Value change" suffix="%" scale={100} min={-0.5} max={1} value={a.appreciation} onChange={(appreciation) => patchAsset(a.id, { appreciation })} />
+              {a.kind === "vehicle" && a.vehicleAge !== undefined ? (
+                <span className="block truncate px-2 text-xs text-foreground-muted" title="Typical depreciation for its age; change it in the detailed view">
+                  By age ({a.vehicleAge} yr{a.vehicleAge === 1 ? "" : "s"})
+                </span>
+              ) : (
+                <CellNumber label="Value change" suffix="%" scale={100} min={-0.5} max={1} value={a.appreciation} onChange={(appreciation) => patchAsset(a.id, { appreciation })} />
+              )}
             </Cell>
             <Cell>
               <TimingCell timing={a.start} doc={doc} />
