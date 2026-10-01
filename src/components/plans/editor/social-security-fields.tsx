@@ -4,6 +4,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { fullRetirementAge, SS_EARLIEST_AGE, SS_LATEST_AGE, yearlyBenefit } from "@/lib/plans/social-security"
 import type { PlanDocument } from "@/lib/plans/plan-types"
+import { ClaimAgeSlider } from "./claim-age-slider"
 import { SelectField } from "./plan-editor-controls"
 
 export interface SocialSecurityDraft {
@@ -37,11 +38,11 @@ export function SocialSecurityFields({ d, set, doc }: { d: SocialSecurityDraft; 
           hint={`From your statement at ssa.gov/myaccount. Full retirement age: ${fraLabel(fullRetirementAge(birthYear))}.`}
           onChange={(monthlyAtFra) => set({ monthlyAtFra })}
         />
-        <FireNumberField label="Claim at age" min={SS_EARLIEST_AGE} max={SS_LATEST_AGE} value={d.age} onChange={(age) => set({ age: Math.round(age) })} />
+        <ClaimAgeSlider age={d.age} birthYear={birthYear} monthlyAtFra={d.monthlyAtFra} onChange={(age) => set({ age })} />
       </div>
       <p className="text-[11px] text-foreground-muted">
-        Per month in today&apos;s dollars: {perMonth(SS_EARLIEST_AGE)} at {SS_EARLIEST_AGE} · {perMonth(Math.round(fullRetirementAge(birthYear)))} at {Math.round(fullRetirementAge(birthYear))} ·{" "}
-        {perMonth(SS_LATEST_AGE)} at {SS_LATEST_AGE}. Claiming at {d.age}: <span className="font-medium text-foreground">{perMonth(d.age)}</span>, rising with inflation.
+        Today&apos;s dollars, rising with inflation. Claiming later pays more each month: from {perMonth(SS_EARLIEST_AGE)} at {SS_EARLIEST_AGE} to{" "}
+        {perMonth(SS_LATEST_AGE)} at {SS_LATEST_AGE}.
       </p>
     </>
   )
