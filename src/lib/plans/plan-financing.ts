@@ -9,9 +9,9 @@ const MONTHS_PER_YEAR = 12
 
 export { monthlyPayment }
 
-/** Typical terms when a purchase is financed but the loan isn't picked yet. */
+/** Typical terms when a purchase is financed but the loan isn't picked yet. Home: Freddie Mac PMMS 30-year average, 2026-10-01. */
 export const TYPICAL_FINANCING: Record<AssetKind, Omit<AssetFinancing, "mode">> = {
-  home: { downShare: 0.2, rate: 0.065, termYears: 30 },
+  home: { downShare: 0.2, rate: 0.0728, termYears: 30 },
   vehicle: { downShare: 0.1, rate: 0.075, termYears: 5 },
   other: { downShare: 0.2, rate: 0.08, termYears: 5 },
 }
