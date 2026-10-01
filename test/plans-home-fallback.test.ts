@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
+import { applyDispose } from "@/lib/plans/plan-dispose"
 import { summarizePlan } from "@/lib/plans/plan-summary"
 import type { HomeFallback, PlanDocument } from "@/lib/plans/plan-types"
 
@@ -61,4 +62,21 @@ test("a backup plan that isn't needed never fires", () => {
   const p = simulatePlan(rich)
   assert.equal(p.homeSales, undefined)
   assert.deepEqual(p.rows, simulatePlan({ ...rich, assets: rich.assets.map((a) => ({ ...a, fallback: undefined })) }).rows)
+})
+
+const downsizeIn = (doc: PlanDocument, year: number) =>
+  applyDispose(doc, "h", { mode: "downsize", when: { type: "year", year }, downsize: { to: "rent", price: 0, payWith: "cash", monthlyRent: 1_000 } }, (p) => `${p}-planned`)
+const salesYears = (doc: PlanDocument) => simulatePlan(doc).rows.filter((r) => r.assetSales > 0).map((r) => r.year)
+
+test("a sale you planned yourself is never sold twice", () => {
+  const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2027)
+  assert.deepEqual(salesYears(doc), [2027])
+  assert.equal(simulatePlan(doc).homeSales, undefined, "already sold before the money runs out")
+})
+
+test("running out before a planned downsize sells early and replaces the planned rent, not adds to it", () => {
+  const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2032)
+  const p = simulatePlan(doc)
+  assert.deepEqual(salesYears(doc), [2028])
+  assert.equal(p.rows.find((r) => r.year === 2040)!.expenses, 62_000, "one rent: $50k living + $12k")
 })

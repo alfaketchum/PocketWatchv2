@@ -28,7 +28,11 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
   const year = doc.settings.startYear + index
   const fallback = home.fallback!
   const when = { type: "year" as const, year }
-  const assets = doc.assets.map((a) => (a.id === home.id ? { ...a, end: when, fallback: undefined } : a))
+  // A downsize you planned for later is replaced: drop the rent or smaller home it would have added.
+  const planned = home.end.type === "milestone" ? home.end.milestoneId : null
+  const kept = <T extends { origin?: string }>(items: T[]) => (planned ? items.filter((i) => i.origin !== planned) : items)
+  const assets = kept(doc.assets).map((a) => (a.id === home.id ? { ...a, end: when, fallback: undefined } : a))
+  const expenses = kept(doc.expenses)
   const rent: PlanExpense = {
     id: `${home.id}${FALLBACK_RENT}`,
     name: `Rent after selling ${home.name}`,
@@ -53,8 +57,8 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
   }
   const next =
     fallback.then === "rent"
-      ? { ...doc, assets, expenses: [...doc.expenses, rent] }
-      : { ...doc, assets: [...assets, smaller] }
+      ? { ...doc, assets, expenses: [...expenses, rent] }
+      : { ...doc, assets: [...assets, smaller], expenses }
   return { doc: next, sale: { assetId: home.id, name: home.name, index, year, then: fallback.then } }
 }
 
