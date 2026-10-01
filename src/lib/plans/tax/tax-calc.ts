@@ -121,8 +121,9 @@ function separateGainsTax(table: StateTax | undefined, b: TaxBase, s: TaxSituati
 }
 
 /** A state's own itemized deductions for a homeowner: property tax and mortgage interest within its limits. */
-function stateItemized(rules: StateHomeownerRules, it: Itemized): number {
-  const propertyTax = Math.min(it.propertyTax, rules.caps?.propertyTax ?? Infinity)
+function stateItemized(rules: StateHomeownerRules, it: Itemized, magi: number): number {
+  const saltLimit = rules.followsFederalSaltCap ? saltCap(it.year, magi) : Infinity
+  const propertyTax = Math.min(it.propertyTax, rules.caps?.propertyTax ?? Infinity, saltLimit)
   const interest = interestWithinLimit(it, rules.mortgageDebtLimit ?? MORTGAGE_DEBT_LIMIT)
   return Math.min(propertyTax + interest, rules.caps?.mortgageAndPropertyTax ?? Infinity, rules.caps?.total ?? Infinity)
 }
@@ -138,11 +139,15 @@ export function stateDeduction(b: TaxBase, s: TaxSituation, table: StateTax | un
   const federalStandard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
   const standard = table?.deduction ? table.deduction[s.status] * s.index : rules?.itemize === "federal" ? federalStandard : 0
   if (!rules || !it) return standard
+  const federalIt = federalItemized(b, it, 0)
+  const itemizesFederally = federalIt > federalStandard
   let deduction = standard
-  if (rules.itemize === "own" && (!rules.requiresFederalItemizing || federalItemized(b, it, 0) > federalStandard)) {
-    deduction = Math.max(standard, stateItemized(rules, it))
+  if (rules.itemize === "own" && (!rules.requiresFederalItemizing || itemizesFederally)) {
+    deduction = Math.max(standard, stateItemized(rules, it, b.ordinary + b.shortGains + b.longGains))
   } else if (rules.itemize === "federal") {
-    deduction = Math.max(standard, federalItemized(b, it, 0))
+    deduction = Math.max(standard, federalIt)
+  } else if (rules.itemize === "federalExcess" && itemizesFederally) {
+    deduction = standard + (federalIt - federalStandard)
   }
   return deduction + Math.min(rules.propertyTaxDeduction?.max ?? 0, it.residenceTax)
 }
@@ -152,8 +157,13 @@ function statePropertyTaxCredit(b: TaxBase, s: TaxSituation): number {
   const credit = s.state ? STATE_HOMEOWNER[s.state]?.propertyTaxCredit : undefined
   if (!credit || !s.itemized) return 0
   const income = b.ordinary + b.shortGains + b.longGains
-  if (credit.incomeLimit && income > credit.incomeLimit[s.status]) return 0
-  return Math.min(credit.rate * s.itemized.residenceTax, credit.max ?? Infinity)
+  const full = Math.min(credit.rate * s.itemized.residenceTax, credit.max ?? Infinity)
+  const limit = credit.incomeLimit?.[s.status]
+  if (limit === undefined) return full
+  if (income > limit) return 0
+  const start = credit.phaseStart?.[s.status]
+  // Shrinks evenly between the phase-out start and the limit.
+  return start !== undefined && income > start ? full * ((limit - income) / (limit - start)) : full
 }
 
 /** State tax: gains are taxed like other income, except in the states in STATE_GAINS; less any homeowner credit. */
