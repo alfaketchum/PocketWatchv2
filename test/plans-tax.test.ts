@@ -52,6 +52,7 @@ import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { totalTax } from "@/lib/plans/tax/tax-calc"
 import type { PlanAccount, PlanDocument, PlanIncome } from "@/lib/plans/plan-types"
+import { taxableSocialSecurity } from "@/lib/plans/tax/social-security-tax"
 
 const acct = (id: string, t: PlanAccount["taxTreatment"], balance: number): PlanAccount => ({ id, name: id, taxTreatment: t, balance, costBasis: null, returnRate: 0, owner: null, source: null })
 const pay = (amount: number, kind: PlanIncome["kind"] = "salary"): PlanIncome => ({
@@ -95,9 +96,20 @@ test("brackets: getting married switches to joint filing from that date", () => 
   assert.ok(rows[2].incomeTax < rows[1].incomeTax - 5_000, `${rows[1].incomeTax} → ${rows[2].incomeTax}`)
 })
 
-test("brackets: only 85% of Social Security is taxable", () => {
-  const ss = simulatePlan(plan({ incomes: [pay(40_000, "social_security")] })).rows[0].incomeTax
-  close(ss, federalTax(34_000, 0, single))
+test("brackets: Social Security alone is tax-free under the thresholds; with a pension up to 85% is taxed", () => {
+  const alone = simulatePlan(plan({ incomes: [pay(40_000, "social_security")] })).rows[0].incomeTax
+  close(alone, 0)
+  // Provisional income 50k + 20k = 70k: 85% × (70k − 34k) + 4.5k = 35.1k, capped at 85% of 40k = 34k.
+  const withPension = simulatePlan(plan({ incomes: [pay(40_000, "social_security"), pay(50_000, "pension")] })).rows[0].incomeTax
+  close(withPension, federalTax(50_000 + 34_000, 0, single))
+})
+
+test("taxable Social Security: 0 / 50% / 85% tiers on provisional income (thresholds not indexed)", () => {
+  close(taxableSocialSecurity(30_000, 5_000, "single"), 0)
+  close(taxableSocialSecurity(30_000, 15_000, "single"), 0.5 * (30_000 - 25_000))
+  close(taxableSocialSecurity(30_000, 20_000, "single"), 0.85 * (35_000 - 34_000) + 0.5 * (34_000 - 25_000))
+  close(taxableSocialSecurity(30_000, 40_000, "single"), Math.min(25_500, 0.85 * (55_000 - 34_000) + 4_500))
+  close(taxableSocialSecurity(30_000, 200_000, "joint"), 25_500)
 })
 
 test("brackets: selling stocks under the 0% capital-gains line costs no federal tax", () => {
@@ -162,4 +174,11 @@ test("brackets: moving to another state changes state tax from then on", () => {
   )
   const rows = simulatePlan(d).rows
   close(rows[0].incomeTax - rows[2].incomeTax, stateTax(150_000, { ...single, state: "CA" }), 1)
+})
+
+test("states: only the eight that tax Social Security do (Colorado yes, Illinois and New Jersey no)", () => {
+  const withSs = { socialSecurity: 40_000 }
+  close(stateTax(60_000, { ...single, state: "IL" }, withSs), stateTax(60_000, { ...single, state: "IL" }))
+  close(stateTax(60_000, { ...single, state: "NJ" }, withSs), stateTax(60_000, { ...single, state: "NJ" }))
+  assert.ok(stateTax(60_000, { ...single, state: "CO" }, withSs) > stateTax(60_000, { ...single, state: "CO" }))
 })

@@ -13,6 +13,7 @@ import { STATE_TAX, type StateTax } from "./state-2026"
 import { priceIndex, rateAt, type Inflation } from "../plan-inflation"
 import { interestWithinLimit, MORTGAGE_DEBT_LIMIT, saltCap, type Itemized } from "./itemized-2026"
 import { STATE_HOMEOWNER, type StateHomeownerRules } from "./state-homeowner-2026"
+import { SS_TAXING_STATES, taxableSocialSecurity } from "./social-security-tax"
 
 /** Tax on `income` over progressive `brackets` whose thresholds are scaled by `index`. */
 export function bracketTax(income: number, brackets: Brackets, index = 1): number {
@@ -62,10 +63,24 @@ export interface TaxBase {
   longGains: number
   /** The part of `longGains` from real estate (some state rules treat it differently). */
   realEstateGains: number
+  /** Social Security benefits received (gross); the taxable part joins `ordinary` (see withTaxableSocialSecurity). */
+  socialSecurity: number
 }
 
 export function taxBase(part: Partial<TaxBase>): TaxBase {
-  return { ordinary: 0, shortGains: 0, longGains: 0, realEstateGains: 0, ...part }
+  return { ordinary: 0, shortGains: 0, longGains: 0, realEstateGains: 0, socialSecurity: 0, ...part }
+}
+
+/** The base with Social Security's taxable part moved into ordinary income (safe to apply twice). */
+function withTaxableSocialSecurity(b: TaxBase, s: TaxSituation): TaxBase {
+  if (b.socialSecurity <= 0) return b
+  const taxable = taxableSocialSecurity(b.socialSecurity, b.ordinary + b.shortGains + b.longGains, s.status)
+  return { ...b, ordinary: b.ordinary + taxable, socialSecurity: 0 }
+}
+
+/** What the state taxes: the federally taxable Social Security in the states that tax it, none elsewhere. */
+function stateBase(b: TaxBase, s: TaxSituation): TaxBase {
+  return s.state && SS_TAXING_STATES.has(s.state) ? withTaxableSocialSecurity(b, s) : { ...b, socialSecurity: 0 }
 }
 
 /** 3.8% on investment income (all gains) above the MAGI line. */
@@ -79,7 +94,8 @@ function netInvestmentIncomeTax(b: TaxBase, s: TaxSituation): number {
  * The federal deduction: the larger of the standard deduction and itemizing SALT (state income tax plus
  * property tax, under the year's cap) and mortgage interest.
  */
-export function federalDeduction(b: TaxBase, s: TaxSituation, stateIncomeTax: number): { amount: number; itemized: boolean } {
+export function federalDeduction(base: TaxBase, s: TaxSituation, stateIncomeTax: number): { amount: number; itemized: boolean } {
+  const b = withTaxableSocialSecurity(base, s)
   const standard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
   const it = s.itemized
   if (!it) return { amount: standard, itemized: false }
@@ -98,7 +114,8 @@ function federalItemized(b: TaxBase, it: Itemized, stateIncomeTax: number): numb
  * stacked on top at 0 / 15 / 20%, plus the 3.8% net investment income tax. `stateIncomeTax` (paid the
  * same year) counts toward SALT when itemizing.
  */
-export function federalTax(b: TaxBase, s: TaxSituation, stateIncomeTax = 0): number {
+export function federalTax(base: TaxBase, s: TaxSituation, stateIncomeTax = 0): number {
+  const b = withTaxableSocialSecurity(base, s)
   const ordinary = b.ordinary + b.shortGains
   const deduction = federalDeduction(b, s, stateIncomeTax).amount
   const ordinaryTaxable = Math.max(0, ordinary - deduction)
@@ -172,7 +189,8 @@ function statePropertyTaxCredit(b: TaxBase, s: TaxSituation): number {
 }
 
 /** State tax: gains are taxed like other income, except in the states in STATE_GAINS; less any homeowner credit. */
-export function stateTax(b: TaxBase, s: TaxSituation): number {
+export function stateTax(base: TaxBase, s: TaxSituation): number {
+  const b = stateBase(base, s)
   const table = s.state ? STATE_TAX[s.state] : undefined
   const deduction = stateDeduction(b, s, table)
   return Math.max(0, stateTaxBeforeCredits(b, s, table, deduction) - statePropertyTaxCredit(b, s))

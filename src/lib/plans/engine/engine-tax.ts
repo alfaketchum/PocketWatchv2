@@ -1,6 +1,5 @@
 import type { Inflation } from "../plan-inflation"
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
-import { SOCIAL_SECURITY_TAXABLE_SHARE } from "../tax/federal-2026"
 import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
 import type { Itemized } from "../tax/itemized-2026"
 import type { PlanDocument } from "../plan-types"
@@ -14,17 +13,15 @@ export interface YearTax {
   situation: TaxSituation | null
   /** Tax on earned income (wages, pensions, taxable Social Security…). */
   incomeTax: number
-  /** Ordinary taxable income before withdrawals, for the year-end true-up. */
+  /** Ordinary taxable income before withdrawals (Social Security apart), for the year-end true-up. */
   earnedOrdinary: number
+  /** Social Security received; how much is taxable depends on the year's other income. */
+  socialSecurity: number
 }
 
-/** Taxable earned income; under brackets only 85% of Social Security counts. */
-function earnedOrdinaryIncome(doc: PlanDocument, income: IncomeYear, brackets: boolean): number {
-  if (!brackets) return income.taxableIncome
-  const exempt = doc.incomes
-    .filter((i) => i.kind === "social_security" && i.taxable)
-    .reduce((s, i) => s + (income.byId[i.id] ?? 0) * (1 - SOCIAL_SECURITY_TAXABLE_SHARE), 0)
-  return Math.max(0, income.taxableIncome - exempt)
+/** Social Security benefits this year (the taxable part is worked out with the rest of the year's income). */
+function socialSecurityReceived(doc: PlanDocument, income: IncomeYear): number {
+  return doc.incomes.filter((i) => i.kind === "social_security" && i.taxable).reduce((s, i) => s + (income.byId[i.id] ?? 0), 0)
 }
 
 /**
@@ -43,7 +40,7 @@ export function yearTax(
   if (settings.taxMode !== "brackets") {
     const rates = taxRatesAt(adjustments, settings, index)
     const yearDoc = adjustments.length ? { ...doc, settings: { ...settings, ...rates } } : doc
-    return { doc: yearDoc, situation: null, incomeTax: income.taxableIncome * rates.incomeTaxRate, earnedOrdinary: income.taxableIncome }
+    return { doc: yearDoc, situation: null, incomeTax: income.taxableIncome * rates.incomeTaxRate, earnedOrdinary: income.taxableIncome, socialSecurity: 0 }
   }
   const situation: TaxSituation = {
     status: filingStatusAt(adjustments, settings, index),
@@ -51,8 +48,9 @@ export function yearTax(
     index: thresholdIndex(settings.startYear + index, inflation, settings.startYear),
     ...(itemized ? { itemized } : {}),
   }
-  const earnedOrdinary = earnedOrdinaryIncome(doc, income, true)
-  const earned = taxBase({ ordinary: earnedOrdinary })
+  const socialSecurity = socialSecurityReceived(doc, income)
+  const earnedOrdinary = Math.max(0, income.taxableIncome - socialSecurity)
+  const earned = taxBase({ ordinary: earnedOrdinary, socialSecurity })
   const marginal = marginalRates(earned, situation)
   return {
     // Withdrawals are grossed up at these; short-term gains use the ordinary rate. The true-up settles the rest.
@@ -60,6 +58,7 @@ export function yearTax(
     situation,
     incomeTax: totalTax(earned, situation),
     earnedOrdinary,
+    socialSecurity,
   }
 }
 
@@ -98,6 +97,7 @@ function finalBase(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): TaxBas
     shortGains: amounts.shortGains,
     longGains: amounts.longGains,
     realEstateGains: amounts.realEstateGains,
+    socialSecurity: tax.socialSecurity,
   })
 }
 
