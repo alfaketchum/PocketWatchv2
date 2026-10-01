@@ -79,16 +79,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
       <EditorToolbar toggle={viewToggle}>
         <AddExpenseButton doc={doc} update={update} />
       </EditorToolbar>
-      {view === "compact" ? (
-        <p className="text-xs text-foreground-muted">
-          Kids&apos; and home &amp; vehicle costs are listed below as read-only lines.{" "}
-          <button type="button" onClick={() => onEditItem?.(planItemAnchor("kids"))} className="text-primary hover:underline">
-            Add or change kids in Detailed view
-          </button>
-        </p>
-      ) : (
-        <ChildrenEditor doc={doc} update={update} />
-      )}
+      <ChildrenEditor doc={doc} update={update} view={view} />
       <div className="space-y-3">
         <p className="text-sm font-semibold text-foreground">Other expenses</p>
         {doc.expenses.length === 0 ? (

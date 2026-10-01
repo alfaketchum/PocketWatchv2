@@ -75,3 +75,20 @@ export function removeAsset(doc: PlanDocument, assetId: string): PlanDocument {
     debts: doc.debts.filter((d) => d.assetId !== assetId),
   }
 }
+
+/**
+ * Bring one child from a draft copy of the plan (the kid pop-out) into the plan: the child, added or replaced, and
+ * their 529 account if the draft opened or changed one. Nothing else from the draft is taken.
+ */
+export function mergeChildDraft(doc: PlanDocument, draft: PlanDocument, childId: string): PlanDocument {
+  const child = draft.children.find((c) => c.id === childId)
+  if (!child) return doc
+  const account = child.plan529.accountId ? draft.accounts.find((a) => a.id === child.plan529.accountId) : undefined
+  const children = doc.children.some((c) => c.id === childId) ? doc.children.map((c) => (c.id === childId ? child : c)) : [...doc.children, child]
+  const accounts = !account
+    ? doc.accounts
+    : doc.accounts.some((a) => a.id === account.id)
+      ? doc.accounts.map((a) => (a.id === account.id ? account : a))
+      : [...doc.accounts, account]
+  return { ...doc, children, accounts }
+}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
 import type { PlanEditorProps } from "../plans-helpers"
+import { ChildDialog } from "./child-dialog"
 import { TemplateFields } from "./milestone-template-forms"
 import { applyTemplate, draftProblem } from "./template-apply"
 import { initialDraft, type TemplateDraft } from "./template-draft"
@@ -194,6 +195,9 @@ export function AddMilestoneDialog({
     setTemplate(key)
     setDraft(initialDraft(key, doc))
   }
+  // A child has more to it than a template form: the full kid pop-out (raising, college, 529, support).
+  if (template === "child") return <ChildDialog doc={doc} update={update} onClose={onClose} />
+
   const create = () => {
     if (!template || !draft || problem) return
     update((d) => applyTemplate(template, draft, d))
