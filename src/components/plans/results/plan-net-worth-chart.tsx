@@ -267,6 +267,9 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     },
     [isolated],
   )
+  const clearSelected = useCallback(() => {
+    if (isolatedRef.current === null) setSelected(null)
+  }, [])
   const toggleSelected = useCallback(
     (index: number) => {
       // While isolated the plot has one bar, so its click index isn't a plan year: ignore it.
@@ -325,6 +328,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               markColor={markColor}
               onHover={onPlotHover}
               onSelect={toggleSelected}
+              onClear={clearSelected}
               onHoverMark={setHoveredMark}
               isolated={isolated !== null}
             />

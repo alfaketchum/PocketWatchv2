@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useMemo } from "react"
+import { memo, useMemo, type SyntheticEvent } from "react"
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { fmtCompact } from "@/components/fire/fire-helpers"
@@ -69,6 +69,16 @@ function MilestoneMarker({
   )
 }
 
+/**
+ * Whether a click landed on a bar rather than empty chart space. Checks everything under the pointer, as the
+ * hover highlight can sit on top of the bar it highlights.
+ */
+function onBar(event: SyntheticEvent): boolean {
+  const { clientX, clientY } = event.nativeEvent as MouseEvent
+  if (typeof document === "undefined" || clientX === undefined) return true
+  return document.elementsFromPoint(clientX, clientY).some((el) => el.closest(".recharts-bar-rectangle"))
+}
+
 const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
   const index = Number(state?.activeTooltipIndex)
   return Number.isInteger(index) && index >= 0 ? index : null
@@ -87,7 +97,10 @@ interface ChartPlotProps {
   selected: number | null
   markColor: (m: ChartMilestone) => string
   onHover: (index: number | null) => void
+  /** A bar was clicked (its year). */
   onSelect: (index: number) => void
+  /** The chart was clicked off the bars: empty space unpins. */
+  onClear: () => void
   onHoverMark: (hovered: HoveredMark | null) => void
   /** One year on its own (bar isolation mode): a wide bar with each part labelled. */
   isolated: boolean
@@ -119,6 +132,7 @@ export const ChartPlot = memo(function ChartPlot({
   markColor,
   onHover,
   onSelect,
+  onClear,
   onHoverMark,
   isolated,
 }: ChartPlotProps) {
@@ -145,9 +159,10 @@ export const ChartPlot = memo(function ChartPlot({
         barCategoryGap={isolated ? "30%" : "8%"}
         onMouseMove={(state) => onHover(indexOf(state))}
         onMouseLeave={() => onHover(null)}
-        onClick={(state) => {
+        onClick={(state, event) => {
           const index = indexOf(state)
-          if (index !== null) onSelect(index)
+          if (index !== null && onBar(event)) onSelect(index)
+          else onClear()
         }}
       >
         <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
