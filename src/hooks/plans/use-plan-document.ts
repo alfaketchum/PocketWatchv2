@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { showUndoToast } from "@/components/ui/undo-toast"
+import { removalLabel, removedItems } from "@/lib/plans/plan-removals"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { plansFetch, PlansFetchError, plansKeys, type PlanDetail, type PlanMeta } from "./shared"
 
 const SAVE_DEBOUNCE_MS = 700
+/** How long a removal can be undone. */
+const UNDO_MS = 10_000
 const CONFLICT_STATUS = 409
 
 export function usePlanDetail(id: string) {
@@ -32,6 +36,10 @@ export function usePlanDocument(id: string) {
   const pending = useRef<PlanDocument | null>(null)
   const inFlight = useRef(false)
   const [isSaving, setIsSaving] = useState(false)
+  /** The open undo toast, dismissed by the next edit: undo only ever restores the latest removal. */
+  const undoToast = useRef<string | number | null>(null)
+  /** The last document this hook applied. React Query stores a structurally shared copy, so compare against this. */
+  const latest = useRef<PlanDocument | null>(null)
 
   const flush = useCallback(async () => {
     if (inFlight.current || !pending.current) return
@@ -62,22 +70,60 @@ export function usePlanDocument(id: string) {
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current)
+      // Leaving the plan ends the chance to undo: the toast would otherwise act on a page that's gone.
+      if (undoToast.current !== null) toast.dismiss(undoToast.current)
       void flush()
     },
     [flush],
   )
 
-  const update = useCallback(
-    (updater: PlanUpdater) => {
-      const current = qc.getQueryData<PlanDetail>(plansKeys.detail(id))
-      if (!current) return
-      const next = updater(current.document)
-      qc.setQueryData<PlanDetail>(plansKeys.detail(id), { ...current, document: next })
-      pending.current = next
+  /** Puts `document` in the cache and saves it after the debounce. */
+  const apply = useCallback(
+    (current: PlanDetail, document: PlanDocument) => {
+      qc.setQueryData<PlanDetail>(plansKeys.detail(id), { ...current, document })
+      latest.current = document
+      pending.current = document
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => void flush(), SAVE_DEBOUNCE_MS)
     },
     [id, qc, flush],
+  )
+
+  /**
+   * An edit that removes things (an account, income, expense, asset, debt, milestone, child or person) offers Undo
+   * for a few seconds. Undo restores the plan exactly as it was before the removal, so it's withdrawn by any later
+   * edit rather than reverting that edit too.
+   */
+  const update = useCallback(
+    (updater: PlanUpdater) => {
+      const current = qc.getQueryData<PlanDetail>(plansKeys.detail(id))
+      if (!current) return
+      const before = current.document
+      const next = updater(before)
+      if (undoToast.current !== null) {
+        toast.dismiss(undoToast.current)
+        undoToast.current = null
+      }
+      apply(current, next)
+      const removed = removedItems(before, next)
+      if (removed.length === 0) return
+      const label = removalLabel(removed)
+      undoToast.current = showUndoToast({
+        message: `Removed ${label}`,
+        durationMs: UNDO_MS,
+        onUndo: () => {
+          undoToast.current = null
+          const now = qc.getQueryData<PlanDetail>(plansKeys.detail(id))
+          if (!now || latest.current !== next) {
+            toast.error("Couldn't undo: the plan has changed since")
+            return
+          }
+          apply(now, before)
+          toast.success(`Restored ${label}`)
+        },
+      })
+    },
+    [id, qc, apply],
   )
 
   return {

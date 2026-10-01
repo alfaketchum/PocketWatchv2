@@ -690,6 +690,21 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   background-color: color-mix(in srgb, var(--card) 95%, var(--foreground) 5%);
 }
 
+/* Undo toast countdown: the bar empties over the toast's lifetime (duration set inline). */
+@keyframes pw-undo-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.pw-undo-countdown {
+  animation-name: pw-undo-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Scale-in animation — donut chart entrance */
 @keyframes scale-in {
   from {
@@ -766,6 +781,13 @@ html {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* The undo countdown is a slow progress bar, not motion: keep its real length so it still shows time left. */
+@media (prefers-reduced-motion: reduce) {
+  .pw-undo-countdown {
+    animation-duration: var(--pw-undo-ms) !important;
   }
 }
 
