@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { AddMilestoneDialog, eventsFor } from "./add-milestone-dialog"
 import { fmtPct } from "@/components/fire/fire-helpers"
 import { nominalRate } from "@/lib/plans/plan-dollars"
 import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
@@ -36,14 +38,32 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: Pl
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
+  const [adding, setAdding] = useState(false)
+
   return (
     <div className="space-y-3">
-      <EditorToolbar toggle={viewToggle}>
-        <AddButton
-          label="Add account"
-          disabled={doc.accounts.length >= PLAN_LIMITS.accounts}
-          onClick={() => update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))}
+      {adding && (
+        <AddMilestoneDialog
+          doc={doc}
+          update={update}
+          title="Add an account"
+          keys={eventsFor("Accounts")}
+          instant={[
+            {
+              label: "An account you have",
+              icon: "account_balance",
+              detail: "Bank, brokerage or retirement account",
+              onPick: () => {
+                update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))
+                setAdding(false)
+              },
+            },
+          ]}
+          onClose={() => setAdding(false)}
         />
+      )}
+      <EditorToolbar toggle={viewToggle}>
+        <AddButton label="Add account" disabled={doc.accounts.length >= PLAN_LIMITS.accounts} onClick={() => setAdding(true)} />
       </EditorToolbar>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RefreshBalancesButton doc={doc} update={update} />

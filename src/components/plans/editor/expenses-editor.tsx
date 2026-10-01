@@ -15,19 +15,43 @@ import { ChildrenEditor } from "./children-editor"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
 import { useExpenseCategories } from "./use-expense-categories"
 import { TimingPicker } from "./timing-picker"
-import { AddExpenseDialog } from "./add-expense-dialog"
+import { AddExpenseDialog, EXPENSE_EVENTS } from "./add-expense-dialog"
+import { AddMilestoneDialog } from "./add-milestone-dialog"
+import type { TemplateKey } from "@/lib/plans/milestone-templates"
 import { ExpensesTable } from "./expenses-table"
 import { AssetCostList } from "./asset-cost-list"
 import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 
 const NO_CATEGORY = "none"
 
+/** Add a spending line, or a life event whose costs land here (opens the same form as on Milestones). */
 function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
   const [open, setOpen] = useState(false)
+  const [event, setEvent] = useState<TemplateKey | null>(null)
   return (
     <>
       <AddButton label="Add expense" disabled={doc.expenses.length >= PLAN_LIMITS.expenses} onClick={() => setOpen(true)} />
-      {open && <AddExpenseDialog doc={doc} update={update} onClose={() => setOpen(false)} />}
+      {open && (
+        <AddExpenseDialog
+          doc={doc}
+          update={update}
+          onClose={() => setOpen(false)}
+          onEvent={(key) => {
+            setOpen(false)
+            setEvent(key)
+          }}
+        />
+      )}
+      {event && (
+        <AddMilestoneDialog
+          doc={doc}
+          update={update}
+          initial={event}
+          keys={EXPENSE_EVENTS.map((e) => e.key)}
+          title="Add a life event"
+          onClose={() => setEvent(null)}
+        />
+      )}
     </>
   )
 }

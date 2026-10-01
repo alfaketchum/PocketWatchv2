@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
 import type { PlanEditorProps } from "../plans-helpers"
@@ -26,8 +27,36 @@ const LANDS_ON: Partial<Record<TemplateKey, string>> = {
   pension: "Pension added to Income",
 }
 
-/** Life events that change several parts of the plan at once; single items are added on their own tab. */
-export const MILESTONE_TAB_TEMPLATES: TemplateKey[] = ["retire", "married", "divorce", "widowed", "elderCare", "move", "inheritance", "custom"]
+/** Events a tab also offers in its own Add (the same form); the rest are added only on Milestones. */
+export const EVENT_TABS: Partial<Record<TemplateKey, string>> = {
+  child: "Expenses",
+  elderCare: "Expenses",
+  home: "Assets & debts",
+  vehicle: "Assets & debts",
+  career: "Income",
+  break: "Income",
+  socialSecurity: "Income",
+  pension: "Income",
+  windfall: "Income",
+  inheritance: "Accounts",
+}
+
+/** The events a tab offers, from `EVENT_TABS`. */
+export function eventsFor(tab: string): TemplateKey[] {
+  return (Object.keys(EVENT_TABS) as TemplateKey[]).filter((k) => EVENT_TABS[k] === tab)
+}
+
+/**
+ * Everything that will happen, grouped: the Milestones tab is where future events are added. What you have today
+ * is added on its own tab; either way, details are edited where the items land.
+ */
+export const FUTURE_EVENT_GROUPS: { label: string; keys: TemplateKey[] }[] = [
+  { label: "Family", keys: ["married", "child", "divorce", "widowed"] },
+  { label: "Home & car", keys: ["home", "vehicle", "move"] },
+  { label: "Work & income", keys: ["retire", "career", "break", "socialSecurity", "pension"] },
+  { label: "Money coming in", keys: ["inheritance", "windfall"] },
+  { label: "Care & other", keys: ["elderCare", "custom"] },
+]
 
 /** A choice that acts right away instead of opening a template form (e.g. a plain new income). */
 export interface InstantChoice {
@@ -37,7 +66,7 @@ export interface InstantChoice {
   onPick: () => void
 }
 
-function ChoiceButton({ icon, label, detail, onClick }: { icon: string; label: string; detail: string; onClick: () => void }) {
+function ChoiceButton({ icon, label, detail, where, onClick }: { icon: string; label: string; detail: string; where?: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -49,18 +78,64 @@ function ChoiceButton({ icon, label, detail, onClick }: { icon: string; label: s
       </span>
       <span className="text-sm font-medium text-foreground">{label}</span>
       <span className="text-[11px] leading-snug text-foreground-muted">{detail}</span>
+      {where && (
+        <span
+          className={cn(
+            "mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium",
+            where === ONLY_HERE ? "bg-primary/10 text-primary" : "bg-foreground/5 text-foreground-muted",
+          )}
+        >
+          {where}
+        </span>
+      )}
     </button>
   )
 }
 
-function TemplateGrid({ keys, instant, onPick }: { keys: TemplateKey[]; instant: InstantChoice[]; onPick: (key: TemplateKey) => void }) {
+const ONLY_HERE = "Only on Milestones"
+
+function GroupedTemplates({ groups, onPick }: { groups: typeof FUTURE_EVENT_GROUPS; onPick: (key: TemplateKey) => void }) {
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-foreground-muted">
+        Anything that will happen. Events marked with a tab can also be added there; the rest are added only here.
+      </p>
+      {groups.map((g) => (
+        <div key={g.label} className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">{g.label}</p>
+          <TemplateGrid keys={g.keys} instant={[]} onPick={onPick} labelled />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TemplateGrid({
+  keys,
+  instant,
+  onPick,
+  labelled,
+}: {
+  keys: TemplateKey[]
+  instant: InstantChoice[]
+  onPick: (key: TemplateKey) => void
+  /** Show where else each event can be added (the Milestones picker). */
+  labelled?: boolean
+}) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {instant.map((c) => (
         <ChoiceButton key={c.label} icon={c.icon} label={c.label} detail={c.detail} onClick={c.onPick} />
       ))}
       {MILESTONE_TEMPLATES.filter((t) => keys.includes(t.key)).map((t) => (
-        <ChoiceButton key={t.key} icon={t.icon} label={t.label} detail={t.creates} onClick={() => onPick(t.key)} />
+        <ChoiceButton
+          key={t.key}
+          icon={t.icon}
+          label={t.label}
+          detail={t.creates}
+          where={labelled ? (EVENT_TABS[t.key] ? `Also on ${EVENT_TABS[t.key]}` : ONLY_HERE) : undefined}
+          onClick={() => onPick(t.key)}
+        />
       ))}
     </div>
   )
@@ -71,12 +146,22 @@ export function AddMilestoneDialog({
   doc,
   update,
   onClose,
-  keys = MILESTONE_TAB_TEMPLATES,
+  keys,
   instant = [],
   title = "Add a milestone",
-}: PlanEditorProps & { onClose: () => void; keys?: TemplateKey[]; instant?: InstantChoice[]; title?: string }) {
-  const [template, setTemplate] = useState<TemplateKey | null>(null)
-  const [draft, setDraft] = useState<TemplateDraft | null>(null)
+  footnote,
+  initial,
+}: PlanEditorProps & {
+  onClose: () => void
+  keys?: TemplateKey[]
+  instant?: InstantChoice[]
+  title?: string
+  footnote?: ReactNode
+  /** Open straight on this event's form (from another tab's Add). */
+  initial?: TemplateKey
+}) {
+  const [template, setTemplate] = useState<TemplateKey | null>(initial ?? null)
+  const [draft, setDraft] = useState<TemplateDraft | null>(() => (initial ? initialDraft(initial, doc) : null))
   const meta = MILESTONE_TEMPLATES.find((t) => t.key === template)
   const problem = template && draft ? draftProblem(template, draft, doc) : null
 
@@ -93,6 +178,7 @@ export function AddMilestoneDialog({
 
   return (
     <AccountsModalShell
+      wide={!template && !keys}
       title={meta ? meta.label : title}
       onClose={onClose}
       footer={
@@ -119,7 +205,10 @@ export function AddMilestoneDialog({
           <TemplateFields template={template} d={draft} set={(change) => setDraft({ ...draft, ...change })} doc={doc} />
         </div>
       ) : (
-        <TemplateGrid keys={keys} instant={instant} onPick={pick} />
+        <>
+          {keys ? <TemplateGrid keys={keys} instant={instant} onPick={pick} /> : <GroupedTemplates groups={FUTURE_EVENT_GROUPS} onPick={pick} />}
+          {footnote}
+        </>
       )}
     </AccountsModalShell>
   )

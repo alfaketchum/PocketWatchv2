@@ -9,6 +9,8 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { cn } from "@/lib/utils"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { patternForNewLine } from "@/lib/plans/plan-spending-patterns"
+import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
+import { eventsFor } from "./add-milestone-dialog"
 import type { PlanExpense, Timing } from "@/lib/plans/plan-types"
 import { newItemId, type PlanEditorProps } from "../plans-helpers"
 import { TextField } from "./plan-editor-controls"
@@ -73,8 +75,46 @@ function MeasureChips({ category, amount, onPick }: { category: ExpenseCategory;
   )
 }
 
-/** Pop-out for adding a spending line in one of your budget categories: how much, and when. */
-export function AddExpenseDialog({ doc, update, onClose }: Pick<PlanEditorProps, "doc" | "update"> & { onClose: () => void }) {
+/** Life events whose costs land on Expenses; they open the same event form as on Milestones. */
+const EVENT_DETAILS: Partial<Record<TemplateKey, string>> = { child: "Raising costs, college, a 529", elderCare: "Care for a parent, and who pays" }
+export const EXPENSE_EVENTS = eventsFor("Expenses").map((key) => {
+  const meta = MILESTONE_TEMPLATES.find((t) => t.key === key)!
+  return { key, label: meta.label, icon: meta.icon, detail: EVENT_DETAILS[key] ?? meta.creates }
+})
+
+function EventChoices({ onEvent }: { onEvent: (key: TemplateKey) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Life events</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {EXPENSE_EVENTS.map((e) => (
+          <button
+            key={e.key}
+            type="button"
+            onClick={() => onEvent(e.key)}
+            className="flex items-center gap-2 rounded-xl border border-card-border px-3 py-2.5 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+          >
+            <span className="material-symbols-rounded shrink-0 text-primary" style={{ fontSize: 20 }}>
+              {e.icon}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium text-foreground">{e.label}</span>
+              <span className="block truncate text-[11px] text-foreground-muted">{e.detail}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Pop-out for adding a spending line in one of your budget categories, or a life event whose costs land here. */
+export function AddExpenseDialog({
+  doc,
+  update,
+  onClose,
+  onEvent,
+}: Pick<PlanEditorProps, "doc" | "update"> & { onClose: () => void; onEvent: (key: TemplateKey) => void }) {
   const categories = useExpenseCategories()
   const [picked, setPicked] = useState<ExpenseCategory | null | undefined>(undefined)
   const [line, setLine] = useState<PlanExpense | null>(null)
@@ -136,6 +176,7 @@ export function AddExpenseDialog({ doc, update, onClose }: Pick<PlanEditorProps,
         <>
           <p className="text-xs text-foreground-muted">Your budget categories, with your average month over the last year (the same numbers &ldquo;Start from my data&rdquo; uses).</p>
           <CategoryGrid categories={categories} onPick={pick} />
+          <EventChoices onEvent={onEvent} />
         </>
       )}
       {chosen && (
