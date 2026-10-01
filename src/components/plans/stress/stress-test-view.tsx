@@ -12,6 +12,7 @@ import { anchorIndex, summarize, type StressAlign, type StressInflation } from "
 import type { PlanEditorProps } from "../plans-helpers"
 import { StressCohortBars } from "./stress-cohort-bars"
 import { StressFanChart } from "./stress-fan-chart"
+import { StressOutcomeBuckets } from "./stress-outcome-buckets"
 import { StressPathsChart } from "./stress-paths-chart"
 import { StressMixTable } from "./stress-mix-table"
 import { InflationSource } from "../editor/inflation-source"
@@ -67,6 +68,20 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     () => projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(inflationOf(doc.settings), r.index, "balance")),
     [projection, measure, doc.settings],
   )
+  // The outcome buckets' yardsticks, from this plan: what you have today and a year of spending at the end.
+  const yardsticks = useMemo(() => {
+    const inflation = inflationOf(doc.settings)
+    const spending = projection.rows
+      .map((r) => r.expenses / deflator(inflation, r.index, "flow"))
+      .filter((v) => v > 0)
+    const invested = doc.accounts.reduce((s, a) => s + a.balance, 0)
+    return {
+      startValue: measure === "netWorth" ? projection.startNetWorth : invested,
+      yearlySpending: spending.at(-1) ?? 0,
+      endAge: doc.settings.endAge,
+      measure,
+    }
+  }, [projection, doc.settings, doc.accounts, measure])
   const capeOptions: { value: Cape; label: string }[] = [
     { value: "all", label: "All years" },
     { value: "20", label: "CAPE ≥ 20" },
@@ -124,14 +139,17 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
             }
           >
             {chartView === "range" ? (
-              <StressFanChart
-                bands={measure === "netWorth" ? summary.netWorthBands : summary.investedBands}
-                age0={age0}
-                plan={plan}
-                worst={summary.worst}
-                measure={measure}
-                isHidden={isHidden}
-              />
+              <>
+                <StressFanChart
+                  bands={measure === "netWorth" ? summary.netWorthBands : summary.investedBands}
+                  age0={age0}
+                  plan={plan}
+                  worst={summary.worst}
+                  measure={measure}
+                  isHidden={isHidden}
+                />
+                <StressOutcomeBuckets cohorts={summary.cohorts} yardsticks={yardsticks} isHidden={isHidden} />
+              </>
             ) : (
               <StressPathsChart cohorts={summary.cohorts} age0={age0} plan={plan} measure={measure} isHidden={isHidden} />
             )}

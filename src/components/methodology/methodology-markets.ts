@@ -22,6 +22,7 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Lining up**: history's year 1 matches the plan's first year, or your retirement year (earlier plan years then use the years before it in history).",
           "**Only complete runs count**: a start year is used only if history covers every year from there to the plan's end.",
           "**Success** = the money lasts: no year where spending goes unfunded.",
+          "**Five outcomes** (under the Range chart), measured against your own plan: **Surplus** lasted and ended with more than you have today (after inflation); **Steady** lasted with at least 5 years of your end-of-plan spending left; **Just made it** lasted with less than that; **Almost survived** ran out in the plan's last 5 years; **Catastrophic** ran out earlier. They follow the Net worth / Invested switch and the CAPE filter.",
           "**CAPE filter**: show only the runs that started when stocks were as expensive as now (CAPE ≥ 20 or ≥ 30), since expensive starts have historically led to worse outcomes.",
         ],
       },
