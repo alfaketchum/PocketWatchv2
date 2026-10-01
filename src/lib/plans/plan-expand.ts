@@ -3,7 +3,8 @@ import { childExpenses } from "./plan-children"
 import { financingDebts } from "./plan-financing"
 import { allMilestones } from "./plan-milestones"
 import { withReplacements } from "./plan-replacements"
-import type { PlanDocument } from "./plan-types"
+import { resolveTiming, timingContext } from "./plan-timing"
+import type { PlanDebt, PlanDocument } from "./plan-types"
 
 /**
  * The document the engine and charts work from: replacement cycles unrolled into successive assets,
@@ -20,4 +21,26 @@ export function expandPlan(doc: PlanDocument): PlanDocument {
     milestones: allMilestones(withAssets),
     children: [],
   }
+}
+
+/** A loan the plan creates on its own (a financed purchase or replacement), with the asset it pays for. */
+export interface GeneratedDebt {
+  debt: PlanDebt
+  /** The asset in the editor it comes from (replacement cycles point back to the original). */
+  assetId: string | null
+  /** Calendar year the loan starts; its amounts are in that year's dollars. */
+  year: number | null
+}
+
+/** Loans the plan adds from assets' "How you'll pay"; read-only, edited on the asset. */
+export function generatedDebts(doc: PlanDocument): GeneratedDebt[] {
+  const own = new Set(doc.debts.map((d) => d.id))
+  const expanded = expandPlan(doc)
+  const ctx = timingContext(expanded)
+  return expanded.debts
+    .filter((d) => !own.has(d.id))
+    .map((debt) => {
+      const index = resolveTiming(debt.start, ctx)
+      return { debt, assetId: debt.assetId ? debt.assetId.split("~")[0] : null, year: index === null ? null : doc.settings.startYear + index }
+    })
 }

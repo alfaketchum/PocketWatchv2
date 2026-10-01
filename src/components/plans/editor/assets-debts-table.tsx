@@ -1,12 +1,14 @@
 "use client"
 
+import { useMemo } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
-import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
+import { Badge, Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 import { paidWithLabel } from "@/lib/plans/plan-financing"
 import { removeAsset } from "@/lib/plans/plan-edits"
+import { generatedDebts } from "@/lib/plans/plan-expand"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -58,6 +60,8 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patchAsset = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
   const patchDebt = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))
   const assetName = (id: string | null) => doc.assets.find((a) => a.id === id)?.name ?? "—"
+  // Loans from financed purchases: listed read-only, edited on their asset.
+  const generated = useMemo(() => generatedDebts(doc), [doc])
   return (
     <div className="space-y-5">
       <PlanTable
@@ -154,6 +158,37 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
                 onEditItem={onEditItem}
                 onRemove={() => update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }))}
               />
+            </Cell>
+          </Row>
+        ))}
+        {generated.map(({ debt, assetId, year }) => (
+          <Row key={debt.id} muted>
+            <Cell>
+              <span className="flex items-center px-2">
+                {debt.name}
+                <Badge>From asset</Badge>
+              </span>
+            </Cell>
+            <Cell>
+              <span className="px-2 text-xs">{DEBT_KINDS.find((k) => k.value === debt.kind)?.label ?? debt.kind}</span>
+            </Cell>
+            <Cell align="right">
+              <span className="px-2 tabular-nums" title={year !== null ? `Borrowed in ${year}, in ${year} dollars` : undefined}>{fmtMoney(debt.balance)}</span>
+            </Cell>
+            <Cell align="right">
+              <span className="px-2 tabular-nums">{(debt.rate * 100).toFixed(2)}%</span>
+            </Cell>
+            <Cell align="right">
+              <span className="px-2 tabular-nums">{fmtMoney(debt.monthlyPayment)}</span>
+            </Cell>
+            <Cell>
+              <TimingCell timing={debt.start} doc={doc} />
+            </Cell>
+            <Cell>
+              <span className="block truncate px-2 text-xs text-foreground-muted">{assetName(assetId)}</span>
+            </Cell>
+            <Cell align="center">
+              {assetId && <RowButton icon="edit" label={`Edit the financing on ${assetName(assetId)}`} onClick={() => onEditItem?.(planItemAnchor(assetId))} />}
             </Cell>
           </Row>
         ))}

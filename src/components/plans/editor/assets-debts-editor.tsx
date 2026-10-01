@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { fmtMoney } from "@/components/fire/fire-helpers"
 import { InputBlock } from "@/components/fire/fire-input-controls"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, DebtKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
@@ -15,6 +16,8 @@ import { PlanLoanSuggestions } from "./plan-loan-suggestions"
 import { AddAssetDialog } from "./add-asset-dialog"
 import { TYPICAL_RUNNING_COSTS } from "@/lib/plans/plan-asset-costs"
 import { removeAsset } from "@/lib/plans/plan-edits"
+import { generatedDebts } from "@/lib/plans/plan-expand"
+import { Badge } from "./plan-table"
 
 const ASSET_KINDS: { value: AssetKind; label: string }[] = [
   { value: "home", label: "Home" },
@@ -155,6 +158,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
 }
 
 function DebtsList({ doc, update }: PlanEditorProps) {
+  const generated = useMemo(() => generatedDebts(doc), [doc])
   const patch = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))
   const assetOptions = [{ value: NO_ASSET, label: "None" }, ...doc.assets.map((a) => ({ value: a.id, label: a.name }))]
   return (
@@ -162,7 +166,29 @@ function DebtsList({ doc, update }: PlanEditorProps) {
       title="Debts"
       description="Paid monthly until the balance is gone. A loan linked to an asset is paid off from the sale when the asset is sold."
     >
-      {doc.debts.length === 0 && <EmptyNote>No debts.</EmptyNote>}
+      {doc.debts.length === 0 && generated.length === 0 && <EmptyNote>No debts.</EmptyNote>}
+      {generated.length > 0 && (
+        <div className="space-y-1 rounded-xl border border-card-border p-3">
+          <p className="text-[11px] text-foreground-muted">From your financed purchases. Edit them on the asset&apos;s &ldquo;How you&apos;ll pay&rdquo;.</p>
+          {generated.map(({ debt, assetId, year }) => (
+            <button
+              key={debt.id}
+              type="button"
+              onClick={() => assetId && document.getElementById(planItemAnchor(assetId))?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              className="flex w-full items-center gap-2 rounded-md -mx-1 px-1 py-0.5 text-left text-xs hover:bg-foreground/5"
+            >
+              <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }}>request_quote</span>
+              <span className="text-foreground">{debt.name}</span>
+              <span className="text-foreground-muted tabular-nums">
+                {fmtMoney(debt.balance)} at {(debt.rate * 100).toFixed(2)}% · {fmtMoney(debt.monthlyPayment)}/mo
+                {year !== null && ` · from ${year} (${year} dollars)`}
+              </span>
+              <Badge>From asset</Badge>
+              <span className="ml-auto text-[11px] text-primary">Edit on the asset →</span>
+            </button>
+          ))}
+        </div>
+      )}
       {doc.debts.map((debt) => (
         <ItemCard
           key={debt.id} anchorId={planItemAnchor(debt.id)}
