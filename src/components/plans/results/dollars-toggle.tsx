@@ -8,12 +8,12 @@ const OPTIONS: { value: DollarBasis; label: string; hint: string }[] = [
   {
     value: "today",
     label: "Today's $",
-    hint: "Inflation taken out: every year is shown in what money buys today. $100k in 2050 here means what $100k buys now, so years compare directly. Best for judging your lifestyle.",
+    hint: "Every amount in today's money. If 2050 shows $100,000, that's what $100,000 buys today. Easiest way to ask: will I live as well then as now?",
   },
   {
     value: "future",
     label: "Future $",
-    hint: "The actual dollar amounts of each year, inflation included (nominal). Numbers grow over time even when buying power doesn't; these are the figures you'd see on statements and tax forms then.",
+    hint: "The actual price tags of each year, with inflation added. A $5 coffee today shows as about $10 in 25 years (prices rising ~3% a year). Bigger numbers, same buying power: what your statements will say then.",
   },
 ]
 
