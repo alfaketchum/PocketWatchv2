@@ -1,19 +1,21 @@
 "use client"
 
+import { Fragment } from "react"
 import { cn } from "@/lib/utils"
 import type { BuildTab, TabStatus } from "@/lib/plans/plan-tab-status"
 
-export type PlanTab = BuildTab
+export type PlanTab = BuildTab | "overview"
 
-/** In the order you'd build a plan. Results (ledger, money flow, loans…) are pages of their own. */
-export const PLAN_TABS: { value: PlanTab; label: string; icon: string }[] = [
-  { value: "assumptions", label: "Assumptions", icon: "tune" },
-  { value: "accounts", label: "Accounts", icon: "account_balance" },
-  { value: "income", label: "Income", icon: "payments" },
-  { value: "expenses", label: "Expenses", icon: "shopping_cart" },
-  { value: "assets", label: "Assets & debts", icon: "home" },
-  { value: "cashflow", label: "Cash flow", icon: "swap_vert" },
-  { value: "milestones", label: "Milestones", icon: "flag" },
+/** In the order you'd build a plan, numbered as steps: assumptions first, the ledger of results last. */
+export const PLAN_TABS: { value: PlanTab; label: string }[] = [
+  { value: "assumptions", label: "Assumptions" },
+  { value: "accounts", label: "Accounts" },
+  { value: "income", label: "Income" },
+  { value: "expenses", label: "Expenses" },
+  { value: "assets", label: "Assets & debts" },
+  { value: "cashflow", label: "Cash flow" },
+  { value: "milestones", label: "Milestones" },
+  { value: "overview", label: "Ledger Overview" },
 ]
 
 export const DEFAULT_PLAN_TAB: PlanTab = "assumptions"
@@ -50,7 +52,22 @@ function StatusDot({ status }: { status: TabStatus }) {
   )
 }
 
-/** Editor section tabs for a plan, each with its status. */
+/** The step's number in a small circle, filled for the tab you're on. */
+function StepNumber({ n, active }: { n: number; active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums",
+        active ? "bg-primary text-white" : "border border-card-border text-foreground-muted",
+      )}
+    >
+      {n}
+    </span>
+  )
+}
+
+/** Editor section tabs for a plan as numbered steps, each build step with its status. */
 export function PlanEditorTabs({
   value,
   onChange,
@@ -58,30 +75,36 @@ export function PlanEditorTabs({
 }: {
   value: PlanTab
   onChange: (tab: PlanTab) => void
-  statuses: Record<PlanTab, TabStatus>
+  statuses: Record<BuildTab, TabStatus>
 }) {
   return (
     <nav className="flex border-b border-card-border overflow-x-auto scrollbar-hide" role="tablist">
-      {PLAN_TABS.map((tab) => {
+      {PLAN_TABS.map((tab, i) => {
         const active = tab.value === value
+        const status = tab.value === "overview" ? null : statuses[tab.value]
         return (
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => onChange(tab.value)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap text-sm transition-colors",
-              active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
+          <Fragment key={tab.value}>
+            {i > 0 && (
+              <span aria-hidden="true" className="material-symbols-rounded self-center text-foreground-muted/50" style={{ fontSize: 12 }}>
+                arrow_forward
+              </span>
             )}
-          >
-            <span className="material-symbols-rounded" style={{ fontSize: 15 }}>
-              {tab.icon}
-            </span>
-            {tab.label}
-            <StatusDot status={statuses[tab.value]} />
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange(tab.value)}
+              className={cn(
+                "flex items-center gap-1.5 px-1 py-3 border-b-2 whitespace-nowrap text-[13px] transition-colors",
+                active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
+              )}
+            >
+              <StepNumber n={i + 1} active={active} />
+              <span className="sr-only">Step {i + 1}:</span>
+              {tab.label}
+              {status && <StatusDot status={status} />}
+            </button>
+          </Fragment>
         )
       })}
     </nav>

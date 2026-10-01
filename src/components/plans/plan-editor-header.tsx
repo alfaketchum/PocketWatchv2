@@ -41,12 +41,6 @@ export function PlanEditorHeader({
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href={`/plans/${planId}/ledger`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-              table_rows
-            </span>
-            Ledger
-          </Link>
           <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               account_tree

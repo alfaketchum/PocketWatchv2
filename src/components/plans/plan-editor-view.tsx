@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useEffect, useMemo, type ComponentType } from "react"
+import { useCallback, useMemo, type ComponentType } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
@@ -19,6 +19,8 @@ import { DEFAULT_PLAN_TAB, PlanEditorTabs, planTabFrom, type PlanTab } from "./e
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
+import { StressOverviewCard } from "./stress/stress-overview-card"
+import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
 
 const PlanNetWorthChart = dynamic(
@@ -26,7 +28,7 @@ const PlanNetWorthChart = dynamic(
   { ssr: false, loading: () => <div className="h-[380px] animate-shimmer rounded-2xl" /> },
 )
 
-const EDITORS: Record<PlanTab, ComponentType<PlanEditorProps>> = {
+const EDITORS: Record<Exclude<PlanTab, "overview">, ComponentType<PlanEditorProps>> = {
   accounts: AccountsEditor,
   income: IncomesEditor,
   expenses: ExpensesEditor,
@@ -75,10 +77,6 @@ export function PlanEditorView({ planId }: { planId: string }) {
     },
     [setListView],
   )
-  // The ledger used to be a tab; old links land on its page.
-  useEffect(() => {
-    if (tabParam === "overview") router.replace(`${pathname}/ledger`)
-  }, [tabParam, router, pathname])
   const { plan, document, update, isLoading, error, isSaving } = usePlanDocument(planId)
   const { projection, summary, rows, basis, setBasis, view } = usePlanProjection(document)
   const statuses = useMemo(() => (document ? planTabStatus(document) : null), [document])
@@ -96,22 +94,29 @@ export function PlanEditorView({ planId }: { planId: string }) {
     )
   }
 
-  const Editor = EDITORS[tab]
+  const Editor = tab === "overview" ? null : EDITORS[tab]
   return (
     <div className="space-y-5">
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
       <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
       <PlanEditorTabs value={tab} onChange={setTab} statuses={statuses} />
-      <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
-        <Editor
-          doc={document}
-          update={update}
-          view={TABLE_TABS.has(tab) ? listView : "detailed"}
-          onEditItem={editInList}
-          viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
-        />
-      </div>
+      {Editor ? (
+        <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
+          <Editor
+            doc={document}
+            update={update}
+            view={TABLE_TABS.has(tab) ? listView : "detailed"}
+            onEditItem={editInList}
+            viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
+          />
+        </div>
+      ) : (
+        <>
+          <StressOverviewCard doc={document} planId={planId} />
+          <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
+        </>
+      )}
     </div>
   )
 }
