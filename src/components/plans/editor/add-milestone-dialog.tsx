@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
 import type { PlanEditorProps } from "../plans-helpers"
@@ -52,11 +53,11 @@ export function eventsFor(tab: string): TemplateKey[] {
  * is added on its own tab; either way, details are edited where the items land.
  */
 export const FUTURE_EVENT_GROUPS: { label: string; keys: TemplateKey[] }[] = [
-  { label: "Family", keys: ["married", "child", "divorce", "widowed"] },
+  { label: "Family", keys: ["married", "child", "divorce", "widowed", "elderCare"] },
   { label: "Home & car", keys: ["home", "vehicle", "move"] },
   { label: "Work & income", keys: ["retire", "career", "break", "socialSecurity", "pension"] },
   { label: "Money coming in", keys: ["inheritance", "windfall"] },
-  { label: "Care & other", keys: ["elderCare", "custom"] },
+  { label: "Other", keys: ["custom"] },
 ]
 
 /** A choice that acts right away instead of opening a template form (e.g. a plain new income). */
@@ -71,22 +72,7 @@ export interface InstantChoice {
 const TAB_ORDER = ["Assumptions", "Accounts", "Income", "Expenses", "Assets & debts"]
 const byTabOrder = (tabs: string[]) => [...tabs].sort((a, b) => (TAB_ORDER.indexOf(a) + 1 || 99) - (TAB_ORDER.indexOf(b) + 1 || 99))
 
-function ChoiceButton({
-  icon,
-  label,
-  detail,
-  where,
-  changes,
-  onClick,
-}: {
-  icon: string
-  label: string
-  detail: string
-  where?: string
-  /** The tabs it adds to or changes, shown on the Milestones picker. */
-  changes?: string[]
-  onClick: () => void
-}) {
+function ChoiceButton({ icon, label, detail, onClick }: { icon: string; label: string; detail: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -98,55 +84,81 @@ function ChoiceButton({
       </span>
       <span className="text-sm font-medium text-foreground">{label}</span>
       <span className="text-[11px] leading-snug text-foreground-muted">{detail}</span>
-      {changes && changes.length > 0 && (
-        <span className="text-[10px] leading-snug text-foreground-muted">
-          <span className="font-medium text-foreground">Changes:</span> {byTabOrder(changes).join(" · ")}
-        </span>
-      )}
-      {where && (
-        <span
-          className={cn(
-            "mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium",
-            where === ONLY_HERE ? "bg-primary/10 text-primary" : "bg-foreground/5 text-foreground-muted",
-          )}
-        >
-          {where}
-        </span>
-      )}
     </button>
   )
 }
 
 const ONLY_HERE = "Only on Milestones"
 
-function GroupedTemplates({ groups, onPick }: { groups: typeof FUTURE_EVENT_GROUPS; onPick: (key: TemplateKey) => void }) {
+type EventFilter = "all" | "only"
+const FILTERS: { value: EventFilter; label: string }[] = [
+  { value: "all", label: "All events" },
+  { value: "only", label: ONLY_HERE },
+]
+
+/** A compact event card for the Milestones picker: what it is, where else it's offered, and what it changes. */
+function EventCard({ t, onPick }: { t: (typeof MILESTONE_TEMPLATES)[number]; onPick: () => void }) {
+  const tab = EVENT_TABS[t.key]
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-foreground-muted">
-        Anything that will happen. Events marked with a tab can also be added there; the rest are added only here.
-      </p>
-      {groups.map((g) => (
+    <button
+      type="button"
+      onClick={onPick}
+      className="flex items-start gap-2.5 rounded-xl border border-card-border p-2.5 text-left hover:border-primary hover:bg-primary/5 transition-colors"
+    >
+      <span className="material-symbols-rounded mt-0.5 shrink-0 text-primary" style={{ fontSize: 18 }} aria-hidden="true">
+        {t.icon}
+      </span>
+      <span className="min-w-0 flex-1 space-y-0.5">
+        <span className="block text-sm font-medium leading-tight text-foreground">{t.label}</span>
+        <span className="block text-[11px] leading-snug text-foreground-muted">{t.creates}</span>
+        <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-0.5">
+          <span className="text-[10px] leading-snug text-foreground-muted">
+            {t.changes.length > 0 && (
+              <>
+                <span className="font-medium text-foreground">Changes:</span> {byTabOrder(t.changes).join(" · ")}
+              </>
+            )}
+          </span>
+          <span
+            className={cn(
+              "shrink-0 rounded px-1.5 py-px text-[9px] font-medium whitespace-nowrap",
+              tab ? "bg-foreground/5 text-foreground-muted" : "bg-primary/10 text-primary",
+            )}
+          >
+            {tab ? `Also on ${tab}` : ONLY_HERE}
+          </span>
+        </span>
+      </span>
+    </button>
+  )
+}
+
+function GroupedTemplates({ groups, onPick }: { groups: typeof FUTURE_EVENT_GROUPS; onPick: (key: TemplateKey) => void }) {
+  const [filter, setFilter] = useState<EventFilter>("all")
+  const shown = groups
+    .map((g) => ({ ...g, keys: filter === "only" ? g.keys.filter((k) => !EVENT_TABS[k]) : g.keys }))
+    .filter((g) => g.keys.length > 0)
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-foreground-muted">Anything that will happen. Some can also be added from their own tab.</p>
+        <ChoiceChips label="Show events" options={FILTERS} value={filter} onChange={setFilter} />
+      </div>
+      {shown.map((g) => (
         <div key={g.label} className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">{g.label}</p>
-          <TemplateGrid keys={g.keys} instant={[]} onPick={onPick} labelled />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {MILESTONE_TEMPLATES.filter((t) => g.keys.includes(t.key)).map((t) => (
+              <EventCard key={t.key} t={t} onPick={() => onPick(t.key)} />
+            ))}
+          </div>
         </div>
       ))}
     </div>
   )
 }
 
-function TemplateGrid({
-  keys,
-  instant,
-  onPick,
-  labelled,
-}: {
-  keys: TemplateKey[]
-  instant: InstantChoice[]
-  onPick: (key: TemplateKey) => void
-  /** Show where else each event can be added (the Milestones picker). */
-  labelled?: boolean
-}) {
+function TemplateGrid({ keys, instant, onPick }: { keys: TemplateKey[]; instant: InstantChoice[]; onPick: (key: TemplateKey) => void }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {instant.map((c) => (
@@ -158,8 +170,6 @@ function TemplateGrid({
           icon={t.icon}
           label={t.label}
           detail={t.creates}
-          where={labelled ? (EVENT_TABS[t.key] ? `Also on ${EVENT_TABS[t.key]}` : ONLY_HERE) : undefined}
-          changes={labelled ? t.changes : undefined}
           onClick={() => onPick(t.key)}
         />
       ))}

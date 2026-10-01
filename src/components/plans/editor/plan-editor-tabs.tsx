@@ -1,23 +1,19 @@
 "use client"
 
-import { Fragment } from "react"
 import { cn } from "@/lib/utils"
 
 export type PlanTab = "assumptions" | "milestones" | "accounts" | "income" | "expenses" | "assets" | "cashflow" | "overview"
 
-/**
- * In the order you'd build a plan, numbered as steps: assumptions, your money, then the timeline of life events
- * (every event, wherever it was added), and the ledger of results last.
- */
-export const PLAN_TABS: { value: PlanTab; label: string }[] = [
-  { value: "assumptions", label: "Assumptions" },
-  { value: "accounts", label: "Accounts" },
-  { value: "income", label: "Income" },
-  { value: "expenses", label: "Expenses" },
-  { value: "assets", label: "Assets & debts" },
-  { value: "cashflow", label: "Cash flow" },
-  { value: "milestones", label: "Milestones" },
-  { value: "overview", label: "Ledger Overview" },
+/** In the order you'd build a plan: assumptions first, then your money, the timeline of life events, and results last. */
+export const PLAN_TABS: { value: PlanTab; label: string; icon: string }[] = [
+  { value: "assumptions", label: "Assumptions", icon: "tune" },
+  { value: "accounts", label: "Accounts", icon: "account_balance" },
+  { value: "income", label: "Income", icon: "payments" },
+  { value: "expenses", label: "Expenses", icon: "shopping_cart" },
+  { value: "assets", label: "Assets & debts", icon: "home" },
+  { value: "cashflow", label: "Cash flow", icon: "swap_vert" },
+  { value: "milestones", label: "Milestones", icon: "flag" },
+  { value: "overview", label: "Ledger Overview", icon: "insights" },
 ]
 
 export const DEFAULT_PLAN_TAB: PlanTab = "assumptions"
@@ -35,45 +31,29 @@ export function isPlanTab(value: string | null): value is PlanTab {
   return PLAN_TABS.some((t) => t.value === value)
 }
 
-/** The step's number as a small superscript at the label's top right, like a footnote mark. */
-function StepNumber({ n, active }: { n: number; active: boolean }) {
-  return (
-    <sup aria-hidden="true" className={cn("ml-0.5 -top-1.5 text-[9px] font-semibold tabular-nums", active ? "text-primary" : "text-foreground-muted/70")}>
-      {n}
-    </sup>
-  )
-}
-
-/** Editor section tabs for a plan as numbered steps. */
+/** Editor section tabs for a plan. */
 export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: (tab: PlanTab) => void }) {
   return (
     <nav className="flex border-b border-card-border overflow-x-auto scrollbar-hide" role="tablist">
-      {PLAN_TABS.map((tab, i) => {
+      {PLAN_TABS.map((tab) => {
         const active = tab.value === value
         return (
-          <Fragment key={tab.value}>
-            {i > 0 && (
-              <span aria-hidden="true" className="material-symbols-rounded self-center text-foreground-muted/50" style={{ fontSize: 12 }}>
-                arrow_forward
-              </span>
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.value)}
+            className={cn(
+              "flex items-center gap-2 px-3 py-3 border-b-2 whitespace-nowrap text-sm transition-colors",
+              active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
             )}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onChange(tab.value)}
-              className={cn(
-                "flex items-center gap-1.5 px-1 py-3 border-b-2 whitespace-nowrap text-[13px] transition-colors",
-                active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
-              )}
-            >
-              <span className="sr-only">Step {i + 1}:</span>
-              <span>
-                {tab.label}
-                <StepNumber n={i + 1} active={active} />
-              </span>
-            </button>
-          </Fragment>
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
+              {tab.icon}
+            </span>
+            {tab.label}
+          </button>
         )
       })}
     </nav>
