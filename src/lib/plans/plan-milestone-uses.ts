@@ -60,8 +60,9 @@ export function milestoneUses(doc: PlanDocument, id: string): string[] {
 export function detachMilestone(doc: PlanDocument, id: string): PlanDocument {
   const milestone = doc.milestones.find((m) => m.id === id)
   const index = milestone ? resolveTiming(milestone.timing, timingContext(doc)) : null
-  const pinned: Timing = { type: "year", year: doc.settings.startYear + Math.max(0, index ?? 0) }
-  const fix = (t: Timing): Timing => (pointsAt(t, id) ? pinned : t)
+  // Each item keeps its own year, offsets included ("3 years after" stays 3 years after).
+  const pin = (t: Timing): Timing => ({ type: "year", year: doc.settings.startYear + Math.max(0, index ?? 0) + (t.type === "milestone" ? (t.offsetYears ?? 0) : 0) })
+  const fix = (t: Timing): Timing => (pointsAt(t, id) ? pin(t) : t)
   return {
     ...doc,
     incomes: doc.incomes.map((i) => ({ ...i, start: fix(i.start), end: fix(i.end) })),

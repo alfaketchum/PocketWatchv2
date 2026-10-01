@@ -46,7 +46,8 @@ export function resolveTiming(timing: Timing, ctx: TimingContext, depth = 0): nu
     case "milestone": {
       if (depth >= MAX_MILESTONE_DEPTH) return null
       const milestone = allMilestones(ctx.doc).find((m) => m.id === timing.milestoneId)
-      return milestone ? resolveTiming(milestone.timing, ctx, depth + 1) : null
+      const at = milestone ? resolveTiming(milestone.timing, ctx, depth + 1) : null
+      return at === null ? null : at + (timing.offsetYears ?? 0)
     }
   }
 }

@@ -122,7 +122,8 @@ export function applyElderCare(doc: PlanDocument, input: ElderCareInput, icon: s
   const label = input.parentName.trim() || "Parent"
   const milestones: PlanMilestone[] = [
     { id: startId, name: `${label}'s care begins`, kind: "custom", icon, timing: { type: "year", year: input.startYear } },
-    { id: endId, name: `${label}'s care ends`, kind: "custom", icon, timing: { type: "year", year: input.startYear + Math.max(1, input.years) }, origin: startId },
+    // Timed from care's start, so moving it keeps its length.
+    { id: endId, name: `${label}'s care ends`, kind: "custom", icon, timing: { type: "milestone", milestoneId: startId, offsetYears: Math.max(1, input.years) }, origin: startId },
   ]
   const work = workCut(doc, input, startId, endId, newId)
   const incomes = work ? [...doc.incomes.map((i) => (i.id === input.workCut?.incomeId ? { ...i, end: at(startId) } : i)), ...work] : doc.incomes

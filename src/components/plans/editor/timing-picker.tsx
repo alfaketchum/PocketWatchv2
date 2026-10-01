@@ -72,21 +72,36 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
   }
   if (value.type === "milestone") {
     return (
-      <label className="block">
-        <span className="block text-[11px] font-medium text-foreground-muted mb-1">Milestone</span>
-        <select
-          value={value.milestoneId}
-          onChange={(e) => onChange({ ...value, milestoneId: e.target.value })}
-          className={FIELD_CLASS}
-          style={FIELD_STYLE}
-        >
-          {allMilestones(doc).map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex gap-2 items-end">
+        <label className="block min-w-0 flex-1">
+          <span className="block text-[11px] font-medium text-foreground-muted mb-1">Milestone</span>
+          <select
+            value={value.milestoneId}
+            onChange={(e) => onChange({ ...value, milestoneId: e.target.value })}
+            className={FIELD_CLASS}
+            style={FIELD_STYLE}
+          >
+            {allMilestones(doc).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="w-28 shrink-0">
+          <FireNumberField
+            label="Years after"
+            min={0}
+            max={100}
+            value={value.offsetYears ?? 0}
+            onChange={(v) => {
+              const years = Math.max(0, Math.round(v))
+              const at: Timing = { type: "milestone", milestoneId: value.milestoneId }
+              onChange(years > 0 ? { ...at, offsetYears: years } : at)
+            }}
+          />
+        </div>
+      </div>
     )
   }
   return null

@@ -17,7 +17,7 @@ const timing = z.discriminatedUnion("type", [
   z.object({ type: z.literal("planEnd") }),
   z.object({ type: z.literal("year"), year }),
   z.object({ type: z.literal("age"), personId: id, age: z.number().int().min(0).max(120) }),
-  z.object({ type: z.literal("milestone"), milestoneId: id }),
+  z.object({ type: z.literal("milestone"), milestoneId: id, offsetYears: z.number().int().min(0).max(100).optional() }),
 ])
 
 const source = z.object({ kind: z.enum(["finance-account", "crypto", "real-asset"]), refId: z.string().min(1).max(128) }).nullable()

@@ -15,7 +15,8 @@ export type Timing =
   | { type: "planEnd" }
   | { type: "year"; year: number }
   | { type: "age"; personId: string; age: number }
-  | { type: "milestone"; milestoneId: string }
+  /** At a milestone, or `offsetYears` after it (so a 3-year break's end moves with its start). */
+  | { type: "milestone"; milestoneId: string; offsetYears?: number }
 
 /** Link back to the real account an item was imported from; only used by "Refresh balances". */
 export interface PlanSource {

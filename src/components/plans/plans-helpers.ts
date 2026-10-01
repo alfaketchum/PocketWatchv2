@@ -22,8 +22,11 @@ export function timingLabel(timing: Timing, doc: PlanDocument): string {
       const who = doc.people.length > 1 && person ? `${person.name} ` : ""
       return `${who}age ${timing.age}`
     }
-    case "milestone":
-      return allMilestones(doc).find((m) => m.id === timing.milestoneId)?.name ?? "Missing milestone"
+    case "milestone": {
+      const name = allMilestones(doc).find((m) => m.id === timing.milestoneId)?.name ?? "Missing milestone"
+      const after = timing.offsetYears ?? 0
+      return after > 0 ? `${after} yr${after === 1 ? "" : "s"} after ${name}` : name
+    }
   }
 }
 

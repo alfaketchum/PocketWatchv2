@@ -163,13 +163,12 @@ export function applyDivorce(doc: PlanDocument, input: DivorceInput, newId: IdMa
       { id: newId("adj"), kind: "taxRates", timing: when, incomeTaxRate: input.incomeTaxRate, capitalGainsRate: input.capitalGainsRate, origin: msId },
     ],
   }
-  const divorceYear = doc.settings.startYear + Math.max(0, resolveTiming(input.when, timingContext(doc)) ?? 0)
   const costs = [
     ...(input.legalCost > 0
       ? [{ id: newId("exp"), name: "Divorce: legal and moving", category: null, amount: input.legalCost, growth: null, start: when, end: when, oneTime: true, origin: msId }]
       : []),
     ...(input.supportPerYear > 0 && input.supportYears > 0
-      ? [{ id: newId("exp"), name: "Alimony / child support", category: null, amount: input.supportPerYear, growth: null, start: when, end: { type: "year" as const, year: divorceYear + input.supportYears }, oneTime: false, origin: msId }]
+      ? [{ id: newId("exp"), name: "Alimony / child support", category: null, amount: input.supportPerYear, growth: null, start: when, end: { type: "milestone" as const, milestoneId: msId, offsetYears: input.supportYears }, oneTime: false, origin: msId }]
       : []),
   ]
   return { ...next, expenses: [...next.expenses, ...costs] }
@@ -254,7 +253,8 @@ export function applyBreak(doc: PlanDocument, input: { incomeId: string; startYe
   const startId = newId("ms-break")
   const backId = newId("ms-back")
   let next = addMilestone(doc, { id: startId, name: "Career break", kind: "custom", icon: ICONS.break, timing: { type: "year", year: input.startYear } })
-  next = addMilestone(next, { id: backId, name: "Back to work", kind: "custom", icon: ICONS.career, timing: { type: "year", year: input.startYear + input.years }, origin: startId })
+  // Timed from the break's start, so moving the break keeps its length.
+  next = addMilestone(next, { id: backId, name: "Back to work", kind: "custom", icon: ICONS.career, timing: { type: "milestone", milestoneId: startId, offsetYears: input.years }, origin: startId })
   const resumed: PlanIncome = { ...old, id: newId("inc"), start: at(backId), end: old.end, origin: startId, continues: old.id }
   return { ...next, incomes: [...next.incomes.map((i) => (i.id === old.id ? { ...i, end: at(startId) } : i)), resumed] }
 }
