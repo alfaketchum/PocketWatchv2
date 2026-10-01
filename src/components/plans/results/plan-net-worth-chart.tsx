@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { cn } from "@/lib/utils"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
@@ -202,40 +202,6 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const iconRoom = ICON_ROW + Math.max(0, ...stacked.map((s) => s.level)) * ICON_STACK
   const [selected, setSelected] = useState<number | null>(null)
   const [hovered, setHovered] = useState<number | null>(null)
-  /** Bar isolation mode: one year fills the chart. Double-click a bar to enter; Back, Esc or a double-click outside leaves. */
-  const [isolated, setIsolatedState] = useState<number | null>(null)
-  /** Kept in step with `isolated` at once: a late click event must see isolation the moment it starts. */
-  const isolatedRef = useRef<number | null>(null)
-  const setIsolated = useCallback((index: number | null) => {
-    isolatedRef.current = index
-    setIsolatedState(index)
-  }, [])
-  const plotArea = useRef<HTMLDivElement>(null)
-  /** The bar under the pointer, kept in a ref so a fast double-click reads it before the hover state re-renders. */
-  const hoveredRef = useRef<number | null>(null)
-  /** The bar last clicked or tapped: touch has no hover, and a double-tap is two taps on the same bar. */
-  const clickedRef = useRef<number | null>(null)
-  const isolate = useCallback(() => {
-    const index = hoveredRef.current ?? clickedRef.current
-    if (index === null) return
-    // A double-click is two clicks first, which toggle the pin on and off again: pin the year here for good.
-    setSelected(index)
-    setIsolated(index)
-  }, [setIsolated])
-  const leaveIsolation = useCallback(() => setIsolated(null), [setIsolated])
-  useEffect(() => {
-    if (isolated === null) return
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && leaveIsolation()
-    const onDouble = (e: MouseEvent) => {
-      if (!plotArea.current?.contains(e.target as Node)) leaveIsolation()
-    }
-    document.addEventListener("keydown", onKey)
-    document.addEventListener("dblclick", onDouble)
-    return () => {
-      document.removeEventListener("keydown", onKey)
-      document.removeEventListener("dblclick", onDouble)
-    }
-  }, [isolated, leaveIsolation])
   const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
   const { netWorth: nwColors } = usePlanColors()
   // Expenses view: the dashed line is the same plan with every spending line steady.
@@ -245,40 +211,9 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     if (view === "debt") return withOwedLine(points)
     return points
   }, [points, steady, view])
-  // Isolated: just that year, its axis fitted to it alone so the bar fills the chart.
-  const shownPoints = useMemo(
-    () => (isolated === null || !plotPoints[isolated] ? plotPoints : plotPoints.slice(isolated, isolated + 1)),
-    [plotPoints, isolated],
-  )
-  const shownMarks = useMemo(
-    () => (isolated === null ? stacked : stacked.filter((s) => s.mark.age === plotPoints[isolated]?.age)),
-    [stacked, isolated, plotPoints],
-  )
-  const yAxis = useMemo(
-    () => fitAxis(shownPoints, series, steady && isolated === null ? Math.max(0, ...steady) : 0),
-    [shownPoints, series, steady, isolated],
-  )
-  // While isolated the plot holds one bar (index 0); map its hover and clicks back to the real year.
-  const onPlotHover = useCallback(
-    (i: number | null) => {
-      const year = i === null || isolated === null ? i : isolated
-      hoveredRef.current = year
-      setHovered(year)
-    },
-    [isolated],
-  )
-  const clearSelected = useCallback(() => {
-    if (isolatedRef.current === null) setSelected(null)
-  }, [])
-  const toggleSelected = useCallback(
-    (index: number) => {
-      // While isolated the plot has one bar, so its click index isn't a plan year: ignore it.
-      if (isolatedRef.current !== null) return
-      clickedRef.current = index
-      setSelected((cur) => (cur === index ? null : index))
-    },
-    [],
-  )
+  const yAxis = useMemo(() => fitAxis(plotPoints, series, steady ? Math.max(0, ...steady) : 0), [plotPoints, series, steady])
+  const clearSelected = useCallback(() => setSelected(null), [])
+  const toggleSelected = useCallback((index: number) => setSelected((cur) => (cur === index ? null : index)), [])
   const active = selected ?? hovered ?? 0
   const activePoint = nwPoints[active] ?? null
   const metrics = useMemo(
@@ -296,41 +231,23 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
-          <div
-            ref={plotArea}
-            onDoubleClick={isolated === null ? isolate : undefined}
-            className="relative h-[340px] select-none lg:h-[500px]"
-            style={{ filter: isHidden ? "blur(8px)" : undefined }}
-          >
+          <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
-            {isolated !== null && (
-              <button
-                type="button"
-                onClick={leaveIsolation}
-                className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
-                  arrow_back
-                </span>
-                All years
-              </button>
-            )}
             <ChartPlot
-              points={shownPoints}
+              points={plotPoints}
               series={series}
               yAxis={yAxis}
               iconRoom={iconRoom}
-              stacked={shownMarks}
+              stacked={stacked}
               mode={view}
               hasDebt={hasDebt}
-              showSteady={steady !== null && isolated === null}
-              selected={isolated === null ? selected : 0}
+              showSteady={steady !== null}
+              selected={selected}
               markColor={markColor}
-              onHover={onPlotHover}
+              onHover={setHovered}
               onSelect={toggleSelected}
               onClear={clearSelected}
               onHoverMark={setHoveredMark}
-              isolated={isolated !== null}
             />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">

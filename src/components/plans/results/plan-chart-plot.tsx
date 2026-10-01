@@ -1,7 +1,7 @@
 "use client"
 
 import { memo, useMemo, type SyntheticEvent } from "react"
-import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { Bar, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import type { ChartMilestone } from "@/lib/plans/plan-chart"
@@ -102,17 +102,6 @@ interface ChartPlotProps {
   /** The chart was clicked off the bars: empty space unpins. */
   onClear: () => void
   onHoverMark: (hovered: HoveredMark | null) => void
-  /** One year on its own (bar isolation mode): a wide bar with each part labelled. */
-  isolated: boolean
-}
-
-/** A part's label inside the isolated bar, when it's tall enough to read: "Taxable $1.2M". */
-const MIN_LABEL_SHARE = 0.05
-function partLabel(label: string, span: number) {
-  return (value: unknown) => {
-    const v = Number(value)
-    return Number.isFinite(v) && Math.abs(v) >= span * MIN_LABEL_SHARE ? `${label} ${fmtCompact(v)}` : ""
-  }
 }
 
 /**
@@ -134,20 +123,17 @@ export const ChartPlot = memo(function ChartPlot({
   onSelect,
   onClear,
   onHoverMark,
-  isolated,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
   const barTops = useMemo(
     () => new Map(points.map((p) => [p.age, series.reduce((sum, s) => sum + Math.max(0, p[s.key] ?? 0), 0)])),
     [points, series],
   )
-  const span = yAxis.domain[1] - yAxis.domain[0]
-  const bars = ({ key, color, label }: Series) => (
+  const bars = ({ key, color }: Series) => (
     <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
       {points.map((_, i) => (
-        <Cell key={i} fillOpacity={isolated || selected === null || selected === i ? 0.85 : DIMMED} />
+        <Cell key={i} fillOpacity={selected === null || selected === i ? 0.85 : DIMMED} />
       ))}
-      {isolated && <LabelList dataKey={key} position="center" formatter={partLabel(label, span)} fill="#fff" fontSize={11} fontWeight={600} />}
     </Bar>
   )
   return (
@@ -156,7 +142,7 @@ export const ChartPlot = memo(function ChartPlot({
         data={points}
         margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
         stackOffset="sign"
-        barCategoryGap={isolated ? "30%" : "8%"}
+        barCategoryGap="8%"
         onMouseMove={(state) => onHover(indexOf(state))}
         onMouseLeave={() => onHover(null)}
         onClick={(state, event) => {
