@@ -46,8 +46,6 @@ export const FEDERAL_LTCG: Record<FilingStatus, Brackets> = {
   ],
 }
 
-/** Share of Social Security benefits taxed at most (the usual case once other income is meaningful). */
-export const SOCIAL_SECURITY_TAXABLE_SHARE = 0.85
 
 /** Net investment income tax: 3.8% on investment income above these (not inflation-indexed) MAGI lines. */
 export const NIIT_RATE = 0.038

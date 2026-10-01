@@ -4,9 +4,10 @@ import { Fragment, type ReactNode } from "react"
 import { MARKET_SECTIONS } from "./methodology-markets"
 import { PLAN_SECTIONS } from "./methodology-plans"
 import { TAX_SECTIONS } from "./methodology-taxes"
+import { WATCH_SECTION } from "./methodology-watchlist"
 import type { MethodBlock, MethodSection } from "./methodology-types"
 
-const SECTIONS: MethodSection[] = [...PLAN_SECTIONS, ...TAX_SECTIONS, ...MARKET_SECTIONS]
+const SECTIONS: MethodSection[] = [...PLAN_SECTIONS, ...TAX_SECTIONS, ...MARKET_SECTIONS, WATCH_SECTION]
 
 /** Renders **bold** spans inside a line of copy. */
 function rich(text: string): ReactNode {
