@@ -55,6 +55,8 @@ export interface PlanEditorProps {
   onEditItem?: (id: string) => void
   /** The Compact / Detailed switch, shown at the right of the tab's toolbar. */
   viewToggle?: ReactNode
+  /** When the plan was created (ISO); accounts linked after it are offered to the plan. */
+  planCreatedAt?: string
 }
 
 /** DOM id of an item's card in detailed view, so the table can jump to it. */

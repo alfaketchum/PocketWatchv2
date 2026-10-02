@@ -14,6 +14,7 @@ import { patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helper
 import { ReturnBasisToggle } from "./return-basis-toggle"
 import { otherReturn, returnBasisOf, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
+import { PlanNewSources } from "./plan-new-sources"
 import { RefreshBalancesButton } from "./refresh-balances-button"
 import { AccountsTable } from "./accounts-table"
 
@@ -23,7 +24,7 @@ const TREATMENT_OPTIONS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).
 }))
 
 /** Accounts: balances at plan start, tax bucket, and expected return. */
-export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
+export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, planCreatedAt }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
@@ -60,6 +61,7 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: Pl
         <RefreshBalancesButton doc={doc} update={update} />
         <ReturnBasisToggle doc={doc} update={update} />
       </div>
+      <PlanNewSources doc={doc} update={update} planCreatedAt={planCreatedAt} show="account" />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
       {view === "compact" ? (
         <AccountsTable doc={doc} update={update} onEditItem={onEditItem} />

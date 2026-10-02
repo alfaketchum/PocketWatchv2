@@ -2,6 +2,7 @@ import { db } from "@/lib/db"
 import { gatherBudgetContext } from "@/lib/finance/budget-ai-context"
 import { buildBalancesForUser } from "@/lib/portfolio/balances-read"
 import { blankPlanForUser } from "../plan-records"
+import type { LinkedSources } from "../plan-new-sources"
 import type { SourceBalances } from "../plan-refresh"
 import type { PlanCredit, PlanDebt, PlanDocument, PlanExpense } from "../plan-types"
 import { withDetectedTrading } from "../trading-detect"
@@ -178,6 +179,21 @@ export async function buildImportDraft(userId: string): Promise<ImportDraft> {
 export async function loadLinkedLoans(userId: string, rows?: ImportAccountRow[]): Promise<PlanDebt[]> {
   const [accounts, liabilities] = await Promise.all([rows ?? loadImportAccounts(userId), loadLiabilities(userId)])
   return debtsFromRows(accounts, liabilities).filter((d) => d.kind === "mortgage" || d.kind === "auto")
+}
+
+/** Accounts and debts in the user's linked accounts as plan items, with when each was linked. */
+export async function loadLinkedSources(userId: string): Promise<LinkedSources> {
+  const [rows, liabilities] = await Promise.all([loadImportAccounts(userId), loadLiabilities(userId)])
+  const linked = await db.financeAccount.findMany({
+    where: { userId, id: { in: rows.map((r) => r.id) } },
+    select: { id: true, createdAt: true },
+    take: rows.length,
+  })
+  return {
+    accounts: accountsFromRows(rows),
+    debts: debtsFromRows(rows, liabilities),
+    linkedAt: Object.fromEntries(linked.map((a) => [a.id, a.createdAt.toISOString()])),
+  }
 }
 
 /** Current balances of everything a plan can link back to, plus brokerage trading and loans, for "Refresh balances". */

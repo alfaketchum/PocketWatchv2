@@ -14,6 +14,7 @@ import { AssetFinancingFields } from "./asset-financing-fields"
 import { AssetRunningCostsFields } from "./asset-running-costs-fields"
 import { AssetHomeFields } from "./asset-home-fields"
 import { PlanLoanSuggestions } from "./plan-loan-suggestions"
+import { PlanNewSources } from "./plan-new-sources"
 import { AddAssetDialog } from "./add-asset-dialog"
 import { AddDebtDialog } from "./add-debt-dialog"
 import { DisposeAssetDialog } from "./dispose-asset-dialog"
@@ -287,6 +288,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
       <div className="space-y-3">
         {toolbar}
         <PlanLoanSuggestions doc={doc} update={update} />
+      <PlanNewSources doc={doc} update={update} planCreatedAt={props.planCreatedAt} show="debt" />
         <AssetsDebtsTable {...props} />
       </div>
     )
@@ -295,6 +297,7 @@ export function AssetsDebtsEditor(props: PlanEditorProps) {
     <div className="space-y-6">
       {toolbar}
       <PlanLoanSuggestions doc={doc} update={update} />
+      <PlanNewSources doc={doc} update={update} planCreatedAt={props.planCreatedAt} show="debt" />
       <AssetsList {...props} />
       <DebtsList {...props} />
     </div>

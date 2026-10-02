@@ -107,6 +107,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
             view={TABLE_TABS.has(tab) ? listView : "detailed"}
             onEditItem={editInList}
             viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
+            planCreatedAt={plan.createdAt}
           />
         </div>
       ) : (
