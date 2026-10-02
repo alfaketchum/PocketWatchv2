@@ -50,7 +50,10 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
           </button>
         </div>
       </div>
-      {open && <div className="space-y-4 p-4 sm:p-6">{children}</div>}
+      {/* Hidden, not unmounted, when collapsed: expanding is instant. */}
+      <div hidden={!open} className="space-y-4 p-4 sm:p-6">
+        {children}
+      </div>
     </section>
   )
 }

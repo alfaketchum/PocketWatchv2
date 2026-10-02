@@ -1,8 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, type ComponentType } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useCallback, useDeferredValue, useEffect, useState, type ComponentType } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
 import { usePlanProjection } from "@/hooks/plans/use-plan-projection"
@@ -56,15 +56,21 @@ function EditorSkeleton() {
 
 /** One plan: summary, net-worth chart, and the editor tabs (or the ledger on Overview). */
 export function PlanEditorView({ planId }: { planId: string }) {
-  const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
   const tabParam = params.get("tab")
-  const tab: PlanTab = planTabFrom(tabParam)
+  // The tab lives in state; the URL follows via history.replaceState (no navigation, no server round trip).
+  const [tab, setTabState] = useState<PlanTab>(() => planTabFrom(tabParam))
+  useEffect(() => setTabState(planTabFrom(tabParam)), [tabParam])
   const setTab = useCallback(
-    (next: PlanTab) => router.replace(next === DEFAULT_PLAN_TAB ? pathname : `${pathname}?tab=${next}`, { scroll: false }),
-    [router, pathname],
+    (next: PlanTab) => {
+      setTabState(next)
+      window.history.replaceState(window.history.state, "", next === DEFAULT_PLAN_TAB ? pathname : `${pathname}?tab=${next}`)
+    },
+    [pathname],
   )
+  // The tab highlights at once; its content renders right after, without holding up the click.
+  const shownTab = useDeferredValue(tab)
   const { isHidden } = usePrivacyMode()
   const [listView, setListView] = usePlanEditorView()
   const editInList = useCallback(
@@ -93,7 +99,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
     )
   }
 
-  const Editor = tab === "overview" ? null : EDITORS[tab]
+  const Editor = shownTab === "overview" ? null : EDITORS[shownTab]
   return (
     <div className="space-y-5">
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
@@ -103,9 +109,9 @@ export function PlanEditorView({ planId }: { planId: string }) {
           <Editor
             doc={document}
             update={update}
-            view={TABLE_TABS.has(tab) ? listView : "detailed"}
+            view={TABLE_TABS.has(shownTab) ? listView : "detailed"}
             onEditItem={editInList}
-            viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
+            viewToggle={TABLE_TABS.has(shownTab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
             planCreatedAt={plan.createdAt}
           />
         ) : (

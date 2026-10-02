@@ -69,7 +69,11 @@ export function PlanEditorTabs({
             </span>
             {tab.label}
             {active && onToggle && (
-              <span className="material-symbols-rounded -ml-1" style={{ fontSize: 16 }} aria-hidden="true">
+              <span
+                className="material-symbols-rounded inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 bg-primary/10"
+                style={{ fontSize: 16 }}
+                aria-hidden="true"
+              >
                 {open ? "expand_less" : "expand_more"}
               </span>
             )}

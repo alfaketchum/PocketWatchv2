@@ -8,8 +8,12 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   return (
     <div className="min-w-0">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">{label}</p>
-      <p className={`text-lg font-semibold tabular-nums mt-0.5 ${color}`}>{value}</p>
-      {sub && <p className="text-[11px] text-foreground-muted">{sub}</p>}
+      <p className={`text-base font-semibold tabular-nums leading-tight ${color}`}>{value}</p>
+      {sub && (
+        <p className="truncate text-[10px] text-foreground-muted" title={sub}>
+          {sub}
+        </p>
+      )}
     </div>
   )
 }
@@ -30,7 +34,7 @@ export function PlanSummaryStrip({ summary, isHidden }: { summary: PlanSummary; 
   const lasts = summary.depletedAge === null
   return (
     <div
-      className="grid grid-cols-2 lg:grid-cols-4 gap-4 bg-card border border-card-border rounded-2xl p-5"
+      className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2 bg-card border border-card-border rounded-2xl px-4 py-2.5"
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
       <Stat
