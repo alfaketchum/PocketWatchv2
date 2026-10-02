@@ -1,7 +1,7 @@
 "use client"
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
-import { InputBlock } from "@/components/fire/fire-input-controls"
+import { InputBlock, inputBlockAnchor, InputBlockRows } from "@/components/fire/fire-input-controls"
 import { PlanCreditSettings } from "./plan-credit-settings"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanPerson, PlanSettings } from "@/lib/plans/plan-types"
@@ -51,15 +51,35 @@ function PersonFields({
   )
 }
 
-/** The Assumptions tab: who's in the plan, how long it runs, inflation and taxes. */
+/** Section titles in page order (they match each InputBlock's title), for the jump links. */
+const SECTIONS = ["People", "Timeline", "Inflation", "Taxes", "Social Security outlook", "Credit score", "Changes over time"]
+
+function JumpLinks() {
+  return (
+    <nav aria-label="Assumptions sections" className="flex flex-wrap gap-1.5 pb-1">
+      {SECTIONS.map((title) => (
+        <a
+          key={title}
+          href={`#${inputBlockAnchor(title)}`}
+          className="rounded-full border border-card-border px-2.5 py-1 text-[11px] text-foreground-muted hover:border-card-border-hover hover:text-foreground"
+        >
+          {title}
+        </a>
+      ))}
+    </nav>
+  )
+}
+
+/** The Assumptions tab: one row per section (title left, fields right), in the order you'd fill them in. */
 export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
   const set = (change: Partial<PlanSettings>) => update((d) => ({ ...d, settings: { ...d.settings, ...change } }))
   const s = doc.settings
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-x-10 gap-y-6 lg:grid-cols-2">
-        <div className="space-y-6">
+    <div>
+      <JumpLinks />
+      <div className="divide-y divide-card-border">
+        <InputBlockRows>
           <InputBlock title="People" description="Birth dates keep everyone's age right as the years pass.">
             {doc.people.map((p, i) => (
               <PersonFields
@@ -80,24 +100,20 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
             )}
           </InputBlock>
           <InputBlock title="Timeline" description="The plan ends when the first person reaches the end age.">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid max-w-md grid-cols-3 gap-2">
               <FireNumberField label="Starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
               <FireNumberField label="Month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
               <FireNumberField label="Until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
             </div>
           </InputBlock>
-        </div>
-        <div className="space-y-6">
           <InputBlock title="Inflation" description="How fast prices rise: your own number, or what the bond market expects (refreshed daily).">
             <InflationSource doc={doc} update={update} />
           </InputBlock>
           <PlanTaxSettings settings={s} set={set} />
           <SocialSecurityOutlook settings={s} set={set} />
           <PlanCreditSettings doc={doc} set={set} />
-        </div>
-      </div>
-      <div className="border-t border-card-border pt-5">
-        <AdjustmentsEditor doc={doc} update={update} />
+          <AdjustmentsEditor doc={doc} update={update} />
+        </InputBlockRows>
       </div>
     </div>
   )

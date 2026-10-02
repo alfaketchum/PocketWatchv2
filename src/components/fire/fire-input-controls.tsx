@@ -1,10 +1,32 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { createContext, useContext, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
+
+/** Inside this, every InputBlock lays out as a settings row: its title on the left, its fields on the right. */
+const RowLayout = createContext(false)
+
+export function InputBlockRows({ children }: { children: ReactNode }) {
+  return <RowLayout.Provider value>{children}</RowLayout.Provider>
+}
+
+/** Anchor id for a block's row, so a page can link to it. */
+export const inputBlockAnchor = (title: string) => `block-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
 
 /** A titled block within an editor section: heading + optional one-line description. */
 export function InputBlock({ title, description, children }: { title?: string; description?: string; children: ReactNode }) {
+  const row = useContext(RowLayout)
+  if (row) {
+    return (
+      <section id={title ? inputBlockAnchor(title) : undefined} className="grid scroll-mt-4 gap-3 py-5 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+        <div>
+          {title && <p className="text-sm font-semibold text-foreground">{title}</p>}
+          {description && <p className="text-xs text-foreground-muted mt-0.5">{description}</p>}
+        </div>
+        <div className="min-w-0 max-w-3xl space-y-3">{children}</div>
+      </section>
+    )
+  }
   return (
     <div className="space-y-3">
       {(title || description) && (
