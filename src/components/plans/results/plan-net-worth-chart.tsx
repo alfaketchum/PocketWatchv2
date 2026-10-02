@@ -27,6 +27,7 @@ function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: num
 }
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
+  { value: "accounts", label: "Accounts" },
   { value: "cashflow", label: "Cash flow" },
   { value: "income", label: "Income" },
   { value: "expenses", label: "Expenses" },
@@ -34,11 +35,13 @@ const MODES: { value: ChartMode; label: string }[] = [
   { value: "taxes", label: "Taxes" },
 ]
 
-const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt", taxes: "Taxes" }
+const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", accounts: "Accounts", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt", taxes: "Taxes" }
 
 const INFO: Record<ChartMode, string> = {
   networth:
     "Year-end balances by tax treatment, plus assets (homes, cars and other things you own) at what they're worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
+  accounts:
+    "Each account's year-end balance as its own bar, side by side, so you can see which grows fastest and the order they're drawn down in retirement. Colors follow the tax treatment (shades of the Net worth bands). Homes and loans are left out; they have their own views.",
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
   income:
@@ -114,19 +117,16 @@ function roundStep(raw: number): number {
 }
 
 /** Round ticks that hug the stacked bars, so the tallest one nearly fills the plot. */
-function fitAxis(rows: ChartRow[], series: Series[], atLeast = 0): { domain: [number, number]; ticks: number[] } {
+function fitAxis(rows: ChartRow[], series: Series[], atLeast = 0, stacked = true): { domain: [number, number]; ticks: number[] } {
   let top = atLeast
   let bottom = 0
   for (const row of rows) {
     const values = series.map((s) => row[s.key] ?? 0)
-    top = Math.max(
-      top,
-      values.reduce((sum, v) => sum + Math.max(0, v), 0),
-    )
-    bottom = Math.min(
-      bottom,
-      values.reduce((sum, v) => sum + Math.min(0, v), 0),
-    )
+    // Stacked bars reach their sum; side-by-side bars only their largest.
+    const up = values.map((v) => Math.max(0, v))
+    const down = values.map((v) => Math.min(0, v))
+    top = Math.max(top, stacked ? up.reduce((sum, v) => sum + v, 0) : Math.max(0, ...up))
+    bottom = Math.min(bottom, stacked ? down.reduce((sum, v) => sum + v, 0) : Math.min(0, ...down))
   }
   const step = roundStep(((top - bottom) * Y_HEADROOM) / TICK_INTERVALS)
   const hi = Math.ceil((top * Y_HEADROOM) / step) * step
@@ -227,8 +227,8 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     [stacked, focused, plotPoints],
   )
   const yAxis = useMemo(
-    () => fitAxis(shownPoints, series, steady && focused === null ? Math.max(0, ...steady) : 0),
-    [shownPoints, series, steady, focused],
+    () => fitAxis(shownPoints, series, steady && focused === null ? Math.max(0, ...steady) : 0, view !== "accounts"),
+    [shownPoints, series, steady, focused, view],
   )
   // In the year view the plot holds one bar: hovering it means that year, and clicks leave the pin alone.
   const onPlotHover = useCallback((i: number | null) => setHovered(i === null || focused === null ? i : focused), [focused])
@@ -253,7 +253,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
-      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "income", "expenses", "debt", "taxes"] : ["networth", "cashflow", "income", "expenses", "taxes"]} />}
+      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "accounts", "cashflow", "income", "expenses", "debt", "taxes"] : ["networth", "accounts", "cashflow", "income", "expenses", "taxes"]} />}
       right={
         <div className="flex items-center gap-3">
           {selected !== null && focused === null && nwPoints[selected] && (
@@ -268,7 +268,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               View {nwPoints[selected].year} alone
             </button>
           )}
-          <DetailToggle checked={detail} onChange={setDetail} />
+          {view !== "accounts" && <DetailToggle checked={detail} onChange={setDetail} />}
         </div>
       }
     >

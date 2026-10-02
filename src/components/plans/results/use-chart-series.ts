@@ -28,7 +28,7 @@ import { interestKey, principalKey } from "@/lib/plans/plan-loan-parts"
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import { shades, usePlanColors } from "./use-plan-colors"
 
-export type ChartMode = "networth" | "cashflow" | "income" | "expenses" | "debt" | "taxes"
+export type ChartMode = "networth" | "accounts" | "cashflow" | "income" | "expenses" | "debt" | "taxes"
 
 export interface Series {
   key: string
@@ -87,6 +87,12 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
       }
       return { points: debtPoints(doc, rows), all: [...perLoan("principal", principalKey), ...perLoan("interest", interestKey)] }
     }
+    if (view === "accounts") {
+      // One bar per account, side by side each year, shaded within its tax treatment's color.
+      const d = netWorthDetail(doc, rows)
+      const accounts = d.series.filter((s) => s.key.startsWith("a:"))
+      return { points: d.points, all: shadeDetail(accounts, (p) => nwColors[p as NetWorthLayer], (p) => NET_WORTH_LAYER_LABELS[p as NetWorthLayer], theme) }
+    }
     if (view === "taxes") {
       const t = taxesView(doc, rows, detail)
       if (!detail) return { points: t.points, all: t.series.map((s) => ({ key: s.key, label: s.label, color: taxColor })) }
@@ -132,7 +138,7 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
 
   // Each year's loan payments split into principal and interest, for the hover card (not drawn as bars).
   const withLoans = useMemo(
-    () => (view === "networth" ? points : points.map((p, i) => ({ ...p, ...loanTotals(rows[i]) }))),
+    () => (view === "networth" || view === "accounts" ? points : points.map((p, i) => ({ ...p, ...loanTotals(rows[i]) }))),
     [view, points, rows],
   )
   const series = useMemo(() => all.filter((s) => points.some((p) => Math.abs(p[s.key] ?? 0) > 0.5)), [all, points])
