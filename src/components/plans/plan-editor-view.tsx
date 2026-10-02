@@ -14,7 +14,8 @@ import { CashFlowEditor } from "./editor/cash-flow-editor"
 import { ExpensesEditor } from "./editor/expenses-editor"
 import { IncomesEditor } from "./editor/incomes-editor"
 import { MilestonesEditor } from "./editor/milestones-editor"
-import { DEFAULT_PLAN_TAB, PlanEditorTabs, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
+import { PlanEditorPanel } from "./editor/plan-editor-panel"
+import { DEFAULT_PLAN_TAB, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
@@ -97,10 +98,8 @@ export function PlanEditorView({ planId }: { planId: string }) {
     <div className="space-y-5">
       <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
-      <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
-      <PlanEditorTabs value={tab} onChange={setTab} />
-      {Editor ? (
-        <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-4" style={{ boxShadow: "var(--shadow-sm)" }}>
+      <PlanEditorPanel tab={tab} onTabChange={setTab}>
+        {Editor ? (
           <Editor
             doc={document}
             update={update}
@@ -109,13 +108,14 @@ export function PlanEditorView({ planId }: { planId: string }) {
             viewToggle={TABLE_TABS.has(tab) ? <ViewToggle value={listView} onChange={setListView} /> : undefined}
             planCreatedAt={plan.createdAt}
           />
-        </div>
-      ) : (
-        <>
-          <StressOverviewCard doc={document} planId={planId} />
-          <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
-        </>
-      )}
+        ) : (
+          <>
+            <StressOverviewCard doc={document} planId={planId} />
+            <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
+          </>
+        )}
+      </PlanEditorPanel>
+      <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
     </div>
   )
 }

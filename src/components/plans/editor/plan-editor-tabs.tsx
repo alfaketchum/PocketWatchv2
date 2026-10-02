@@ -31,10 +31,23 @@ export function isPlanTab(value: string | null): value is PlanTab {
   return PLAN_TABS.some((t) => t.value === value)
 }
 
-/** Editor section tabs for a plan. */
-export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: (tab: PlanTab) => void }) {
+/**
+ * Editor section tabs for a plan. With `open` set, clicking the selected tab again folds its content (`onToggle`),
+ * and the selected tab shows which way it will go.
+ */
+export function PlanEditorTabs({
+  value,
+  onChange,
+  open,
+  onToggle,
+}: {
+  value: PlanTab
+  onChange: (tab: PlanTab) => void
+  open?: boolean
+  onToggle?: () => void
+}) {
   return (
-    <nav className="flex border-b border-card-border overflow-x-auto scrollbar-hide" role="tablist">
+    <nav className="flex -mb-px overflow-x-auto scrollbar-hide" role="tablist">
       {PLAN_TABS.map((tab) => {
         const active = tab.value === value
         return (
@@ -43,7 +56,9 @@ export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: 
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => onChange(tab.value)}
+            aria-expanded={active && onToggle ? open : undefined}
+            title={active && onToggle ? (open ? "Click to collapse" : "Click to expand") : undefined}
+            onClick={() => (active && onToggle ? onToggle() : onChange(tab.value))}
             className={cn(
               "flex items-center gap-2 px-3 py-3 border-b-2 whitespace-nowrap text-sm transition-colors",
               active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
@@ -53,6 +68,11 @@ export function PlanEditorTabs({ value, onChange }: { value: PlanTab; onChange: 
               {tab.icon}
             </span>
             {tab.label}
+            {active && onToggle && (
+              <span className="material-symbols-rounded -ml-1" style={{ fontSize: 16 }} aria-hidden="true">
+                {open ? "expand_less" : "expand_more"}
+              </span>
+            )}
           </button>
         )
       })}
