@@ -4,8 +4,6 @@ import type { ChartMilestone } from "@/lib/plans/plan-chart"
 import type { TooltipSeries } from "./plan-bar-tooltip"
 import { MILESTONE_ICONS } from "./plan-chart-plot"
 
-const HEADING = "text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted"
-
 function Swatch({ label, color }: { label: string; color: string }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-foreground-muted">
@@ -44,29 +42,23 @@ interface Props {
   markColor: (m: ChartMilestone) => string
 }
 
-/** The chart's key: its bands (parents only, with subcategories on), dashed lines, then milestones on their own row. */
+/** The chart's key on one row, left to right: milestones, a divider, then the bands and dashed lines. */
 export function PlanChartLegend({ series, lines, marks, markColor }: Props) {
   // With subcategories the bars are shades of their band: the legend names the bands; the hover card names each part.
   const bands = bandsOf(series)
   return (
-    <div className="mt-3 space-y-3 lg:max-h-[45%] lg:shrink-0 lg:overflow-y-auto">
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        {bands.map((b) => <Swatch key={b.key} label={b.label} color={b.color} />)}
-        {lines.map((l) => <DashedKey key={l} label={l} />)}
-      </div>
-      {marks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-card-border pt-2.5">
-          <span className={HEADING}>Milestones</span>
-          {marks.map((m) => (
-            <span key={`legend-${m.name}-${m.age}`} className="inline-flex items-center gap-1 text-[11px] text-foreground-muted">
-              <span className="material-symbols-rounded" style={{ fontSize: 13, color: markColor(m) }} aria-hidden="true">
-                {m.icon ?? MILESTONE_ICONS[m.kind]}
-              </span>
-              {m.name} <span className="tabular-nums">({m.age})</span>
-            </span>
-          ))}
-        </div>
-      )}
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {marks.map((m) => (
+        <span key={`legend-${m.name}-${m.age}`} className="inline-flex items-center gap-1 text-[11px] text-foreground-muted">
+          <span className="material-symbols-rounded" style={{ fontSize: 13, color: markColor(m) }} aria-hidden="true">
+            {m.icon ?? MILESTONE_ICONS[m.kind]}
+          </span>
+          {m.name} <span className="tabular-nums">({m.age})</span>
+        </span>
+      ))}
+      {marks.length > 0 && <span className="h-3.5 w-px shrink-0 bg-card-border-hover" aria-hidden="true" />}
+      {bands.map((b) => <Swatch key={b.key} label={b.label} color={b.color} />)}
+      {lines.map((l) => <DashedKey key={l} label={l} />)}
     </div>
   )
 }

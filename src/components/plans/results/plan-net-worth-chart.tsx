@@ -277,47 +277,44 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
         <div className="min-w-0">
-          {/* Desktop: plot and legend share one screen (the card's header and padding are the 7.5rem); the plot takes what the legend leaves. */}
-          <div className="lg:flex lg:h-[calc(100dvh-7.5rem)] lg:min-h-[460px] lg:max-h-[720px] lg:flex-col">
-            <div className="relative h-[340px] lg:h-auto lg:min-h-[240px] lg:flex-1" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-              {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
-              {focused !== null && (
-                <button
-                  type="button"
-                  onClick={() => setFocus(null)}
-                  className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
-                >
-                  <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
-                    arrow_back
-                  </span>
-                  All years
-                </button>
-              )}
-              <ChartPlot
-                points={shownPoints}
-                series={series}
-                yAxis={yAxis}
-                iconRoom={iconRoom}
-                stacked={shownMarks}
-                mode={view}
-                hasDebt={hasDebt}
-                showSteady={steady !== null && focused === null}
-                selected={focused === null ? selected : 0}
-                markColor={markColor}
-                onHover={onPlotHover}
-                onSelect={toggleSelected}
-                onClear={clearSelected}
-                onHoverMark={setHoveredMark}
-                focused={focused !== null}
-              />
-            </div>
-            <PlanChartLegend
+          <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+            {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
+            {focused !== null && (
+              <button
+                type="button"
+                onClick={() => setFocus(null)}
+                className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
+                  arrow_back
+                </span>
+                All years
+              </button>
+            )}
+            <ChartPlot
+              points={shownPoints}
               series={series}
-              lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(steady ? ["All steady (no spending patterns)"] : [])]}
-              marks={marks}
+              yAxis={yAxis}
+              iconRoom={iconRoom}
+              stacked={shownMarks}
+              mode={view}
+              hasDebt={hasDebt}
+              showSteady={steady !== null && focused === null}
+              selected={focused === null ? selected : 0}
               markColor={markColor}
+              onHover={onPlotHover}
+              onSelect={toggleSelected}
+              onClear={clearSelected}
+              onHoverMark={setHoveredMark}
+              focused={focused !== null}
             />
           </div>
+          <PlanChartLegend
+            series={series}
+            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(steady ? ["All steady (no spending patterns)"] : [])]}
+            marks={marks}
+            markColor={markColor}
+          />
           {view === "expenses" && doc.expenses.some((e) => !e.oneTime) && (
             <div className="mt-4">
               <SpendingImpactChart doc={doc} isHidden={isHidden} />
