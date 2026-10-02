@@ -82,8 +82,11 @@ export function incomeForYear(
     for (const c of income.contributions) {
       if (!accountIds.has(c.accountId)) continue
       const own = gross * c.percent
-      const employer = gross * c.employerMatchPercent
+      // ESPP: the discount buys extra shares; that gain is taxed as income and counted with the match.
+      const discountGain = c.discount ? (own * c.discount) / (1 - c.discount) : 0
+      const employer = gross * c.employerMatchPercent + discountGain
       if (c.preTax && income.taxable) taxable -= own
+      if (income.taxable) taxable += discountGain
       employee += own
       match += employer
       deposits = addTo(deposits, c.accountId, own + employer)

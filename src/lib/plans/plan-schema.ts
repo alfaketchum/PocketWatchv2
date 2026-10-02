@@ -90,12 +90,13 @@ const contribution = z.object({
   percent: share,
   employerMatchPercent: share,
   preTax: z.boolean(),
+  discount: z.number().min(0).max(0.5).optional(),
 })
 
 const income = z.object({
   id,
   name,
-  kind: z.enum(["salary", "business", "social_security", "pension", "rental", "other"]),
+  kind: z.enum(["salary", "business", "equity", "social_security", "pension", "rental", "other"]),
   amount: money,
   growth: rate.nullable(),
   start: timing,

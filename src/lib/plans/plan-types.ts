@@ -1,7 +1,7 @@
 /** Tax bucket of an account; decides how contributions and withdrawals are taxed. */
 export type TaxTreatment = "cash" | "taxable" | "traditional" | "roth" | "hsa" | "education"
 
-export type IncomeKind = "salary" | "business" | "social_security" | "pension" | "rental" | "other"
+export type IncomeKind = "salary" | "business" | "equity" | "social_security" | "pension" | "rental" | "other"
 
 export type AssetKind = "home" | "vehicle" | "other"
 
@@ -139,6 +139,8 @@ export interface PlanContribution {
   employerMatchPercent: number
   /** Pre-tax contributions lower taxable income (traditional 401k, HSA). */
   preTax: boolean
+  /** ESPP: the purchase discount (0.15 = shares bought at 85% of price); the gain is taxed as income. */
+  discount?: number
 }
 
 export interface PlanIncome {

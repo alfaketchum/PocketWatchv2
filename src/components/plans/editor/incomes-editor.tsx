@@ -17,10 +17,13 @@ import { TimingPicker } from "./timing-picker"
 import { IncomesTable } from "./incomes-table"
 import { AddMilestoneDialog, eventsFor } from "./add-milestone-dialog"
 import type { TemplateKey } from "@/lib/plans/milestone-templates"
+import { AddEquityDialog, EQUITY_CHOICES } from "./add-equity-dialog"
+import type { EquityMode } from "./equity-helpers"
 
 const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
   { value: "salary", label: "Salary" },
   { value: "business", label: "Business" },
+  { value: "equity", label: "Stock pay (RSU, options)" },
   { value: "social_security", label: "Social Security" },
   { value: "pension", label: "Pension" },
   { value: "rental", label: "Rental" },
@@ -28,7 +31,7 @@ const KIND_OPTIONS: { value: IncomeKind; label: string }[] = [
 ]
 
 /** Income types that usually come with a workplace plan. */
-const PAYROLL_KINDS = new Set<IncomeKind>(["salary", "business"])
+const PAYROLL_KINDS = new Set<IncomeKind>(["salary", "business", "equity"])
 
 /** Income that may pay the same dollars every year (pensions, annuities): offered a "No raises" box. */
 const FIXED_PAY_KINDS = new Set<IncomeKind>(["pension", "other"])
@@ -60,6 +63,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
     update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
   const [adding, setAdding] = useState(false)
+  const [equity, setEquity] = useState<EquityMode | null>(null)
 
   return (
     <div className="space-y-3">
@@ -133,6 +137,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
           </div>
           {!inc.oneTime && (PAYROLL_KINDS.has(inc.kind) || inc.contributions.length > 0) && (
             <IncomeContributionsEditor
+              equity={inc.kind === "equity"}
               contributions={inc.contributions}
               accounts={doc.accounts}
               onChange={(contributions) => patch(inc.id, { contributions })}
@@ -156,8 +161,29 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
                 setAdding(false)
               },
             },
+            ...EQUITY_CHOICES.map((c) => ({
+              label: c.label,
+              icon: c.icon,
+              detail: c.detail,
+              onPick: () => {
+                setAdding(false)
+                setEquity(c.mode)
+              },
+            })),
           ]}
           onClose={() => setAdding(false)}
+        />
+      )}
+      {equity && (
+        <AddEquityDialog
+          mode={equity}
+          doc={doc}
+          update={update}
+          onBack={() => {
+            setEquity(null)
+            setAdding(true)
+          }}
+          onClose={() => setEquity(null)}
         />
       )}
       <DepositsEditor doc={doc} update={update} />

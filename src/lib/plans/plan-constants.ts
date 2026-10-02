@@ -1,4 +1,4 @@
-import type { PlanDocument, TaxTreatment } from "./plan-types"
+import type { IncomeKind, PlanDocument, TaxTreatment } from "./plan-types"
 
 export const MAX_PLANS_PER_USER = 25
 export const MAX_PLAN_YEARS = 100
@@ -19,6 +19,8 @@ export const PLAN_LIMITS = {
 } as const
 
 export const DEFAULT_RETURN_RATE = 0.07
+/** Income paid as wages: payroll tax and Social Security earnings. Equity is RSU vests and option exercises. */
+export const WAGE_KINDS: ReadonlySet<IncomeKind> = new Set<IncomeKind>(["salary", "equity"])
 export const DEFAULT_CASH_RETURN = 0.02
 export const DEFAULT_RETIREMENT_AGE = 65
 export const DEFAULT_PERSON_AGE = 35

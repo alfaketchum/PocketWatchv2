@@ -10,6 +10,7 @@ import { socialSecurityYearly } from "@/lib/plans/ss-plan-earnings"
 const KINDS: { value: IncomeKind; label: string }[] = [
   { value: "salary", label: "Salary" },
   { value: "business", label: "Business" },
+  { value: "equity", label: "Stock pay" },
   { value: "social_security", label: "Social Security" },
   { value: "pension", label: "Pension" },
   { value: "rental", label: "Rental" },
@@ -33,7 +34,7 @@ function payrollSummary(income: PlanIncome, doc: PlanEditorProps["doc"]): string
   return income.contributions
     .map((c) => {
       const name = doc.accounts.find((a) => a.id === c.accountId)?.name ?? "?"
-      return `${name} ${fmtPct(c.percent, 0)}${c.employerMatchPercent > 0 ? ` +${fmtPct(c.employerMatchPercent, 0)}` : ""}`
+      return `${name} ${fmtPct(c.percent, 0)}${c.employerMatchPercent > 0 ? ` +${fmtPct(c.employerMatchPercent, 0)}` : ""}${c.discount ? ` (${fmtPct(c.discount, 0)} off)` : ""}`
     })
     .join(", ")
 }

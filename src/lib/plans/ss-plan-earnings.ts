@@ -3,8 +3,9 @@ import { estimatePia, type EarningsYear, type PiaEstimate } from "./ss-estimate"
 import { yearlyBenefit } from "./social-security"
 import { isActive, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanIncome } from "./plan-types"
+import { WAGE_KINDS } from "./plan-constants"
 
-const isWorkIncome = (i: PlanIncome) => (i.kind === "salary" || i.kind === "business") && i.taxable && !i.oneTime
+const isWorkIncome = (i: PlanIncome) => (WAGE_KINDS.has(i.kind) || i.kind === "business") && i.taxable && !i.oneTime
 
 /** This person's salary and business income in each plan year, in today's dollars (what Social Security counts). */
 export function planEarnings(doc: PlanDocument, personId: string): EarningsYear[] {
