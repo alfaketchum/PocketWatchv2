@@ -9,6 +9,9 @@ import { columnsFor, LEDGER_VIEWS, lifetimeValue, startBalances, type LedgerView
 import { downloadLedgerCsv } from "./ledger-csv"
 import { LedgerCell, PlanLedgerRow, STICKY_AGE, STICKY_YEAR } from "./plan-ledger-row"
 
+/** Header cells stick to the top of the table's scroll area, with a hairline under them. */
+const HEADER_CELL = "sticky top-0 z-[2] bg-card shadow-[inset_0_-1px_0_var(--card-border)]"
+
 /** Remembered per browser: which set of columns the ledger shows. */
 const VIEW_KEY = "pw-plan-ledger-view"
 const VIEW_OPTIONS = (Object.keys(LEDGER_VIEWS) as LedgerView[]).map((v) => ({ value: v, label: LEDGER_VIEWS[v].label }))
@@ -70,14 +73,15 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
         </div>
       }
     >
-      <div className="overflow-x-auto -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+      {/* Scrolls on its own (up to a screen tall) so the header row stays in view; Year and Age stay pinned sideways. */}
+      <div className="overflow-auto max-h-[calc(100dvh-5rem)] -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
-              <th className={cn("px-3 py-2 font-semibold text-left", STICKY_YEAR)}>Year</th>
-              <th className={cn("px-3 py-2 font-semibold text-left", STICKY_AGE)}>Age</th>
+              <th className={cn("px-3 py-2 font-semibold text-left", STICKY_YEAR, HEADER_CELL, "z-[3]")}>Year</th>
+              <th className={cn("px-3 py-2 font-semibold text-left", STICKY_AGE, HEADER_CELL, "z-[3]")}>Age</th>
               {columns.map((c) => (
-                <th key={c.id} title={c.hint} className="px-3 py-2 font-semibold whitespace-nowrap text-right cursor-help">
+                <th key={c.id} title={c.hint} className={cn("px-3 py-2 font-semibold whitespace-nowrap text-right cursor-help", HEADER_CELL)}>
                   {c.label}
                 </th>
               ))}
