@@ -36,7 +36,7 @@ export const PLAN_GUIDE: GuideSection[] = [
       { name: "Stress test", text: "Your plan replayed through every market since 1871: how often it holds, and the close calls." },
       { name: "Compare Plans", text: "Two plans side by side: duplicate one, change one thing (tab at the top of Planner)." },
       { name: "Plan vs Actual", text: "Your real net worth tracked against the primary plan (tab at the top of Planner)." },
-      { name: "Methodology", text: "How every number is worked out, and which figures need yearly updates." },
+      { name: "Methodology", text: "Your guide: the tax rules by stage of life (59½, 65, 73…), what's automatic and what you set. How it's calculated: every formula and source." },
     ],
   },
 ]

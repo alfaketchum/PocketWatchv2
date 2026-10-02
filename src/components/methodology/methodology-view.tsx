@@ -1,6 +1,10 @@
 "use client"
 
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Fragment, type ReactNode } from "react"
+import { cn } from "@/lib/utils"
+import { GUIDE_SECTIONS } from "./methodology-guide"
 import { MARKET_SECTIONS } from "./methodology-markets"
 import { PLAN_SECTIONS } from "./methodology-plans"
 import { TAX_SECTIONS } from "./methodology-taxes"
@@ -88,18 +92,58 @@ function Section({ section }: { section: MethodSection }) {
   )
 }
 
+const PAGES = [
+  { href: "/methodology/guide", label: "Your guide", icon: "explore" },
+  { href: "/methodology", label: "How it's calculated", icon: "functions" },
+] as const
+
+/** Switch between the plain-language guide and the full methodology. */
+function MethodologyTabs() {
+  const pathname = usePathname()
+  return (
+    <nav aria-label="Methodology pages" className="inline-flex rounded-lg border border-card-border p-0.5">
+      {PAGES.map((p) => (
+        <Link
+          key={p.href}
+          href={p.href}
+          aria-current={pathname === p.href ? "page" : undefined}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium",
+            pathname === p.href ? "bg-primary/10 text-primary" : "text-foreground-muted hover:text-foreground",
+          )}
+        >
+          <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">{p.icon}</span>
+          {p.label}
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
 /** How every projection, tax and historical test in the app is calculated, in plain language. */
 export function MethodologyView() {
+  return <MethodPage subtitle="How we calculate your plans, taxes, stress tests and FIRE numbers, and what we leave out." sections={SECTIONS} />
+}
+
+/** The tax rules a plan applies, by stage of life: what's automatic, what you set and where, what isn't covered. */
+export function MethodologyGuideView() {
+  return <MethodPage subtitle="The tax rules your plan follows, stage by stage: what it does for you, what you set, and what it doesn't cover." sections={GUIDE_SECTIONS} />
+}
+
+function MethodPage({ subtitle, sections }: { subtitle: string; sections: MethodSection[] }) {
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Methodology</h1>
-        <p className="text-xs text-foreground-muted mt-0.5">How we calculate your plans, taxes, stress tests and FIRE numbers, and what we leave out.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Methodology</h1>
+          <p className="text-xs text-foreground-muted mt-0.5">{subtitle}</p>
+        </div>
+        <MethodologyTabs />
       </div>
       <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
         <nav aria-label="Sections" className="lg:sticky lg:top-20 lg:self-start">
           <ol className="flex flex-wrap gap-1.5 lg:flex-col lg:gap-0.5">
-            {SECTIONS.map((s) => (
+            {sections.map((s) => (
               <li key={s.id}>
                 <a
                   href={`#${s.id}`}
@@ -113,7 +157,7 @@ export function MethodologyView() {
           </ol>
         </nav>
         <div className="min-w-0 space-y-4">
-          {SECTIONS.map((s) => <Section key={s.id} section={s} />)}
+          {sections.map((s) => <Section key={s.id} section={s} />)}
         </div>
       </div>
     </div>
