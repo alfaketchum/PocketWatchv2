@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useDeferredValue, useEffect, useState, type ComponentType } from "react"
+import { useCallback, useDeferredValue, useEffect, useState, type ComponentType, type ReactNode } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
@@ -19,7 +19,7 @@ import { DEFAULT_PLAN_TAB, planTabFrom, type PlanTab } from "./editor/plan-edito
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
-import { usePlanLayout } from "./plan-layout-toggle"
+import { DEFAULT_LAYOUT, LayoutBlock, usePlanLayout, type PlanBlock } from "./plan-layout"
 import { StressOverviewCard } from "./stress/stress-overview-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
@@ -75,6 +75,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const { isHidden } = usePrivacyMode()
   const [listView, setListView] = usePlanEditorView()
   const [layout, setLayout] = usePlanLayout()
+  const [editingLayout, setEditingLayout] = useState(false)
   const editInList = useCallback(
     (anchor: string) => {
       setListView("detailed")
@@ -102,21 +103,9 @@ export function PlanEditorView({ planId }: { planId: string }) {
   }
 
   const Editor = shownTab === "overview" ? null : EDITORS[shownTab]
-  const chart = <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
-  return (
-    <div className="space-y-5">
-      <PlanEditorHeader
-        planId={planId}
-        name={plan.name}
-        isPrimary={plan.isPrimary}
-        isSaving={isSaving}
-        basis={basis}
-        onBasisChange={setBasis}
-        layout={layout}
-        onLayoutChange={setLayout}
-      />
-      <PlanSummaryStrip summary={summary} isHidden={isHidden} />
-      {layout === "chartFirst" && chart}
+  const blocks: Record<PlanBlock, ReactNode> = {
+    summary: <PlanSummaryStrip summary={summary} isHidden={isHidden} />,
+    tabs: (
       <PlanEditorPanel tab={tab} onTabChange={setTab}>
         {Editor ? (
           <Editor
@@ -134,7 +123,27 @@ export function PlanEditorView({ planId }: { planId: string }) {
           </>
         )}
       </PlanEditorPanel>
-      {layout === "tabsFirst" && chart}
+    ),
+    chart: <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} panelSide={layout.panelSide} />,
+  }
+  return (
+    <div className="space-y-5">
+      <PlanEditorHeader
+        planId={planId}
+        name={plan.name}
+        isPrimary={plan.isPrimary}
+        isSaving={isSaving}
+        basis={basis}
+        onBasisChange={setBasis}
+        editingLayout={editingLayout}
+        onEditLayout={() => setEditingLayout((on) => !on)}
+        onResetLayout={() => setLayout(DEFAULT_LAYOUT)}
+      />
+      {layout.order.map((block) => (
+        <LayoutBlock key={block} block={block} layout={layout} editing={editingLayout} onChange={setLayout}>
+          {blocks[block]}
+        </LayoutBlock>
+      ))}
     </div>
   )
 }

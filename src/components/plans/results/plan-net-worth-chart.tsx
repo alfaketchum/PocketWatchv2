@@ -189,13 +189,15 @@ interface Props {
   rows: YearRow[]
   basis: DollarBasis
   isHidden: boolean
+  /** Which side of the chart the year panel sits on (wide screens). */
+  panelSide?: "left" | "right"
 }
 
 /**
  * One stacked bar per plan year: net worth by tax treatment (with homes and other assets, and debt below zero), or
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
-export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden }: Props) {
+export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden, panelSide = "right" }: Props) {
   const [mode, setMode] = useState<ChartMode>("networth")
   const [detail, setDetailState] = useState(false)
   useEffect(() => setDetailState(readDetail()), [])
@@ -279,7 +281,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
         </div>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+      <div className={`grid gap-4 lg:items-start ${panelSide === "left" ? "lg:grid-cols-[18rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_18rem]"}`}>
         <div className="min-w-0">
           <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
@@ -326,7 +328,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           )}
         </div>
         {metrics && activePoint && (
-          <div className="lg:sticky lg:top-4" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+          <div className={`lg:sticky lg:top-4 ${panelSide === "left" ? "lg:order-first" : ""}`} style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             <PlanYearPanel
               metrics={metrics}
               age={activePoint.age}
