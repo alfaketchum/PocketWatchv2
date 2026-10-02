@@ -6,10 +6,6 @@ import { PlanGuideButton } from "./guide/plan-guide-dialog"
 import { EditLayoutButton } from "./plan-layout"
 import { DollarsToggle } from "./results/dollars-toggle"
 
-/** Links to the plan's own pages, in the accent tint so they stand out from the plain controls. */
-const PAGE_LINK =
-  "inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-
 /** Top of a single plan: back link, name, save state and dollar basis. */
 export function PlanEditorHeader({
   planId,
@@ -54,25 +50,25 @@ export function PlanEditorHeader({
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href={`/plans/${planId}/cashflow`} className={PAGE_LINK}>
+          <Link href={`/plans/${planId}/cashflow`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               account_tree
             </span>
             Money flow
           </Link>
-          <Link href={`/plans/${planId}/trading`} className={PAGE_LINK}>
+          <Link href={`/plans/${planId}/trading`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               candlestick_chart
             </span>
             Trading
           </Link>
-          <Link href={`/plans/${planId}/loans`} className={PAGE_LINK}>
+          <Link href={`/plans/${planId}/loans`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               request_quote
             </span>
             Loans
           </Link>
-          <Link href={`/plans/${planId}/stress`} className={PAGE_LINK}>
+          <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
               thunderstorm
             </span>
