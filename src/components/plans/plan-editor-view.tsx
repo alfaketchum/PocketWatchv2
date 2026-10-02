@@ -19,6 +19,7 @@ import { DEFAULT_PLAN_TAB, planTabFrom, type PlanTab } from "./editor/plan-edito
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
+import { usePlanLayout } from "./plan-layout-toggle"
 import { StressOverviewCard } from "./stress/stress-overview-card"
 import { PlanLedgerTable } from "./results/plan-ledger-table"
 import { PlanSummaryStrip } from "./results/plan-summary-strip"
@@ -73,6 +74,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const shownTab = useDeferredValue(tab)
   const { isHidden } = usePrivacyMode()
   const [listView, setListView] = usePlanEditorView()
+  const [layout, setLayout] = usePlanLayout()
   const editInList = useCallback(
     (anchor: string) => {
       setListView("detailed")
@@ -100,10 +102,21 @@ export function PlanEditorView({ planId }: { planId: string }) {
   }
 
   const Editor = shownTab === "overview" ? null : EDITORS[shownTab]
+  const chart = <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
   return (
     <div className="space-y-5">
-      <PlanEditorHeader planId={planId} name={plan.name} isPrimary={plan.isPrimary} isSaving={isSaving} basis={basis} onBasisChange={setBasis} />
+      <PlanEditorHeader
+        planId={planId}
+        name={plan.name}
+        isPrimary={plan.isPrimary}
+        isSaving={isSaving}
+        basis={basis}
+        onBasisChange={setBasis}
+        layout={layout}
+        onLayoutChange={setLayout}
+      />
       <PlanSummaryStrip summary={summary} isHidden={isHidden} />
+      {layout === "chartFirst" && chart}
       <PlanEditorPanel tab={tab} onTabChange={setTab}>
         {Editor ? (
           <Editor
@@ -121,7 +134,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
           </>
         )}
       </PlanEditorPanel>
-      <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} />
+      {layout === "tabsFirst" && chart}
     </div>
   )
 }

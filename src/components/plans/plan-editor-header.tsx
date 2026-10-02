@@ -3,6 +3,7 @@
 import Link from "next/link"
 import type { DollarBasis } from "@/lib/plans/plan-types"
 import { PlanGuideButton } from "./guide/plan-guide-dialog"
+import { PlanLayoutToggle, type PlanLayout } from "./plan-layout-toggle"
 import { DollarsToggle } from "./results/dollars-toggle"
 
 /** Top of a single plan: back link, name, save state and dollar basis. */
@@ -13,6 +14,8 @@ export function PlanEditorHeader({
   isSaving,
   basis,
   onBasisChange,
+  layout,
+  onLayoutChange,
 }: {
   planId: string
   name: string
@@ -20,6 +23,8 @@ export function PlanEditorHeader({
   isSaving: boolean
   basis: DollarBasis
   onBasisChange: (basis: DollarBasis) => void
+  layout: PlanLayout
+  onLayoutChange: (layout: PlanLayout) => void
 }) {
   return (
     <div className="space-y-2">
@@ -68,7 +73,10 @@ export function PlanEditorHeader({
             Stress test
           </Link>
         </div>
-        <DollarsToggle value={basis} onChange={onBasisChange} />
+        <div className="flex flex-wrap items-center gap-2">
+          <PlanLayoutToggle value={layout} onChange={onLayoutChange} />
+          <DollarsToggle value={basis} onChange={onBasisChange} />
+        </div>
       </div>
     </div>
   )
