@@ -70,7 +70,7 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
     kind: "balance",
     value: (r, c) => c.doc.accounts.filter((a) => liquidTreatments.has(a.taxTreatment)).reduce((s, a) => s + (r.balances[a.id] ?? 0), 0),
   },
-  { id: "property", label: "Property", hint: "Homes, cars and other assets at what they're worth", kind: "balance", value: (r) => r.assetsTotal },
+  { id: "property", label: "Assets", hint: "Homes, cars and other assets at what they're worth", kind: "balance", value: (r) => r.assetsTotal },
   { id: "debtOwed", label: "Debt owed", hint: "What's still owed on every loan at year end", kind: "balance", tone: "neg", value: (r) => -r.debtsTotal },
   { id: "netWorth", label: "Net worth", hint: "Accounts plus property minus debt, at year end", kind: "balance", value: (r) => r.netWorth },
 ]

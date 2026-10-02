@@ -35,7 +35,7 @@ const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "C
 
 const INFO: Record<ChartMode, string> = {
   networth:
-    "Year-end balances by tax treatment, plus property (homes, cars, other assets) at what it's worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
+    "Year-end balances by tax treatment, plus assets (homes, cars and other things you own) at what they're worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
   expenses:
