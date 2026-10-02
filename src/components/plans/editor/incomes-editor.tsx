@@ -5,7 +5,9 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
-import type { IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
+import type { EquityGrant, IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
+import { equityValueToday } from "@/lib/plans/engine/engine-equity"
+import { EquityGrantFields } from "./equity-grant-fields"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { DepositsEditor } from "./deposits-editor"
 import { GrowthField } from "./growth-field"
@@ -41,6 +43,9 @@ const NO_RAISES_HINT =
 /** Income added from templates (each shows on the timeline: its own milestone, or a marker generated from the income). */
 const INCOME_TEMPLATES: TemplateKey[] = eventsFor("Income")
 
+/** The grant behind equity pay valued from shares and price (older equity incomes have none). */
+const grantOf = (inc: PlanIncome): EquityGrant | undefined => (inc.kind === "equity" ? inc.equity : undefined)
+
 function newIncome(hasRetirement: boolean): PlanIncome {
   const end: Timing = hasRetirement ? { type: "milestone", milestoneId: RETIREMENT_MILESTONE_ID } : { type: "planEnd" }
   return {
@@ -61,6 +66,11 @@ function newIncome(hasRetirement: boolean): PlanIncome {
 export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanIncome>) =>
     update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
+  // Shares or price changed: the shown amount follows (today's value).
+  const patchGrant = (inc: PlanIncome, change: Partial<EquityGrant>) => {
+    const equity = { ...grantOf(inc)!, ...change }
+    patch(inc.id, { equity, amount: equityValueToday(equity) })
+  }
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
   const [adding, setAdding] = useState(false)
   const [equity, setEquity] = useState<EquityMode | null>(null)
@@ -87,6 +97,16 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
             <SelectField label="Type" value={inc.kind} options={KIND_OPTIONS} onChange={(kind) => patch(inc.id, { kind })} />
             {inc.socialSecurity ? (
               <SocialSecurityIncomeFields income={inc} doc={doc} onChange={(change) => patch(inc.id, change)} />
+            ) : grantOf(inc) ? (
+              <FireNumberField
+                label="Price grows / yr"
+                suffix="%"
+                scale={100}
+                min={-0.5}
+                max={1}
+                value={inc.growth ?? doc.settings.inflation}
+                onChange={(growth) => patch(inc.id, { growth })}
+              />
             ) : (
               <>
                 <FireNumberField
@@ -108,6 +128,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               />
             )}
           </div>
+          {grantOf(inc) && <EquityGrantFields grant={grantOf(inc)!} onChange={(change) => patchGrant(inc, change)} />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {inc.socialSecurity ? (
               <p className="self-center text-[11px] text-foreground-muted">Starts at the claiming age above.</p>

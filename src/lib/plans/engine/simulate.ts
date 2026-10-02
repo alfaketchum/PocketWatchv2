@@ -1,7 +1,8 @@
 import { inflationOf, priceIndex, rateAt, type Inflation } from "../plan-inflation"
 import { nominalRate, realRate } from "../plan-dollars"
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
-import type { HomeSale, PlanAccount, PlanDocument, PlanProjection, YearRow } from "../plan-types"
+import type { HomeSale, PlanAccount, PlanDocument, PlanIncome, PlanProjection, YearRow } from "../plan-types"
+import { plannedPricing, replayedPricing, type EquityPricing } from "./engine-equity"
 import { fallbackHomeAt, SHORTFALL, withHomeSold } from "../plan-home-fallback"
 import {
   applyAssetEvents,
@@ -42,10 +43,12 @@ import {
 
 /**
  * Options for one run (stress tests): `returnFor` overrides each account's nominal return per plan year;
- * `inflation` replaces the plan's own (history's actual inflation). Fixed-dollar amounts stay fixed.
+ * `equityReturnFor` does the same for the stock behind each equity grant; `inflation` replaces the plan's own
+ * (history's actual inflation). Fixed-dollar amounts stay fixed.
  */
 export interface SimulateOptions {
   returnFor?: (account: PlanAccount, index: number) => number
+  equityReturnFor?: (income: PlanIncome, index: number) => number
   inflation?: Inflation
 }
 
@@ -54,6 +57,8 @@ interface Plan {
   /** The plan's inflation: one rate, or a rate per year when following the market's curve. */
   inflation: Inflation
   returnFor?: SimulateOptions["returnFor"]
+  /** How equity grants' stock prices move (planned growth, or the stress test's market path). */
+  equityPricing: EquityPricing
   ctx: TimingContext
   incomes: IncomeEntry[]
   expenses: ExpenseEntry[]
@@ -95,6 +100,7 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
     doc,
     inflation,
     returnFor: opts.returnFor ?? realReturnsOnPath(doc, inflation),
+    equityPricing: opts.equityReturnFor ? replayedPricing(opts.equityReturnFor) : plannedPricing(inflation),
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
     expenses: expenseEntries(doc.expenses, ctx),
@@ -155,7 +161,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { inflation } = plan
   const ss = socialSecurityYear(
     { doc: plan.doc, entries: plan.incomes, adjustments: plan.adjustments, index, inflation, wageIndex: thresholdIndex(startYear + index, inflation, startYear), estimates: plan.ssEstimates },
-    incomeForYear(plan.incomes, plan.doc.accounts, index, inflation),
+    incomeForYear(plan.incomes, plan.doc.accounts, index, inflation, plan.equityPricing),
     state.ssWithheld,
   )
   const grossIncome = ss.income

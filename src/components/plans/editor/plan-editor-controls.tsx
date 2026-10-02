@@ -3,8 +3,8 @@
 import type { ReactNode } from "react"
 
 /** Overrides the unlayered global input styles (see FireNumberField). */
-const FIELD_STYLE = { padding: "6px 10px", fontSize: 14 } as const
-const FIELD_CLASS =
+export const FIELD_STYLE = { padding: "6px 10px", fontSize: 14 } as const
+export const FIELD_CLASS =
   "w-full rounded-lg border border-card-border bg-background text-sm text-foreground outline-none focus:border-primary"
 
 export function TextField({

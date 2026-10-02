@@ -3,11 +3,11 @@
 import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
-import { fmtMoney } from "@/components/fire/fire-helpers"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanEditorProps } from "../plans-helpers"
-import { applyEquity, esppIncomes, initialEquityDraft, NEW_STOCK_ACCOUNT, optionSpread, stockAccounts, type EquityDraft, type EquityMode } from "./equity-helpers"
+import { applyEquity, esppIncomes, initialEquityDraft, NEW_STOCK_ACCOUNT, stockAccounts, type EquityDraft, type EquityMode } from "./equity-helpers"
+import { EquityGrantFields } from "./equity-grant-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
 
@@ -15,8 +15,8 @@ const TITLES: Record<EquityMode, string> = { rsu: "Add RSUs", options: "Add stoc
 
 /** The equity tiles on Add income. */
 export const EQUITY_CHOICES: { mode: EquityMode; icon: string; label: string; detail: string }[] = [
-  { mode: "rsu", icon: "workspace_premium", label: "RSUs", detail: "Shares that vest each year; taxed as pay" },
-  { mode: "options", icon: "candlestick_chart", label: "Stock options", detail: "Exercise later; the gain is taxed as pay" },
+  { mode: "rsu", icon: "workspace_premium", label: "RSUs", detail: "Shares vesting each year at the live price" },
+  { mode: "options", icon: "candlestick_chart", label: "Stock options", detail: "Valued with an options-pricing model; taxed as pay" },
   { mode: "espp", icon: "shopping_basket", label: "ESPP", detail: "Discounted company stock from your paycheck" },
 ]
 
@@ -50,19 +50,37 @@ function KeptFields(props: FormProps) {
   )
 }
 
+function PriceGrowthField({ d, set }: FormProps) {
+  return (
+    <FireNumberField
+      label="Price grows / yr"
+      suffix="%"
+      scale={100}
+      min={-0.5}
+      max={1}
+      value={d.growth}
+      hint="Before inflation. The stress test swings it 1.5× as hard as the market."
+      onChange={(growth) => set({ growth })}
+    />
+  )
+}
+
 function RsuFields(props: FormProps) {
   const { d, set, doc } = props
   return (
     <div className="space-y-3">
-      <FireNumberField label="Vesting each year (today's $)" prefix="$" min={0} value={d.amount} onChange={(amount) => set({ amount })} />
+      <EquityGrantFields grant={d.grant} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <TimingPicker label="Starts" value={d.start} doc={doc} onChange={(start) => set({ start })} />
         <TimingPicker label="Last vest" value={d.end} doc={doc} allow={["planEnd", "age", "year", "milestone"]} onChange={(end) => set({ end })} />
       </div>
-      <KeptFields {...props} />
+      <div className="grid grid-cols-2 gap-2 items-end">
+        <PriceGrowthField {...props} />
+        <KeptFields {...props} />
+      </div>
       <p className="text-xs text-foreground-muted">
-        Each vest is taxed as wages (income and payroll tax). Kept shares start with that value as their cost basis. New grants? Extend the last vest or add
-        another.
+        Each vest is taxed as wages (income and payroll tax) at that year&apos;s price. Kept shares start with that value as their cost basis. New grants?
+        Extend the last vest or add another.
       </p>
     </div>
   )
@@ -72,16 +90,15 @@ function OptionFields(props: FormProps) {
   const { d, set, doc } = props
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        <FireNumberField label="Shares" min={0} value={d.shares} onChange={(shares) => set({ shares })} />
-        <FireNumberField label="Strike price" prefix="$" min={0} value={d.strike} onChange={(strike) => set({ strike })} />
-        <FireNumberField label="Price then" prefix="$" min={0} value={d.price} onChange={(price) => set({ price })} />
+      <EquityGrantFields grant={d.grant} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
+      <div className="grid grid-cols-2 gap-2 items-end">
+        <TimingPicker label="Exercised" value={d.start} doc={doc} onChange={(start) => set({ start })} />
+        <PriceGrowthField {...props} />
+        <KeptFields {...props} />
       </div>
-      <TimingPicker label="Exercised" value={d.start} doc={doc} onChange={(start) => set({ start })} />
-      <KeptFields {...props} />
       <p className="text-xs text-foreground-muted">
-        A gain of <span className="font-medium text-foreground">{fmtMoney(optionSpread(d))}</span> (today&apos;s $), taxed as wages like non-qualified
-        options. ISOs can avoid that but may owe AMT, which the plan doesn&apos;t model. Private company? Use the year you expect to sell.
+        Taxed as wages when exercised, like non-qualified options. ISOs can avoid that but may owe AMT, which the plan doesn&apos;t model. Private
+        company? Leave the ticker blank, use the latest 409A price, and the year you expect to sell.
       </p>
     </div>
   )
@@ -117,7 +134,7 @@ function problemOf(mode: EquityMode, d: EquityDraft, doc: PlanEditorProps["doc"]
     return null
   }
   if (doc.incomes.length >= PLAN_LIMITS.incomes) return "This plan has the most incomes it can hold."
-  if (mode === "options" && optionSpread(d) <= 0) return "The price has to be above the strike."
+  if (d.grant.shares <= 0 || d.grant.price <= 0) return "Enter the shares and price"
   return null
 }
 

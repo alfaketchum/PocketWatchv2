@@ -72,6 +72,10 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
               <span className="block px-2 tabular-nums" title={`Claiming at ${inc.socialSecurity.claimAge}; change it in the detailed view`}>
                 {fmtMoney(socialSecurityYearly(doc, inc))}
               </span>
+            ) : inc.kind === "equity" && inc.equity ? (
+              <span className="block px-2 tabular-nums" title="Shares × price; change them in the detailed view">
+                {fmtMoney(inc.amount)}
+              </span>
             ) : (
               <CellNumber label="Per year" prefix="$" min={0} value={inc.amount} onChange={(amount) => patch(inc.id, { amount })} />
             )}

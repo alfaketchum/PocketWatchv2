@@ -19,6 +19,7 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Each account's mix**: stocks, bonds, cash and crypto. Default: crypto accounts all crypto, cash accounts all cash, everything else 80% stocks / 20% bonds.",
           "**Cash** earns 0% after inflation (ERN's convention; the data has no T-bill series).",
           "**Crypto** has too little history, so it swings twice as hard as stocks did that year around its own assumed return, never worse than −90% in a year. The doubling is done in log terms so its long-run compounded return stays at your assumption.",
+          "**Company stock behind RSUs and options** swings 1.5× as hard as the market did that year, around its own assumed price growth, never worse than −90% in a year. RSU vests are worth that path's price, and options pay exactly what that path leaves above the strike (nothing in a bad run). Only market-wide swings are replayed, not one company's own surprises. Company stock accounts default to all stocks.",
           "**Lining up**: history's year 1 matches the plan's first year, or your retirement year (earlier plan years then use the years before it in history).",
           "**Only complete runs count**: a start year is used only if history covers every year from there to the plan's end.",
           "**Success** = the money lasts: no year where spending goes unfunded.",

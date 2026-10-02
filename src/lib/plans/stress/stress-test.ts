@@ -19,7 +19,7 @@ import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument } from "../plan-types"
 import { CPI_RELIABLE_FROM, type AnnualHistory } from "./stress-history"
 import { closeCall, type CloseCall } from "./stress-close-calls"
-import { yearReturn } from "./stress-mix"
+import { equityYearReturn, yearReturn } from "./stress-mix"
 
 /** History lines up with the plan's first year, or with the retirement year. */
 export type StressAlign = "start" | "retirement"
@@ -101,13 +101,20 @@ function averageInflation(annual: AnnualHistory, start: number): number | null {
 /** One cohort: the plan with history position `start` lined up with plan year `anchor`. */
 export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: number, anchor: number, mode: StressInflation = "plan"): CohortResult {
   const inflation = cohortInflation(doc, annual, start, anchor, mode)
+  const market = (index: number) => {
+    const h = start + index - anchor
+    // Before the record begins (only when lining up with retirement): null, so assumed returns apply.
+    return h < 0 ? null : { stockReal: annual.stocks[h], bondReal: annual.bonds[h], stockLogMean: annual.stockLogMean }
+  }
   const projection = simulatePlan(doc, {
     inflation,
     returnFor: (account, index) => {
-      const h = start + index - anchor
-      // Before the record begins (only when lining up with retirement): the account's assumed return.
-      if (h < 0) return account.returnRate
-      return yearReturn(account, { stockReal: annual.stocks[h], bondReal: annual.bonds[h], stockLogMean: annual.stockLogMean }, rateAt(inflation, index), doc.settings.inflation)
+      const year = market(index)
+      return year ? yearReturn(account, year, rateAt(inflation, index), doc.settings.inflation) : account.returnRate
+    },
+    equityReturnFor: (income, index) => {
+      const year = market(index)
+      return year ? equityYearReturn(income.growth, year, rateAt(inflation, index), doc.settings.inflation) : (income.growth ?? rateAt(inflation, index))
     },
   })
   const person = doc.people[0]

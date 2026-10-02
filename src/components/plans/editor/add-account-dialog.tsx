@@ -8,7 +8,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { DEFAULT_CASH_RETURN, DEFAULT_RETURN_RATE, PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { otherReturn, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
-import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
+import type { AccountMix, PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { newItemId, type PlanEditorProps } from "../plans-helpers"
 import { eventsFor } from "./add-milestone-dialog"
 import { TextField } from "./plan-editor-controls"
@@ -21,6 +21,8 @@ interface AccountChoice {
   name: string
   taxTreatment: TaxTreatment
   returnRate: number
+  /** Stress-test mix when it isn't the default for its tax treatment. */
+  mix?: AccountMix
 }
 
 /** Starting values only; every one is edited in the form. */
@@ -30,7 +32,7 @@ const CHOICES: AccountChoice[] = [
   { key: "traditional", icon: "account_balance", label: "401(k) / IRA", detail: "Pre-tax; taxed when withdrawn", name: "401(k)", taxTreatment: "traditional", returnRate: DEFAULT_RETURN_RATE },
   { key: "roth", icon: "verified", label: "Roth", detail: "Roth IRA or 401(k); tax-free out", name: "Roth IRA", taxTreatment: "roth", returnRate: DEFAULT_RETURN_RATE },
   { key: "hsa", icon: "medical_services", label: "HSA", detail: "Health savings account", name: "HSA", taxTreatment: "hsa", returnRate: DEFAULT_RETURN_RATE },
-  { key: "company", icon: "domain", label: "Company stock", detail: "Vested RSUs or ESPP shares you hold", name: "Company stock", taxTreatment: "taxable", returnRate: DEFAULT_RETURN_RATE },
+  { key: "company", icon: "domain", label: "Company stock", detail: "Vested RSUs or ESPP shares you hold", name: "Company stock", taxTreatment: "taxable", returnRate: DEFAULT_RETURN_RATE, mix: { stocks: 1, bonds: 0, cash: 0, crypto: 0 } },
   { key: "esop", icon: "handshake", label: "ESOP", detail: "Employee stock plan; paid out after you leave", name: "ESOP", taxTreatment: "traditional", returnRate: DEFAULT_RETURN_RATE },
   { key: "education", icon: "school", label: "529", detail: "Education savings for a child", name: "529 plan", taxTreatment: "education", returnRate: DEFAULT_RETURN_RATE },
 ]
@@ -48,6 +50,7 @@ function draftFor(choice: AccountChoice): PlanAccount {
     returnRate: choice.returnRate,
     owner: null,
     source: null,
+    ...(choice.mix ? { mix: choice.mix } : {}),
   }
 }
 

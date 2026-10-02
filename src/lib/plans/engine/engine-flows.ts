@@ -3,6 +3,7 @@ import { priceIndex, type Inflation } from "../plan-inflation"
 import { ASSET_COSTS_CATEGORY } from "../plan-asset-costs"
 import { patternFactor, retirementAge } from "../plan-spending-patterns"
 import type { PlanAccount, PlanExpense, PlanIncome } from "../plan-types"
+import { equityGross, type EquityPricing } from "./engine-equity"
 
 export interface IncomeEntry {
   income: PlanIncome
@@ -54,12 +55,13 @@ function addTo(record: Record<string, number>, key: string, amount: number): Rec
   return { ...record, [key]: (record[key] ?? 0) + amount }
 }
 
-/** Income, payroll contributions and employer match for year `index`. */
+/** Income, payroll contributions and employer match for year `index`; equity grants are priced by `pricing`. */
 export function incomeForYear(
   entries: IncomeEntry[],
   accounts: PlanAccount[],
   index: number,
   inflation: Inflation,
+  pricing?: EquityPricing,
 ): IncomeYear {
   const accountIds = new Set(accounts.map((a) => a.id))
   let result: IncomeYear = {
@@ -73,7 +75,7 @@ export function incomeForYear(
   }
   for (const { income, range } of entries) {
     if (!isActive(range, index, income.oneTime)) continue
-    const gross = grown(income.amount, income.growth, inflation, index)
+    const gross = income.kind === "equity" && income.equity && pricing ? equityGross(income.equity, income, index, pricing) : grown(income.amount, income.growth, inflation, index)
     let taxable = income.taxable ? gross : 0
     let deposits = result.deposits
     let matchBy = result.matchBy

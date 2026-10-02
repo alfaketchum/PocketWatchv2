@@ -6,6 +6,10 @@ export const DEFAULT_STOCK_SHARE = 0.8
 export const CRYPTO_BETA = 2
 /** Worst crypto year allowed (−90%). */
 const CRYPTO_FLOOR = -0.9
+/** A single company's stock swings this many times as hard as the market, around its own assumed growth. */
+export const SINGLE_STOCK_BETA = 1.5
+/** Worst single-stock year allowed (−90%). */
+const SINGLE_STOCK_FLOOR = -0.9
 
 export const MIX_KEYS = ["stocks", "bonds", "cash", "crypto"] as const
 
@@ -42,8 +46,24 @@ export interface MarketYear {
  */
 export function yearReturn(account: PlanAccount, market: MarketYear, yearInflation: number, assumedInflation = yearInflation): number {
   const mix = mixFor(account)
-  const swing = Math.exp(CRYPTO_BETA * (Math.log(1 + market.stockReal) - market.stockLogMean))
+  const swing = amplifiedSwing(market, CRYPTO_BETA)
   const cryptoReal = Math.max(CRYPTO_FLOOR, (1 + realRate(account.returnRate, assumedInflation)) * swing - 1)
   const real = mix.stocks * market.stockReal + mix.bonds * market.bondReal + mix.crypto * cryptoReal
+  return (1 + real) * (1 + yearInflation) - 1
+}
+
+/** The market's swing that year, amplified `beta` times in log terms around its long-run average. */
+function amplifiedSwing(market: MarketYear, beta: number): number {
+  return Math.exp(beta * (Math.log(1 + market.stockReal) - market.stockLogMean))
+}
+
+/**
+ * The stock behind an equity grant in one historical year: its own assumed growth (the income's growth; null
+ * follows inflation, so no real growth) with 1.5× the market's swing, never worse than −90%. Like crypto, only
+ * market-wide swings are replayed, not one company's own surprises.
+ */
+export function equityYearReturn(growth: number | null, market: MarketYear, yearInflation: number, assumedInflation = yearInflation): number {
+  const assumedReal = growth === null ? 0 : realRate(growth, assumedInflation)
+  const real = Math.max(SINGLE_STOCK_FLOOR, (1 + assumedReal) * amplifiedSwing(market, SINGLE_STOCK_BETA) - 1)
   return (1 + real) * (1 + yearInflation) - 1
 }

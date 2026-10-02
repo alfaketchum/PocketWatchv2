@@ -30,3 +30,13 @@ export function usePlanImportPreview(enabled: boolean) {
 export function fetchSourceBalances(): Promise<SourceBalancesResponse> {
   return plansFetch<SourceBalancesResponse>("/source-balances", { timeoutMs: 90_000 })
 }
+
+export interface StockPrice {
+  symbol: string
+  price: number
+}
+
+/** The latest price of one stock (RSUs and options); only on request. */
+export function fetchStockPrice(symbol: string): Promise<StockPrice> {
+  return plansFetch<StockPrice>(`/stock-price?symbol=${encodeURIComponent(symbol)}`)
+}

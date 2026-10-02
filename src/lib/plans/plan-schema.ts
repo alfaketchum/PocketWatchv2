@@ -93,6 +93,14 @@ const contribution = z.object({
   discount: z.number().min(0).max(0.5).optional(),
 })
 
+const equityGrant = z.object({
+  symbol: z.string().trim().min(1).max(10).nullable(),
+  shares: z.number().min(0).max(1e9),
+  price: z.number().min(0).max(1e7),
+  strike: z.number().min(0).max(1e7).optional(),
+  volatility: z.number().min(0).max(3).optional(),
+})
+
 const income = z.object({
   id,
   name,
@@ -104,6 +112,7 @@ const income = z.object({
   taxable: z.boolean(),
   oneTime: z.boolean(),
   contributions: z.array(contribution).max(PLAN_LIMITS.contributionsPerIncome),
+  equity: equityGrant.optional(),
   continues: id.optional(),
   personId: id.optional(),
   socialSecurity: z

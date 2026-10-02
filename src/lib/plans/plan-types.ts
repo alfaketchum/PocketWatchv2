@@ -129,6 +129,22 @@ export interface AccountMix {
   crypto: number
 }
 
+/**
+ * Equity pay valued from the stock: RSUs vest `shares` a year; options pay `shares` × (price − strike) when
+ * exercised. The price grows at the income's growth (the stress test replays it with the market instead).
+ */
+export interface EquityGrant {
+  /** Ticker for looking up today's price; null when entered by hand (private company). */
+  symbol: string | null
+  shares: number
+  /** Price per share today. */
+  price: number
+  /** Options only: what you pay per share. */
+  strike?: number
+  /** Options only: the stock's yearly volatility, for the expected gain (outcomes above the strike count). */
+  volatility?: number
+}
+
 /** Payroll contribution from an income stream into an account. */
 export interface PlanContribution {
   id: string
@@ -157,6 +173,8 @@ export interface PlanIncome {
   /** Paid once, in the start year. */
   oneTime: boolean
   contributions: PlanContribution[]
+  /** Equity pay (kind "equity") valued from shares and the stock price; `amount` then shows today's value. */
+  equity?: EquityGrant
   /** Whose income it is (a person's id); missing = the plan's first person. */
   personId?: string
   /**
