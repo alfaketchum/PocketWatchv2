@@ -135,9 +135,12 @@ function fitAxis(rows: ChartRow[], series: Series[], atLeast = 0): { domain: [nu
   const hi = Math.ceil((top * Y_HEADROOM) / step) * step
   // Below zero, room for what's there (not a whole step for a small loan); ticks stay on round steps.
   const stepped = -step * Math.ceil((-bottom * Y_HEADROOM) / step)
-  const lo = bottom >= 0 ? 0 : Math.max(stepped, bottom * NEG_ROOM)
+  // Debt smaller than a step still gets one round number below zero (−$50k for −$37k), so it has a scale.
+  const roundBelow = bottom < 0 ? -roundStep(-bottom) : 0
+  const lo = bottom >= 0 ? 0 : Math.min(Math.max(stepped, bottom * NEG_ROOM), Math.max(stepped, roundBelow))
   const ticks: number[] = []
   for (let t = Math.ceil(lo / step) * step; t <= hi + step / 2; t += step) ticks.push(Math.round(t))
+  if (bottom < 0 && !ticks.some((t) => t < 0)) ticks.unshift(Math.round(roundBelow))
   return { domain: [lo, hi], ticks }
 }
 
