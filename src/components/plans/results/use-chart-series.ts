@@ -67,13 +67,13 @@ function shadeDetail<P extends string>(
  * The bars for the chosen view: grouped bands, or (with `detail`) every account, asset, loan, income,
  * spending line and kind of tax as a shade of its band. Empty bands are dropped.
  */
-export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMode, detail: boolean) {
+export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMode, detail: boolean, keepDebtView = false) {
   const { card, foreground } = useChartTheme()
   const { netWorth: nwColors, cashFlow: cfColors, loan: loanColors, income: incomeColors, taxes: taxColor } = usePlanColors()
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
-  // The Debt view only exists while the plan has debt; fall back if it's all gone.
-  const view: ChartMode = mode === "debt" && !hasDebt ? "networth" : mode
+  // The Debt view only exists while the plan has debt; fall back if it's all gone (Compare keeps it, next to a plan with debt).
+  const view: ChartMode = mode === "debt" && !hasDebt && !keepDebtView ? "networth" : mode
 
   const { points, all } = useMemo((): { points: ChartRow[]; all: Series[] } => {
     const theme = { card, foreground }

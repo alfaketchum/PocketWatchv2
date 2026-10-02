@@ -12,9 +12,11 @@ import type { DollarBasis, PlanDocument } from "@/lib/plans/plan-types"
 /**
  * Projection of a plan document, with rows in the chosen dollar basis. `view` is the document with
  * generated items (kids' expenses, generated milestones) folded in, for charts and tables to name them.
+ * Pass `basisOverride` to drive the basis from outside (Compare runs two plans on one toggle).
  */
-export function usePlanProjection(document: PlanDocument | null) {
-  const [basis, setBasis] = useState<DollarBasis>("today")
+export function usePlanProjection(document: PlanDocument | null, basisOverride?: DollarBasis) {
+  const [ownBasis, setBasis] = useState<DollarBasis>("today")
+  const basis = basisOverride ?? ownBasis
   // A CAPE spending rule needs today's valuation; the history loads only for plans that use it.
   const usesCape = document?.settings.spendingRule?.kind === "cape"
   const latestCape = useFireHistoryData(usesCape).data?.latestCape ?? null

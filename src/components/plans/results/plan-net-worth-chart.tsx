@@ -1,41 +1,23 @@
 "use client"
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useMemo, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
-import { cn } from "@/lib/utils"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
-import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { ChartPlot, ICON_ROW, ICON_STACK, type HoveredMark } from "./plan-chart-plot"
 import { PlanChartLegend } from "./plan-chart-legend"
 import { PlanYearPanel } from "./plan-year-panel"
-import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
+import { fitAxis, stackMarks } from "./plan-chart-axis"
+import { chartModes, DetailToggle, ModeToggle } from "./plan-chart-controls"
+import { MilestoneCard } from "./plan-milestone-card"
+import { useChartDetail } from "./use-chart-detail"
+import { useChartSeries, type ChartMode, type ChartRow } from "./use-chart-series"
 import { usePlanColors } from "./use-plan-colors"
 import { useSteadySpending } from "./use-steady-spending"
 import { SpendingImpactChart } from "./spending-impact-chart"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { BASIC_CHART_VIEWS } from "@/lib/plans/plan-mode"
-
-const Y_HEADROOM = 1.03
-/** Stack position of each milestone among those in the same year (0 = lowest). */
-function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: number }[] {
-  const seen = new Map<number, number>()
-  return marks.map((mark) => {
-    const level = seen.get(mark.age) ?? 0
-    seen.set(mark.age, level + 1)
-    return { mark, level }
-  })
-}
-const MODES: { value: ChartMode; label: string }[] = [
-  { value: "networth", label: "Net worth" },
-  { value: "cashflow", label: "Cash flow" },
-  { value: "income", label: "Income" },
-  { value: "expenses", label: "Expenses" },
-  { value: "debt", label: "Debt" },
-  { value: "taxes", label: "Taxes" },
-  { value: "accounts", label: "Accounts" },
-]
 
 const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", accounts: "Accounts", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt", taxes: "Taxes" }
 
@@ -53,132 +35,6 @@ const INFO: Record<ChartMode, string> = {
   taxes:
     "All tax paid each year. Turn on Subcategories to split it: income tax (federal and state, with the AMT and investment-income tax), payroll tax, tax on withdrawals from pre-tax accounts, tax on assets sold, and tax on trading gains.",
   debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
-}
-
-/** The chart views offered: Debt only with debt, and Basic's short list. */
-function chartModes(hasDebt: boolean, basic: boolean): ChartMode[] {
-  const all: ChartMode[] = ["networth", "cashflow", "income", "expenses", ...(hasDebt ? (["debt"] as const) : []), "taxes", "accounts"]
-  return basic ? all.filter((m) => BASIC_CHART_VIEWS.includes(m)) : all
-}
-
-/** Remembered per browser: whether the chart shows subcategories. */
-const DETAIL_KEY = "pw-plan-chart-detail"
-
-function readDetail(): boolean {
-  try {
-    return localStorage.getItem(DETAIL_KEY) === "1"
-  } catch {
-    return false
-  }
-}
-
-/** Right-aligned switch: split each band into its accounts, assets, loans, incomes, spending lines… */
-function DetailToggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className="inline-flex items-center gap-2 text-[11px] font-medium text-foreground-muted hover:text-foreground"
-    >
-      Subcategories
-      <span className={cn("relative inline-block h-4 w-7 rounded-full transition-colors", checked ? "bg-primary" : "bg-foreground/15")}>
-        <span className={cn("absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all", checked ? "left-3.5" : "left-0.5")} />
-      </span>
-    </button>
-  )
-}
-
-function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
-  return (
-    <div role="radiogroup" aria-label="Chart view" className="inline-flex rounded-lg border border-card-border p-0.5">
-      {MODES.filter((m) => modes.includes(m.value)).map((m) => (
-        <button
-          key={m.value}
-          type="button"
-          role="radio"
-          aria-checked={value === m.value}
-          onClick={() => onChange(m.value)}
-          className={cn(
-            "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
-            value === m.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
-          )}
-        >
-          {m.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-const TICK_INTERVALS = 6
-/** Room below zero, relative to the deepest negative bar, when that's less than a tick step. */
-const NEG_ROOM = 1.25
-
-/** 1, 2, 2.5 or 5 × a power of ten: a round step near `raw`. */
-function roundStep(raw: number): number {
-  if (raw <= 0) return 1
-  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)))
-  const step = [1, 2, 2.5, 5, 10].find((m) => m * magnitude >= raw) ?? 10
-  return step * magnitude
-}
-
-/** Round ticks that hug the stacked bars, so the tallest one nearly fills the plot. */
-function fitAxis(rows: ChartRow[], series: Series[], atLeast = 0): { domain: [number, number]; ticks: number[] } {
-  let top = atLeast
-  let bottom = 0
-  for (const row of rows) {
-    const values = series.map((s) => row[s.key] ?? 0)
-    top = Math.max(
-      top,
-      values.reduce((sum, v) => sum + Math.max(0, v), 0),
-    )
-    bottom = Math.min(
-      bottom,
-      values.reduce((sum, v) => sum + Math.min(0, v), 0),
-    )
-  }
-  const step = roundStep(((top - bottom) * Y_HEADROOM) / TICK_INTERVALS)
-  const hi = Math.ceil((top * Y_HEADROOM) / step) * step
-  // Below zero, room for what's there (not a whole step for a small loan); ticks stay on round steps.
-  const stepped = -step * Math.ceil((-bottom * Y_HEADROOM) / step)
-  // Debt smaller than a step still gets one round number below zero (−$50k for −$37k), so it has a scale.
-  const roundBelow = bottom < 0 ? -roundStep(-bottom) : 0
-  const lo = bottom >= 0 ? 0 : Math.min(Math.max(stepped, bottom * NEG_ROOM), Math.max(stepped, roundBelow))
-  const ticks: number[] = []
-  for (let t = Math.ceil(lo / step) * step; t <= hi + step / 2; t += step) ticks.push(Math.round(t))
-  if (bottom < 0 && !ticks.some((t) => t < 0)) ticks.unshift(Math.round(roundBelow))
-  return { domain: [lo, hi], ticks }
-}
-
-/** What to say under a milestone's name: what's tied to it, or where it comes from. */
-function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
-  if (mark.kind === "depleted") return "Your accounts can't cover spending from this year on."
-  if (mark.kind === "child") return "From Kids · edit on Expenses → Kids"
-  if (mark.kind === "asset") return "From Assets & debts · edit it there"
-  if (mark.kind === "income") return "From Income · edit it there"
-  if (mark.kind === "payoff") return "Last payment on this loan · change it on Assets & debts"
-  if (mark.kind === "rmd") return "The IRS minimum must now come out of 401(k)s and IRAs each year (73, or 75 if born 1960+)"
-  const uses = milestoneUses(doc, mark.id)
-  return uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to it yet"
-}
-
-/** Hover card for a milestone icon, placed just below the icon. */
-function MilestoneCard({ hovered, doc }: { hovered: HoveredMark; doc: PlanDocument }) {
-  const { mark, x, y } = hovered
-  return (
-    <div
-      className="pointer-events-none absolute z-10 w-60 -translate-x-1/2 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg"
-      style={{ left: x, top: y + 16 }}
-    >
-      <p className="font-semibold text-foreground">{mark.name}</p>
-      <p className="text-foreground-muted">
-        {mark.year} · age {mark.age}
-      </p>
-      <p className="mt-1 text-[11px] text-foreground-muted">{milestoneSubtext(mark, doc)}</p>
-    </div>
-  )
 }
 
 /** Still-owed line for the Debt view: drawn down to zero at a payoff, then left out while nothing is owed. */
@@ -207,20 +63,11 @@ interface Props {
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden, panelSide = "right" }: Props) {
   const [pickedMode, setMode] = useState<ChartMode>("networth")
-  const [savedDetail, setDetailState] = useState(false)
+  const [savedDetail, setDetail] = useChartDetail()
   // Basic: Net worth, Income and Expenses, without subcategories.
   const { isBasic } = usePlanMode()
   const mode = isBasic && !BASIC_CHART_VIEWS.includes(pickedMode) ? "networth" : pickedMode
   const detail = savedDetail && !isBasic
-  useEffect(() => setDetailState(readDetail()), [])
-  const setDetail = useCallback((on: boolean) => {
-    setDetailState(on)
-    try {
-      localStorage.setItem(DETAIL_KEY, on ? "1" : "0")
-    } catch {
-      /* private mode: stays for this visit */
-    }
-  }, [])
   const marks = useMemo(() => chartMilestones(doc, projection), [doc, projection])
   const stacked = useMemo(() => stackMarks(marks), [marks])
   const [hoveredMark, setHoveredMark] = useState<HoveredMark | null>(null)
