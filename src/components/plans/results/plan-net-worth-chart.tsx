@@ -151,6 +151,7 @@ function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
   if (mark.kind === "asset") return "From Assets & debts · edit it there"
   if (mark.kind === "income") return "From Income · edit it there"
   if (mark.kind === "payoff") return "Last payment on this loan · change it on Assets & debts"
+  if (mark.kind === "rmd") return "The IRS minimum must now come out of 401(k)s and IRAs each year (73, or 75 if born 1960+)"
   const uses = milestoneUses(doc, mark.id)
   return uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to it yet"
 }

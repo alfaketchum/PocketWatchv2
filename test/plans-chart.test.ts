@@ -47,7 +47,8 @@ test("netWorthPoints: one bar per year whose total matches the year's net worth"
 
 test("chartMilestones places retirement by age", () => {
   const marks = chartMilestones(doc, simulatePlan(doc))
-  assert.deepEqual(marks.map((m) => [m.name, m.age]), [["Retirement", 65]])
+  // The 401(k) owner, born 1986, starts required withdrawals at 75.
+  assert.deepEqual(marks.map((m) => [m.name, m.age]), [["Retirement", 65], ["Required withdrawals start", 75]])
 })
 
 test("chartMilestones marks the year each loan is paid off", () => {

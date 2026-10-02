@@ -172,6 +172,13 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
           <Line label="Split out in divorce" value={fmtMoney(m.splitOut)} tone="bad" hint="Your ex-spouse's share of the accounts: moved out untaxed, not part of cash flow" />
         )}
         <Line label="Withdrawals" value={fmtMoney(m.withdrawals)} hint="Taken from your accounts to cover spending, including the tax on those withdrawals" />
+        {m.requiredWithdrawals >= 0.5 && (
+          <Line
+            label="Required withdrawals"
+            value={fmtMoney(m.requiredWithdrawals)}
+            hint="The IRS minimum from 401(k)s and IRAs, from 73 (75 if born 1960+): last year-end's balance ÷ an IRS life-expectancy factor. Part of Withdrawals; what isn't spent is reinvested."
+          />
+        )}
         <Line
           label="Withdrawal rate"
           value={m.withdrawalRate === null ? "—" : fmtPct(m.withdrawalRate)}

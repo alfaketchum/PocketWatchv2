@@ -58,6 +58,8 @@ export interface YearMetrics {
   splitOut: number
   /** Gross withdrawals from accounts (taxes on them included). */
   withdrawals: number
+  /** Of `withdrawals`: the IRS minimum from traditional accounts (73 / 75 and up). */
+  requiredWithdrawals: number
   /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
   withdrawalRate: number | null
   taxBalance: TaxBalance
@@ -123,6 +125,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     received: row.deposits,
     splitOut: row.splitOut,
     withdrawals: row.withdrawals,
+    requiredWithdrawals: row.requiredWithdrawals,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree + layers.taxFree529 },
     allocations: allocations(doc, row),

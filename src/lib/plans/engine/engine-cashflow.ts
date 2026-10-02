@@ -1,5 +1,6 @@
 import { DEFAULT_WITHDRAWAL_ORDER, SURPLUS_OVERFLOW_ORDER } from "../plan-constants"
 import type { PlanAccount, PlanDocument, TaxTreatment } from "../plan-types"
+import { EARLY_WITHDRAWAL_PENALTY } from "../tax/retirement-rules-2026"
 
 /** Account balances and taxable cost basis, keyed by account id. */
 export interface Holdings {
@@ -85,8 +86,11 @@ export function depositSurplus(
   return { holdings: current, depositsBy }
 }
 
-/** Accounts in withdrawal order: the plan's own order first, the rest by tax treatment. */
-export function withdrawalSequence(doc: PlanDocument): PlanAccount[] {
+/**
+ * Accounts in withdrawal order: the plan's own order first, the rest by tax treatment. `penalized` accounts (owner under
+ * 59½) move to the end unless the plan turned that off, so the 10% penalty is paid only when nothing else is left.
+ */
+export function withdrawalSequence(doc: PlanDocument, penalized: ReadonlySet<string> = new Set()): PlanAccount[] {
   const byId = new Map(doc.accounts.map((a) => [a.id, a]))
   const explicit = doc.cashFlow.withdrawalOrder
     .map((id) => byId.get(id))
@@ -96,7 +100,9 @@ export function withdrawalSequence(doc: PlanDocument): PlanAccount[] {
   const rest = doc.accounts
     .filter((a) => !listed.has(a.id) && a.taxTreatment !== "education")
     .sort((a, b) => DEFAULT_WITHDRAWAL_ORDER.indexOf(a.taxTreatment) - DEFAULT_WITHDRAWAL_ORDER.indexOf(b.taxTreatment))
-  return [...explicit, ...rest]
+  const ordered = [...explicit, ...rest]
+  if (doc.cashFlow.avoidEarlyPenalty === false || penalized.size === 0) return ordered
+  return [...ordered.filter((a) => !penalized.has(a.id)), ...ordered.filter((a) => penalized.has(a.id))]
 }
 
 /** Share of a withdrawal that counts as taxable income: all of it (traditional) or the gains (taxable). */
@@ -140,19 +146,27 @@ export interface DeficitResult {
   ordinaryWithdrawn: number
   gainsRealized: number
   shortGainsRealized: number
+  /** The 10% early-withdrawal penalty paid (kept apart from `tax`, which the bracket true-up settles). */
+  penalty: number
   shortfall: number
 }
 
 /**
- * Cover `need` (after tax) by withdrawing in order, grossing each withdrawal up for its tax.
- * With a protected buffer, the buffer account first gives only what's above the buffer; the
+ * Cover `need` (after tax) by withdrawing in order, grossing each withdrawal up for its tax (and the 10% penalty on
+ * `penalized` accounts). With a protected buffer, the buffer account first gives only what's above the buffer; the
  * buffer itself is spent last, once every other account is empty.
  */
-export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument, inflationFactor: number): DeficitResult {
+export function coverDeficit(
+  need: number,
+  holdings: Holdings,
+  doc: PlanDocument,
+  inflationFactor: number,
+  penalized: ReadonlySet<string> = new Set(),
+): DeficitResult {
   const buffer = doc.settings.protectBuffer ? bufferAccount(doc) : null
   const reserve = buffer ? doc.settings.cashBuffer * inflationFactor : 0
   const passes: { account: PlanAccount; keep: number }[] = [
-    ...withdrawalSequence(doc).map((account) => ({ account, keep: account.id === buffer?.id ? reserve : 0 })),
+    ...withdrawalSequence(doc, penalized).map((account) => ({ account, keep: account.id === buffer?.id ? reserve : 0 })),
     ...(buffer && reserve > 0 ? [{ account: buffer, keep: 0 }] : []),
   ]
   let left = need
@@ -162,10 +176,12 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
   let ordinaryWithdrawn = 0
   let gainsRealized = 0
   let shortGainsRealized = 0
+  let penalty = 0
   for (const { account, keep } of passes) {
     if (left <= 0) break
     const balance = (current.balances[account.id] ?? 0) - keep
-    const rate = withdrawalTaxRate(account, current, doc)
+    const penaltyRate = penalized.has(account.id) ? EARLY_WITHDRAWAL_PENALTY : 0
+    const rate = withdrawalTaxRate(account, current, doc) + penaltyRate
     if (balance <= 0 || rate >= 1) continue
     const net = Math.min(left, balance * (1 - rate))
     const gross = net / (1 - rate)
@@ -178,7 +194,8 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     }
     current = withdraw(current, account, gross)
     withdrawalsBy = add(withdrawalsBy, account.id, gross)
-    tax += gross - net
+    penalty += gross * penaltyRate
+    tax += gross - net - gross * penaltyRate
     left -= net
   }
   return {
@@ -189,6 +206,7 @@ export function coverDeficit(need: number, holdings: Holdings, doc: PlanDocument
     ordinaryWithdrawn,
     gainsRealized,
     shortGainsRealized,
+    penalty,
     shortfall: Math.max(0, left),
   }
 }

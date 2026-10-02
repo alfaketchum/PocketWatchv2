@@ -102,9 +102,8 @@ export const MARKET_SECTIONS: MethodSection[] = [
       {
         kind: "list",
         items: [
-          "**Required minimum distributions** from traditional accounts after age 73 aren't forced.",
-          "**Early-withdrawal penalties** (before 59½) aren't charged.",
-          "**Medicare IRMAA** surcharges and the **alternative minimum tax** aren't included.",
+          "**Retirement-account rules left out**: the age-55 and equal-payment exceptions to the early-withdrawal penalty; the 20% penalty on non-medical HSA withdrawals before 65 (HSA withdrawals are treated as medical, tax-free); Roth contributions vs earnings and the 5-year rule (Roth withdrawals are tax-free at any age); the joint-life table for a spouse more than 10 years younger; taking the first required withdrawal by April 1 of the next year; yearly required withdrawals inside an inherited account's 10 years.",
+          "**Medicare IRMAA** surcharges aren't included.",
           "**Social Security** estimates leave out future real wage growth (about 1% a year, so younger people's estimates are a little low) and freezing the wage indexing at age 60. Not modeled: divorced-spouse benefits, children's and family-maximum rules, the earnings test on survivor benefits, and a survivor benefit when the deceased hadn't claimed yet (their claiming age is used).",
           "**Years, not months**: plans step a year at a time (FIRE's history engine is monthly).",
           "**Loans** have fixed rates. Variable-rate loans, refinancing (with its costs and points) and a HELOC drawn in several pieces aren't modeled yet.",

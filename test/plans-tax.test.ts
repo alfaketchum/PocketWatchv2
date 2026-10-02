@@ -72,10 +72,15 @@ test("brackets: $100k salary pays 2026 federal tax, plus state tax where you liv
 })
 
 test("brackets: a retiree's traditional withdrawals are taxed exactly on the year's total", () => {
-  const d = plan({
-    accounts: [acct("ira", "traditional", 2_000_000)],
-    expenses: [{ id: "e", name: "Living", category: null, amount: 60_000, growth: 0, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
-  })
+  // 62: past 59½ (no penalty) and before required withdrawals.
+  const d = plan(
+    {
+      people: [{ ...plan().people[0], birthYear: 2026 - 62 }],
+      accounts: [acct("ira", "traditional", 2_000_000)],
+      expenses: [{ id: "e", name: "Living", category: null, amount: 60_000, growth: 0, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
+    },
+    { endAge: 70 },
+  )
   const r = simulatePlan(d).rows[0]
   const withdrawn = r.withdrawalsBy.ira
   const taxes = r.incomeTax + r.withdrawalTax

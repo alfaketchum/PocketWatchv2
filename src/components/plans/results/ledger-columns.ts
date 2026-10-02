@@ -36,6 +36,8 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
   { id: "incomeTax", label: "Income tax", hint: "Federal and state tax on earned income (after the bracket true-up)", kind: "flow", tone: "neg", value: (r) => -r.incomeTax },
   { id: "payrollTax", label: "Payroll tax", hint: "Social Security and Medicare on wages (6.2% to the wage base + 1.45%), and self-employment tax", kind: "flow", tone: "neg", value: (r) => -r.payrollTax },
   { id: "withdrawalTax", label: "Withdrawal tax", hint: "Tax on money taken from tax-deferred and taxable accounts", kind: "flow", tone: "neg", value: (r) => -r.withdrawalTax },
+  { id: "earlyPenalty", label: "Early penalty", hint: "10% extra tax on 401(k)/IRA withdrawals before 59½", kind: "flow", tone: "neg", value: (r) => -r.earlyWithdrawalPenalty },
+  { id: "required", label: "Required withdrawals", hint: "IRS minimum taken from 401(k)/IRA from 73 (75 if born 1960+); part of Withdrawals", kind: "flow", value: (r) => r.requiredWithdrawals },
   { id: "saleTax", label: "Sale tax", hint: "Capital-gains tax on assets sold", kind: "flow", tone: "neg", value: (r) => -r.saleTax },
   { id: "tradingTax", label: "Trading tax", hint: "Tax on gains realized by active trading", kind: "flow", tone: "neg", value: (r) => -r.tradingTax },
   { id: "debtPayments", label: "Debt payments", hint: "Loan payments: principal plus interest", kind: "flow", tone: "neg", value: (r) => -r.debtPayments },
@@ -79,9 +81,9 @@ export const LEDGER_VIEWS = {
   summary: { label: "Summary", columns: ["income", "taxes", "spending", "debtPayments", "contributions", "withdrawals", "invested", "netWorth"] },
   cashflow: {
     label: "Cash flow",
-    columns: ["income", "received", "splitOut", "withdrawals", "assetSales", "borrowed", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
+    columns: ["income", "received", "splitOut", "withdrawals", "required", "assetSales", "borrowed", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
   },
-  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "payrollTax", "withdrawalTax", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
+  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "payrollTax", "withdrawalTax", "earlyPenalty", "saleTax", "tradingTax", "taxes", "effectiveRate", "realizedGains"] },
   balances: {
     label: "Balances & debt",
     columns: ["growth", "returnRate", "invested", "liquid", "property", "principal", "interest", "debtOwed", "netWorth", "savingsRate", "withdrawalRate"],

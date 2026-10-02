@@ -267,6 +267,7 @@ export const planDocumentSchema = z.object({
   cashFlow: z.object({
     surplusOrder: z.array(z.object({ accountId: id, annualCap: money.nullable() })).max(PLAN_LIMITS.accounts),
     withdrawalOrder: z.array(id).max(PLAN_LIMITS.accounts),
+    avoidEarlyPenalty: z.boolean().optional(),
   }),
   milestones: z.array(milestone).max(PLAN_LIMITS.milestones),
   children: z.array(child).max(PLAN_LIMITS.children),

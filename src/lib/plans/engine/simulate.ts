@@ -24,6 +24,7 @@ import { estimatedPia } from "../ss-plan-earnings"
 import { thresholdIndex } from "../tax/tax-calc"
 import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
+import { penalizedAccounts, takeRequired } from "./engine-rmd"
 
 /** Differences smaller than this (dollars) aren't worth another pass. */
 const TRUE_UP_MIN = 1
@@ -216,22 +217,26 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   const transfers = applyTransfers(plan.transfers, doc.accounts, holdings, index, plan.inflation)
   const earmarked = drawEarmarked(doc.expenses, flows.expenses.byId, transfers.holdings)
   const deposits = applyDeposits(plan.deposits, doc.accounts, earmarked.holdings, index, plan.inflation)
-  const drained = drainInherited(doc.accounts, deposits.holdings, doc.settings.startYear + index, doc.settings.incomeTaxRate)
-  holdings = drained.holdings
+  const year = doc.settings.startYear + index
+  const drained = drainInherited(doc.accounts, deposits.holdings, year, doc.settings.incomeTaxRate)
+  // Required withdrawals are figured on last year-end's balances (before this year's growth).
+  const required = takeRequired(doc, state.holdings, drained.holdings, year, doc.settings.incomeTaxRate)
+  holdings = required.holdings
   const { income, expenses, debts, events, incomeTax } = flows
   const net =
     income.total - income.employeeContributions - incomeTax - flows.payroll.total - extraTax - trading.tax - expenses.total - debts.paid -
-    events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net
+    events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net + required.net
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
-  const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor) : null
+  const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor, penalizedAccounts(doc, year)) : null
   return {
     holdings: surplus?.holdings ?? deficit?.holdings ?? holdings,
     growth: grownState.growth,
     trading,
     contributionsBy: mergeSums(mergeSums(income.deposits, transfers.byAccount), surplus?.depositsBy ?? {}),
-    withdrawalsBy: mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), deficit?.withdrawalsBy ?? {}),
+    withdrawalsBy: mergeSums(mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), required.byAccount), deficit?.withdrawalsBy ?? {}),
     deposits,
     drained,
+    required,
     surplusBy: surplus?.depositsBy ?? {},
     shortfallBy: deficit?.withdrawalsBy ?? {},
     deficit,
@@ -243,7 +248,7 @@ type Moved = ReturnType<typeof moveMoney>
 /** What's taxed this year beyond earned income: withdrawals, and gains from sales, drawdowns and trading. */
 function taxedAmounts(flows: Flows, moved: Moved) {
   return {
-    ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable,
+    ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable + moved.required.taxable,
     shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains + moved.trading.shortGains,
     longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains + moved.trading.longGains,
     realEstateGains: flows.events.saleRealEstateGains,
@@ -261,7 +266,7 @@ function settleTax(plan: Plan, state: State, index: number, flows: Flows): { mov
   for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
     const diff = taxTrueUp(flows.tax, {
       ...taxedAmounts(flows, moved),
-      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + flows.events.saleTax + moved.trading.tax,
+      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax + flows.events.saleTax + moved.trading.tax,
     })
     if (Math.abs(diff) < TRUE_UP_MIN) break
     trueUp += diff
@@ -290,7 +295,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     employerMatchBy: income.matchBy,
     incomeTax: incomeTax + trueUp,
     payrollTax: flows.payroll.total,
-    withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax,
+    withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax,
+    earlyWithdrawalPenalty: moved.deficit?.penalty ?? 0,
     saleTax: events.saleTax,
     tradingTax: moved.trading.tax,
     realizedGains: moved.trading.shortGains + moved.trading.longGains,
@@ -298,7 +304,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     depositsBy: moved.deposits.byAccount,
     splitOut: moved.deposits.splitOut,
     taxableIncome:
-      income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable +
+      income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable + moved.required.taxable +
       moved.trading.shortGains + moved.trading.longGains,
     expenses: expenses.total,
     expensesBy: expenses.byId,
@@ -315,6 +321,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     contributionsBy: moved.contributionsBy,
     withdrawals: sum(moved.withdrawalsBy),
     withdrawalsBy: moved.withdrawalsBy,
+    requiredWithdrawals: sum(moved.required.byAccount),
+    requiredBy: moved.required.byAccount,
     surplusBy: moved.surplusBy,
     shortfallBy: moved.shortfallBy,
     growth: moved.growth,

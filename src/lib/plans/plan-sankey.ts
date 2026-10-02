@@ -1,6 +1,7 @@
 import { loanPayments } from "./plan-loan-parts"
 import { cashFlowFor, CASH_FLOW_LABELS, type CashFlowLayer } from "./plan-chart"
 import type { PlanDocument, YearRow } from "./plan-types"
+import { TAX_PARTS } from "./plan-row-taxes"
 
 /** Flows smaller than this (dollars) are left out so the diagram stays readable. */
 const MIN_FLOW = 0.5
@@ -77,13 +78,7 @@ function detailsFor(group: (typeof OUT_GROUPS)[number], doc: PlanDocument, row: 
     }))
   }
   if (group === "taxes") {
-    return [
-      { name: "Income tax", value: row.incomeTax },
-      { name: "Payroll tax", value: row.payrollTax },
-      { name: "Tax on withdrawals", value: row.withdrawalTax },
-      { name: "Tax on asset sales", value: row.saleTax },
-      { name: "Tax on trading gains", value: row.tradingTax },
-    ]
+    return TAX_PARTS.map((t) => ({ name: t.label, value: row[t.field] }))
   }
   if (group === "debtPayments") {
     return loanPayments(doc, row).flatMap((l) => [

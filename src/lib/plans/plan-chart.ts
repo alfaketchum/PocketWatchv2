@@ -2,6 +2,7 @@ import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principal
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { MilestoneKind, PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 import { rowTaxes } from "./plan-row-taxes"
+import { accountOwner } from "./tax/retirement-rules-2026"
 
 /** Stack order, bottom to top; debt (mortgages and car loans included) is drawn below zero. 529s sit right above tax-free. */
 export const NET_WORTH_LAYERS = ["cash", "taxable", "taxDeferred", "taxFree", "taxFree529", "realAssets"] as const
@@ -61,7 +62,7 @@ export interface ChartMilestone {
   /** The milestone's id; empty for "money runs out". */
   id: string
   name: string
-  kind: MilestoneKind | "payoff" | "depleted"
+  kind: MilestoneKind | "payoff" | "depleted" | "rmd"
   icon?: string
   age: number
   year: number
@@ -80,6 +81,25 @@ function payoffMarks(doc: PlanDocument, projection: PlanProjection, age0: number
   }))
 }
 
+const RMD_ICON = "event_repeat"
+
+/** The first year each owner takes a required withdrawal from a 401(k)/IRA. */
+function requiredStartMarks(doc: PlanDocument, projection: PlanProjection, age0: number): ChartMilestone[] {
+  const seen = new Set<string>()
+  return projection.rows.flatMap((row) => {
+    const owners = Object.keys(row.requiredBy)
+      .filter((id) => row.requiredBy[id] > 0.5)
+      .map((id) => doc.accounts.find((a) => a.id === id))
+      .flatMap((a) => (a ? [accountOwner(a, doc)] : []))
+      .filter((p): p is NonNullable<typeof p> => !!p && !seen.has(p.id))
+    return [...new Map(owners.map((p) => [p.id, p])).values()].map((p) => {
+      seen.add(p.id)
+      const name = doc.people.length > 1 ? `${p.name}: required withdrawals start` : "Required withdrawals start"
+      return { id: `rmd-${p.id}`, name, kind: "rmd" as const, icon: RMD_ICON, age: age0 + row.index, year: row.year }
+    })
+  })
+}
+
 export function chartMilestones(doc: PlanDocument, projection: PlanProjection): ChartMilestone[] {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
@@ -90,6 +110,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
     return [{ id: m.id, name: m.name, kind: m.kind, icon: m.icon, age: age0 + index, year: doc.settings.startYear + index }]
   })
   marks.push(...payoffMarks(doc, projection, age0))
+  marks.push(...requiredStartMarks(doc, projection, age0))
   for (const sale of projection.homeSales ?? []) {
     marks.push({ id: "", name: `Sold ${sale.name} (money ran low)`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
   }
@@ -216,6 +237,7 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   autorenew: "property",
   sell: "property",
   credit_score: "money",
+  event_repeat: "money",
   elderly: "money",
   account_balance: "money",
 }

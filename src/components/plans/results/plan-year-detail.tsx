@@ -43,6 +43,8 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Income tax", value: row.incomeTax },
           { label: "Payroll tax (Social Security, Medicare)", value: row.payrollTax },
           { label: "Tax on withdrawals", value: row.withdrawalTax },
+          { label: "Required withdrawals (in Withdrawn from)", value: row.requiredWithdrawals },
+          { label: "Early-withdrawal penalty", value: row.earlyWithdrawalPenalty },
           { label: "Tax on asset sales", value: row.saleTax },
           { label: "Gains realized by trading", value: row.realizedGains },
           { label: "Tax on trading gains", value: row.tradingTax },

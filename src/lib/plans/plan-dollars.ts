@@ -7,6 +7,7 @@ const FLOW_FIELDS = [
   "incomeTax",
   "payrollTax",
   "withdrawalTax",
+  "earlyWithdrawalPenalty",
   "saleTax",
   "tradingTax",
   "realizedGains",
@@ -24,6 +25,7 @@ const FLOW_FIELDS = [
   "borrowed",
   "contributions",
   "withdrawals",
+  "requiredWithdrawals",
   "growth",
   "shortfall",
 ] as const
@@ -53,6 +55,7 @@ export function rowInTodaysDollars(row: YearRow, inflation: Inflation): YearRow 
     contributionsBy: scaleRecord(row.contributionsBy, flow),
     employerMatchBy: scaleRecord(row.employerMatchBy, flow),
     withdrawalsBy: scaleRecord(row.withdrawalsBy, flow),
+    requiredBy: scaleRecord(row.requiredBy, flow),
     depositsBy: scaleRecord(row.depositsBy, flow),
     surplusBy: scaleRecord(row.surplusBy, flow),
     shortfallBy: scaleRecord(row.shortfallBy, flow),

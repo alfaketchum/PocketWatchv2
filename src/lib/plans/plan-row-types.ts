@@ -1,0 +1,122 @@
+import type { HomeFallback } from "./plan-types"
+
+// Results of simulating a plan: one row per year, the projection and its summary.
+
+/** One simulated year. Flows are for the year; balances are at year end. */
+export interface YearRow {
+  index: number
+  year: number
+  ages: number[]
+  income: number
+  incomeBy: Record<string, number>
+  employerMatch: number
+  employerMatchBy: Record<string, number>
+  incomeTax: number
+  /** Social Security and Medicare on wages, and self-employment tax. */
+  payrollTax: number
+  withdrawalTax: number
+  /** The 10% additional tax on traditional withdrawals before 59½. */
+  earlyWithdrawalPenalty: number
+  /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */
+  saleTax: number
+  /** Tax on gains realized by trading inside taxable accounts. */
+  tradingTax: number
+  /** Gains realized by trading this year (short- and long-term). */
+  realizedGains: number
+  /** One-time deposits straight into accounts (inheritance, gifts); not part of cash flow. */
+  deposits: number
+  depositsBy: Record<string, number>
+  /** Account shares moved out this year (a divorce split); not taxed, not part of cash flow. */
+  splitOut: number
+  /** Taxable earned income after pre-tax contributions, plus traditional withdrawals and realized gains. */
+  taxableIncome: number
+  expenses: number
+  expensesBy: Record<string, number>
+  debtPayments: number
+  /** Loan payments by debt id; principal is payment minus interest. */
+  debtPaymentsBy: Record<string, number>
+  /** The interest part of `debtPayments`. */
+  debtInterest: number
+  debtInterestBy: Record<string, number>
+  /** Rent left after rented homes' costs, interest and depreciation: taxed as ordinary income. */
+  rentalTaxable: number
+  /** Federal deduction taken (brackets only): the standard deduction, or itemized when larger. */
+  deduction: { amount: number; itemized: boolean; senior?: number } | null
+  assetPurchases: number
+  assetSales: number
+  /** Cash drawn this year from loans that start during the plan and don't pay for a purchase (a HELOC). */
+  borrowed: number
+  /** Everything deposited into accounts: your payroll contributions, employer match and leftover cash flow. */
+  contributions: number
+  contributionsBy: Record<string, number>
+  withdrawals: number
+  withdrawalsBy: Record<string, number>
+  /** Required minimum distributions (included in `withdrawals`): from traditional accounts once the owner reaches 73 / 75. */
+  requiredWithdrawals: number
+  requiredBy: Record<string, number>
+  /** Leftover cash flow deposited per account by the cash-flow rules (buffer top-up included). */
+  surplusBy: Record<string, number>
+  /** Withdrawals per account made to cover a shortfall (not earmarked 529 draws). */
+  shortfallBy: Record<string, number>
+  growth: number
+  /** Value gained / lost this year by assets held all year (depreciation is positive). */
+  assetAppreciation: number
+  assetDepreciation: number
+  balances: Record<string, number>
+  assetValues: Record<string, number>
+  debtBalances: Record<string, number>
+  accountsTotal: number
+  assetsTotal: number
+  debtsTotal: number
+  netWorth: number
+  /** Accounts minus debts; comparable to real net-worth history, which has no home values. */
+  financialNetWorth: number
+  /** Spending the accounts could not cover. */
+  shortfall: number
+  milestones: string[]
+}
+
+/** A backup plan the simulation used: the home sold the year the money would have run out. */
+export interface HomeSale {
+  assetId: string
+  name: string
+  /** Plan year index of the sale. */
+  index: number
+  year: number
+  then: HomeFallback["then"]
+}
+
+export interface PlanProjection {
+  rows: YearRow[]
+  /** Homes sold by their backup plan, in the order they were needed. */
+  homeSales?: HomeSale[]
+  /** Balances at plan start, before the first year. */
+  startNetWorth: number
+  startFinancialNetWorth: number
+}
+
+export interface PlanSummary {
+  retirementYear: number | null
+  retirementAge: number | null
+  /** Today's dollars. */
+  netWorthAtRetirement: number | null
+  depletedAge: number | null
+  depletedYear: number | null
+  /** When the money runs out: home equity left (today's dollars) and how many years of that year's spending it is. */
+  equityAtDepletion?: { value: number; years: number } | null
+  /** Homes sold by their backup plan when the money would have run out. */
+  homeSales?: { name: string; year: number; age: number }[]
+  endYear: number
+  endAge: number
+  /** Today's dollars. */
+  endingNetWorth: number
+  /** Today's dollars. */
+  lifetimeTaxes: number
+  /** Net worth per year in today's dollars, for sparklines. */
+  spark: number[]
+  /** The inflation the plan uses (a market path's equivalent single rate) and where it comes from. */
+  inflation?: number
+  inflationMode?: "custom" | "market" | "marketPath"
+}
+
+export type DollarBasis = "today" | "future"

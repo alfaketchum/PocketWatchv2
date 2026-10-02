@@ -17,6 +17,7 @@ import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField }
 import { PlanNewSources } from "./plan-new-sources"
 import { RefreshBalancesButton } from "./refresh-balances-button"
 import { AccountsTable } from "./accounts-table"
+import { accountOwner, ownTraditional } from "@/lib/plans/tax/retirement-rules-2026"
 
 const TREATMENT_OPTIONS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({
   value,
@@ -93,6 +94,14 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
               hint={`≈ ${fmtPct(otherReturn(a.returnRate, doc.settings).value, 1)} ${otherReturn(a.returnRate, doc.settings).label}`}
               onChange={(v) => patch(a.id, { returnRate: storedReturn(v, doc.settings) })}
             />
+            {ownTraditional(a) && doc.people.length > 1 && (
+              <SelectField
+                label="Owner"
+                value={accountOwner(a, doc)?.id ?? ""}
+                options={doc.people.map((p) => ({ value: p.id, label: p.name }))}
+                onChange={(owner) => patch(a.id, { owner })}
+              />
+            )}
             {a.drainByYear != null && (
               <div className="col-span-2 lg:col-span-4 flex flex-wrap items-end gap-3">
                 <div className="w-44">

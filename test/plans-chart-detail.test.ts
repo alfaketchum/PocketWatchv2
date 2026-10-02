@@ -5,6 +5,7 @@ import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { CASH_IN_LAYERS, CASH_OUT_LAYERS, cashFlowPoints, NET_WORTH_LAYERS, netWorthPoints } from "@/lib/plans/plan-chart"
 import { cashFlowDetail, expensesView, INCOME_GROUPS, incomeView, netWorthDetail, taxesView } from "@/lib/plans/plan-chart-detail"
 import { expandPlan } from "@/lib/plans/plan-expand"
+import { TAX_PARTS } from "@/lib/plans/plan-row-taxes"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
 const close = (a: number, b: number, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} ≈ ${b}`)
@@ -89,9 +90,9 @@ test("taxes view: the total band and the kinds of tax add up to every tax paid t
   const rows = simulatePlan(d).rows
   const total = taxesView(d, rows, false)
   const kinds = taxesView(d, rows, true)
-  assert.equal(kinds.series.length, 5)
+  assert.equal(kinds.series.length, TAX_PARTS.length)
   rows.forEach((r, i) => {
-    const paid = r.incomeTax + r.payrollTax + r.withdrawalTax + r.saleTax + r.tradingTax
+    const paid = r.incomeTax + r.payrollTax + r.withdrawalTax + r.saleTax + r.tradingTax + r.earlyWithdrawalPenalty
     close(total.points[i].taxes, paid)
     close(sumParent(kinds.points[i], kinds.series.map((s) => s.key)), paid)
   })

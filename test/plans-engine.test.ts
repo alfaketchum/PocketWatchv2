@@ -118,8 +118,10 @@ test("surplus fills the cash buffer, then capped targets, then overflow", () => 
 })
 
 test("deficits follow the withdrawal order and gross up traditional withdrawals", () => {
+  // 66: past 59½ (no penalty, order not changed for it) and before required withdrawals.
   const d = doc({
-    settings: { ...doc().settings, incomeTaxRate: 0.25 },
+    people: [{ ...doc().people[0], birthYear: NOW.getFullYear() - 66 }],
+    settings: { ...doc().settings, incomeTaxRate: 0.25, endAge: 75 },
     accounts: [account("trad", "traditional", 100_000), account("roth", "roth", 100_000)],
     expenses: [expense(30_000)],
     cashFlow: { surplusOrder: [], withdrawalOrder: ["trad", "roth"] },

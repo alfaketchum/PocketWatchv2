@@ -22,6 +22,7 @@ export const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   income: "payments",
   payoff: "credit_score",
   depleted: "warning",
+  rmd: "event_repeat",
 }
 
 export interface HoveredMark {

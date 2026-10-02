@@ -75,6 +75,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
         kind: "list",
         items: [
           "Each withdrawal is **grossed up** for its tax: to get $10,000 to spend from a traditional IRA at a 22% rate, the engine withdraws about $12,820.",
+          "**Before 59½**, a withdrawal from your own 401(k) or IRA pays a **10% penalty** on top of income tax, so by default those accounts are used last until the year you reach 59½ (\"Before 59½, use 401(k)/IRA last\" on the Cash flow tab; turn it off and your order applies at every age, penalty included). Inherited accounts have no penalty.",
           "A protected cash buffer is spent last, only after every other account is empty.",
           "529 accounts only pay the education costs earmarked for them, never general shortfalls.",
           "If every account is empty, the unfunded amount is recorded as a **shortfall**: the plan has run out of money that year.",
@@ -85,6 +86,10 @@ export const PLAN_SECTIONS: MethodSection[] = [
       {
         kind: "text",
         text: "**Inherited retirement accounts** must be empty by their deadline: each year takes an even share of what's left (balance ÷ years remaining). Traditional withdrawals are taxed as income; Roth withdrawals aren't. Inherited investments in a taxable account get a stepped-up cost basis.",
+      },
+      {
+        kind: "text",
+        text: "**Required minimum distributions**: from the year the account's owner reaches 73 (75 if born in 1960 or later), each of their traditional 401(k)s and IRAs pays out at least last year-end's balance ÷ the IRS Uniform Lifetime factor for their age (26.5 at 73, 24.6 at 75, 12.2 at 90; IRS Pub 590-B). It's taxed as income and goes into the year's cash flow: it pays spending first, and whatever isn't needed is saved by the surplus rules. Roth, HSA and inherited accounts have none. With a partner, each 401(k)/IRA follows its owner's age (Owner on the account).",
       },
     ],
   },
