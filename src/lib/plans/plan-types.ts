@@ -513,7 +513,7 @@ export interface YearRow {
   /** Rent left after rented homes' costs, interest and depreciation: taxed as ordinary income. */
   rentalTaxable: number
   /** Federal deduction taken (brackets only): the standard deduction, or itemized when larger. */
-  deduction: { amount: number; itemized: boolean } | null
+  deduction: { amount: number; itemized: boolean; senior?: number } | null
   assetPurchases: number
   assetSales: number
   /** Cash drawn this year from loans that start during the plan and don't pay for a purchase (a HELOC). */

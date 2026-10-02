@@ -15,7 +15,8 @@ export const TAX_SECTIONS: MethodSection[] = [
       {
         kind: "list",
         items: [
-          "**Federal**: 2026 ordinary brackets (10% to 37%) and standard deduction ($16,100 single, $32,200 joint), from IRS Rev. Proc. 2025-32.",
+          "**Federal**: 2026 ordinary brackets (10% to 37%) and standard deduction ($16,100 single, $32,200 joint), from IRS Rev. Proc. 2025-32. Each person 65 or older by year end adds $2,050 (single) or $1,650 (per spouse on a joint return); filing single, only you count.",
+          "**Senior deduction** (2025–2028): $6,000 per person 65 or older, on top of the standard or itemized deduction, shrinking by 6% of income over $75,000 single / $150,000 joint. Not indexed, and it ends after 2028 unless extended. Neither 65+ amount applies to the AMT.",
           "**Alternative minimum tax (AMT)**: each year also works out the tax on a broader base (all income plus kept ISO gains, with only mortgage interest deducted: no standard deduction, no state and local taxes), less an exemption of $90,100 single / $140,200 joint that shrinks by 50¢ per dollar over $500,000 / $1,000,000, at 26% up to $244,500 and 28% above, with long-term gains at their usual rates (Rev. Proc. 2025-32). When that's higher than regular tax, you pay the difference. The part caused by ISOs becomes a **credit** that lowers later years' regular tax, down to that year's minimum tax, until it's used up. Without ISOs, few plans owe AMT.",
           "**Long-term gains** are stacked on top of ordinary income and taxed at 0 / 15 / 20%. Short-term gains are taxed as ordinary income.",
           "**Net investment income tax**: 3.8% on gains above $200,000 (single) / $250,000 (joint) of income. These lines are set by law and don't rise with inflation.",

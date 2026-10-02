@@ -2,6 +2,7 @@ import type { Inflation } from "../plan-inflation"
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
 import {
   federalDeduction,
+  seniorDeduction,
   marginalRates,
   minimumTax,
   stateTax,
@@ -33,6 +34,15 @@ export interface YearTax {
   amtPreference: number
 }
 
+/** Age that earns the extra standard deduction and the senior deduction (65 by the end of the tax year). */
+const SENIOR_AGE = 65
+
+/** Filers 65 or older in `year`: on a joint return each person in the plan, filing single only you (the first person). */
+function seniorFilers(doc: PlanDocument, status: "single" | "joint", year: number): number {
+  const filers = status === "joint" ? doc.people.slice(0, 2) : doc.people.slice(0, 1)
+  return filers.filter((p) => year - p.birthYear >= SENIOR_AGE).length
+}
+
 /** Social Security benefits this year (the taxable part is worked out with the rest of the year's income). */
 function socialSecurityReceived(doc: PlanDocument, income: IncomeYear): number {
   return doc.incomes.filter((i) => i.kind === "social_security" && i.taxable).reduce((s, i) => s + (income.byId[i.id] ?? 0), 0)
@@ -58,10 +68,15 @@ export function yearTax(
     const yearDoc = adjustments.length ? { ...doc, settings: { ...settings, ...rates } } : doc
     return { doc: yearDoc, situation: null, incomeTax: income.taxableIncome * rates.incomeTaxRate, earnedOrdinary: income.taxableIncome, socialSecurity: 0, amtPreference: 0 }
   }
+  const status = filingStatusAt(adjustments, settings, index)
+  const year = settings.startYear + index
+  const seniors = seniorFilers(doc, status, year)
   const situation: TaxSituation = {
-    status: filingStatusAt(adjustments, settings, index),
+    status,
     state: stateAt(adjustments, settings, index),
-    index: thresholdIndex(settings.startYear + index, inflation, settings.startYear),
+    index: thresholdIndex(year, inflation, settings.startYear),
+    year,
+    ...(seniors > 0 ? { seniors } : {}),
     ...(itemized ? { itemized } : {}),
     ...(amtCredit > 0 ? { amtCredit } : {}),
   }
@@ -128,10 +143,10 @@ export function taxTrueUp(tax: YearTax, amounts: TaxedAmounts): number {
 }
 
 /** The federal deduction taken on the year's final totals (brackets only): standard, or itemized when larger. */
-export function yearDeduction(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): { amount: number; itemized: boolean } | null {
+export function yearDeduction(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): { amount: number; itemized: boolean; senior: number } | null {
   if (!tax.situation) return null
   const base = finalBase(tax, amounts)
-  return federalDeduction(base, tax.situation, stateTax(base, tax.situation))
+  return { ...federalDeduction(base, tax.situation, stateTax(base, tax.situation)), senior: seniorDeduction(base, tax.situation) }
 }
 
 /** The year's AMT and minimum tax credit on its final totals (brackets only; null for flat rates). */

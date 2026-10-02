@@ -124,7 +124,14 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
           <Line
             label={m.deduction.itemized ? "Itemized deductions" : "Standard deduction"}
             value={fmtMoney(m.deduction.amount)}
-            hint="Federal. Standard: $16,100 single / $32,200 joint in 2026, raised each year with the plan's inflation. Itemized instead when state income and property tax (under the SALT cap) plus mortgage interest add up to more."
+            hint="Federal. Standard: $16,100 single / $32,200 joint in 2026, plus $2,050 (single) or $1,650 per spouse aged 65+, raised each year with the plan's inflation. Itemized instead when state income and property tax (under the SALT cap) plus mortgage interest add up to more."
+          />
+        )}
+        {(m.deduction?.senior ?? 0) >= 0.5 && (
+          <Line
+            label="Senior deduction"
+            value={fmtMoney(m.deduction?.senior ?? 0)}
+            hint="2025–2028 only: $6,000 per person 65+, on top of the standard or itemized deduction; shrinks by 6% of income over $75,000 single / $150,000 joint"
           />
         )}
         <Drilldown title="Spending" summary={fmtMoney(m.spending)}>

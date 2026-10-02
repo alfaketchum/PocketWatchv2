@@ -58,7 +58,7 @@ export function rowInTodaysDollars(row: YearRow, inflation: Inflation): YearRow 
     shortfallBy: scaleRecord(row.shortfallBy, flow),
     debtPaymentsBy: scaleRecord(row.debtPaymentsBy, flow),
     debtInterestBy: scaleRecord(row.debtInterestBy, flow),
-    deduction: row.deduction ? { ...row.deduction, amount: row.deduction.amount / flow } : null,
+    deduction: row.deduction ? { ...row.deduction, amount: row.deduction.amount / flow, senior: (row.deduction.senior ?? 0) / flow } : null,
     balances: scaleRecord(row.balances, balance),
     assetValues: scaleRecord(row.assetValues, balance),
     debtBalances: scaleRecord(row.debtBalances, balance),

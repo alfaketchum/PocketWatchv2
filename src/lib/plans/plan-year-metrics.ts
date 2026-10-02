@@ -34,7 +34,7 @@ export interface YearMetrics {
   /** Taxes over taxable income; null when there is none. */
   effectiveTaxRate: number | null
   /** Federal deduction taken (brackets only): standard, or itemized when larger. */
-  deduction: { amount: number; itemized: boolean } | null
+  deduction: { amount: number; itemized: boolean; senior?: number } | null
   /** Spending streams only. */
   spending: number
   /** Each spending line this year, largest first. */

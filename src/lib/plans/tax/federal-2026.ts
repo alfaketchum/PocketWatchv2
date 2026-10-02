@@ -32,6 +32,21 @@ export const FEDERAL_ORDINARY: Record<FilingStatus, Brackets> = {
 
 export const FEDERAL_STANDARD_DEDUCTION: Record<FilingStatus, number> = { single: 16_100, joint: 32_200 }
 
+/** Extra standard deduction for each filer 65 or older: unmarried, or per spouse on a joint return (indexed). */
+export const FEDERAL_AGED_ADDITION: Record<FilingStatus, number> = { single: 2_050, joint: 1_650 }
+
+/**
+ * Senior deduction (One Big Beautiful Bill Act): $6,000 per filer 65 or older, tax years 2025–2028, taken whether
+ * or not you itemize. Each $6,000 shrinks by 6% of MAGI over the threshold. Not indexed.
+ */
+export const SENIOR_DEDUCTION = {
+  amount: 6_000,
+  firstYear: 2025,
+  lastYear: 2028,
+  phaseOutRate: 0.06,
+  threshold: { single: 75_000, joint: 150_000 } as Record<FilingStatus, number>,
+}
+
 /** Long-term capital gains and qualified dividends: 0 / 15 / 20%, stacked on top of ordinary income. */
 export const FEDERAL_LTCG: Record<FilingStatus, Brackets> = {
   single: [

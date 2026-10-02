@@ -3,11 +3,13 @@ import {
   AMT_PHASEOUT_RATE,
   AMT_PHASEOUT_START,
   AMT_RATES,
+  FEDERAL_AGED_ADDITION,
   FEDERAL_LTCG,
   FEDERAL_ORDINARY,
   FEDERAL_STANDARD_DEDUCTION,
   NIIT_RATE,
   NIIT_THRESHOLD,
+  SENIOR_DEDUCTION,
   TAX_BASE_YEAR,
   type Brackets,
   type FilingStatus,
@@ -57,6 +59,10 @@ export interface TaxSituation {
   itemized?: Itemized
   /** Minimum tax credit carried in from earlier years' AMT on ISOs; it comes off regular tax above the AMT. */
   amtCredit?: number
+  /** Filers 65 or older by the end of the year (extra standard deduction and the senior deduction). */
+  seniors?: number
+  /** The tax year (the senior deduction only exists 2025–2028). */
+  year?: number
 }
 
 /** A year's taxable income by kind. */
@@ -104,11 +110,20 @@ function netInvestmentIncomeTax(b: TaxBase, s: TaxSituation): number {
  */
 export function federalDeduction(base: TaxBase, s: TaxSituation, stateIncomeTax: number): { amount: number; itemized: boolean } {
   const b = withTaxableSocialSecurity(base, s)
-  const standard = FEDERAL_STANDARD_DEDUCTION[s.status] * s.index
+  const standard = (FEDERAL_STANDARD_DEDUCTION[s.status] + (s.seniors ?? 0) * FEDERAL_AGED_ADDITION[s.status]) * s.index
   const it = s.itemized
   if (!it) return { amount: standard, itemized: false }
   const itemized = federalItemized(b, it, stateIncomeTax)
   return itemized > standard ? { amount: itemized, itemized: true } : { amount: standard, itemized: false }
+}
+
+/** The 2025–2028 senior deduction: $6,000 per filer 65+, each less 6% of MAGI over the line; on top of standard or itemized. */
+export function seniorDeduction(base: TaxBase, s: TaxSituation): number {
+  const { amount, firstYear, lastYear, phaseOutRate, threshold } = SENIOR_DEDUCTION
+  if (!s.seniors || s.year === undefined || s.year < firstYear || s.year > lastYear) return 0
+  const b = withTaxableSocialSecurity(base, s)
+  const magi = b.ordinary + b.shortGains + b.longGains
+  return s.seniors * Math.max(0, amount - phaseOutRate * Math.max(0, magi - threshold[s.status]))
 }
 
 /** Federal itemized deductions: SALT under the year's cap plus mortgage interest on up to $750,000. */
@@ -126,7 +141,7 @@ function withGainsStacked(ordinary: number, gains: number, brackets: Brackets, s
 /** Regular federal income tax (no NIIT): ordinary income and short-term gains through the brackets, gains on top. */
 function regularFederalTax(b: TaxBase, s: TaxSituation, stateIncomeTax: number): number {
   const ordinary = b.ordinary + b.shortGains
-  const deduction = federalDeduction(b, s, stateIncomeTax).amount
+  const deduction = federalDeduction(b, s, stateIncomeTax).amount + seniorDeduction(b, s)
   // Unused deduction shelters gains too.
   const gainsTaxable = Math.max(0, b.longGains - Math.max(0, deduction - ordinary))
   return withGainsStacked(Math.max(0, ordinary - deduction), gainsTaxable, FEDERAL_ORDINARY[s.status], s)
