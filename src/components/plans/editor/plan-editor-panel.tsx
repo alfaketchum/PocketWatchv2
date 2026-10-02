@@ -3,20 +3,20 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { PlanEditorTabs, type PlanTab } from "./plan-editor-tabs"
 
-/** Remembered per browser: whether the tab content is open. */
+/** Remembered per browser: whether the tab content is open. Collapsed until opened. */
 const OPEN_KEY = "pw-plan-editor-open"
 
 function readOpen(): boolean {
   try {
-    return localStorage.getItem(OPEN_KEY) !== "0"
+    return localStorage.getItem(OPEN_KEY) === "1"
   } catch {
-    return true
+    return false
   }
 }
 
 /** The plan's tabs and the content they control in one panel; the content folds away to bring the chart up. */
 export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; onTabChange: (tab: PlanTab) => void; children: ReactNode }) {
-  const [open, setOpenState] = useState(true)
+  const [open, setOpenState] = useState(false)
   useEffect(() => setOpenState(readOpen()), [])
   const setOpen = (next: boolean) => {
     setOpenState(next)
