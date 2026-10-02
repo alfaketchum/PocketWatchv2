@@ -10,6 +10,8 @@ export interface PlanColors {
   cashFlow: Record<CashFlowLayer, string>
   /** Income view bands, by kind of income. */
   income: Record<IncomeGroup, string>
+  /** Taxes view band (its kinds of tax are shades of it). */
+  taxes: string
   hub: string
   /** Up to four distinct plan lines (Compare). */
   series: string[]
@@ -110,6 +112,7 @@ function buildPlanColors(t: {
       rental: accentHead,
       other: mix(foreground, card, 0.5),
     },
+    taxes: warning,
     hub: primary,
     loan: { principal: error, interest: warning },
     series: [primary, warning, accentHead, mix(primary, card, LIGHTER)],

@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { CASH_IN_LAYERS, CASH_OUT_LAYERS, cashFlowPoints, NET_WORTH_LAYERS, netWorthPoints } from "@/lib/plans/plan-chart"
-import { cashFlowDetail, expensesView, INCOME_GROUPS, incomeView, netWorthDetail } from "@/lib/plans/plan-chart-detail"
+import { cashFlowDetail, expensesView, INCOME_GROUPS, incomeView, netWorthDetail, taxesView } from "@/lib/plans/plan-chart-detail"
 import { expandPlan } from "@/lib/plans/plan-expand"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
@@ -82,4 +82,18 @@ test("income view: groups by kind and every-line detail add up to each year's in
   })
   assert.deepEqual(lines.series.map((s) => s.group), ["work", "socialSecurity"])
   assert.ok(rows.some((r, i) => grouped.points[i].socialSecurity > 0 && grouped.points[i].work === 0))
+})
+
+test("taxes view: the total band and the kinds of tax add up to every tax paid that year", () => {
+  const d = plan()
+  const rows = simulatePlan(d).rows
+  const total = taxesView(d, rows, false)
+  const kinds = taxesView(d, rows, true)
+  assert.equal(kinds.series.length, 5)
+  rows.forEach((r, i) => {
+    const paid = r.incomeTax + r.payrollTax + r.withdrawalTax + r.saleTax + r.tradingTax
+    close(total.points[i].taxes, paid)
+    close(sumParent(kinds.points[i], kinds.series.map((s) => s.key)), paid)
+  })
+  assert.ok(rows.some((r) => r.incomeTax > 0) && rows.some((r) => r.tradingTax > 0))
 })

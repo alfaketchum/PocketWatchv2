@@ -102,7 +102,7 @@ export function PlanBarTooltip({
   active?: boolean
   payload?: Array<{ payload: Row }>
   series: TooltipSeries[]
-  mode: "networth" | "cashflow" | "income" | "expenses" | "debt"
+  mode: "networth" | "cashflow" | "income" | "expenses" | "debt" | "taxes"
 }) {
   const row = payload?.[0]?.payload
   if (!active || !row) return null
@@ -116,7 +116,12 @@ export function PlanBarTooltip({
       <p className="font-semibold text-foreground">
         Age {row.age} · {row.year}
       </p>
-      {mode === "income" ? (
+      {mode === "taxes" ? (
+        <>
+          <Lines list={positives} row={row} shares={sum(positives)} />
+          <Total label="Taxes" value={sum(positives)} tone="out" />
+        </>
+      ) : mode === "income" ? (
         <>
           <Lines list={positives} row={row} shares={sum(positives)} />
           <Total label="Income" value={sum(positives)} tone="in" />

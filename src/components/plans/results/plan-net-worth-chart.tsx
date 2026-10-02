@@ -7,7 +7,7 @@ import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plan
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
-import { ChartPlot, ICON_ROW, ICON_STACK, MILESTONE_ICONS, type HoveredMark } from "./plan-chart-plot"
+import { ChartPlot, ICON_ROW, ICON_STACK, type HoveredMark } from "./plan-chart-plot"
 import { PlanChartLegend } from "./plan-chart-legend"
 import { PlanYearPanel } from "./plan-year-panel"
 import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
@@ -31,9 +31,10 @@ const MODES: { value: ChartMode; label: string }[] = [
   { value: "income", label: "Income" },
   { value: "expenses", label: "Expenses" },
   { value: "debt", label: "Debt" },
+  { value: "taxes", label: "Taxes" },
 ]
 
-const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt" }
+const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt", taxes: "Taxes" }
 
 const INFO: Record<ChartMode, string> = {
   networth:
@@ -44,6 +45,8 @@ const INFO: Record<ChartMode, string> = {
     "Everything earned each year, before tax, by kind: work, stock pay, Social Security, pensions, rent and other income. Turn on Subcategories for each income line. Employer match is left out (it goes straight into the account).",
   expenses:
     "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. When lines have spending patterns, the dashed line is the same plan with every line steady.",
+  taxes:
+    "All tax paid each year. Turn on Subcategories to split it: income tax (federal and state, with the AMT and investment-income tax), payroll tax, tax on withdrawals from pre-tax accounts, tax on assets sold, and tax on trading gains.",
   debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
 }
 
@@ -250,7 +253,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
-      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "income", "expenses", "debt"] : ["networth", "cashflow", "income", "expenses"]} />}
+      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "income", "expenses", "debt", "taxes"] : ["networth", "cashflow", "income", "expenses", "taxes"]} />}
       right={
         <div className="flex items-center gap-3">
           {selected !== null && focused === null && nwPoints[selected] && (
@@ -303,32 +306,12 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               focused={focused !== null}
             />
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-            <PlanChartLegend series={series} />
-            {view === "debt" && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
-                <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />
-                Still owed (right axis)
-              </span>
-            )}
-            {steady && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
-                <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />
-                All steady (no spending patterns)
-              </span>
-            )}
-            {marks.map((m) => (
-              <span
-                key={`legend-${m.name}-${m.age}`}
-                className="inline-flex items-center gap-1 text-[11px] text-foreground-muted"
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 13, color: markColor(m) }}>
-                  {m.icon ?? MILESTONE_ICONS[m.kind]}
-                </span>
-                {m.name} ({m.age})
-              </span>
-            ))}
-          </div>
+          <PlanChartLegend
+            series={series}
+            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(steady ? ["All steady (no spending patterns)"] : [])]}
+            marks={marks}
+            markColor={markColor}
+          />
           {view === "expenses" && doc.expenses.some((e) => !e.oneTime) && (
             <div className="mt-4">
               <SpendingImpactChart doc={doc} isHidden={isHidden} />

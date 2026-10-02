@@ -212,3 +212,19 @@ export function incomeView(doc: PlanDocument, rows: YearRow[], detail: boolean):
     .sort((a, b) => INCOME_GROUPS.indexOf(a.group) - INCOME_GROUPS.indexOf(b.group) || peak(b.key) - peak(a.key))
   return { series: lines, points }
 }
+
+/** Taxes paid each year (positive): one band, or with `detail` each kind of tax; both add up to the same total. */
+export function taxesView(doc: PlanDocument, rows: YearRow[], detail: boolean): { series: DetailSeries[]; points: DetailRow[] } {
+  const person = doc.people[0]
+  const age0 = person ? ageAtStart(person, doc.settings) : 0
+  const points = rows.map((r) => {
+    const row: DetailRow = { age: age0 + r.index, year: r.year, taxes: 0 }
+    for (const t of TAX_PARTS) {
+      row[t.key] = r[t.field]
+      row.taxes += r[t.field]
+    }
+    return row
+  })
+  if (!detail) return { series: [{ key: "taxes", label: "Taxes", parent: "taxes" }], points }
+  return { series: TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const })), points }
+}
