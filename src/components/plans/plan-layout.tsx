@@ -14,7 +14,7 @@ export interface PlanLayout {
 }
 
 const LAYOUT_KEY = "pw-plan-layout"
-export const DEFAULT_LAYOUT: PlanLayout = { order: ["tabs", "chart", "summary"], panelSide: "right" }
+export const DEFAULT_LAYOUT: PlanLayout = { order: ["tabs", "chart", "summary"], panelSide: "left" }
 
 export const BLOCK_LABELS: Record<PlanBlock, string> = { summary: "Summary", tabs: "Tabs", chart: "Chart" }
 
@@ -26,7 +26,7 @@ function parseLayout(saved: string | null): PlanLayout {
     const value = JSON.parse(saved) as Partial<PlanLayout>
     const order = Array.isArray(value.order) ? value.order.filter((b): b is PlanBlock => b in BLOCK_LABELS) : []
     const complete = order.length === DEFAULT_LAYOUT.order.length && new Set(order).size === order.length
-    return { order: complete ? order : DEFAULT_LAYOUT.order, panelSide: value.panelSide === "left" ? "left" : "right" }
+    return { order: complete ? order : DEFAULT_LAYOUT.order, panelSide: value.panelSide === "left" || value.panelSide === "right" ? value.panelSide : DEFAULT_LAYOUT.panelSide }
   } catch {
     return DEFAULT_LAYOUT
   }
