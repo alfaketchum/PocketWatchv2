@@ -34,6 +34,15 @@ export interface PlanPerson {
   origin?: string
 }
 
+/**
+ * A spending rule: from retirement, flexible spending (not kids, home & vehicle costs or one-time items) follows the
+ * portfolio. Rates and bounds are fractions; floor / ceiling are shares of the planned spending (null = none).
+ */
+export type SpendingRule =
+  | { kind: "guardrails"; band: number; step: number }
+  | { kind: "percent"; rate: number; floor: number | null; ceiling: number | null }
+  | { kind: "cape"; a: number; b: number; floor: number | null; ceiling: number | null }
+
 export interface PlanSettings {
   startYear: number
   /** 1–12. */
@@ -58,6 +67,8 @@ export interface PlanSettings {
   filingStatus: "single" | "joint"
   /** The spending profile last applied to every line; new lines follow it. Missing = none picked. */
   spendingProfile?: PatternProfile
+  /** How flexible spending responds to the portfolio from retirement; unset = spend as planned. */
+  spendingRule?: SpendingRule
   /**
    * Where `inflation` comes from. custom (default): your number. market: the TIPS breakeven matching the
    * plan's length. marketPath: a different rate each year from the breakeven curve (`inflation` then holds

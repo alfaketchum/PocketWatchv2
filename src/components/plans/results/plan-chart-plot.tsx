@@ -105,6 +105,8 @@ interface ChartPlotProps {
   onHoverMark: (hovered: HoveredMark | null) => void
   /** The year view: one wide bar with each part labelled. */
   focused: boolean
+  /** What the dashed comparison line in the Expenses view shows. */
+  steadyLabel?: string
 }
 
 /** A part's label inside the year view's bar, when it's tall enough to read: "Taxable $1.2M". */
@@ -136,6 +138,7 @@ export const ChartPlot = memo(function ChartPlot({
   onClear,
   onHoverMark,
   focused,
+  steadyLabel,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
   const barTops = useMemo(
@@ -190,7 +193,7 @@ export const ChartPlot = memo(function ChartPlot({
           />
         )}
         <Tooltip
-          content={<PlanBarTooltip series={series} mode={mode} />}
+          content={<PlanBarTooltip series={series} mode={mode} steadyLabel={steadyLabel} />}
           cursor={{ fill: foreground, fillOpacity: 0.06 }}
           allowEscapeViewBox={{ x: false, y: true }}
           wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}

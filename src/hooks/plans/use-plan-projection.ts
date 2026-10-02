@@ -2,6 +2,7 @@
 
 import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo, useState } from "react"
+import { useFireHistoryData } from "@/hooks/finance/use-fire-baseline"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { rowsForBasis } from "@/lib/plans/plan-dollars"
 import { expandPlan } from "@/lib/plans/plan-expand"
@@ -14,7 +15,13 @@ import type { DollarBasis, PlanDocument } from "@/lib/plans/plan-types"
  */
 export function usePlanProjection(document: PlanDocument | null) {
   const [basis, setBasis] = useState<DollarBasis>("today")
-  const projection = useMemo(() => (document ? simulatePlan(document) : null), [document])
+  // A CAPE spending rule needs today's valuation; the history loads only for plans that use it.
+  const usesCape = document?.settings.spendingRule?.kind === "cape"
+  const latestCape = useFireHistoryData(usesCape).data?.latestCape ?? null
+  const projection = useMemo(
+    () => (document ? simulatePlan(document, usesCape ? { capeFor: () => latestCape } : {}) : null),
+    [document, usesCape, latestCape],
+  )
   const view = useMemo(() => (document ? expandPlan(document) : null), [document])
   const summary = useMemo(
     () => (document && projection ? summarizePlan(document, projection) : null),

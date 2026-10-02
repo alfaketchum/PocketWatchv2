@@ -134,6 +134,14 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
             hint="2025–2028 only: $6,000 per person 65+, on top of the standard or itemized deduction; shrinks by 6% of income over $75,000 single / $150,000 joint"
           />
         )}
+        {m.spendingRule !== null && (
+          <Line
+            label="Spending rule"
+            value={`${fmtPct(m.spendingRule, 0)} of plan`}
+            tone={m.spendingRule < 0.995 ? "bad" : m.spendingRule > 1.005 ? "good" : undefined}
+            hint="How the spending rule set this year's flexible spending against the plan (kids, home & vehicle costs and one-time items stay as planned)"
+          />
+        )}
         <Drilldown title="Spending" summary={fmtMoney(m.spending)}>
           {m.spendingBy.length === 0 && <p className="text-[11px] text-foreground-muted">No spending this year.</p>}
           {m.spendingBy.map((e) => (

@@ -84,7 +84,7 @@ export const MARKET_SECTIONS: MethodSection[] = [
         kind: "list",
         items: [
           "**CAPE rule** (ERN): withdrawal rate = a + b × (1 ÷ CAPE), spending more when stocks are cheap.",
-          "**Withdrawal strategies**: fixed dollars (4% rule style), a % of the portfolio, the CAPE rule, and Guyton-Klinger guardrails (cut spending 10% when the withdrawal rate drifts 20% above plan, raise it 10% when 20% below). Spending is set at the start of each retirement year and run through the same history.",
+          "**Withdrawal strategies** (the same guardrails rule plans use): fixed dollars (4% rule style), a % of the portfolio, the CAPE rule, and Guyton-Klinger guardrails (cut spending 10% when the withdrawal rate drifts 20% above plan, raise it 10% when 20% below). Spending is set at the start of each retirement year and run through the same history.",
           "**Crypto** is applied as a drop in value sized from each tier's worst historical drawdown (e.g. BTC −83%, ETH −93%), either on today's value or in the month you retire.",
           "**Rich, broke or dead**: market outcomes combined with the CDC 2023 US life table, treating the two as independent.",
           "**Years to FI**: compounding at your real return with a fixed yearly contribution added at year end.",

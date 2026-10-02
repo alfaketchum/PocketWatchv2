@@ -35,6 +35,8 @@ export interface YearMetrics {
   effectiveTaxRate: number | null
   /** Federal deduction taken (brackets only): standard, or itemized when larger. */
   deduction: { amount: number; itemized: boolean; senior?: number } | null
+  /** With a spending rule: its factor on planned flexible spending this year (1 = as planned); null without one. */
+  spendingRule: number | null
   /** Spending streams only. */
   spending: number
   /** Each spending line this year, largest first. */
@@ -107,6 +109,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     taxesBy: TAX_PARTS.map((t) => ({ label: t.label, value: row[t.field] })).filter((t) => t.value >= 0.5),
     effectiveTaxRate: row.taxableIncome > 0.5 ? taxes / row.taxableIncome : null,
     deduction: row.deduction ?? null,
+    spendingRule: doc.settings.spendingRule ? row.spendingFactor : null,
     spending: row.expenses,
     spendingBy: doc.expenses
       .map((e) => ({ id: e.id, name: e.name, value: row.expensesBy[e.id] ?? 0 }))

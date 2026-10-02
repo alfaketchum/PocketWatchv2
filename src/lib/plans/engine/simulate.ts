@@ -25,6 +25,8 @@ import { thresholdIndex } from "../tax/tax-calc"
 import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
 import { penalizedAccounts, takeRequired } from "./engine-rmd"
+import { NO_RULE, ruleYear, rulePortfolio, type RuleState } from "./engine-spending-rule"
+import { retirementAge } from "../plan-spending-patterns"
 
 /** Differences smaller than this (dollars) aren't worth another pass. */
 const TRUE_UP_MIN = 1
@@ -51,6 +53,8 @@ export interface SimulateOptions {
   returnFor?: (account: PlanAccount, index: number) => number
   equityReturnFor?: (income: PlanIncome, index: number) => number
   inflation?: Inflation
+  /** Market valuation (CAPE) per plan year for a CAPE spending rule: the latest, held flat, or history's in a stress run. */
+  capeFor?: (index: number) => number | null
 }
 
 interface Plan {
@@ -58,6 +62,9 @@ interface Plan {
   /** The plan's inflation: one rate, or a rate per year when following the market's curve. */
   inflation: Inflation
   returnFor?: SimulateOptions["returnFor"]
+  capeFor?: SimulateOptions["capeFor"]
+  /** First plan year at or after retirement (a spending rule starts then); null without a retirement in the plan. */
+  retireIndex: number | null
   /** How equity grants' stock prices move (planned growth, or the stress test's market path). */
   equityPricing: EquityPricing
   ctx: TimingContext
@@ -80,6 +87,8 @@ interface State {
   ssWithheld: WithheldMonths
   /** Minimum tax credit from ISO years' AMT, not yet used against regular tax. */
   amtCredit: number
+  /** Where the spending rule stands (factor 1 without one). */
+  rule: RuleState
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -103,6 +112,8 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
     doc,
     inflation,
     returnFor: opts.returnFor ?? realReturnsOnPath(doc, inflation),
+    capeFor: opts.capeFor,
+    retireIndex: retireIndexOf(doc),
     equityPricing: opts.equityReturnFor ? replayedPricing(opts.equityReturnFor) : plannedPricing(inflation),
     ctx,
     incomes: incomeEntries(doc.incomes, ctx),
@@ -120,6 +131,27 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
       }),
     ),
   }
+}
+
+function retireIndexOf(doc: PlanDocument): number | null {
+  const age = retirementAge(doc)
+  const person = doc.people[0]
+  return age === null || !person ? null : Math.max(0, age - ageAtStart(person, doc.settings))
+}
+
+/** This year's spending rule: planned flexible spending (after spending changes) against last year-end's portfolio. */
+function spendingRule(plan: Plan, state: State, index: number, adjust: number): { rule: RuleState; planned: number } {
+  const planned = expensesForYear(plan.expenses, index, plan.inflation, adjust).total
+  const rule = plan.doc.settings.spendingRule
+  if (!rule) return { rule: state.rule, planned }
+  const fixed = expensesForYear(plan.expenses, index, plan.inflation, 0).total
+  const next = ruleYear(rule, {
+    planned: planned - fixed,
+    portfolio: rulePortfolio(plan.doc, state.holdings),
+    retired: plan.retireIndex !== null && index >= plan.retireIndex,
+    cape: plan.capeFor?.(index) ?? null,
+  }, state.rule)
+  return { rule: next, planned }
 }
 
 function initialHoldings(doc: PlanDocument): Holdings {
@@ -178,7 +210,9 @@ function yearFlows(plan: Plan, state: State, index: number) {
     joint: plan.doc.people.length > 1,
   })
   const debts = payDebts(plan.debts, events.debtBalances, index)
-  const expenses = expensesForYear(plan.expenses, index, inflation, spendingFactorAt(plan.adjustments, index))
+  const adjust = spendingFactorAt(plan.adjustments, index)
+  const ruled = spendingRule(plan, state, index, adjust)
+  const expenses = expensesForYear(plan.expenses, index, inflation, adjust * ruled.rule.factor)
   const property = propertyYear({
     doc: plan.doc,
     ctx: plan.ctx,
@@ -194,7 +228,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
   const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized, state.amtCredit) : earnedTax
-  return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld }
+  return { doc: tax.doc, tax, events, debts, income, expenses, ruled, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld }
 }
 
 type Flows = ReturnType<typeof yearFlows>
@@ -314,6 +348,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
       moved.trading.shortGains + moved.trading.longGains,
     expenses: expenses.total,
     expensesBy: expenses.byId,
+    plannedSpending: flows.ruled.planned,
+    spendingFactor: flows.ruled.rule.factor,
     debtPayments: debts.paid,
     debtPaymentsBy: debts.paidBy,
     debtInterest: debts.interest,
@@ -347,7 +383,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   }
   const minimum = yearMinimumTax(flows.tax, taxedAmounts(flows, moved))
   const amtCredit = state.amtCredit - (minimum?.creditUsed ?? 0) + (minimum?.creditEarned ?? 0)
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit } }
+  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule } }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -388,7 +424,7 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
 
 function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0 }
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)

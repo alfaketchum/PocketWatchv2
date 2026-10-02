@@ -46,6 +46,8 @@ export interface CohortResult {
   lowPoint?: CloseCall["lowPoint"]
   dangerArea?: number
   cushion?: CloseCall["cushion"]
+  /** With a spending rule: the lowest the rule took flexible spending, as a share of plan (1 = never cut). */
+  lowestSpending?: number
   /** Year-end values by plan year, today's dollars. */
   netWorth: number[]
   invested: number[]
@@ -116,6 +118,11 @@ export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: numbe
       const year = market(index)
       return year ? equityYearReturn(income.growth, year, rateAt(inflation, index), doc.settings.inflation) : (income.growth ?? rateAt(inflation, index))
     },
+    // A CAPE spending rule sees each year's actual valuation (none before the record: spend as planned).
+    capeFor: (index) => {
+      const h = start + index - anchor
+      return h < 0 ? null : (annual.cape[h] ?? null)
+    },
   })
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
@@ -129,6 +136,7 @@ export function runCohort(doc: PlanDocument, annual: AnnualHistory, start: numbe
     soldHome: (projection.homeSales?.length ?? 0) > 0,
     equityAtDepletion: failed ? real(homeEquity(expandPlan(doc, inflation), failed), failed.index) : 0,
     ...closeCall(projection.rows, age0),
+    ...(doc.settings.spendingRule ? { lowestSpending: Math.min(1, ...projection.rows.map((r) => r.spendingFactor)) } : {}),
     netWorth: projection.rows.map((r) => real(r.netWorth, r.index)),
     invested: projection.rows.map((r) => real(r.accountsTotal, r.index)),
   }
@@ -157,6 +165,13 @@ export interface StressSummary {
   /** Per plan year: net worth / invested percentiles (BANDS order). */
   netWorthBands: number[][]
   investedBands: number[][]
+  /** With a spending rule: how low it took spending (share of plan) in the median and the worst 10% of periods. */
+  spendingDip: { median: number; worst10: number } | null
+}
+
+function spendingDip(cohorts: CohortResult[]): StressSummary["spendingDip"] {
+  const lows = cohorts.flatMap((c) => (c.lowestSpending === undefined ? [] : [c.lowestSpending]))
+  return lows.length > 0 ? { median: percentile(lows, 0.5), worst10: percentile(lows, 0.1) } : null
 }
 
 /** Cohorts at or above `capeMin` (all of them when null) summarized. */
@@ -176,5 +191,6 @@ export function summarize(all: CohortResult[], capeMin: number | null): StressSu
     worst: failures[0] ?? lowest,
     netWorthBands: bands("netWorth"),
     investedBands: bands("invested"),
+    spendingDip: spendingDip(cohorts),
   }
 }

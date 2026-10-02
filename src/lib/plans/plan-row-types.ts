@@ -41,6 +41,10 @@ export interface YearRow {
   taxableIncome: number
   expenses: number
   expensesBy: Record<string, number>
+  /** Spending as planned (patterns and spending changes), before any spending rule. */
+  plannedSpending: number
+  /** The spending rule's factor on planned flexible spending this year (1 = as planned, or no rule). */
+  spendingFactor: number
   debtPayments: number
   /** Loan payments by debt id; principal is payment minus interest. */
   debtPaymentsBy: Record<string, number>

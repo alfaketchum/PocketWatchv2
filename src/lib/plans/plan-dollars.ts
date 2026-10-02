@@ -21,6 +21,7 @@ const FLOW_FIELDS = [
   "assetAppreciation",
   "assetDepreciation",
   "expenses",
+  "plannedSpending",
   "debtPayments",
   "debtInterest",
   "rentalTaxable",

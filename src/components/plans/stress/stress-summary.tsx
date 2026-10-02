@@ -1,6 +1,6 @@
 "use client"
 
-import { fmtCompact, fmtSuccess } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtPct, fmtSuccess } from "@/components/fire/fire-helpers"
 import type { StressSummary as Summary } from "@/lib/plans/stress/stress-test"
 
 const SAFE = 0.95
@@ -44,6 +44,14 @@ export function StressSummary({ summary, isHidden }: { summary: Summary; isHidde
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Stat label="Median ending net worth" value={fmtCompact(summary.medianEnd)} hint="Half of historical periods end above this (today's dollars)" isHidden={isHidden} />
           <Stat label="Bad case (10th pct)" value={fmtCompact(summary.p10End)} hint="9 in 10 historical periods end above this (today's dollars)" isHidden={isHidden} />
+          {summary.spendingDip && (
+            <Stat
+              label="Spending rule: lowest spending"
+              value={`${fmtPct(summary.spendingDip.worst10, 0)} of plan`}
+              hint={`How far the spending rule cut flexible spending: in the worst 10% of periods it fell to this share of plan at some point (median ${fmtPct(summary.spendingDip.median, 0)})`}
+              isHidden={false}
+            />
+          )}
           {worst && (
             <Stat
               label="Worst start year"

@@ -8,6 +8,7 @@ import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
 import { PatternProfileMenu } from "./pattern-profile-menu"
+import { SpendingRuleMenu } from "./spending-rule-menu"
 import { patchItem, type PlanEditorProps, planItemAnchor, primaryAge } from "../plans-helpers"
 import { ExpensePatternField } from "./expense-pattern-field"
 import { GrowthField } from "./growth-field"
@@ -78,7 +79,17 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
 
   return (
     <div className="space-y-8">
-      <EditorToolbar toggle={viewToggle} center={doc.expenses.length > 0 ? <PatternProfileMenu doc={doc} update={update} /> : undefined}>
+      <EditorToolbar
+        toggle={viewToggle}
+        center={
+          doc.expenses.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <PatternProfileMenu doc={doc} update={update} />
+              <SpendingRuleMenu doc={doc} update={update} />
+            </div>
+          ) : undefined
+        }
+      >
         <AddExpenseButton doc={doc} update={update} />
       </EditorToolbar>
       <div className="space-y-3">

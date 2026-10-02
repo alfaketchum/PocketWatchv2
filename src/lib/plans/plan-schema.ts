@@ -24,6 +24,13 @@ const source = z.object({ kind: z.enum(["finance-account", "crypto", "real-asset
 
 const breakeven = z.number().min(-0.05).max(0.2)
 
+
+const bound = z.number().min(0).max(5).nullable()
+const spendingRule = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("guardrails"), band: z.number().min(0.01).max(1), step: z.number().min(0.01).max(1) }),
+  z.object({ kind: z.literal("percent"), rate: z.number().min(0.001).max(0.5), floor: bound, ceiling: bound }),
+  z.object({ kind: z.literal("cape"), a: z.number().min(0).max(0.1), b: z.number().min(0).max(5), floor: bound, ceiling: bound }),
+])
 const settings = z.object({
   startYear: year,
   startMonth: month,
@@ -40,6 +47,7 @@ const settings = z.object({
   state: stateCode.nullable().default(null),
   filingStatus: z.enum(["single", "joint"]).default("single"),
   spendingProfile: z.enum(["typical", "frontload", "conservative", "frugal", "reset"]).optional(),
+  spendingRule: spendingRule.optional(),
   inflationMode: z.enum(["custom", "market", "marketPath"]).optional(),
   returnBasis: z.enum(["nominal", "real"]).optional(),
   ssCut: z.object({ share: z.number().min(0).max(1), fromYear: z.number().int().min(2000).max(2200) }).optional(),

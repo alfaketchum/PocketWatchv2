@@ -42,9 +42,10 @@ export function useFireBaseline() {
   }
 }
 
-/** Bundled Shiller history (1871–present), loaded on demand and parsed once. */
-export function useFireHistoryData() {
+/** Bundled Shiller history (1871–present), loaded on demand and parsed once (only while `enabled`). */
+export function useFireHistoryData(enabled = true) {
   return useQuery<MarketHistory>({
+    enabled,
     queryKey: financeKeys.fireHistory(),
     queryFn: async () => {
       const mod = await import("@/lib/fire/data/shiller-monthly.json")

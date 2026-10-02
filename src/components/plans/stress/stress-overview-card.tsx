@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
-import { fmtSuccess } from "@/components/fire/fire-helpers"
+import { fmtPct, fmtSuccess } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { summarize } from "@/lib/plans/stress/stress-test"
@@ -34,6 +34,7 @@ export function StressOverviewCard({ doc, planId }: { doc: PlanDocument; planId:
             <p className={`text-sm font-medium ${verdict.tone}`}>{verdict.text}</p>
             <p className="text-xs text-foreground-muted">
               Your whole plan replayed through {summary.cohorts.length} historical start years since 1871.
+              {summary.spendingDip && ` Your spending rule cut spending to ${fmtPct(summary.spendingDip.worst10, 0)} of plan in the worst 10% of them.`}
             </p>
           </div>
         </div>

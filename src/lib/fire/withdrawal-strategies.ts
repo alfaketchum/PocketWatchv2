@@ -17,8 +17,19 @@ export const STRATEGIES: { key: StrategyKey; label: string; description: string 
 ]
 
 /** Guyton-Klinger guardrail band and step. */
-const GUARDRAIL_BAND = 0.2
-const GUARDRAIL_STEP = 0.1
+export const GUARDRAIL_BAND = 0.2
+export const GUARDRAIL_STEP = 0.1
+
+/**
+ * Guyton-Klinger: the change to this year's spending when it's `rate` of the portfolio against a starting rate
+ * of `initialRate`. Above the upper guardrail cut by `step`, below the lower one raise by `step`; else keep it.
+ * Returns the multiplier on last year's spending (shared by the FIRE lab and plans).
+ */
+export function guardrailStep(rate: number, initialRate: number, band = GUARDRAIL_BAND, step = GUARDRAIL_STEP): number {
+  if (rate > initialRate * (1 + band)) return 1 - step
+  if (rate < initialRate * (1 - band)) return 1 + step
+  return 1
+}
 
 export interface StrategyOptions {
   strategy: StrategyKey
@@ -49,10 +60,7 @@ function yearlySpend(opts: StrategyOptions, value: number, prev: number | null, 
       return (cape ? capeWithdrawalRate(cape, opts.capeA, opts.capeB) : opts.wr) * value
     case "guardrails": {
       if (prev === null) return opts.wr
-      const rate = value > 0 ? prev / value : Infinity
-      if (rate > opts.wr * (1 + GUARDRAIL_BAND)) return prev * (1 - GUARDRAIL_STEP)
-      if (rate < opts.wr * (1 - GUARDRAIL_BAND)) return prev * (1 + GUARDRAIL_STEP)
-      return prev
+      return prev * guardrailStep(value > 0 ? prev / value : Infinity, opts.wr)
     }
   }
 }

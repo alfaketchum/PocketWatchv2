@@ -47,7 +47,7 @@ const INFO: Record<ChartMode, string> = {
   income:
     "Everything earned each year, before tax, by kind: work, stock pay, Social Security, pensions, rent and other income. Turn on Subcategories for each income line. Employer match is left out (it goes straight into the account).",
   expenses:
-    "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. When lines have spending patterns, the dashed line is the same plan with every line steady.",
+    "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. The dashed line is the same plan without its spending rule, or (with spending patterns and no rule) with every line steady.",
   taxes:
     "All tax paid each year. Turn on Subcategories to split it: income tax (federal and state, with the AMT and investment-income tax), payroll tax, tax on withdrawals from pre-tax accounts, tax on assets sold, and tax on trading gains.",
   debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
@@ -220,8 +220,9 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const [hovered, setHovered] = useState<number | null>(null)
   const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
   const { netWorth: nwColors } = usePlanColors()
-  // Expenses view: the dashed line is the same plan with every spending line steady.
-  const steady = useSteadySpending(doc, basis, view === "expenses")
+  // Expenses view: the dashed line is the plan without its spending rule, or with every line steady.
+  const baseline = useSteadySpending(doc, basis, view === "expenses")
+  const steady = baseline?.values ?? null
   const plotPoints = useMemo(() => {
     if (steady) return points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 }))
     if (view === "debt") return withOwedLine(points)
@@ -306,6 +307,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               mode={view}
               hasDebt={hasDebt}
               showSteady={steady !== null && focused === null}
+              steadyLabel={baseline?.label}
               selected={focused === null ? selected : 0}
               markColor={markColor}
               onHover={onPlotHover}
@@ -317,7 +319,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           </div>
           <PlanChartLegend
             series={series}
-            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(steady ? ["All steady (no spending patterns)"] : [])]}
+            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(baseline ? [baseline.label] : [])]}
             marks={marks}
             markColor={markColor}
           />

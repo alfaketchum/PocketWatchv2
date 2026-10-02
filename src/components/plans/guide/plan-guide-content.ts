@@ -11,7 +11,7 @@ export const PLAN_GUIDE: GuideSection[] = [
       { name: "Assumptions", text: "Who's in the plan, how long it runs, inflation, tax state and filing, Social Security outlook, credit score." },
       { name: "Accounts", text: "What you have today: balance, tax type and expected return. Refresh balances pulls linked accounts." },
       { name: "Income", text: "Salary, business, stock pay, Social Security, pensions: amounts, raises, and when each starts and stops." },
-      { name: "Expenses", text: "What you spend each year; spending patterns change it with age. Add a child here too." },
+      { name: "Expenses", text: "What you spend each year; spending patterns change it with age, and a spending rule lets it follow your portfolio in retirement. Add a child here too." },
       { name: "Assets & debts", text: "Homes, cars and loans: buy, sell or downsize, rent a home out, pay a loan off early." },
       { name: "Cash flow", text: "Where leftover money is saved, and which accounts pay when money runs short." },
       { name: "Milestones", text: "Life events (retire, marry, move, inheritance…) that change several things at once." },

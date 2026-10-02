@@ -106,6 +106,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
           "**Automatic**: from 73 (75 if born in 1960 or later), each 401(k)/IRA pays out at least last year's balance ÷ an IRS factor (about 3.8% at 73, rising every year). It's taxed as income, pays your spending first, and anything left is reinvested.",
           "**You set, with a partner**: who owns each 401(k)/IRA (Accounts › Owner), so it follows the right person's age.",
           "**Where to look**: a marker on the chart where they start, \"Required withdrawals\" in the side panel and the ledger.",
+          "**Spending that flexes**: Expenses › Spending rule lets retirement spending follow your portfolio (guardrails, a % of it, or the CAPE rule). The stress test then shows how deep the cuts get in bad markets.",
           "**Tip**: big required withdrawals can push you into a higher bracket in your 70s. Drawing some pre-tax money earlier (in lower-income years) can even this out; Roth conversions aren't modeled yet.",
           "**No required withdrawals** from Roth accounts or HSAs.",
         ],

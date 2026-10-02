@@ -98,11 +98,13 @@ export function PlanBarTooltip({
   payload,
   series,
   mode,
+  steadyLabel = "All steady (no patterns)",
 }: {
   active?: boolean
   payload?: Array<{ payload: Row }>
   series: TooltipSeries[]
   mode: "networth" | "accounts" | "cashflow" | "income" | "expenses" | "debt" | "taxes"
+  steadyLabel?: string
 }) {
   const row = payload?.[0]?.payload
   if (!active || !row) return null
@@ -137,7 +139,7 @@ export function PlanBarTooltip({
           <Total label="Spent" value={sum(positives)} tone="out" />
           {row.steady !== undefined && (
             <p className="flex justify-between gap-4 text-[11px] text-foreground-muted">
-              <span>All steady (no patterns)</span>
+              <span>{steadyLabel}</span>
               <span className="tabular-nums">{fmtMoney(row.steady)}</span>
             </p>
           )}
