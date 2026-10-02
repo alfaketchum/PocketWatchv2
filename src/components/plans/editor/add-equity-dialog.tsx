@@ -97,8 +97,7 @@ function OptionFields(props: FormProps) {
         <KeptFields {...props} />
       </div>
       <p className="text-xs text-foreground-muted">
-        Taxed as wages when exercised, like non-qualified options. ISOs can avoid that but may owe AMT, which the plan doesn&apos;t model. Private
-        company? Leave the ticker blank, use the latest 409A price, and the year you expect to sell.
+        Private company? Leave the ticker blank, use the latest 409A price, and the year you expect to sell.
       </p>
     </div>
   )

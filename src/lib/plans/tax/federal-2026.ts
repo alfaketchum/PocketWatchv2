@@ -46,6 +46,18 @@ export const FEDERAL_LTCG: Record<FilingStatus, Brackets> = {
   ],
 }
 
+/**
+ * Alternative minimum tax (Rev. Proc. 2025-32 §.10, with the One Big Beautiful Bill's 50% phase-out). The exemption
+ * shrinks by half of AMT income over the phase-out line (gone at $680,200 single, $1,280,400 joint); 26% applies up
+ * to the 28% line. Long-term gains keep their 0 / 15 / 20% rates.
+ */
+export const AMT_EXEMPTION: Record<FilingStatus, number> = { single: 90_100, joint: 140_200 }
+export const AMT_PHASEOUT_START: Record<FilingStatus, number> = { single: 500_000, joint: 1_000_000 }
+export const AMT_PHASEOUT_RATE = 0.5
+export const AMT_RATES: Brackets = [
+  [0, 0.26],
+  [244_500, 0.28],
+]
 
 /** Net investment income tax: 3.8% on investment income above these (not inflation-indexed) MAGI lines. */
 export const NIIT_RATE = 0.038

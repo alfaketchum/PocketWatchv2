@@ -1,13 +1,22 @@
 import type { Inflation } from "../plan-inflation"
 import { filingStatusAt, stateAt, taxRatesAt, type AdjustmentEntry } from "../plan-adjustments"
-import { federalDeduction, marginalRates, stateTax, taxBase, thresholdIndex, totalTax, type TaxBase, type TaxSituation } from "../tax/tax-calc"
+import {
+  federalDeduction,
+  marginalRates,
+  minimumTax,
+  stateTax,
+  taxBase,
+  thresholdIndex,
+  totalTax,
+  type MinimumTax,
+  type TaxBase,
+  type TaxSituation,
+} from "../tax/tax-calc"
 import type { Itemized } from "../tax/itemized-2026"
-import type { PlanDocument } from "../plan-types"
+import type { PlanDocument, PlanIncome } from "../plan-types"
 import type { IncomeEntry, IncomeYear } from "./engine-flows"
 import { payrollTax, type PayrollTax } from "../tax/payroll-2026"
-import { WAGE_KINDS } from "../plan-constants"
-
-const SELF_EMPLOYED: ReadonlySet<string> = new Set(["business"])
+import { paysWages } from "../plan-constants"
 
 export interface YearTax {
   /** The plan with this year's withdrawal tax rates (flat rates, or marginal rates under brackets). */
@@ -20,6 +29,8 @@ export interface YearTax {
   earnedOrdinary: number
   /** Social Security received; how much is taxable depends on the year's other income. */
   socialSecurity: number
+  /** ISO gains kept: only the AMT counts them. */
+  amtPreference: number
 }
 
 /** Social Security benefits this year (the taxable part is worked out with the rest of the year's income). */
@@ -29,7 +40,8 @@ function socialSecurityReceived(doc: PlanDocument, income: IncomeYear): number {
 
 /**
  * How this year is taxed: flat rates (with any changes over time), or brackets for the year's status and state,
- * itemizing property tax and mortgage interest when that beats the standard deduction.
+ * itemizing property tax and mortgage interest when that beats the standard deduction. `amtCredit` is the minimum
+ * tax credit carried in from earlier ISO years (brackets only; flat rates have no AMT).
  */
 export function yearTax(
   doc: PlanDocument,
@@ -38,22 +50,24 @@ export function yearTax(
   income: IncomeYear,
   inflation: Inflation,
   itemized?: Itemized,
+  amtCredit = 0,
 ): YearTax {
   const settings = doc.settings
   if (settings.taxMode !== "brackets") {
     const rates = taxRatesAt(adjustments, settings, index)
     const yearDoc = adjustments.length ? { ...doc, settings: { ...settings, ...rates } } : doc
-    return { doc: yearDoc, situation: null, incomeTax: income.taxableIncome * rates.incomeTaxRate, earnedOrdinary: income.taxableIncome, socialSecurity: 0 }
+    return { doc: yearDoc, situation: null, incomeTax: income.taxableIncome * rates.incomeTaxRate, earnedOrdinary: income.taxableIncome, socialSecurity: 0, amtPreference: 0 }
   }
   const situation: TaxSituation = {
     status: filingStatusAt(adjustments, settings, index),
     state: stateAt(adjustments, settings, index),
     index: thresholdIndex(settings.startYear + index, inflation, settings.startYear),
     ...(itemized ? { itemized } : {}),
+    ...(amtCredit > 0 ? { amtCredit } : {}),
   }
   const socialSecurity = socialSecurityReceived(doc, income)
   const earnedOrdinary = Math.max(0, income.taxableIncome - socialSecurity)
-  const earned = taxBase({ ordinary: earnedOrdinary, socialSecurity })
+  const earned = taxBase({ ordinary: earnedOrdinary, socialSecurity, amtPreference: income.amtPreference })
   const marginal = marginalRates(earned, situation)
   return {
     // Withdrawals are grossed up at these; short-term gains use the ordinary rate. The true-up settles the rest.
@@ -62,6 +76,7 @@ export function yearTax(
     incomeTax: totalTax(earned, situation),
     earnedOrdinary,
     socialSecurity,
+    amtPreference: income.amtPreference,
   }
 }
 
@@ -77,10 +92,10 @@ export function yearPayroll(
   income: IncomeYear,
   inflation: Inflation,
 ): PayrollTax {
-  const amounts = (kinds: ReadonlySet<string>) =>
-    entries.filter((e) => kinds.has(e.income.kind) && e.income.taxable).map((e) => income.byId[e.income.id] ?? 0).filter((v) => v > 0)
+  const amounts = (counts: (i: PlanIncome) => boolean) =>
+    entries.filter((e) => counts(e.income) && e.income.taxable).map((e) => income.byId[e.income.id] ?? 0).filter((v) => v > 0)
   const { settings } = doc
-  return payrollTax(amounts(WAGE_KINDS), amounts(SELF_EMPLOYED), filingStatusAt(adjustments, settings, index), thresholdIndex(settings.startYear + index, inflation, settings.startYear))
+  return payrollTax(amounts(paysWages), amounts((i) => i.kind === "business"), filingStatusAt(adjustments, settings, index), thresholdIndex(settings.startYear + index, inflation, settings.startYear))
 }
 
 export interface TaxedAmounts {
@@ -102,6 +117,7 @@ function finalBase(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): TaxBas
     longGains: amounts.longGains,
     realEstateGains: amounts.realEstateGains,
     socialSecurity: tax.socialSecurity,
+    amtPreference: tax.amtPreference,
   })
 }
 
@@ -116,4 +132,11 @@ export function yearDeduction(tax: YearTax, amounts: Omit<TaxedAmounts, "charged
   if (!tax.situation) return null
   const base = finalBase(tax, amounts)
   return federalDeduction(base, tax.situation, stateTax(base, tax.situation))
+}
+
+/** The year's AMT and minimum tax credit on its final totals (brackets only; null for flat rates). */
+export function yearMinimumTax(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): MinimumTax | null {
+  if (!tax.situation) return null
+  const base = finalBase(tax, amounts)
+  return minimumTax(base, tax.situation, stateTax(base, tax.situation))
 }

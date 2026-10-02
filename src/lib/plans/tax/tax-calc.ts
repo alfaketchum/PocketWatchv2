@@ -1,4 +1,8 @@
 import {
+  AMT_EXEMPTION,
+  AMT_PHASEOUT_RATE,
+  AMT_PHASEOUT_START,
+  AMT_RATES,
   FEDERAL_LTCG,
   FEDERAL_ORDINARY,
   FEDERAL_STANDARD_DEDUCTION,
@@ -51,6 +55,8 @@ export interface TaxSituation {
   index: number
   /** Property tax and mortgage interest this year; without it only the standard deduction applies. */
   itemized?: Itemized
+  /** Minimum tax credit carried in from earlier years' AMT on ISOs; it comes off regular tax above the AMT. */
+  amtCredit?: number
 }
 
 /** A year's taxable income by kind. */
@@ -65,10 +71,12 @@ export interface TaxBase {
   realEstateGains: number
   /** Social Security benefits received (gross); the taxable part joins `ordinary` (see withTaxableSocialSecurity). */
   socialSecurity: number
+  /** Income only the AMT counts: the gain on ISOs exercised and kept. */
+  amtPreference: number
 }
 
 export function taxBase(part: Partial<TaxBase>): TaxBase {
-  return { ordinary: 0, shortGains: 0, longGains: 0, realEstateGains: 0, socialSecurity: 0, ...part }
+  return { ordinary: 0, shortGains: 0, longGains: 0, realEstateGains: 0, socialSecurity: 0, amtPreference: 0, ...part }
 }
 
 /** The base with Social Security's taxable part moved into ordinary income (safe to apply twice). */
@@ -109,21 +117,62 @@ function federalItemized(b: TaxBase, it: Itemized, stateIncomeTax: number): numb
   return Math.min(saltCap(it.year, magi), stateIncomeTax + it.propertyTax) + interestWithinLimit(it, MORTGAGE_DEBT_LIMIT)
 }
 
+/** Tax on `ordinary` income through `brackets`, with long-term `gains` stacked on top at 0 / 15 / 20%. */
+function withGainsStacked(ordinary: number, gains: number, brackets: Brackets, s: TaxSituation): number {
+  const ltcg = FEDERAL_LTCG[s.status]
+  return bracketTax(ordinary, brackets, s.index) + bracketTax(ordinary + gains, ltcg, s.index) - bracketTax(ordinary, ltcg, s.index)
+}
+
+/** Regular federal income tax (no NIIT): ordinary income and short-term gains through the brackets, gains on top. */
+function regularFederalTax(b: TaxBase, s: TaxSituation, stateIncomeTax: number): number {
+  const ordinary = b.ordinary + b.shortGains
+  const deduction = federalDeduction(b, s, stateIncomeTax).amount
+  // Unused deduction shelters gains too.
+  const gainsTaxable = Math.max(0, b.longGains - Math.max(0, deduction - ordinary))
+  return withGainsStacked(Math.max(0, ordinary - deduction), gainsTaxable, FEDERAL_ORDINARY[s.status], s)
+}
+
 /**
- * Federal tax: ordinary income and short-term gains through the brackets, then long-term gains
- * stacked on top at 0 / 15 / 20%, plus the 3.8% net investment income tax. `stateIncomeTax` (paid the
- * same year) counts toward SALT when itemizing.
+ * Tentative minimum tax: AMT income is all income plus ISO gains, less only mortgage interest (no standard
+ * deduction, no state and local taxes), less the exemption, which phases out at 50%; 26% / 28%, gains at their
+ * own rates.
+ */
+function tentativeMinimumTax(b: TaxBase, s: TaxSituation): number {
+  const interest = s.itemized ? interestWithinLimit(s.itemized, MORTGAGE_DEBT_LIMIT) : 0
+  const amti = Math.max(0, b.ordinary + b.shortGains + b.longGains + b.amtPreference - interest)
+  const phaseOut = AMT_PHASEOUT_RATE * Math.max(0, amti - AMT_PHASEOUT_START[s.status] * s.index)
+  const taxable = Math.max(0, amti - Math.max(0, AMT_EXEMPTION[s.status] * s.index - phaseOut))
+  const gains = Math.min(taxable, b.longGains)
+  return Math.min(withGainsStacked(taxable - gains, gains, AMT_RATES, s), bracketTax(taxable, AMT_RATES, s.index))
+}
+
+export interface MinimumTax {
+  /** AMT owed on top of regular tax. */
+  amt: number
+  /** Of `amt`: what ISO gains caused, which comes back as a credit in later years. */
+  creditEarned: number
+  /** Credit from earlier years used this year (regular tax above the tentative minimum tax). */
+  creditUsed: number
+}
+
+/** The year's AMT, the part that becomes a credit, and the credit used. */
+export function minimumTax(base: TaxBase, s: TaxSituation, stateIncomeTax: number): MinimumTax {
+  const b = withTaxableSocialSecurity(base, s)
+  const regular = regularFederalTax(b, s, stateIncomeTax)
+  const tentative = tentativeMinimumTax(b, s)
+  const amt = Math.max(0, tentative - regular)
+  const withoutIso = b.amtPreference > 0 ? Math.max(0, tentativeMinimumTax({ ...b, amtPreference: 0 }, s) - regular) : amt
+  return { amt, creditEarned: amt - withoutIso, creditUsed: Math.min(s.amtCredit ?? 0, Math.max(0, regular - tentative)) }
+}
+
+/**
+ * Federal tax: regular income tax, plus any AMT above it (less a credit from earlier ISO years), plus the 3.8% net
+ * investment income tax. `stateIncomeTax` (paid the same year) counts toward SALT when itemizing.
  */
 export function federalTax(base: TaxBase, s: TaxSituation, stateIncomeTax = 0): number {
   const b = withTaxableSocialSecurity(base, s)
-  const ordinary = b.ordinary + b.shortGains
-  const deduction = federalDeduction(b, s, stateIncomeTax).amount
-  const ordinaryTaxable = Math.max(0, ordinary - deduction)
-  // Unused deduction shelters gains too.
-  const gainsTaxable = Math.max(0, b.longGains - Math.max(0, deduction - ordinary))
-  const ltcg = FEDERAL_LTCG[s.status]
-  const gainsTax = bracketTax(ordinaryTaxable + gainsTaxable, ltcg, s.index) - bracketTax(ordinaryTaxable, ltcg, s.index)
-  return bracketTax(ordinaryTaxable, FEDERAL_ORDINARY[s.status], s.index) + gainsTax + netInvestmentIncomeTax(b, s)
+  const minimum = minimumTax(b, s, stateIncomeTax)
+  return regularFederalTax(b, s, stateIncomeTax) + minimum.amt - minimum.creditUsed + netInvestmentIncomeTax(b, s)
 }
 
 /** The state's regular income tax on `income`, after `deduction`. */

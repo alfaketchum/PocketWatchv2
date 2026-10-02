@@ -99,6 +99,7 @@ const equityGrant = z.object({
   price: z.number().min(0).max(1e7),
   strike: z.number().min(0).max(1e7).optional(),
   volatility: z.number().min(0).max(3).optional(),
+  iso: z.boolean().optional(),
   vesting: z
     .object({
       yearly: z.array(share).min(1).max(10),

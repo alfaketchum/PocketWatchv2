@@ -144,6 +144,11 @@ export interface EquityGrant {
   strike?: number
   /** Options only: the stock's yearly volatility, for the expected gain (outcomes above the strike count). */
   volatility?: number
+  /**
+   * Options only: incentive stock options. Shares kept aren't taxed at exercise (the gain counts toward the AMT) and
+   * the whole gain is a long-term gain when sold; shares sold right away are ordinary income, not wages.
+   */
+  iso?: boolean
   /** RSUs: how the grant vests from the income's start; leaving (the income's stop) forfeits what hasn't. */
   vesting?: VestingSchedule
 }

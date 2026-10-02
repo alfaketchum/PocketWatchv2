@@ -8,8 +8,20 @@ import { fetchStockPrice } from "@/hooks/plans/use-plan-import"
 import { DEFAULT_STOCK_VOLATILITY, equityValueToday } from "@/lib/plans/engine/engine-equity"
 import { defaultVesting } from "@/lib/plans/plan-vesting"
 import type { EquityGrant } from "@/lib/plans/plan-types"
-import { FIELD_CLASS, FIELD_STYLE } from "./plan-editor-controls"
+import { FIELD_CLASS, FIELD_STYLE, SelectField } from "./plan-editor-controls"
 import { VestingFields } from "./vesting-fields"
+
+const OPTION_TYPES = [
+  { value: "nso", label: "Non-qualified (NSO)" },
+  { value: "iso", label: "Incentive (ISO)" },
+]
+
+/** How the chosen option type is taxed when exercised. */
+function optionTaxNote(iso: boolean): string {
+  return iso
+    ? "ISOs: shares you keep aren't taxed when you exercise, but the gain counts toward the alternative minimum tax (AMT) that year; most of that AMT comes back as a credit in later years. Sell them a year or more later and the whole gain is a long-term capital gain. Shares sold right away are taxed as ordinary income (no payroll tax)."
+    : "NSOs: the gain is taxed as wages when you exercise (income and payroll tax); kept shares start with that value as their cost basis."
+}
 
 /** Older RSUs were shares a year; a schedule's grant is the whole thing, over its years. */
 const LEGACY_GRANT_YEARS = 4
@@ -83,6 +95,7 @@ export function EquityGrantFields({ grant, firstYear, onChange }: { grant: Equit
         )}
         {isOption && (
           <div className="col-span-2 sm:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+            <SelectField label="Type" value={grant.iso ? "iso" : "nso"} options={OPTION_TYPES} onChange={(v) => onChange({ iso: v === "iso" })} />
             <FireNumberField
               label="Volatility / yr"
               suffix="%"
@@ -93,10 +106,11 @@ export function EquityGrantFields({ grant, firstYear, onChange }: { grant: Equit
               hint="How much the stock swings in a year. Large companies 25–35%, younger tech 40–60%."
               onChange={(volatility) => onChange({ volatility })}
             />
-            <p className="col-span-1 sm:col-span-3 pb-2 text-[11px] text-foreground-muted">
+            <p className="col-span-2 sm:col-span-2 pb-2 text-[11px] text-foreground-muted">
               Gain at today&apos;s price: {fmtMoney(equityValueToday(grant))}. The plan counts the expected gain when you exercise (an options-pricing
               estimate: the stock could end well above the strike or below it, where the option pays nothing). The stress test replays each market instead.
             </p>
+            <p className="col-span-2 sm:col-span-4 text-[11px] text-foreground-muted">{optionTaxNote(!!grant.iso)}</p>
           </div>
         )}
       </div>

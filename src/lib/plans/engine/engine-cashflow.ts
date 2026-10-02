@@ -11,11 +11,11 @@ function add(record: Record<string, number>, key: string, amount: number): Recor
   return { ...record, [key]: (record[key] ?? 0) + amount }
 }
 
-/** Deposit into an account; deposits into taxable accounts add to cost basis. */
-export function deposit(holdings: Holdings, account: PlanAccount, amount: number): Holdings {
+/** Deposit into an account; deposits into taxable accounts add to cost basis (all of it, unless `basis` says less). */
+export function deposit(holdings: Holdings, account: PlanAccount, amount: number, basis = amount): Holdings {
   return {
     balances: add(holdings.balances, account.id, amount),
-    basis: account.taxTreatment === "taxable" ? add(holdings.basis, account.id, amount) : holdings.basis,
+    basis: account.taxTreatment === "taxable" ? add(holdings.basis, account.id, basis) : holdings.basis,
   }
 }
 

@@ -3,7 +3,7 @@ import { priceIndex, type Inflation } from "../plan-inflation"
 import { ageAtStart, isActive } from "../plan-timing"
 import { claimFactor, fullRetirementAge, spousalTopUp } from "../social-security"
 import type { PlanDocument, PlanIncome, PlanPerson } from "../plan-types"
-import { WAGE_KINDS } from "../plan-constants"
+import { paysWages } from "../plan-constants"
 import type { IncomeEntry, IncomeYear } from "./engine-flows"
 
 /** 2026 retirement earnings test (SSA): $1 withheld per $2 over the lower limit before the year you reach full
@@ -44,7 +44,7 @@ const personOf = (doc: PlanDocument, income: PlanIncome): PlanPerson | undefined
 /** This person's wages and self-employment income this year (nominal). */
 function wagesOf(ctx: Ctx, person: PlanPerson, income: IncomeYear): number {
   return ctx.entries
-    .filter((e) => (WAGE_KINDS.has(e.income.kind) || e.income.kind === "business") && personOf(ctx.doc, e.income)?.id === person.id)
+    .filter((e) => (paysWages(e.income) || e.income.kind === "business") && personOf(ctx.doc, e.income)?.id === person.id)
     .reduce((s, e) => s + (income.byId[e.income.id] ?? 0), 0)
 }
 

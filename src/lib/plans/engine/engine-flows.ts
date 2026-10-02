@@ -49,6 +49,10 @@ export interface IncomeYear {
   matchBy: Record<string, number>
   /** Payroll deposits per account, employee and employer combined. */
   deposits: Record<string, number>
+  /** Of `deposits`: ISO shares kept, which come in with no cost basis (the whole gain is taxed when sold). */
+  unbased: Record<string, number>
+  /** ISO gains kept this year: not regular income, but counted by the AMT. */
+  amtPreference: number
 }
 
 function addTo(record: Record<string, number>, key: string, amount: number): Record<string, number> {
@@ -72,12 +76,16 @@ export function incomeForYear(
     employerMatch: 0,
     matchBy: {},
     deposits: {},
+    unbased: {},
+    amtPreference: 0,
   }
   for (const { income, range } of entries) {
     if (!isActive(range, index, income.oneTime)) continue
     const gross = income.kind === "equity" && income.equity && pricing ? equityGross(income.equity, income, index, pricing, range, inflation) : grown(income.amount, income.growth, inflation, index)
     let taxable = income.taxable ? gross : 0
     let deposits = result.deposits
+    let unbased = result.unbased
+    let preference = 0
     let matchBy = result.matchBy
     let employee = 0
     let match = 0
@@ -89,6 +97,12 @@ export function incomeForYear(
       const employer = gross * c.employerMatchPercent + discountGain
       if (c.preTax && income.taxable) taxable -= own
       if (income.taxable) taxable += discountGain
+      // ISO shares kept: no regular tax now, no basis, and the AMT counts the gain.
+      if (income.equity?.iso && income.taxable) {
+        taxable -= own
+        preference += own
+        unbased = addTo(unbased, c.accountId, own)
+      }
       employee += own
       match += employer
       deposits = addTo(deposits, c.accountId, own + employer)
@@ -102,6 +116,8 @@ export function incomeForYear(
       employerMatch: result.employerMatch + match,
       matchBy,
       deposits,
+      unbased,
+      amtPreference: result.amtPreference + preference,
     }
   }
   return result

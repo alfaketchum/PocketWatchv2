@@ -1,4 +1,4 @@
-import type { IncomeKind, PlanDocument, TaxTreatment } from "./plan-types"
+import type { IncomeKind, PlanDocument, PlanIncome, TaxTreatment } from "./plan-types"
 
 export const MAX_PLANS_PER_USER = 25
 export const MAX_PLAN_YEARS = 100
@@ -21,6 +21,11 @@ export const PLAN_LIMITS = {
 export const DEFAULT_RETURN_RATE = 0.07
 /** Income paid as wages: payroll tax and Social Security earnings. Equity is RSU vests and option exercises. */
 export const WAGE_KINDS: ReadonlySet<IncomeKind> = new Set<IncomeKind>(["salary", "equity"])
+
+/** Paid as wages (payroll tax, Social Security earnings); ISOs aren't, even sold at once. */
+export function paysWages(income: PlanIncome): boolean {
+  return WAGE_KINDS.has(income.kind) && !income.equity?.iso
+}
 export const DEFAULT_CASH_RETURN = 0.02
 export const DEFAULT_RETIREMENT_AGE = 65
 export const DEFAULT_PERSON_AGE = 35

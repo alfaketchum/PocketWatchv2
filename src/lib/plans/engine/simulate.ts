@@ -18,7 +18,7 @@ import {
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
-import { taxTrueUp, yearDeduction, yearPayroll, yearTax } from "./engine-tax"
+import { taxTrueUp, yearDeduction, yearMinimumTax, yearPayroll, yearTax } from "./engine-tax"
 import { socialSecurityYear, type WithheldMonths } from "./engine-social-security"
 import { estimatedPia } from "../ss-plan-earnings"
 import { thresholdIndex } from "../tax/tax-calc"
@@ -77,6 +77,8 @@ interface State {
   debtBalances: Record<string, number>
   /** Social Security months withheld by the earnings test so far, per income. */
   ssWithheld: WithheldMonths
+  /** Minimum tax credit from ISO years' AMT, not yet used against regular tax. */
+  amtCredit: number
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -168,7 +170,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const payroll = yearPayroll(plan.doc, plan.incomes, plan.adjustments, index, grossIncome, inflation)
   // Half of self-employment tax comes off income before income tax.
   const baseIncome = payroll.seDeduction > 0 ? { ...grossIncome, taxableIncome: Math.max(0, grossIncome.taxableIncome - payroll.seDeduction) } : grossIncome
-  const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome, inflation)
+  const earnedTax = yearTax(plan.doc, plan.adjustments, index, baseIncome, inflation, undefined, state.amtCredit)
   const events = applyAssetEvents(plan.assets, plan.debts, state.debtBalances, index, {
     capitalGainsRate: earnedTax.doc.settings.capitalGainsRate,
     incomeTaxRate: earnedTax.doc.settings.incomeTaxRate,
@@ -190,7 +192,7 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const { itemized, rentalTaxable } = property
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
-  const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized) : earnedTax
+  const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized, state.amtCredit) : earnedTax
   return { doc: tax.doc, tax, events, debts, income, expenses, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld }
 }
 
@@ -209,7 +211,7 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   let holdings = trading.holdings
   for (const account of doc.accounts) {
     const payroll = flows.income.deposits[account.id]
-    if (payroll) holdings = deposit(holdings, account, payroll)
+    if (payroll) holdings = deposit(holdings, account, payroll, payroll - (flows.income.unbased[account.id] ?? 0))
   }
   const transfers = applyTransfers(plan.transfers, doc.accounts, holdings, index, plan.inflation)
   const earmarked = drawEarmarked(doc.expenses, flows.expenses.byId, transfers.holdings)
@@ -329,7 +331,9 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     shortfall: moved.deficit?.shortfall ?? 0,
     milestones: plan.milestoneYears.filter((m) => m.index === index).map((m) => m.name),
   }
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld } }
+  const minimum = yearMinimumTax(flows.tax, taxedAmounts(flows, moved))
+  const amtCredit = state.amtCredit - (minimum?.creditUsed ?? 0) + (minimum?.creditEarned ?? 0)
+  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit } }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -370,7 +374,7 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
 
 function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {} }
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0 }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)
