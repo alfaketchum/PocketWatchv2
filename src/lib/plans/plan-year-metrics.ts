@@ -2,7 +2,7 @@ import { TAX_TREATMENT_LABELS } from "./plan-constants"
 import { layersFor } from "./plan-chart"
 import { loanPayments, type LoanPayment } from "./plan-loan-parts"
 import type { PlanDocument, TaxTreatment, YearRow } from "./plan-types"
-import { afterTaxIncome, rowTaxes } from "./plan-row-taxes"
+import { afterTaxIncome, rowTaxes, TAX_PARTS } from "./plan-row-taxes"
 
 export interface Allocation {
   id: string
@@ -29,6 +29,8 @@ export interface YearMetrics {
   income: number
   taxableIncome: number
   taxes: number
+  /** Each kind of tax paid this year (kinds with none left out). */
+  taxesBy: { label: string; value: number }[]
   /** Taxes over taxable income; null when there is none. */
   effectiveTaxRate: number | null
   /** Federal deduction taken (brackets only): standard, or itemized when larger. */
@@ -100,6 +102,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     income: row.income,
     taxableIncome: row.taxableIncome,
     taxes,
+    taxesBy: TAX_PARTS.map((t) => ({ label: t.label, value: row[t.field] })).filter((t) => t.value >= 0.5),
     effectiveTaxRate: row.taxableIncome > 0.5 ? taxes / row.taxableIncome : null,
     deduction: row.deduction ?? null,
     spending: row.expenses,

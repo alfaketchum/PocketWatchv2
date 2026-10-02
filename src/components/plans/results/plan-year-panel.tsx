@@ -113,13 +113,18 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
       <Section>
         <Line label="Income" value={fmtMoney(m.income)} />
         <Line label="Taxable income" value={fmtMoney(m.taxableIncome)} hint="Taxable pay after pre-tax contributions, plus traditional withdrawals and realized gains" />
-        <Line label="Taxes" value={fmtMoney(m.taxes)} />
+        <Drilldown title="Taxes" summary={fmtMoney(m.taxes)}>
+          {m.taxesBy.length === 0 && <p className="text-[11px] text-foreground-muted">No tax this year.</p>}
+          {m.taxesBy.map((t) => (
+            <SubLine key={t.label} label={t.label} value={fmtMoney(t.value)} />
+          ))}
+        </Drilldown>
         <Line label="Effective tax rate" value={m.effectiveTaxRate === null ? "—" : fmtPct(m.effectiveTaxRate)} hint="Taxes ÷ taxable income" />
         {m.deduction && (
           <Line
             label={m.deduction.itemized ? "Itemized deductions" : "Standard deduction"}
             value={fmtMoney(m.deduction.amount)}
-            hint="Federal: the larger of the standard deduction and itemizing SALT (state income + property tax, capped) and mortgage interest"
+            hint="Federal. Standard: $16,100 single / $32,200 joint in 2026, raised each year with the plan's inflation. Itemized instead when state income and property tax (under the SALT cap) plus mortgage interest add up to more."
           />
         )}
         <Drilldown title="Spending" summary={fmtMoney(m.spending)}>
