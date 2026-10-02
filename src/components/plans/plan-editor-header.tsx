@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { DollarBasis } from "@/lib/plans/plan-types"
+import { PlanGuideButton } from "./guide/plan-guide-dialog"
 import { DollarsToggle } from "./results/dollars-toggle"
 
 /** Top of a single plan: back link, name, save state and dollar basis. */
@@ -37,6 +38,7 @@ export function PlanEditorHeader({
             </span>
           )}
           <span className="text-[11px] text-foreground-muted">{isSaving ? "Saving…" : "Saved"}</span>
+          <PlanGuideButton />
         </div>
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
