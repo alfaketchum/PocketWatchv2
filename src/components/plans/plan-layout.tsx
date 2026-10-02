@@ -14,7 +14,7 @@ export interface PlanLayout {
 }
 
 const LAYOUT_KEY = "pw-plan-layout"
-export const DEFAULT_LAYOUT: PlanLayout = { order: ["summary", "tabs", "chart"], panelSide: "right" }
+export const DEFAULT_LAYOUT: PlanLayout = { order: ["tabs", "chart", "summary"], panelSide: "right" }
 
 export const BLOCK_LABELS: Record<PlanBlock, string> = { summary: "Summary", tabs: "Tabs", chart: "Chart" }
 
