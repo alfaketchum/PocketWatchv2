@@ -59,6 +59,12 @@ export function PlanEditorHeader({
             </span>
             Money flow
           </Link>
+          <Link href={`/plans/${planId}/whatif`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+              tune
+            </span>
+            What if
+          </Link>
           {!isBasic && (
             <>
               <Link href={`/plans/${planId}/trading`} className="btn-secondary text-xs inline-flex items-center gap-1.5">

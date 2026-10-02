@@ -43,10 +43,12 @@ interface Props {
   /** e.g. "B runs 5 more years", when the two plans cover different years. */
   note: string | null
   isHidden: boolean
+  /** Title when nothing differs. */
+  emptyTitle?: string
 }
 
 /** What's different: every input that changed from A to B, grouped like the editor's tabs. */
-export function CompareInputsDiff({ a, b, colors, note, isHidden }: Props) {
+export function CompareInputsDiff({ a, b, colors, note, isHidden, emptyTitle = "These plans have the same inputs" }: Props) {
   const groups = useMemo(() => diffPlanInputs(a, b), [a, b])
   const [expanded, setExpanded] = useState(false)
   const total = groups.reduce((n, g) => n + g.changes.length, 0)
@@ -63,7 +65,7 @@ export function CompareInputsDiff({ a, b, colors, note, isHidden }: Props) {
   return (
     <FireSectionCard
       eyebrow="What's different"
-      title={total === 0 ? "These plans have the same inputs" : `${total} input${total === 1 ? "" : "s"} differ from A to B`}
+      title={total === 0 ? emptyTitle : `${total} input${total === 1 ? "" : "s"} differ from A to B`}
       right={note ? <span className="text-[11px] text-foreground-muted">{note}</span> : undefined}
     >
       {total > 0 && (
