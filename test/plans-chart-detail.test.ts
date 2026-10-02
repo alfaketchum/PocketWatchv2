@@ -3,7 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { CASH_IN_LAYERS, CASH_OUT_LAYERS, cashFlowPoints, NET_WORTH_LAYERS, netWorthPoints } from "@/lib/plans/plan-chart"
-import { cashFlowDetail, expensesView, netWorthDetail } from "@/lib/plans/plan-chart-detail"
+import { cashFlowDetail, expensesView, INCOME_GROUPS, incomeView, netWorthDetail } from "@/lib/plans/plan-chart-detail"
 import { expandPlan } from "@/lib/plans/plan-expand"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
@@ -62,4 +62,24 @@ test("expenses view: groups and every-line detail add up to the same total spent
     close(p.spent, rows[i].expenses + rows[i].debtPayments + rows[i].incomeTax + rows[i].payrollTax + rows[i].withdrawalTax + rows[i].saleTax + rows[i].tradingTax, 1e-4)
   })
   assert.ok(detailed.series.some((s) => s.group === "debt"))
+})
+
+test("income view: groups by kind and every-line detail add up to each year's income", () => {
+  const base = plan()
+  const d: PlanDocument = {
+    ...base,
+    incomes: [
+      ...base.incomes,
+      { id: "ss", name: "Social Security", kind: "social_security", amount: 30_000, growth: null, start: { type: "age", personId: base.people[0].id, age: 67 }, end: { type: "planEnd" }, taxable: true, oneTime: false, contributions: [] },
+    ],
+  }
+  const rows = simulatePlan(d).rows
+  const grouped = incomeView(d, rows, false)
+  const lines = incomeView(d, rows, true)
+  rows.forEach((r, i) => {
+    close(sumParent(grouped.points[i], [...INCOME_GROUPS]), r.income)
+    close(sumParent(lines.points[i], lines.series.map((s) => s.key)), r.income)
+  })
+  assert.deepEqual(lines.series.map((s) => s.group), ["work", "socialSecurity"])
+  assert.ok(rows.some((r, i) => grouped.points[i].socialSecurity > 0 && grouped.points[i].work === 0))
 })

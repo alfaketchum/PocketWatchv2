@@ -47,7 +47,7 @@ function Lines({ list, row, sign = 1, shares }: { list: TooltipSeries[]; row: Ro
         return (
           <div key={head.key}>
             <Item s={{ key: head.key, label: head.label, color: head.color }} value={sign * total} share={shares ? total / shares : undefined} bold />
-            {items.length > 1 &&
+            {(items.length > 1 || items[0].label !== head.label) &&
               items.map((s) => (
                 <p key={s.key} className="flex justify-between gap-4 pl-3.5 text-[11px] text-foreground-muted">
                   <span className="truncate">{s.label}</span>
@@ -102,7 +102,7 @@ export function PlanBarTooltip({
   active?: boolean
   payload?: Array<{ payload: Row }>
   series: TooltipSeries[]
-  mode: "networth" | "cashflow" | "expenses" | "debt"
+  mode: "networth" | "cashflow" | "income" | "expenses" | "debt"
 }) {
   const row = payload?.[0]?.payload
   if (!active || !row) return null
@@ -116,7 +116,12 @@ export function PlanBarTooltip({
       <p className="font-semibold text-foreground">
         Age {row.age} · {row.year}
       </p>
-      {mode === "expenses" ? (
+      {mode === "income" ? (
+        <>
+          <Lines list={positives} row={row} shares={sum(positives)} />
+          <Total label="Income" value={sum(positives)} tone="in" />
+        </>
+      ) : mode === "expenses" ? (
         <>
           <Lines list={positives} row={row} shares={sum(positives)} />
           <Total label="Spent" value={sum(positives)} tone="out" />

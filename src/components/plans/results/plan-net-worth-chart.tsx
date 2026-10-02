@@ -8,6 +8,7 @@ import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/p
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { ChartPlot, ICON_ROW, ICON_STACK, MILESTONE_ICONS, type HoveredMark } from "./plan-chart-plot"
+import { PlanChartLegend } from "./plan-chart-legend"
 import { PlanYearPanel } from "./plan-year-panel"
 import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./use-chart-series"
 import { usePlanColors } from "./use-plan-colors"
@@ -27,17 +28,20 @@ function stackMarks(marks: ChartMilestone[]): { mark: ChartMilestone; level: num
 const MODES: { value: ChartMode; label: string }[] = [
   { value: "networth", label: "Net worth" },
   { value: "cashflow", label: "Cash flow" },
+  { value: "income", label: "Income" },
   { value: "expenses", label: "Expenses" },
   { value: "debt", label: "Debt" },
 ]
 
-const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", expenses: "Expenses", debt: "Debt" }
+const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", cashflow: "Cash flow", income: "Income", expenses: "Expenses", debt: "Debt" }
 
 const INFO: Record<ChartMode, string> = {
   networth:
     "Year-end balances by tax treatment, plus assets (homes, cars and other things you own) at what they're worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
+  income:
+    "Everything earned each year, before tax, by kind: work, stock pay, Social Security, pensions, rent and other income. Turn on Subcategories for each income line. Employer match is left out (it goes straight into the account).",
   expenses:
     "Everything spent each year: living costs, kids, running a home or car, taxes and debt payments, on their own scale. Turn on Subcategories for every spending line and kind of tax; spending that changes with age shows here. When lines have spending patterns, the dashed line is the same plan with every line steady.",
   debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
@@ -246,7 +250,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
-      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "expenses", "debt"] : ["networth", "cashflow", "expenses"]} />}
+      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "income", "expenses", "debt"] : ["networth", "cashflow", "income", "expenses"]} />}
       right={
         <div className="flex items-center gap-3">
           {selected !== null && focused === null && nwPoints[selected] && (
@@ -300,12 +304,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
             />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-            {series.map((s) => (
-              <span key={s.key} className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
-                <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
-                {s.label}
-              </span>
-            ))}
+            <PlanChartLegend series={series} />
             {view === "debt" && (
               <span className="inline-flex items-center gap-1.5 text-[11px] text-foreground-muted">
                 <span className="w-3 border-t-[1.5px] border-dashed border-foreground/60" />

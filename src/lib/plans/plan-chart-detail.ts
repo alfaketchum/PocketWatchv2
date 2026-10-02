@@ -11,7 +11,7 @@ import {
 } from "./plan-chart"
 import { ASSET_COSTS_CATEGORY } from "./plan-asset-costs"
 import { ageAtStart } from "./plan-timing"
-import type { PlanDocument, YearRow } from "./plan-types"
+import type { IncomeKind, PlanDocument, YearRow } from "./plan-types"
 
 /** One subcategory band: an account, asset, loan, income, spending line… inside its parent band. */
 export interface DetailSeries {
@@ -163,4 +163,52 @@ export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean
   const taxes = TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const, group: "taxes" as const }))
   const loans = loanSeries(doc, "debtPayments" as const).map((l) => ({ ...l, group: "debt" as const }))
   return { series: [...lines, ...taxes, ...loans], points }
+}
+
+/** Groups in the Income view, by kind of income. */
+export const INCOME_GROUPS = ["work", "equity", "socialSecurity", "pension", "rental", "other"] as const
+export type IncomeGroup = (typeof INCOME_GROUPS)[number]
+
+export const INCOME_GROUP_LABELS: Record<IncomeGroup, string> = {
+  work: "Work",
+  equity: "Stock pay",
+  socialSecurity: "Social Security",
+  pension: "Pensions",
+  rental: "Rental",
+  other: "Other",
+}
+
+const GROUP_OF_INCOME: Record<IncomeKind, IncomeGroup> = {
+  salary: "work",
+  business: "work",
+  equity: "equity",
+  social_security: "socialSecurity",
+  pension: "pension",
+  rental: "rental",
+  other: "other",
+}
+
+/**
+ * Income each year (positive), grouped by kind, or with `detail` each income line under its kind; the groups
+ * add up to the same total either way. Employer match is left out, as in the Cash flow view.
+ */
+export function incomeView(doc: PlanDocument, rows: YearRow[], detail: boolean): { series: (DetailSeries & { group: IncomeGroup })[]; points: DetailRow[] } {
+  const person = doc.people[0]
+  const age0 = person ? ageAtStart(person, doc.settings) : 0
+  const points = rows.map((r) => {
+    const row: DetailRow = { age: age0 + r.index, year: r.year }
+    for (const g of INCOME_GROUPS) row[g] = 0
+    for (const i of doc.incomes) {
+      const v = r.incomeBy[i.id] ?? 0
+      row[`in:${i.id}`] = v
+      row[GROUP_OF_INCOME[i.kind]] += v
+    }
+    return row
+  })
+  if (!detail) return { series: INCOME_GROUPS.map((g) => ({ key: g, label: INCOME_GROUP_LABELS[g], parent: "income", group: g })), points }
+  const peak = (key: string) => Math.max(0, ...points.map((p) => p[key] ?? 0))
+  const lines = doc.incomes
+    .map((i) => ({ key: `in:${i.id}`, label: i.name, parent: "income" as const, group: GROUP_OF_INCOME[i.kind] }))
+    .sort((a, b) => INCOME_GROUPS.indexOf(a.group) - INCOME_GROUPS.indexOf(b.group) || peak(b.key) - peak(a.key))
+  return { series: lines, points }
 }

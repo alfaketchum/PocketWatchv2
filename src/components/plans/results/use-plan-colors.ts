@@ -3,10 +3,13 @@
 import { useMemo } from "react"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import type { CashFlowLayer, MilestoneGroup, NetWorthLayer } from "@/lib/plans/plan-chart"
+import type { IncomeGroup } from "@/lib/plans/plan-chart-detail"
 
 export interface PlanColors {
   netWorth: Record<NetWorthLayer | "debt", string>
   cashFlow: Record<CashFlowLayer, string>
+  /** Income view bands, by kind of income. */
+  income: Record<IncomeGroup, string>
   hub: string
   /** Up to four distinct plan lines (Compare). */
   series: string[]
@@ -97,6 +100,15 @@ function buildPlanColors(t: {
       debtPayments: mix(error, card, LIGHTER),
       assetPurchases: netWorth.realAssets,
       saved: primary,
+    },
+    // Work green like money in; stock pay between it and the accent; retirement income gold and indigo; rent slate like property.
+    income: {
+      work: success,
+      equity: mix(success, primary, 0.5),
+      socialSecurity: primary,
+      pension: warning,
+      rental: accentHead,
+      other: mix(foreground, card, 0.5),
     },
     hub: primary,
     loan: { principal: error, interest: warning },
