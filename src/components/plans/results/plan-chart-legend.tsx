@@ -73,7 +73,7 @@ interface Props {
 export function PlanChartLegend({ series, lines, marks, markColor }: Props) {
   const grouped = series.some((s) => s.group)
   return (
-    <div className="mt-3 space-y-3">
+    <div className="mt-3 space-y-3 lg:max-h-[45%] lg:shrink-0 lg:overflow-y-auto">
       {grouped ? (
         <>
           <GroupedBands series={series} />
