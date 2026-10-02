@@ -142,6 +142,44 @@ export function taxTrueUp(tax: YearTax, amounts: TaxedAmounts): number {
   return totalTax(finalBase(tax, amounts), tax.situation) - amounts.charged
 }
 
+/** A year's income tax (federal + state) split by the kind of income it falls on. */
+export interface TaxKinds {
+  /** Wages, pensions, rent, taxable Social Security, 401(k)/IRA withdrawals. */
+  ordinary: number
+  /** Gains on things held a year or less (taxed at income rates, stacked on top of ordinary income). */
+  shortGains: number
+  /** Gains on things held over a year (0 / 15 / 20%, plus the 3.8% investment-income tax where it reaches them). */
+  longGains: number
+  /** Tax on earned income alone: what comes off a paycheck-style "take-home". */
+  earnedOnly: number
+}
+
+/**
+ * Split `paid` (the year's income tax actually paid: what was charged along the way plus the true-up) by kind of
+ * income, stacked the way the tax law does: ordinary income first, short-term gains on top, long-term gains last.
+ * Under brackets each layer is the exact extra tax it adds; the last layer takes the rounding so the kinds sum to `paid`.
+ */
+export function taxesByKind(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">, paid: number): TaxKinds {
+  if (!tax.situation) {
+    const { incomeTaxRate, capitalGainsRate } = tax.doc.settings
+    const shortGains = amounts.shortGains * incomeTaxRate
+    const longGains = amounts.longGains * capitalGainsRate
+    return { ordinary: paid - shortGains - longGains, shortGains, longGains, earnedOnly: tax.incomeTax }
+  }
+  const base = finalBase(tax, amounts)
+  const situation = tax.situation
+  const without = (part: Partial<TaxBase>) => totalTax({ ...base, ...part }, situation)
+  const noGains = { shortGains: 0, longGains: 0, realEstateGains: 0 }
+  const ordinary = without(noGains)
+  const withShort = without({ longGains: 0, realEstateGains: 0 })
+  return {
+    ordinary,
+    shortGains: withShort - ordinary,
+    longGains: paid - withShort,
+    earnedOnly: without({ ...noGains, ordinary: tax.earnedOrdinary }),
+  }
+}
+
 /** The federal deduction taken on the year's final totals (brackets only): standard, or itemized when larger. */
 export function yearDeduction(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): { amount: number; itemized: boolean; senior: number } | null {
   if (!tax.situation) return null

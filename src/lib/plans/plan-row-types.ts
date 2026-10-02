@@ -15,6 +15,15 @@ export interface YearRow {
   /** Social Security and Medicare on wages, and self-employment tax. */
   payrollTax: number
   withdrawalTax: number
+  /**
+   * The year's income tax by kind of income (they add up to incomeTax + withdrawalTax + saleTax + tradingTax, which
+   * are how it was charged along the way): ordinary income, short-term gains, long-term gains.
+   */
+  ordinaryIncomeTax: number
+  shortGainsTax: number
+  longGainsTax: number
+  /** Tax on earned income alone (for after-tax income and the savings rate). */
+  earnedIncomeTax: number
   /** The 10% additional tax on traditional withdrawals before 59½. */
   earlyWithdrawalPenalty: number
   /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */

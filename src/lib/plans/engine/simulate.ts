@@ -18,7 +18,7 @@ import {
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
 import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
-import { taxTrueUp, yearDeduction, yearMinimumTax, yearPayroll, yearTax } from "./engine-tax"
+import { taxesByKind, taxTrueUp, yearDeduction, yearMinimumTax, yearPayroll, yearTax } from "./engine-tax"
 import { socialSecurityYear, type WithheldMonths } from "./engine-social-security"
 import { estimatedPia } from "../ss-plan-earnings"
 import { thresholdIndex } from "../tax/tax-calc"
@@ -285,6 +285,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   const accountsTotal = sum(moved.holdings.balances)
   const assetsTotal = sum(assetValues)
   const debtsTotal = sum(debts.debtBalances)
+  const withdrawalTax = (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax
+  const kinds = taxesByKind(flows.tax, taxedAmounts(flows, moved), incomeTax + trueUp + withdrawalTax + events.saleTax + moved.trading.tax)
   const row: YearRow = {
     index,
     year: doc.settings.startYear + index,
@@ -295,7 +297,11 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     employerMatchBy: income.matchBy,
     incomeTax: incomeTax + trueUp,
     payrollTax: flows.payroll.total,
-    withdrawalTax: (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax,
+    withdrawalTax,
+    ordinaryIncomeTax: kinds.ordinary,
+    shortGainsTax: kinds.shortGains,
+    longGainsTax: kinds.longGains,
+    earnedIncomeTax: kinds.earnedOnly,
     earlyWithdrawalPenalty: moved.deficit?.penalty ?? 0,
     saleTax: events.saleTax,
     tradingTax: moved.trading.tax,

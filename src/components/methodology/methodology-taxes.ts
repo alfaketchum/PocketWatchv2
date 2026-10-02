@@ -35,6 +35,10 @@ export const TAX_SECTIONS: MethodSection[] = [
           "**At year end**: tax is recomputed exactly on all the year's income, withdrawals and gains together. If that differs from what was charged, the difference is paid (or returned) from cash flow, and the year is re-run until it settles, since paying more tax can mean withdrawing, and owing tax on, a little more.",
         ],
       },
+      {
+        kind: "text",
+        text: "**How the year's tax is shown**: by the kind of income it falls on, stacked the way the tax law stacks it. **Income tax** is the tax on ordinary income alone (pay, pensions, rent, taxable Social Security, 401(k)/IRA withdrawals). **Short-term gains tax** is what gains held a year or less add on top (they're taxed at income rates, so they land in the higher brackets). **Long-term gains tax** is what gains held over a year add last (0 / 15 / 20%, plus the 3.8% investment-income tax where it reaches them). Each includes its state tax, and the three add up exactly to the year's income tax. Payroll tax and any early-withdrawal penalty are shown on their own.",
+      },
     ],
     sources: [
       { label: "IRS Rev. Proc. 2025-32 (2026 brackets)", url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf" },

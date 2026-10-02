@@ -2,6 +2,7 @@
 
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
+import { TAX_PARTS } from "@/lib/plans/plan-row-taxes"
 
 function DetailList({ title, entries }: { title: string; entries: { label: string; value: number }[] }) {
   const shown = entries.filter((e) => Math.abs(e.value) >= 0.5)
@@ -40,14 +41,9 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
         entries={[
           { label: "Investment growth", value: row.growth },
           { label: "Employer match", value: row.employerMatch },
-          { label: "Income tax", value: row.incomeTax },
-          { label: "Payroll tax (Social Security, Medicare)", value: row.payrollTax },
-          { label: "Tax on withdrawals", value: row.withdrawalTax },
+          ...TAX_PARTS.map((t) => ({ label: t.label, value: row[t.field] })),
           { label: "Required withdrawals (in Withdrawn from)", value: row.requiredWithdrawals },
-          { label: "Early-withdrawal penalty", value: row.earlyWithdrawalPenalty },
-          { label: "Tax on asset sales", value: row.saleTax },
           { label: "Gains realized by trading", value: row.realizedGains },
-          { label: "Tax on trading gains", value: row.tradingTax },
           { label: "Debt payments", value: row.debtPayments },
           { label: "Asset purchases", value: row.assetPurchases },
           { label: "Asset sales", value: row.assetSales },
