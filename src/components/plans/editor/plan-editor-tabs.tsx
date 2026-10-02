@@ -74,7 +74,7 @@ export function PlanEditorTabs({
                 style={{ fontSize: 16 }}
                 aria-hidden="true"
               >
-                {open ? "expand_less" : "expand_more"}
+                {open ? "remove" : "add"}
               </span>
             )}
           </button>

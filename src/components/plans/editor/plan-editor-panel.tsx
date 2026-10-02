@@ -40,7 +40,7 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
           >
             <span className="material-symbols-rounded" style={{ fontSize: 18 }} aria-hidden="true">
-              {open ? "expand_less" : "expand_more"}
+              {open ? "remove" : "add"}
             </span>
             {open ? "Collapse" : "Expand"}
           </button>
