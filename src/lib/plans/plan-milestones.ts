@@ -3,13 +3,16 @@ import type { AssetKind, PlanDocument, PlanIncome, PlanMilestone } from "./plan-
 
 const BUY_ICONS: Record<AssetKind, string> = { home: "home", vehicle: "directions_car", other: "shopping_bag" }
 
-/** "Buy the house" / "Replace the car" / "Sell the car" milestones for assets bought or sold during the plan. */
+/**
+ * "Buy the house" / "Replace the car" / "Sell the car" milestones for assets bought or sold during the plan. A purchase
+ * or sale timed to a milestone already has one, so it gets no second marker.
+ */
 export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
   return doc.assets.flatMap((asset) => {
     const marks: PlanMilestone[] = []
     if (asset.replacementOf) {
       marks.push({ id: `asset-${asset.id}-buy`, name: `Replace ${asset.name}`, kind: "asset", icon: "autorenew", timing: asset.start })
-    } else if (asset.start.type !== "planStart") {
+    } else if (asset.start.type !== "planStart" && asset.start.type !== "milestone") {
       const received = asset.acquired === "received"
       marks.push({
         id: `asset-${asset.id}-buy`,
@@ -19,7 +22,7 @@ export function assetMilestones(doc: PlanDocument): PlanMilestone[] {
         timing: asset.start,
       })
     }
-    if (asset.end.type !== "planEnd" && !asset.replaced) {
+    if (asset.end.type !== "planEnd" && asset.end.type !== "milestone" && !asset.replaced) {
       marks.push({ id: `asset-${asset.id}-sell`, name: `Sell ${asset.name}`, kind: "asset", icon: "sell", timing: asset.end })
     }
     return marks

@@ -126,3 +126,19 @@ test("move: a new state is a change tied to the move; staying adds none", () => 
   const stayed = applyMove(plan(), { name: "Move", when: { type: "year", year: 2030 }, percent: -0.1 }, newId)
   assert.deepEqual((stayed.adjustments ?? []).map((a) => a.kind), ["spending"])
 })
+
+test("a home bought at a milestone gets no second 'Buy …' marker; one bought at an age does", () => {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 30)
+  const home = (id: string, start: PlanDocument["assets"][number]["start"]) => ({
+    id, name: id, kind: "home" as const, value: 300_000, appreciation: 0.03, start, end: { type: "planEnd" as const }, acquired: "purchase" as const,
+  })
+  const doc: PlanDocument = {
+    ...base,
+    milestones: [...base.milestones, { id: "ms-home", name: "Buy first home", kind: "custom", timing: { type: "age", personId: PRIMARY_PERSON_ID, age: 36 } }],
+    assets: [home("Condo", { type: "milestone", milestoneId: "ms-home" }), home("House", { type: "age", personId: PRIMARY_PERSON_ID, age: 45 })],
+  }
+  const names = expandPlan(doc).milestones.map((m) => m.name)
+  assert.ok(names.includes("Buy first home"))
+  assert.ok(!names.includes("Buy Condo"))
+  assert.ok(names.includes("Buy House"))
+})
