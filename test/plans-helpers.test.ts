@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument, PRIMARY_PERSON_ID } from "@/lib/plans/plan-constants"
 import { removeAccount, removePerson } from "@/lib/plans/plan-edits"
-import { timingLabel } from "@/components/plans/plans-helpers"
+import { milestoneAsAge, timingLabel } from "@/components/plans/plans-helpers"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 
 const base = blankPlanDocument(new Date(2026, 0, 1), 40)
@@ -57,4 +57,12 @@ test("removing a child also removes the 529 account created for them, and refere
   assert.equal(out.children.length, 0)
   assert.ok(!out.accounts.some((a) => a.id === "m529"))
   assert.deepEqual(out.cashFlow.surplusOrder, [])
+})
+
+test("milestoneAsAge: a milestone timing becomes the age it falls at; other timings pass through", () => {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 30)
+  const doc: PlanDocument = { ...base, milestones: [...base.milestones, { id: "ms", name: "Buy first home", kind: "custom", timing: { type: "age", personId: PRIMARY_PERSON_ID, age: 36 } }] }
+  assert.deepEqual(milestoneAsAge({ type: "milestone", milestoneId: "ms" }, doc), { type: "age", personId: PRIMARY_PERSON_ID, age: 36 })
+  assert.deepEqual(milestoneAsAge({ type: "milestone", milestoneId: "ms", offsetYears: 2 }, doc), { type: "age", personId: PRIMARY_PERSON_ID, age: 38 })
+  assert.deepEqual(milestoneAsAge({ type: "year", year: 2030 }, doc), { type: "year", year: 2030 })
 })

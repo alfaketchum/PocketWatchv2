@@ -7,9 +7,12 @@ import { loanSummary, PAYMENT_MODE_LABELS, typicalTerms } from "@/lib/plans/plan
 import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PaymentMode, PlanDocument } from "@/lib/plans/plan-types"
 import { SelectField, TextField } from "./plan-editor-controls"
-import { TimingPicker } from "./timing-picker"
-import { WHEN_TYPES, type SetDraft, type TemplateDraft } from "./template-draft"
+import { ASSET_START_TYPES, TimingPicker } from "./timing-picker"
+import { type SetDraft, type TemplateDraft } from "./template-draft"
 import { VehicleConditionChips } from "./vehicle-condition-chips"
+
+/** A future purchase: at an age or in a year ("Now" would be owned already). */
+const PURCHASE_WHEN = ASSET_START_TYPES.filter((t) => t !== "planStart")
 
 const PAY_OPTIONS = (Object.keys(PAYMENT_MODE_LABELS) as PaymentMode[]).map((value) => ({ value, label: PAYMENT_MODE_LABELS[value] }))
 
@@ -23,7 +26,7 @@ export function PurchaseFields({ d, set, doc, kind }: { d: TemplateDraft; set: S
   return (
     <>
       <TextField label="Name" value={d.name} onChange={(name) => set({ name })} />
-      <TimingPicker label="Buy" value={d.when} doc={doc} allow={WHEN_TYPES} onChange={(when) => set({ when })} />
+      <TimingPicker label="Buy" value={d.when} doc={doc} allow={PURCHASE_WHEN} onChange={(when) => set({ when })} />
       <div className="grid grid-cols-2 gap-2">
         <FireNumberField label="Price (today's $)" prefix="$" min={0} value={d.price} onChange={(price) => set({ price })} />
         <SelectField label="How you'll pay" value={d.payWith} options={PAY_OPTIONS} onChange={(payWith) => set({ payWith })} />

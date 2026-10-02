@@ -1,11 +1,18 @@
 import type { ReactNode } from "react"
 import { allMilestones } from "@/lib/plans/plan-milestones"
-import { ageAtStart } from "@/lib/plans/plan-timing"
+import { ageAtStart, resolveTiming, timingContext } from "@/lib/plans/plan-timing"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
 
 /** Short unique id for a new plan item. */
 export function newItemId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+/** A milestone timing as the age (of the first person) it falls at; anything else unchanged. For assets, timed by age or year only. */
+export function milestoneAsAge(timing: Timing, doc: PlanDocument): Timing {
+  if (timing.type !== "milestone") return timing
+  const index = resolveTiming(timing, timingContext(doc))
+  return { type: "age", personId: doc.people[0]?.id ?? "", age: primaryAge(doc) + Math.max(0, index ?? 0) }
 }
 
 /** Human label for a timing, e.g. "Age 65", "2030", "Retirement". */

@@ -3,7 +3,7 @@
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { allMilestones } from "@/lib/plans/plan-milestones"
 import type { PlanDocument, Timing } from "@/lib/plans/plan-types"
-import { primaryAge } from "../plans-helpers"
+import { milestoneAsAge, primaryAge } from "../plans-helpers"
 
 type TimingType = Timing["type"]
 
@@ -23,6 +23,10 @@ const TYPE_LABELS: Record<TimingType, string> = {
   year: "In year",
   milestone: "At milestone",
 }
+
+/** Homes, cars and other assets: bought and sold by age or year only (a milestone choice was one decision too many). */
+export const ASSET_START_TYPES: TimingType[] = ["planStart", "age", "year"]
+export const ASSET_END_TYPES: TimingType[] = ["planEnd", "age", "year"]
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-card-border bg-background text-sm text-foreground outline-none focus:border-primary"
@@ -108,10 +112,12 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
 }
 
 /** Pick when something starts or ends: now, end of plan, an age, a year, or a milestone. */
-export function TimingPicker({ label, value, doc, onChange, allow }: TimingPickerProps) {
+export function TimingPicker({ label, value: stored, doc, onChange, allow }: TimingPickerProps) {
   const types = (allow ?? (Object.keys(TYPE_LABELS) as TimingType[])).filter(
     (t) => t !== "milestone" || allMilestones(doc).length > 0,
   )
+  // Where milestones aren't offered, one already set shows as the age it falls at; editing saves that age.
+  const value = types.includes("milestone") ? stored : milestoneAsAge(stored, doc)
   return (
     <div className="space-y-2">
       <label className="block">

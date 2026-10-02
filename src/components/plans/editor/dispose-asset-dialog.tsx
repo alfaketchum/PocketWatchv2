@@ -120,7 +120,7 @@ function DisposeForm({ asset, doc, update, onClose }: DialogProps & { asset: Pla
     >
       <div className="space-y-3">
         <ChoiceChips label="What happens" options={modes(asset)} value={choice.mode} onChange={(mode) => set({ mode })} />
-        <TimingPicker label="When" value={choice.when} doc={doc} allow={["year", "age", "milestone"]} onChange={(when) => set({ when })} />
+        <TimingPicker label="When" value={choice.when} doc={doc} allow={["year", "age"]} onChange={(when) => set({ when })} />
         {choice.mode === "downsize" && (
           <div className="space-y-2 rounded-xl border border-card-border p-3">
             <ChoiceChips

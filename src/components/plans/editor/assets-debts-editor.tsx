@@ -8,7 +8,7 @@ import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
-import { TimingPicker } from "./timing-picker"
+import { ASSET_END_TYPES, ASSET_START_TYPES, TimingPicker } from "./timing-picker"
 import { AssetsDebtsTable } from "./assets-debts-table"
 import { AssetFinancingFields } from "./asset-financing-fields"
 import { AssetRunningCostsFields } from "./asset-running-costs-fields"
@@ -145,14 +145,8 @@ function AssetsList({ doc, update }: PlanEditorProps) {
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <TimingPicker label="Owned from" value={a.start} doc={doc} onChange={(start) => patch(a.id, { start })} />
-            <TimingPicker
-              label="Sold"
-              value={a.end}
-              doc={doc}
-              allow={["planEnd", "age", "year", "milestone"]}
-              onChange={(end) => patch(a.id, { end })}
-            />
+            <TimingPicker label="Owned from" value={a.start} doc={doc} allow={ASSET_START_TYPES} onChange={(start) => patch(a.id, { start })} />
+            <TimingPicker label="Sold" value={a.end} doc={doc} allow={ASSET_END_TYPES} onChange={(end) => patch(a.id, { end })} />
           </div>
           <button type="button" onClick={() => setDisposeId(a.id)} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
             <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">

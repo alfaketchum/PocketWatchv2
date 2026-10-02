@@ -8,7 +8,7 @@ import { DEFAULT_RENTAL, netYearlyRent } from "@/lib/plans/plan-rentals"
 import type { AssetRental, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
 import { AssetHomeFallbackFields } from "./asset-home-fallback-fields"
 import { GrowthField } from "./growth-field"
-import { TimingPicker } from "./timing-picker"
+import { ASSET_START_TYPES, TimingPicker } from "./timing-picker"
 
 /** A first guess at monthly rent: about 0.4% of the home's value. */
 const RENT_PER_VALUE = 0.004
@@ -51,7 +51,7 @@ export function AssetHomeFields({ asset, doc, onChange }: Props) {
             <FireNumberField label="Management fee" suffix="%" scale={100} min={0} max={1} value={rental.managementFee} onChange={(managementFee) => setRental({ managementFee })} />
             <GrowthField value={rental.growth} inflation={doc.settings.inflation} onChange={(growth) => setRental({ growth })} />
           </div>
-          <TimingPicker label="Renting from" value={rental.start ?? asset.start} doc={doc} onChange={(start) => setRental({ start })} />
+          <TimingPicker label="Renting from" value={rental.start ?? asset.start} doc={doc} allow={ASSET_START_TYPES} onChange={(start) => setRental({ start })} />
           <p className="text-[11px] text-foreground-muted">
             About {fmtMoney(netYearlyRent(asset))} a year collected in today&apos;s dollars, after vacancy and the manager&apos;s cut.
           </p>

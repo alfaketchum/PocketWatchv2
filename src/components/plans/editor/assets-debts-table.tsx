@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
-import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
+import { milestoneAsAge, patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Badge, Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 import { paidWithLabel } from "@/lib/plans/plan-financing"
@@ -111,13 +111,13 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               )}
             </Cell>
             <Cell>
-              <TimingCell timing={a.start} doc={doc} />
+              <TimingCell timing={milestoneAsAge(a.start, doc)} doc={doc} />
             </Cell>
             <Cell>
               {a.replaceEveryYears ? (
                 <span className="block truncate px-2 text-xs text-foreground-muted">Replaced every {a.replaceEveryYears} yrs</span>
               ) : (
-                <TimingCell timing={a.end} doc={doc} />
+                <TimingCell timing={milestoneAsAge(a.end, doc)} doc={doc} />
               )}
             </Cell>
             <Cell>
