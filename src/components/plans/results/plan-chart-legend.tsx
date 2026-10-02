@@ -6,9 +6,9 @@ import { MILESTONE_ICONS } from "./plan-chart-plot"
 
 const HEADING = "text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted"
 
-function Swatch({ label, color, bold }: { label: string; color: string; bold?: boolean }) {
+function Swatch({ label, color }: { label: string; color: string }) {
   return (
-    <span className={`inline-flex min-w-0 items-center gap-1.5 text-[11px] ${bold ? "font-medium text-foreground" : "text-foreground-muted"}`}>
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-[11px] text-foreground-muted">
       <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: color }} />
       <span className="truncate" title={label}>
         {label}
@@ -26,39 +26,14 @@ function DashedKey({ label }: { label: string }) {
   )
 }
 
-/** Bands bunched by their parent band, in chart order. */
-function byGroup(series: TooltipSeries[]) {
-  const groups = new Map<string, { head: NonNullable<TooltipSeries["group"]>; items: TooltipSeries[] }>()
+/** The bands in chart order: each series' parent, or the series itself when it has none. */
+function bandsOf(series: TooltipSeries[]): NonNullable<TooltipSeries["group"]>[] {
+  const bands = new Map<string, NonNullable<TooltipSeries["group"]>>()
   for (const s of series) {
-    const head = s.group ?? { key: s.key, label: s.label, color: s.color }
-    groups.set(head.key, { head, items: [...(groups.get(head.key)?.items ?? []), s] })
+    const band = s.group ?? { key: s.key, label: s.label, color: s.color }
+    if (!bands.has(band.key)) bands.set(band.key, band)
   }
-  return [...groups.values()]
-}
-
-/** With subcategories: one column per band, its accounts, assets or lines listed beneath it. */
-function GroupedBands({ series }: { series: TooltipSeries[] }) {
-  return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-6 gap-y-3">
-      {byGroup(series).map(({ head, items }) => {
-        const lines = items.filter((s) => s.label !== head.label)
-        return (
-          <div key={head.key} className="min-w-0 space-y-1">
-            <Swatch label={head.label} color={head.color} bold />
-            {lines.length > 0 && (
-              <ul className="space-y-0.5 border-l border-card-border pl-2.5">
-                {lines.map((s) => (
-                  <li key={s.key} className="flex min-w-0">
-                    <Swatch label={s.label} color={s.color} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
+  return [...bands.values()]
 }
 
 interface Props {
@@ -69,26 +44,16 @@ interface Props {
   markColor: (m: ChartMilestone) => string
 }
 
-/** The chart's key: bands (grouped under their parent with subcategories), dashed lines, then milestones on their own row. */
+/** The chart's key: its bands (parents only, with subcategories on), dashed lines, then milestones on their own row. */
 export function PlanChartLegend({ series, lines, marks, markColor }: Props) {
-  const grouped = series.some((s) => s.group)
+  // With subcategories the bars are shades of their band: the legend names the bands; the hover card names each part.
+  const bands = bandsOf(series)
   return (
     <div className="mt-3 space-y-3 lg:max-h-[45%] lg:shrink-0 lg:overflow-y-auto">
-      {grouped ? (
-        <>
-          <GroupedBands series={series} />
-          {lines.length > 0 && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {lines.map((l) => <DashedKey key={l} label={l} />)}
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {series.map((s) => <Swatch key={s.key} label={s.label} color={s.color} />)}
-          {lines.map((l) => <DashedKey key={l} label={l} />)}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {bands.map((b) => <Swatch key={b.key} label={b.label} color={b.color} />)}
+        {lines.map((l) => <DashedKey key={l} label={l} />)}
+      </div>
       {marks.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-card-border pt-2.5">
           <span className={HEADING}>Milestones</span>
