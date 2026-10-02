@@ -143,7 +143,17 @@ export function saleTaxFor(entry: AssetEntry, index: number, rules: SaleTaxRules
 }
 
 /**
- * Start-of-year events for year `index`: debts that start this year, asset purchases (net of debts
+ * A loan taken during the plan pays its cash out, unless it finances an asset bought or received the same
+ * year: that loan only shrinks the purchase's cost (an inherited home's mortgage brings nothing). A HELOC is
+ * always a draw.
+ */
+function bringsCash(debt: PlanDebt, index: number, assets: AssetEntry[]): boolean {
+  if (debt.kind === "heloc") return true
+  return !assets.some((a) => a.asset.id === debt.assetId && a.range.start === index)
+}
+
+/**
+ * Start-of-year events for year `index`: debts that start this year (loans not financing a purchase bring their cash), asset purchases (net of debts
  * financing them; received assets cost nothing) and asset sales (net of the debts they pay off,
  * with capital-gains tax on the gain).
  */
@@ -159,7 +169,7 @@ export function applyAssetEvents(
   for (const { debt, start } of debts) {
     if (start !== index) continue
     balances = { ...balances, [debt.id]: debt.balance }
-    if (debt.kind === "heloc" && index > 0) borrowed += debt.balance
+    if (index > 0 && bringsCash(debt, index, assets)) borrowed += debt.balance
   }
   let purchases = 0
   let sales = 0

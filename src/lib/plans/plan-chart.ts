@@ -112,7 +112,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   wdTaxFree: "Withdrawals · tax-free",
   wdTaxFree529: "Withdrawals · tax-free (529)",
   assetSales: "Asset sales",
-  borrowed: "Borrowed (HELOC)",
+  borrowed: "Borrowed",
   unfunded: "Unfunded (money ran out)",
   spending: "Spending",
   taxes: "Taxes",

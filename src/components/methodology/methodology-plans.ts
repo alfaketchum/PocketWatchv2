@@ -44,7 +44,11 @@ export const PLAN_SECTIONS: MethodSection[] = [
     blocks: [
       {
         kind: "formula",
-        formula: "Left over = income − payroll contributions − taxes − spending − loan payments − purchases + sales + HELOC draws",
+        formula: "Left over = income − payroll contributions − taxes − spending − loan payments − purchases + sales + money borrowed",
+      },
+      {
+        kind: "text",
+        text: "**Money borrowed** is a loan that starts during the plan (its cash arrives that year) or a HELOC draw. A loan that pays for a home or vehicle bought the same year brings no cash: it only lowers what the purchase costs you. Loans already running when the plan starts bring none.",
       },
       { kind: "text", text: "**When money is left over**, it is saved in this order:" },
       {

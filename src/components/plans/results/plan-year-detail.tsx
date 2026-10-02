@@ -49,7 +49,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Debt payments", value: row.debtPayments },
           { label: "Asset purchases", value: row.assetPurchases },
           { label: "Asset sales", value: row.assetSales },
-          { label: "Borrowed (HELOC)", value: row.borrowed },
+          { label: "Borrowed", value: row.borrowed },
           { label: "Shortfall", value: row.shortfall },
         ]}
       />

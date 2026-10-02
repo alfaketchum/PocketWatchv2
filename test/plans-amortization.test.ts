@@ -115,6 +115,31 @@ test("HELOC on a home bought the same year doesn't shrink the purchase's cost", 
   assert.equal(rows[2].borrowed, 100_000)
 })
 
+test("a loan taken mid-plan brings its cash that year; one running at plan start brings none", () => {
+  const loan = (extra: Partial<PlanDebt> = {}) => mortgage({ id: "p", kind: "other", balance: 50_000, monthlyPayment: monthlyPayment(50_000, 0.065, 60), start: { type: "year", year: 2029 }, ...extra })
+  const d = plan([loan()])
+  const cash = d.accounts[0].id
+  const rows = simulatePlan(d).rows
+  assert.equal(rows[3].borrowed, 50_000)
+  assert.equal(rows[2].borrowed, 0)
+  close(rows[3].balances[cash] - rows[2].balances[cash], 50_000 - rows[3].debtPayments)
+  assert.equal(simulatePlan(plan([loan({ start: { type: "planStart" } })])).rows[0].borrowed, 0)
+})
+
+test("a loan against a home already owned brings its cash", () => {
+  const rows = simulatePlan(plan([mortgage({ id: "p", balance: 100_000, assetId: "h", start: { type: "year", year: 2029 } })], [home()])).rows
+  assert.equal(rows[3].borrowed, 100_000)
+})
+
+test("a loan financing a purchase the same year lowers its cost instead of bringing cash", () => {
+  const bought = home({ start: { type: "year", year: 2028 } })
+  const rows = simulatePlan(plan([mortgage({ assetId: "h", start: { type: "year", year: 2028 } })], [bought])).rows
+  assert.equal(rows[2].borrowed, 0)
+  close(rows[2].assetPurchases, 600_000 * Math.pow(1 + INFLATION, 2) - 400_000)
+  const received = home({ start: { type: "year", year: 2028 }, acquired: "received" })
+  assert.equal(simulatePlan(plan([mortgage({ assetId: "h", start: { type: "year", year: 2028 } })], [received])).rows[2].borrowed, 0)
+})
+
 test("HELOC: paid off from the sale when the home is sold", () => {
   const rows = simulatePlan(plan([heloc()], [home({ end: { type: "year", year: 2032 } })])).rows
   assert.equal(rows[6].debtBalances.l, 0)
