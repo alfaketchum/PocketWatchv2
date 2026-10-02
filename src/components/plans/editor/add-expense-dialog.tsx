@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { patternForNewLine } from "@/lib/plans/plan-spending-patterns"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
-import { eventsFor } from "./add-milestone-dialog"
+import { eventsFor, useOfferedTemplates } from "./add-milestone-dialog"
 import type { PlanExpense, Timing } from "@/lib/plans/plan-types"
 import { newItemId, type PlanEditorProps } from "../plans-helpers"
 import { TextField } from "./plan-editor-controls"
@@ -128,11 +128,12 @@ export const EXPENSE_EVENTS = eventsFor("Expenses").map((key) => {
 })
 
 function EventChoices({ onEvent }: { onEvent: (key: TemplateKey) => void }) {
+  const offered = useOfferedTemplates()(EXPENSE_EVENTS.map((e) => e.key))
   return (
     <div className="space-y-1.5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Life events</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {EXPENSE_EVENTS.map((e) => (
+        {EXPENSE_EVENTS.filter((e) => offered.includes(e.key)).map((e) => (
           <button
             key={e.key}
             type="button"

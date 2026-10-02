@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { ChoiceChips, InputBlock } from "@/components/fire/fire-input-controls"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { PlanSettings } from "@/lib/plans/plan-types"
 import { STATE_CODES, STATE_TAX } from "@/lib/plans/tax/state-2026"
 import { stateGainsNote } from "@/lib/plans/tax/state-gains-2026"
@@ -42,6 +43,7 @@ function stateNote(state: string | null): string {
 /** Assumptions → Taxes: real 2026 brackets for a state and filing status, or flat effective rates. */
 export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; set: (change: Partial<PlanSettings>) => void }) {
   const brackets = s.taxMode === "brackets"
+  const { isBasic } = usePlanMode()
   return (
     <InputBlock
       title="Taxes"
@@ -51,7 +53,7 @@ export function PlanTaxSettings({ settings: s, set }: { settings: PlanSettings; 
           : "One effective rate for income (and short-term gains) and one for long-term gains. Payroll tax on wages is added on top."
       }
     >
-      <ChoiceChips label="Tax model" options={MODES} value={s.taxMode} onChange={(taxMode) => set({ taxMode })} />
+      {!isBasic && <ChoiceChips label="Tax model" options={MODES} value={s.taxMode} onChange={(taxMode) => set({ taxMode })} />}
       {brackets ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div>

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useFireMode } from "@/hooks/finance/use-fire-profile"
 import { FIRE_NAV_ITEMS } from "@/hooks/use-sidebar-prefs"
-import { FireModeToggle } from "./fire-mode-toggle"
+import { BasicAdvancedToggle } from "@/components/ui/basic-advanced-toggle"
 
 const TAB_LABELS: Record<string, string> = {
   "/fire": "Plan",
@@ -31,7 +31,7 @@ export function FireHeader() {
           <p className="text-xs text-foreground-muted mt-0.5">Financial independence, retire early — when, and how safely</p>
         </div>
         <div className="flex items-center gap-2">
-          <FireModeToggle mode={mode} onChange={setMode} />
+          <BasicAdvancedToggle mode={mode} onChange={setMode} label="FIRE mode" />
         </div>
       </div>
       {tabs.length > 1 && (

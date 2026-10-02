@@ -18,6 +18,7 @@ import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField }
 import { useExpenseCategories } from "./use-expense-categories"
 import { TimingPicker } from "./timing-picker"
 import { AddExpenseDialog, EXPENSE_EVENTS } from "./add-expense-dialog"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
 import type { TemplateKey } from "@/lib/plans/milestone-templates"
 import { ExpensesTable } from "./expenses-table"
@@ -61,6 +62,7 @@ function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update
 /** Spending streams: everyday living costs, kids, travel, a one-time wedding or car. */
 export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const [editingChild, setEditingChild] = useState<string | null>(null)
+  const { isBasic } = usePlanMode()
   const patch = (id: string, change: Partial<PlanExpense>) =>
     update((d) => ({ ...d, expenses: patchItem(d.expenses, id, change) }))
   const recurringTotal = useMemo(
@@ -82,7 +84,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
       <EditorToolbar
         toggle={viewToggle}
         center={
-          doc.expenses.length > 0 ? (
+          !isBasic && doc.expenses.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2">
               <PatternProfileMenu doc={doc} update={update} />
               <SpendingRuleMenu doc={doc} update={update} />
@@ -124,7 +126,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
                 value={e.amount}
                 onChange={(amount) => patch(e.id, { amount })}
               />
-              <GrowthField value={e.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(e.id, { growth })} />
+              {!isBasic && <GrowthField value={e.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(e.id, { growth })} />}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <SelectField
@@ -150,7 +152,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
               )}
             </div>
             <Toggle label="One-time" checked={e.oneTime} onChange={(oneTime) => patch(e.id, { oneTime })} />
-            {!e.oneTime && (
+            {!isBasic && !e.oneTime && (
               <ExpensePatternField
                 pattern={e.pattern}
                 onChange={(pattern) => patch(e.id, { pattern })}

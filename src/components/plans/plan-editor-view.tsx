@@ -1,12 +1,15 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useCallback, useDeferredValue, useEffect, useState, type ComponentType, type ReactNode } from "react"
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { usePlanProjection } from "@/hooks/plans/use-plan-projection"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
+import { advancedSettingsInUse, BASIC_TABS } from "@/lib/plans/plan-mode"
+import { AdvancedInUseNotice } from "./advanced-in-use-notice"
 import type { PlanEditorProps } from "./plans-helpers"
 import { AccountsEditor } from "./editor/accounts-editor"
 import { AssetsDebtsEditor } from "./editor/assets-debts-editor"
@@ -15,7 +18,7 @@ import { ExpensesEditor } from "./editor/expenses-editor"
 import { IncomesEditor } from "./editor/incomes-editor"
 import { MilestonesEditor } from "./editor/milestones-editor"
 import { PlanEditorPanel } from "./editor/plan-editor-panel"
-import { DEFAULT_PLAN_TAB, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
+import { DEFAULT_PLAN_TAB, isPlanTab, planTabFrom, type PlanTab } from "./editor/plan-editor-tabs"
 import { PlanSettingsEditor } from "./editor/plan-settings"
 import { usePlanEditorView, ViewToggle } from "./editor/plan-table"
 import { PlanEditorHeader } from "./plan-editor-header"
@@ -70,8 +73,11 @@ export function PlanEditorView({ planId }: { planId: string }) {
     },
     [pathname],
   )
+  const { isBasic, setMode } = usePlanMode()
+  // Basic has no Cash flow tab: a link to it lands on the first tab.
+  const activeTab = isBasic && !BASIC_TABS.includes(tab) ? DEFAULT_PLAN_TAB : tab
   // The tab highlights at once; its content renders right after, without holding up the click.
-  const shownTab = useDeferredValue(tab)
+  const shownTab = useDeferredValue(activeTab)
   const { isHidden } = usePrivacyMode()
   const [listView, setListView] = usePlanEditorView()
   const [layout, setLayout] = usePlanLayout()
@@ -88,6 +94,18 @@ export function PlanEditorView({ planId }: { planId: string }) {
   )
   const { plan, document, update, isLoading, error, isSaving } = usePlanDocument(planId)
   const { projection, summary, rows, basis, setBasis, view } = usePlanProjection(document)
+  // Basic always shows today's dollars (its toggle is Advanced).
+  useEffect(() => {
+    if (isBasic) setBasis("today")
+  }, [isBasic, setBasis])
+  const advancedInUse = useMemo(() => (isBasic && document ? advancedSettingsInUse(document) : []), [isBasic, document])
+  const openAdvanced = useCallback(
+    (target: string) => {
+      setMode("advanced")
+      if (isPlanTab(target)) setTab(target)
+    },
+    [setMode, setTab],
+  )
 
   if (isLoading) return <EditorSkeleton />
   if (error || !plan || !document || !projection || !summary || !view) {
@@ -106,7 +124,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
   const blocks: Record<PlanBlock, ReactNode> = {
     summary: <PlanSummaryStrip summary={summary} isHidden={isHidden} />,
     tabs: (
-      <PlanEditorPanel tab={tab} onTabChange={setTab}>
+      <PlanEditorPanel tab={activeTab} onTabChange={setTab}>
         {Editor ? (
           <Editor
             doc={document}
@@ -118,7 +136,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
           />
         ) : (
           <>
-            <StressOverviewCard doc={document} planId={planId} />
+            {!isBasic && <StressOverviewCard doc={document} planId={planId} />}
             <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
           </>
         )}
@@ -135,12 +153,13 @@ export function PlanEditorView({ planId }: { planId: string }) {
         isSaving={isSaving}
         basis={basis}
         onBasisChange={setBasis}
-        editingLayout={editingLayout}
+        editingLayout={editingLayout && !isBasic}
         onEditLayout={() => setEditingLayout((on) => !on)}
         onResetLayout={() => setLayout(DEFAULT_LAYOUT)}
       />
+      <AdvancedInUseNotice settings={advancedInUse} onOpen={openAdvanced} />
       {layout.order.map((block) => (
-        <LayoutBlock key={block} block={block} layout={layout} editing={editingLayout} onChange={setLayout}>
+        <LayoutBlock key={block} block={block} layout={layout} editing={editingLayout && !isBasic} onChange={setLayout}>
           {blocks[block]}
         </LayoutBlock>
       ))}

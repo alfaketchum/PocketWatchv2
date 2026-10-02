@@ -5,6 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { EquityGrant, IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { equityValueToday } from "@/lib/plans/engine/engine-equity"
 import { EquityGrantFields } from "./equity-grant-fields"
@@ -75,6 +76,9 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
   const hasRetirement = doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID)
   const [adding, setAdding] = useState(false)
   const [equity, setEquity] = useState<EquityMode | null>(null)
+  const { isBasic } = usePlanMode()
+  // Basic offers no stock pay, but an income that already is one keeps its type.
+  const kindOptions = (kind: IncomeKind) => (isBasic && kind !== "equity" ? KIND_OPTIONS.filter((o) => o.value !== "equity") : KIND_OPTIONS)
 
   return (
     <div className="space-y-3">
@@ -95,7 +99,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
             <div className="col-span-2 lg:col-span-1">
               <TextField label="Name" value={inc.name} onChange={(name) => patch(inc.id, { name })} />
             </div>
-            <SelectField label="Type" value={inc.kind} options={KIND_OPTIONS} onChange={(kind) => patch(inc.id, { kind })} />
+            <SelectField label="Type" value={inc.kind} options={kindOptions(inc.kind)} onChange={(kind) => patch(inc.id, { kind })} />
             {inc.socialSecurity ? (
               <SocialSecurityIncomeFields income={inc} doc={doc} onChange={(change) => patch(inc.id, change)} />
             ) : grantOf(inc) ? (
@@ -117,7 +121,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
                   value={inc.amount}
                   onChange={(amount) => patch(inc.id, { amount })}
                 />
-                <GrowthField value={inc.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(inc.id, { growth })} />
+                {!isBasic && <GrowthField value={inc.growth} inflation={doc.settings.inflation} onChange={(growth) => patch(inc.id, { growth })} />}
               </>
             )}
             {doc.people.length > 1 && (
@@ -129,7 +133,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               />
             )}
           </div>
-          {grantOf(inc) && <EquityGrantFields grant={grantOf(inc)!} firstYear={calendarYearOf(inc.start, doc)} onChange={(change) => patchGrant(inc, change)} />}
+          {!isBasic && grantOf(inc) && <EquityGrantFields grant={grantOf(inc)!} firstYear={calendarYearOf(inc.start, doc)} onChange={(change) => patchGrant(inc, change)} />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {inc.socialSecurity ? (
               <p className="self-center text-[11px] text-foreground-muted">Starts at the claiming age above.</p>
@@ -157,7 +161,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               </span>
             )}
           </div>
-          {!inc.oneTime && (PAYROLL_KINDS.has(inc.kind) || inc.contributions.length > 0) && (
+          {!isBasic && !inc.oneTime && (PAYROLL_KINDS.has(inc.kind) || inc.contributions.length > 0) && (
             <IncomeContributionsEditor
               equity={inc.kind === "equity"}
               contributions={inc.contributions}
@@ -183,7 +187,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
                 setAdding(false)
               },
             },
-            ...EQUITY_CHOICES.map((c) => ({
+            ...(isBasic ? [] : EQUITY_CHOICES).map((c) => ({
               label: c.label,
               icon: c.icon,
               detail: c.detail,
@@ -208,7 +212,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
           onClose={() => setEquity(null)}
         />
       )}
-      <DepositsEditor doc={doc} update={update} />
+      {!isBasic && <DepositsEditor doc={doc} update={update} />}
     </div>
   )
 }

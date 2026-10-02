@@ -5,11 +5,12 @@ import { toast } from "sonner"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { plansFetch, plansKeys, type PlanListItem, type PlanMeta } from "./shared"
 
-export function usePlansList() {
+export function usePlansList({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: plansKeys.list(),
     queryFn: () => plansFetch<{ plans: PlanListItem[] }>(""),
     staleTime: 60_000,
+    enabled,
   })
 }
 

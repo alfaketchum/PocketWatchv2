@@ -10,7 +10,8 @@ import { otherReturn, shownReturn, storedReturn } from "@/lib/plans/plan-returns
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
 import type { AccountMix, PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { newItemId, type PlanEditorProps } from "../plans-helpers"
-import { eventsFor } from "./add-milestone-dialog"
+import { eventsFor, useOfferedTemplates } from "./add-milestone-dialog"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { TextField } from "./plan-editor-controls"
 
 interface AccountChoice {
@@ -36,6 +37,9 @@ const CHOICES: AccountChoice[] = [
   { key: "esop", icon: "handshake", label: "ESOP", detail: "Employee stock plan; paid out after you leave", name: "ESOP", taxTreatment: "traditional", returnRate: DEFAULT_RETURN_RATE },
   { key: "education", icon: "school", label: "529", detail: "Education savings for a child", name: "529 plan", taxTreatment: "education", returnRate: DEFAULT_RETURN_RATE },
 ]
+
+/** Account types Basic leaves out. */
+const ADVANCED_CHOICES = new Set(["company", "esop"])
 
 /** Life events that add accounts (opens the same form as on Milestones). */
 export const ACCOUNT_EVENTS = eventsFor("Accounts").map((key) => MILESTONE_TEMPLATES.find((t) => t.key === key)!)
@@ -71,18 +75,21 @@ function ChoiceTile({ icon, label, detail, onClick }: { icon: string; label: str
 }
 
 function ChoiceGrid({ onPick, onEvent }: { onPick: (c: AccountChoice) => void; onEvent: (key: TemplateKey) => void }) {
+  const { isBasic } = usePlanMode()
+  const offered = useOfferedTemplates()(ACCOUNT_EVENTS.map((t) => t.key))
+  const events = ACCOUNT_EVENTS.filter((t) => offered.includes(t.key))
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {CHOICES.map((c) => (
+        {CHOICES.filter((c) => !isBasic || !ADVANCED_CHOICES.has(c.key)).map((c) => (
           <ChoiceTile key={c.key} icon={c.icon} label={c.label} detail={c.detail} onClick={() => onPick(c)} />
         ))}
       </div>
-      {ACCOUNT_EVENTS.length > 0 && (
+      {events.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">Life events</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {ACCOUNT_EVENTS.map((t) => (
+            {events.map((t) => (
               <ChoiceTile key={t.key} icon={t.icon} label={t.label} detail={t.creates} onClick={() => onEvent(t.key)} />
             ))}
           </div>

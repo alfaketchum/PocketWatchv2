@@ -1,16 +1,18 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import type { FireMode } from "@/lib/fire/fire-types"
 
-const MODES: { value: FireMode; label: string; icon: string }[] = [
+export type BasicAdvanced = "basic" | "advanced"
+
+const MODES: { value: BasicAdvanced; label: string; icon: string }[] = [
   { value: "basic", label: "Basic", icon: "bolt" },
   { value: "advanced", label: "Advanced", icon: "science" },
 ]
 
-export function FireModeToggle({ mode, onChange }: { mode: FireMode; onChange: (mode: FireMode) => void }) {
+/** Segmented Basic / Advanced switch, shared by FIRE and the planner. */
+export function BasicAdvancedToggle({ mode, onChange, label }: { mode: BasicAdvanced; onChange: (mode: BasicAdvanced) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label="FIRE mode" className="inline-flex rounded-xl border border-card-border bg-card p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl border border-card-border bg-card p-0.5">
       {MODES.map((m) => {
         const active = m.value === mode
         return (

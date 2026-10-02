@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { fmtMoney } from "@/components/fire/fire-helpers"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { AssetCostLine } from "@/lib/plans/plan-asset-costs"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import { Badge, Cell, Row, RowButton } from "./plan-table"
@@ -14,6 +15,7 @@ const KIND_LABEL = { home: "Home", vehicle: "Vehicle", other: "Asset" } as const
 export function AssetCostRows({ lines, doc }: { lines: AssetCostLine[]; doc: PlanDocument }) {
   const router = useRouter()
   const pathname = usePathname()
+  const { isBasic } = usePlanMode()
   return (
     <>
       {lines.map(({ expense: e, asset, yearly, followsValue }) => (
@@ -24,14 +26,14 @@ export function AssetCostRows({ lines, doc }: { lines: AssetCostLine[]; doc: Pla
               <Badge>{KIND_LABEL[asset.kind]}</Badge>
             </span>
           </Cell>
-          <Cell />
+          <Cell omit={isBasic} />
           <Cell align="right">
             <span className="px-2 tabular-nums">{fmtMoney(yearly / MONTHS)}</span>
           </Cell>
           <Cell align="right">
             <span className="px-2 tabular-nums">{fmtMoney(yearly)}</span>
           </Cell>
-          <Cell align="right">
+          <Cell align="right" omit={isBasic}>
             <span className="px-2 text-xs text-foreground-muted">{followsValue ? "with value" : "infl."}</span>
           </Cell>
           <Cell>

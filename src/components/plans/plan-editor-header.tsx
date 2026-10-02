@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { BasicAdvancedToggle } from "@/components/ui/basic-advanced-toggle"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { DollarBasis } from "@/lib/plans/plan-types"
 import { PlanGuideButton } from "./guide/plan-guide-dialog"
 import { EditLayoutButton } from "./plan-layout"
 import { DollarsToggle } from "./results/dollars-toggle"
 
-/** Top of a single plan: back link, name, save state and dollar basis. */
+/** Top of a single plan: back link, name, save state, Basic/Advanced and dollar basis. */
 export function PlanEditorHeader({
   planId,
   name,
@@ -28,6 +30,7 @@ export function PlanEditorHeader({
   onEditLayout: () => void
   onResetLayout: () => void
 }) {
+  const { mode, setMode, isBasic } = usePlanMode()
   return (
     <div className="space-y-2">
       <Link href="/plans" className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
@@ -56,28 +59,33 @@ export function PlanEditorHeader({
             </span>
             Money flow
           </Link>
-          <Link href={`/plans/${planId}/trading`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-              candlestick_chart
-            </span>
-            Trading
-          </Link>
-          <Link href={`/plans/${planId}/loans`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-              request_quote
-            </span>
-            Loans
-          </Link>
-          <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
-            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
-              thunderstorm
-            </span>
-            Stress test
-          </Link>
+          {!isBasic && (
+            <>
+              <Link href={`/plans/${planId}/trading`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                  candlestick_chart
+                </span>
+                Trading
+              </Link>
+              <Link href={`/plans/${planId}/loans`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                  request_quote
+                </span>
+                Loans
+              </Link>
+              <Link href={`/plans/${planId}/stress`} className="btn-secondary text-xs inline-flex items-center gap-1.5">
+                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
+                  thunderstorm
+                </span>
+                Stress test
+              </Link>
+            </>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <EditLayoutButton editing={editingLayout} onToggle={onEditLayout} onReset={onResetLayout} />
-          <DollarsToggle value={basis} onChange={onBasisChange} />
+          {!isBasic && <EditLayoutButton editing={editingLayout} onToggle={onEditLayout} onReset={onResetLayout} />}
+          {!isBasic && <DollarsToggle value={basis} onChange={onBasisChange} />}
+          <BasicAdvancedToggle mode={mode} onChange={setMode} label="Planner mode" />
         </div>
       </div>
     </div>

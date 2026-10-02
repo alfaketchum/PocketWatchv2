@@ -5,6 +5,7 @@ import { fmtMoney } from "@/components/fire/fire-helpers"
 import { fullRetirementAge, yearlyBenefit } from "@/lib/plans/social-security"
 import type { PlanDocument, PlanIncome } from "@/lib/plans/plan-types"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { estimatedPia } from "@/lib/plans/ss-plan-earnings"
 import { ClaimAgeSlider } from "./claim-age-slider"
 import { SsEarningsFields } from "./ss-earnings-fields"
@@ -24,23 +25,26 @@ export function SocialSecurityIncomeFields({ income, doc, onChange }: { income: 
       start: { type: "age", personId: person.id, age: claimAge },
     })
   const estimating = details.earnings !== undefined
+  const { isBasic } = usePlanMode()
   const setEarnings = (earnings: [number, number][] | undefined) => {
     const pia = earnings ? (estimatedPia(doc, { ...income, socialSecurity: { ...details, earnings } })?.pia ?? details.pia) : details.pia
     set(pia, details.claimAge, earnings)
   }
   return (
     <>
-      <div className="col-span-full">
-        <ChoiceChips
-          label="Benefit"
-          options={[
-            { value: "enter", label: "Enter my benefit" },
-            { value: "estimate", label: "Estimate from my earnings" },
-          ]}
-          value={estimating ? "estimate" : "enter"}
-          onChange={(v) => setEarnings(v === "estimate" ? [] : undefined)}
-        />
-      </div>
+      {!isBasic && (
+        <div className="col-span-full">
+          <ChoiceChips
+            label="Benefit"
+            options={[
+              { value: "enter", label: "Enter my benefit" },
+              { value: "estimate", label: "Estimate from my earnings" },
+            ]}
+            value={estimating ? "estimate" : "enter"}
+            onChange={(v) => setEarnings(v === "estimate" ? [] : undefined)}
+          />
+        </div>
+      )}
       {estimating ? (
         <div className="self-end text-xs">
           <p className="text-foreground-muted">At full retirement age</p>

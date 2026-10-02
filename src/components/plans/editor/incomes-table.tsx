@@ -1,6 +1,7 @@
 "use client"
 
 import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { IncomeKind, PlanIncome } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
 import { Badge, Cell, CellCheck, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
@@ -21,11 +22,11 @@ const COLUMNS = [
   { label: "Income" },
   { label: "Type", width: "w-36" },
   { label: "Per year", align: "right" as const, width: "w-32" },
-  { label: "Grows / yr", align: "right" as const, width: "w-28" },
+  { label: "Grows / yr", align: "right" as const, width: "w-28", advanced: true },
   { label: "Starts", width: "w-28" },
   { label: "Stops", width: "w-28" },
   { label: "Taxed", align: "center" as const, width: "w-14" },
-  { label: "Payroll", width: "w-36" },
+  { label: "Payroll", width: "w-36", advanced: true },
   { label: "", width: "w-16" },
 ]
 
@@ -42,17 +43,18 @@ function payrollSummary(income: PlanIncome, doc: PlanEditorProps["doc"]): string
 /** Income streams as an editable table; timings and payroll open in detailed view. */
 export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanIncome>) => update((d) => ({ ...d, incomes: patchItem(d.incomes, id, change) }))
+  const { isBasic } = usePlanMode()
   const today = doc.incomes.filter((i) => !i.oneTime && i.start.type === "planStart").reduce((s, i) => s + i.amount, 0)
   return (
     <PlanTable
-      columns={COLUMNS}
+      columns={isBasic ? COLUMNS.filter((c) => !c.advanced) : COLUMNS}
       footer={
         <tr>
           <td className="px-2 py-2" colSpan={2}>
             Income today
           </td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today)}</td>
-          <td colSpan={6} />
+          <td colSpan={isBasic ? 4 : 6} />
         </tr>
       }
     >
@@ -80,21 +82,23 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
               <CellNumber label="Per year" prefix="$" min={0} value={inc.amount} onChange={(amount) => patch(inc.id, { amount })} />
             )}
           </Cell>
-          <Cell align="right">
-            {inc.socialSecurity ? (
-              <span className="block px-2 text-xs text-foreground-muted">claim at {inc.socialSecurity.claimAge}</span>
-            ) : (
-              <CellNumber
-                label="Growth"
-                suffix={inc.growth === null ? "% infl." : inc.growth === 0 ? "% fixed" : "%"}
-                scale={100}
-                min={-0.5}
-                max={1}
-                value={inc.growth ?? doc.settings.inflation}
-                onChange={(growth) => patch(inc.id, { growth })}
-              />
-            )}
-          </Cell>
+          {!isBasic && (
+            <Cell align="right">
+              {inc.socialSecurity ? (
+                <span className="block px-2 text-xs text-foreground-muted">claim at {inc.socialSecurity.claimAge}</span>
+              ) : (
+                <CellNumber
+                  label="Growth"
+                  suffix={inc.growth === null ? "% infl." : inc.growth === 0 ? "% fixed" : "%"}
+                  scale={100}
+                  min={-0.5}
+                  max={1}
+                  value={inc.growth ?? doc.settings.inflation}
+                  onChange={(growth) => patch(inc.id, { growth })}
+                />
+              )}
+            </Cell>
+          )}
           <Cell>
             <TimingCell timing={inc.start} doc={doc} />
           </Cell>
@@ -102,9 +106,11 @@ export function IncomesTable({ doc, update, onEditItem }: PlanEditorProps) {
           <Cell align="center">
             <CellCheck label="Taxable" checked={inc.taxable} onChange={(taxable) => patch(inc.id, { taxable })} />
           </Cell>
-          <Cell>
-            <span className="block truncate px-2 text-xs text-foreground-muted">{payrollSummary(inc, doc)}</span>
-          </Cell>
+          {!isBasic && (
+            <Cell>
+              <span className="block truncate px-2 text-xs text-foreground-muted">{payrollSummary(inc, doc)}</span>
+            </Cell>
+          )}
           <Cell align="center">
             <span className="flex">
               <RowButton icon="edit" label={`Edit ${inc.name} in detailed view`} onClick={() => onEditItem?.(planItemAnchor(inc.id))} />

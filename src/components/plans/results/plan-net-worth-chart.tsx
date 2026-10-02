@@ -14,6 +14,8 @@ import { useChartSeries, type ChartMode, type ChartRow, type Series } from "./us
 import { usePlanColors } from "./use-plan-colors"
 import { useSteadySpending } from "./use-steady-spending"
 import { SpendingImpactChart } from "./spending-impact-chart"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
+import { BASIC_CHART_VIEWS } from "@/lib/plans/plan-mode"
 
 const Y_HEADROOM = 1.03
 /** Stack position of each milestone among those in the same year (0 = lowest). */
@@ -51,6 +53,12 @@ const INFO: Record<ChartMode, string> = {
   taxes:
     "All tax paid each year. Turn on Subcategories to split it: income tax (federal and state, with the AMT and investment-income tax), payroll tax, tax on withdrawals from pre-tax accounts, tax on assets sold, and tax on trading gains.",
   debt: "What you pay on your loans each year, split into principal (paying the loan down) and interest (the cost of borrowing); Subcategories splits it per loan. The dashed line is what's still owed at year end (right axis): it shrinks with the payments and drops to zero early if what a loan is for is sold.",
+}
+
+/** The chart views offered: Debt only with debt, and Basic's short list. */
+function chartModes(hasDebt: boolean, basic: boolean): ChartMode[] {
+  const all: ChartMode[] = ["networth", "cashflow", "income", "expenses", ...(hasDebt ? (["debt"] as const) : []), "taxes", "accounts"]
+  return basic ? all.filter((m) => BASIC_CHART_VIEWS.includes(m)) : all
 }
 
 /** Remembered per browser: whether the chart shows subcategories. */
@@ -198,8 +206,12 @@ interface Props {
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
 export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden, panelSide = "right" }: Props) {
-  const [mode, setMode] = useState<ChartMode>("networth")
-  const [detail, setDetailState] = useState(false)
+  const [pickedMode, setMode] = useState<ChartMode>("networth")
+  const [savedDetail, setDetailState] = useState(false)
+  // Basic: Net worth, Income and Expenses, without subcategories.
+  const { isBasic } = usePlanMode()
+  const mode = isBasic && !BASIC_CHART_VIEWS.includes(pickedMode) ? "networth" : pickedMode
+  const detail = savedDetail && !isBasic
   useEffect(() => setDetailState(readDetail()), [])
   const setDetail = useCallback((on: boolean) => {
     setDetailState(on)
@@ -221,7 +233,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const { view, points, series, nwPoints, hasDebt } = useChartSeries(doc, rows, mode, detail)
   const { netWorth: nwColors } = usePlanColors()
   // Expenses view: the dashed line is the plan without its spending rule, or with every line steady.
-  const baseline = useSteadySpending(doc, basis, view === "expenses")
+  const baseline = useSteadySpending(doc, basis, view === "expenses" && !isBasic)
   const steady = baseline?.values ?? null
   const plotPoints = useMemo(() => {
     if (steady) return points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 }))
@@ -263,7 +275,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       eyebrow={EYEBROW[view]}
       title={basis === "today" ? "In today's dollars" : "In future dollars"}
       info={INFO[view]}
-      center={<ModeToggle value={view} onChange={setMode} modes={hasDebt ? ["networth", "cashflow", "income", "expenses", "debt", "taxes", "accounts"] : ["networth", "cashflow", "income", "expenses", "taxes", "accounts"]} />}
+      center={<ModeToggle value={view} onChange={setMode} modes={chartModes(hasDebt, isBasic)} />}
       right={
         <div className="flex items-center gap-3">
           {selected !== null && focused === null && nwPoints[selected] && (
@@ -278,7 +290,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               View {nwPoints[selected].year} alone
             </button>
           )}
-          {view !== "accounts" && <DetailToggle checked={detail} onChange={setDetail} />}
+          {!isBasic && view !== "accounts" && <DetailToggle checked={detail} onChange={setDetail} />}
         </div>
       }
     >
@@ -323,7 +335,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
             marks={marks}
             markColor={markColor}
           />
-          {view === "expenses" && doc.expenses.some((e) => !e.oneTime) && (
+          {!isBasic && view === "expenses" && doc.expenses.some((e) => !e.oneTime) && (
             <div className="mt-4">
               <SpendingImpactChart doc={doc} isHidden={isHidden} />
             </div>

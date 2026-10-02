@@ -29,6 +29,8 @@ export function paysWages(income: PlanIncome): boolean {
 export const DEFAULT_CASH_RETURN = 0.02
 export const DEFAULT_RETIREMENT_AGE = 65
 export const DEFAULT_PERSON_AGE = 35
+/** Cash kept on hand in a new plan (today's dollars). */
+export const DEFAULT_CASH_BUFFER = 20_000
 
 /** Withdrawal order used for accounts missing from the plan's own order. */
 export const DEFAULT_WITHDRAWAL_ORDER: TaxTreatment[] = ["cash", "taxable", "traditional", "hsa", "roth"]
@@ -64,7 +66,7 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
       inflation: 0.03,
       incomeTaxRate: 0.2,
       capitalGainsRate: 0.15,
-      cashBuffer: 20_000,
+      cashBuffer: DEFAULT_CASH_BUFFER,
       bufferAccountId: null,
       protectBuffer: true,
       taxMode: "brackets",

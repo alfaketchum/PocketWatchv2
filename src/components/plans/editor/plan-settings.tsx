@@ -3,6 +3,7 @@
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { InputBlock, inputBlockAnchor, InputBlockRows } from "@/components/fire/fire-input-controls"
 import { PlanCreditSettings } from "./plan-credit-settings"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanPerson, PlanSettings } from "@/lib/plans/plan-types"
 import { removePerson } from "@/lib/plans/plan-edits"
@@ -53,11 +54,13 @@ function PersonFields({
 
 /** Section titles in page order (they match each InputBlock's title), for the jump links. */
 const SECTIONS = ["People", "Timeline", "Inflation", "Taxes", "Social Security outlook", "Credit score", "Changes over time"]
+/** Sections Basic shows; the rest are Advanced. */
+const BASIC_SECTIONS = SECTIONS.slice(0, 4)
 
-function JumpLinks() {
+function JumpLinks({ sections }: { sections: string[] }) {
   return (
     <nav aria-label="Assumptions sections" className="flex flex-wrap gap-1.5 pb-1">
-      {SECTIONS.map((title) => (
+      {sections.map((title) => (
         <a
           key={title}
           href={`#${inputBlockAnchor(title)}`}
@@ -74,10 +77,11 @@ function JumpLinks() {
 export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
   const set = (change: Partial<PlanSettings>) => update((d) => ({ ...d, settings: { ...d.settings, ...change } }))
   const s = doc.settings
+  const { isBasic } = usePlanMode()
 
   return (
     <div>
-      <JumpLinks />
+      <JumpLinks sections={isBasic ? BASIC_SECTIONS : SECTIONS} />
       <div className="divide-y divide-card-border">
         <InputBlockRows>
           <InputBlock title="People" description="Birth dates keep everyone's age right as the years pass.">
@@ -100,9 +104,9 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
             )}
           </InputBlock>
           <InputBlock title="Timeline" description="The plan ends when the first person reaches the end age.">
-            <div className="grid max-w-md grid-cols-3 gap-2">
+            <div className={`grid max-w-md gap-2 ${isBasic ? "grid-cols-2" : "grid-cols-3"}`}>
               <FireNumberField label="Starts (year)" min={1900} max={2200} value={s.startYear} onChange={(startYear) => set({ startYear })} />
-              <FireNumberField label="Month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />
+              {!isBasic && <FireNumberField label="Month" min={1} max={12} value={s.startMonth} onChange={(startMonth) => set({ startMonth })} />}
               <FireNumberField label="Until age" min={1} max={120} value={s.endAge} onChange={(endAge) => set({ endAge })} />
             </div>
           </InputBlock>
@@ -110,9 +114,13 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
             <InflationSource doc={doc} update={update} />
           </InputBlock>
           <PlanTaxSettings settings={s} set={set} />
-          <SocialSecurityOutlook settings={s} set={set} />
-          <PlanCreditSettings doc={doc} set={set} />
-          <AdjustmentsEditor doc={doc} update={update} />
+          {!isBasic && (
+            <>
+              <SocialSecurityOutlook settings={s} set={set} />
+              <PlanCreditSettings doc={doc} set={set} />
+              <AdjustmentsEditor doc={doc} update={update} />
+            </>
+          )}
         </InputBlockRows>
       </div>
     </div>

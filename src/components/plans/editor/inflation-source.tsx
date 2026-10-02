@@ -5,6 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { fmtPct } from "@/components/fire/fire-helpers"
 import { useMarketInflation } from "@/hooks/plans/use-market-inflation"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { equivalentRate, marketPath, marketRateFor, marketSegments } from "@/lib/plans/plan-inflation"
 import { timingContext } from "@/lib/plans/plan-timing"
 import { keepRealReturns, returnBasisOf, withSettings } from "@/lib/plans/plan-returns"
@@ -36,6 +37,7 @@ function marketSettings(mode: Mode, m: MarketInflation, years: number): Partial<
  */
 export function InflationSource({ doc, update, compact }: { doc: PlanDocument; update: PlanEditorProps["update"]; compact?: boolean }) {
   const s = doc.settings
+  const { isBasic } = usePlanMode()
   const set = (change: Partial<PlanSettings>) => update((d) => withSettings(d, change))
   // The inflation the account returns were entered against; changing inflation offers to keep their real value.
   const [basis, setBasis] = useState(s.inflation)
@@ -71,7 +73,7 @@ export function InflationSource({ doc, update, compact }: { doc: PlanDocument; u
             onChange={(inflation) => set({ inflation, inflationMode: "custom" })}
           />
         </div>
-        <ChoiceChips label="Inflation source" options={MODES} value={mode} onChange={choose} />
+        {!isBasic && <ChoiceChips label="Inflation source" options={MODES} value={mode} onChange={choose} />}
       </div>
       <p className="text-[11px] text-foreground-muted">
         {mode === "custom" && (live ? `The bond market expects about ${fmtPct(marketRateFor(live, years).rate, 2)} a year over a plan this long (TIPS breakeven, ${fmtDate(live.asOf)}).` : market.isError ? "Market inflation is unavailable right now." : "Loading what the bond market expects…")}
@@ -83,7 +85,7 @@ export function InflationSource({ doc, update, compact }: { doc: PlanDocument; u
           </button>
         )}
       </p>
-      {Math.abs(shift) >= MIN_SHIFT && doc.accounts.length > 0 && (
+      {!isBasic && Math.abs(shift) >= MIN_SHIFT && doc.accounts.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-[11px] text-foreground">
           <span>
             Inflation went {shift < 0 ? "down" : "up"} {fmtPct(Math.abs(shift), 2)}. Account returns are before inflation, so their

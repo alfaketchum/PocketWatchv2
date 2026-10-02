@@ -1,5 +1,7 @@
 "use client"
 
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
+import { BASIC_TABS } from "@/lib/plans/plan-mode"
 import { cn } from "@/lib/utils"
 
 export type PlanTab = "assumptions" | "milestones" | "accounts" | "income" | "expenses" | "assets" | "cashflow" | "overview"
@@ -46,9 +48,11 @@ export function PlanEditorTabs({
   open?: boolean
   onToggle?: () => void
 }) {
+  const { isBasic } = usePlanMode()
+  const tabs = isBasic ? PLAN_TABS.filter((t) => BASIC_TABS.includes(t.value)) : PLAN_TABS
   return (
     <nav className="flex -mb-px overflow-x-auto scrollbar-hide" role="tablist">
-      {PLAN_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = tab.value === value
         return (
           <button

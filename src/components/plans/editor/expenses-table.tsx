@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { childExpenses } from "@/lib/plans/plan-children"
 import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-patterns"
@@ -35,19 +36,21 @@ function sorted(expenses: PlanExpense[], sort: Sort): PlanExpense[] {
   })
 }
 
-function columns(sort: Sort, setSort: (s: Sort) => void) {
+/** Basic leaves out "As you age" (spending patterns) and "Grows / yr". */
+function columns(sort: Sort, setSort: (s: Sort) => void, basic: boolean) {
   const by = (key: SortKey) => ({ sort: sort?.key === key ? sort.dir : null, onSort: () => setSort(nextSort(sort, key)) })
-  return [
+  const all = [
     { label: "Expense", ...by("name") },
-    { label: "As you age", width: "w-[27rem]" },
+    { label: "As you age", width: "w-[27rem]", advanced: true },
     { label: "Per month", align: "right" as const, width: "w-28", ...by("amount") },
     { label: "Per year", align: "right" as const, width: "w-32", ...by("amount") },
-    { label: "Grows / yr", align: "right" as const, width: "w-28" },
+    { label: "Grows / yr", align: "right" as const, width: "w-28", advanced: true },
     { label: "Starts", width: "w-32" },
     { label: "Stops", width: "w-32" },
     { label: "Once", align: "center" as const, width: "w-14" },
     { label: "", width: "w-16" },
   ]
+  return basic ? all.filter((c) => !c.advanced) : all
 }
 
 const Dash = () => <span className="px-2 text-foreground-muted">—</span>
@@ -61,18 +64,19 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
   const ages = useMemo(() => ({ now: primaryAge(doc), retire: retirementAge(doc) }), [doc])
   const assetLines = useMemo(() => assetCostLines(doc), [doc])
   const [sort, setSort] = useState<Sort>(null)
+  const { isBasic } = usePlanMode()
   const today = doc.expenses.filter((e) => !e.oneTime && e.start.type === "planStart").reduce((s, e) => s + e.amount, 0)
   return (
     <PlanTable
-      columns={columns(sort, setSort)}
-      minWidth="min-w-[1080px]"
+      columns={columns(sort, setSort, isBasic)}
+      minWidth={isBasic ? "min-w-[640px]" : "min-w-[1080px]"}
       footer={
         <tr>
           <td className="px-2 py-2">Spending today (excl. kids, home &amp; vehicle)</td>
-          <td />
+          {!isBasic && <td />}
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today / MONTHS)}</td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today)}</td>
-          <td colSpan={5} />
+          <td colSpan={isBasic ? 4 : 5} />
         </tr>
       }
     >
@@ -81,7 +85,7 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
           <Cell>
             <CellText label="Expense name" value={e.name} onChange={(name) => patch(e.id, { name })} />
           </Cell>
-          <Cell>
+          <Cell omit={isBasic}>
             {e.oneTime ? (
               <Dash />
             ) : (
@@ -100,7 +104,7 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
           <Cell align="right">
             <CellNumber label={e.oneTime ? "Amount" : "Per year"} prefix="$" min={0} value={e.amount} onChange={(amount) => patch(e.id, { amount })} />
           </Cell>
-          <Cell align="right">
+          <Cell align="right" omit={isBasic}>
             <CellNumber
               label="Growth"
               suffix={e.growth === null ? "% infl." : "%"}
@@ -139,14 +143,14 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
               <Badge>Kids</Badge>
             </span>
           </Cell>
-          <Cell />
+          <Cell omit={isBasic} />
           <Cell align="right">
             <span className="px-2 tabular-nums">{fmtMoney(e.amount / MONTHS)}</span>
           </Cell>
           <Cell align="right">
             <span className="px-2 tabular-nums">{fmtMoney(e.amount)}</span>
           </Cell>
-          <Cell align="right">
+          <Cell align="right" omit={isBasic}>
             <span className="px-2 tabular-nums">{e.growth === null ? "infl." : `${(e.growth * 100).toFixed(1)}%`}</span>
           </Cell>
           <Cell>

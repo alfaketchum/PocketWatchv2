@@ -1,6 +1,7 @@
 "use client"
 
 import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
@@ -10,14 +11,19 @@ import { Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } fro
 
 const TREATMENTS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).map((value) => ({ value, label: TAX_TREATMENT_LABELS[value] }))
 
-const columns = (real: boolean) => [
+/** Basic leaves out the taxable-account columns (cost basis, short-term gains, realized / yr). */
+const columns = (real: boolean, basic: boolean) => [
   { label: "Account" },
   { label: "Tax type", width: "w-44" },
   { label: "Balance today", align: "right" as const, width: "w-36" },
   { label: real ? "Return / yr (after infl.)" : "Return / yr (before infl.)", align: "right" as const, width: "w-32" },
-  { label: "Cost basis", align: "right" as const, width: "w-36" },
-  { label: "Short-term gains", align: "right" as const, width: "w-28" },
-  { label: "Realized / yr", align: "right" as const, width: "w-28" },
+  ...(basic
+    ? []
+    : [
+        { label: "Cost basis", align: "right" as const, width: "w-36" },
+        { label: "Short-term gains", align: "right" as const, width: "w-28" },
+        { label: "Realized / yr", align: "right" as const, width: "w-28" },
+      ]),
   { label: "", width: "w-10" },
 ]
 
@@ -25,16 +31,17 @@ const columns = (real: boolean) => [
 export function AccountsTable({ doc, update }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAccount>) => update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
   const total = doc.accounts.reduce((s, a) => s + a.balance, 0)
+  const { isBasic } = usePlanMode()
   return (
     <PlanTable
-      columns={columns(returnBasisOf(doc.settings) === "real")}
+      columns={columns(returnBasisOf(doc.settings) === "real", isBasic)}
       footer={
         <tr>
           <td className="px-2 py-2" colSpan={2}>
             {doc.accounts.length} accounts
           </td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(total)}</td>
-          <td colSpan={5} />
+          <td colSpan={isBasic ? 2 : 5} />
         </tr>
       }
     >
@@ -55,43 +62,47 @@ export function AccountsTable({ doc, update }: PlanEditorProps) {
               ≈ {fmtPct(otherReturn(a.returnRate, doc.settings).value, 1)} {returnBasisOf(doc.settings) === "real" ? "before infl." : "after infl."}
             </span>
           </Cell>
-          <Cell align="right">
-            {a.taxTreatment === "taxable" ? (
-              <CellNumber label="Cost basis" prefix="$" min={0} value={a.costBasis ?? a.balance} onChange={(costBasis) => patch(a.id, { costBasis })} />
-            ) : (
-              <span className="px-2 text-foreground-muted">—</span>
-            )}
-          </Cell>
-          <Cell align="right">
-            {a.taxTreatment === "taxable" ? (
-              <CellNumber
-                label="Short-term gains"
-                suffix="%"
-                scale={100}
-                min={0}
-                max={1}
-                value={a.shortTermShare ?? 0}
-                onChange={(shortTermShare) => patch(a.id, { shortTermShare })}
-              />
-            ) : (
-              <span className="px-2 text-foreground-muted">—</span>
-            )}
-          </Cell>
-          <Cell align="right">
-            {a.taxTreatment === "taxable" ? (
-              <CellNumber
-                label="Realized each year"
-                suffix="%"
-                scale={100}
-                min={0}
-                max={1}
-                value={a.realizedShare ?? 0}
-                onChange={(realizedShare) => patch(a.id, { realizedShare })}
-              />
-            ) : (
-              <span className="px-2 text-foreground-muted">—</span>
-            )}
-          </Cell>
+          {!isBasic && (
+            <>
+              <Cell align="right">
+                {a.taxTreatment === "taxable" ? (
+                  <CellNumber label="Cost basis" prefix="$" min={0} value={a.costBasis ?? a.balance} onChange={(costBasis) => patch(a.id, { costBasis })} />
+                ) : (
+                  <span className="px-2 text-foreground-muted">—</span>
+                )}
+              </Cell>
+              <Cell align="right">
+                {a.taxTreatment === "taxable" ? (
+                  <CellNumber
+                    label="Short-term gains"
+                    suffix="%"
+                    scale={100}
+                    min={0}
+                    max={1}
+                    value={a.shortTermShare ?? 0}
+                    onChange={(shortTermShare) => patch(a.id, { shortTermShare })}
+                  />
+                ) : (
+                  <span className="px-2 text-foreground-muted">—</span>
+                )}
+              </Cell>
+              <Cell align="right">
+                {a.taxTreatment === "taxable" ? (
+                  <CellNumber
+                    label="Realized each year"
+                    suffix="%"
+                    scale={100}
+                    min={0}
+                    max={1}
+                    value={a.realizedShare ?? 0}
+                    onChange={(realizedShare) => patch(a.id, { realizedShare })}
+                  />
+                ) : (
+                  <span className="px-2 text-foreground-muted">—</span>
+                )}
+              </Cell>
+            </>
+          )}
           <Cell align="center">
             <RowButton icon="delete" label={`Remove ${a.name}`} danger onClick={() => update((d) => removeAccount(d, a.id))} />
           </Cell>

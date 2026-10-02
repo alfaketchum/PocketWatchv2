@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { InputBlock } from "@/components/fire/fire-input-controls"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
@@ -78,6 +79,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
   const remove = (id: string) =>
     update((d) => removeAsset(d, id))
   const [disposeId, setDisposeId] = useState<string | null>(null)
+  const { isBasic } = usePlanMode()
   return (
     <InputBlock
       title="Assets"
@@ -116,23 +118,25 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               />
             )}
           </div>
-          <div className="grid grid-cols-2 gap-2 items-end">
-            <SelectField
-              label="How acquired"
-              value={a.acquired ?? "purchase"}
-              options={ACQUIRED}
-              onChange={(acquired) => patch(a.id, { acquired })}
-            />
-            <FireNumberField
-              label="Cost basis (for tax on sale)"
-              prefix="$"
-              min={0}
-              value={a.costBasis ?? a.value}
-              hint={a.costBasis == null ? "Default: its value when acquired (stepped-up if inherited)." : undefined}
-              onChange={(costBasis) => patch(a.id, { costBasis })}
-            />
-          </div>
-          {a.kind === "vehicle" && (
+          {!isBasic && (
+            <div className="grid grid-cols-2 gap-2 items-end">
+              <SelectField
+                label="How acquired"
+                value={a.acquired ?? "purchase"}
+                options={ACQUIRED}
+                onChange={(acquired) => patch(a.id, { acquired })}
+              />
+              <FireNumberField
+                label="Cost basis (for tax on sale)"
+                prefix="$"
+                min={0}
+                value={a.costBasis ?? a.value}
+                hint={a.costBasis == null ? "Default: its value when acquired (stepped-up if inherited)." : undefined}
+                onChange={(costBasis) => patch(a.id, { costBasis })}
+              />
+            </div>
+          )}
+          {!isBasic && a.kind === "vehicle" && (
             <div className="grid grid-cols-2 gap-2 items-end">
               <FireNumberField
                 label="Replace every (years)"
@@ -148,15 +152,17 @@ function AssetsList({ doc, update }: PlanEditorProps) {
             <TimingPicker label="Owned from" value={a.start} doc={doc} allow={ASSET_START_TYPES} onChange={(start) => patch(a.id, { start })} />
             <TimingPicker label="Sold" value={a.end} doc={doc} allow={ASSET_END_TYPES} onChange={(end) => patch(a.id, { end })} />
           </div>
-          <button type="button" onClick={() => setDisposeId(a.id)} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
-            <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
-              sell
-            </span>
-            {a.kind === "home" ? "Sell or downsize" : "Sell"}
-          </button>
-          {a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
+          {!isBasic && (
+            <button type="button" onClick={() => setDisposeId(a.id)} className="btn-ghost h-7 gap-1 px-1.5 text-xs text-foreground-muted hover:text-foreground">
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
+                sell
+              </span>
+              {a.kind === "home" ? "Sell or downsize" : "Sell"}
+            </button>
+          )}
+          {!isBasic && a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
           <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
-          <AssetRunningCostsFields asset={a} state={doc.settings.state} onChange={(runningCosts) => patch(a.id, { runningCosts })} />
+          {!isBasic && <AssetRunningCostsFields asset={a} state={doc.settings.state} onChange={(runningCosts) => patch(a.id, { runningCosts })} />}
         </ItemCard>
       ))}
       {disposeId && <DisposeAssetDialog doc={doc} update={update} assetId={disposeId} onClose={() => setDisposeId(null)} />}
@@ -180,6 +186,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))
   const assetOptions = [{ value: NO_ASSET, label: "None" }, ...doc.assets.map((a) => ({ value: a.id, label: a.name }))]
   const [scheduleId, setScheduleId] = useState<string | null>(null)
+  const { isBasic } = usePlanMode()
   return (
     <InputBlock
       title="Debts"
@@ -205,7 +212,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
                 <Badge>From asset</Badge>
                 <span className="ml-auto text-[11px] text-primary">Edit on the asset →</span>
               </button>
-              <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} />
+              {!isBasic && <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} />}
             </div>
           ))}
         </div>
@@ -259,7 +266,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
             {!heloc && debt.balance > 0 && debt.monthlyPayment <= (debt.balance * debt.rate) / 12 && (
               <p className="text-[11px] text-warning">This payment doesn&apos;t cover the interest, so the balance grows.</p>
             )}
-            <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} label />
+            {!isBasic && <ScheduleButton name={debt.name} onClick={() => setScheduleId(debt.id)} label />}
           </ItemCard>
         )
       })}

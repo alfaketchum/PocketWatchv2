@@ -5,7 +5,9 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { MILESTONE_TEMPLATES, type TemplateKey } from "@/lib/plans/milestone-templates"
+import { BASIC_MILESTONE_TEMPLATES } from "@/lib/plans/plan-mode"
 import type { PlanEditorProps } from "../plans-helpers"
 import { ChildDialog } from "./child-dialog"
 import { TemplateFields } from "./milestone-template-forms"
@@ -59,6 +61,12 @@ export const FUTURE_EVENT_GROUPS: { label: string; keys: TemplateKey[] }[] = [
   { label: "Money coming in", keys: ["inheritance", "windfall"] },
   { label: "Other", keys: ["custom"] },
 ]
+
+/** Narrows template keys to the ones offered in the current mode (Basic leaves out divorce, elder care…). */
+export function useOfferedTemplates(): (keys: TemplateKey[]) => TemplateKey[] {
+  const { isBasic } = usePlanMode()
+  return (keys) => (isBasic ? keys.filter((k) => BASIC_MILESTONE_TEMPLATES.includes(k)) : keys)
+}
 
 /** A choice that acts right away instead of opening a template form (e.g. a plain new income). */
 export interface InstantChoice {
@@ -135,8 +143,9 @@ function EventCard({ t, onPick }: { t: (typeof MILESTONE_TEMPLATES)[number]; onP
 
 function GroupedTemplates({ groups, onPick }: { groups: typeof FUTURE_EVENT_GROUPS; onPick: (key: TemplateKey) => void }) {
   const [filter, setFilter] = useState<EventFilter>("all")
+  const offered = useOfferedTemplates()
   const shown = groups
-    .map((g) => ({ ...g, keys: filter === "only" ? g.keys.filter((k) => !EVENT_TABS[k]) : g.keys }))
+    .map((g) => ({ ...g, keys: offered(filter === "only" ? g.keys.filter((k) => !EVENT_TABS[k]) : g.keys) }))
     .filter((g) => g.keys.length > 0)
   return (
     <div className="space-y-3">
@@ -159,12 +168,13 @@ function GroupedTemplates({ groups, onPick }: { groups: typeof FUTURE_EVENT_GROU
 }
 
 function TemplateGrid({ keys, instant, onPick }: { keys: TemplateKey[]; instant: InstantChoice[]; onPick: (key: TemplateKey) => void }) {
+  const shown = useOfferedTemplates()(keys)
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {instant.map((c) => (
         <ChoiceButton key={c.label} icon={c.icon} label={c.label} detail={c.detail} onClick={c.onPick} />
       ))}
-      {MILESTONE_TEMPLATES.filter((t) => keys.includes(t.key)).map((t) => (
+      {MILESTONE_TEMPLATES.filter((t) => shown.includes(t.key)).map((t) => (
         <ChoiceButton
           key={t.key}
           icon={t.icon}

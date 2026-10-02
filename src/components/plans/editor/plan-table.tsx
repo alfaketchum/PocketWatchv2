@@ -183,7 +183,19 @@ export function Row({ children, muted }: { children: ReactNode; muted?: boolean 
   return <tr className={cn("border-t border-card-border hover:bg-row-hover", muted && "text-foreground-muted")}>{children}</tr>
 }
 
-export function Cell({ children, align, className }: { children?: ReactNode; align?: "left" | "right" | "center"; className?: string }) {
+/** `omit` drops the cell, for a column the table leaves out (Basic mode). */
+export function Cell({
+  children,
+  align,
+  className,
+  omit,
+}: {
+  children?: ReactNode
+  align?: "left" | "right" | "center"
+  className?: string
+  omit?: boolean
+}) {
+  if (omit) return null
   return (
     <td className={cn("px-1.5 py-1 align-middle", align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left", className)}>
       {children}

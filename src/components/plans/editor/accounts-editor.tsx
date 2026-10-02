@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { AddMilestoneDialog } from "./add-milestone-dialog"
 import { ACCOUNT_EVENTS, AddAccountDialog } from "./add-account-dialog"
 import type { TemplateKey } from "@/lib/plans/milestone-templates"
@@ -29,6 +30,7 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
+  const { isBasic } = usePlanMode()
   const [adding, setAdding] = useState(false)
   const [event, setEvent] = useState<TemplateKey | null>(null)
 
@@ -60,7 +62,7 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
       </EditorToolbar>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RefreshBalancesButton doc={doc} update={update} />
-        <ReturnBasisToggle doc={doc} update={update} />
+        {!isBasic && <ReturnBasisToggle doc={doc} update={update} />}
       </div>
       <PlanNewSources doc={doc} update={update} planCreatedAt={planCreatedAt} show="account" />
       {doc.accounts.length === 0 && <EmptyNote>No accounts yet. Surplus cash has nowhere to go until you add one.</EmptyNote>}
@@ -102,7 +104,7 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
                 onChange={(owner) => patch(a.id, { owner })}
               />
             )}
-            {a.drainByYear != null && (
+            {!isBasic && a.drainByYear != null && (
               <div className="col-span-2 lg:col-span-4 flex flex-wrap items-end gap-3">
                 <div className="w-44">
                   <FireNumberField
@@ -124,7 +126,7 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
                 never used for other spending.
               </p>
             )}
-            {a.taxTreatment === "taxable" && (
+            {!isBasic && a.taxTreatment === "taxable" && (
               <>
                 <FireNumberField
                   label="Cost basis"
@@ -159,11 +161,13 @@ export function AccountsEditor({ doc, update, view, onEditItem, viewToggle, plan
           </div>
         </ItemCard>
       ))}
-      <p className="text-[11px] text-foreground-muted">
-        {returnBasisOf(doc.settings) === "real"
-          ? `Returns are after inflation: what your money grows in buying power. The plan adds ${fmtPct(doc.settings.inflation, 1)} inflation on top (5% real is ${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} before inflation), and they stay put if you change inflation.`
-          : `Returns are before inflation, as usually quoted. The plan takes ${fmtPct(doc.settings.inflation, 1)} inflation off to see what they buy (${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} here is 5% after inflation). Prefer to think after inflation? Switch "Returns are" above.`}
-      </p>
+      {!isBasic && (
+        <p className="text-[11px] text-foreground-muted">
+          {returnBasisOf(doc.settings) === "real"
+            ? `Returns are after inflation: what your money grows in buying power. The plan adds ${fmtPct(doc.settings.inflation, 1)} inflation on top (5% real is ${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} before inflation), and they stay put if you change inflation.`
+            : `Returns are before inflation, as usually quoted. The plan takes ${fmtPct(doc.settings.inflation, 1)} inflation off to see what they buy (${fmtPct(nominalRate(0.05, doc.settings.inflation), 2)} here is 5% after inflation). Prefer to think after inflation? Switch "Returns are" above.`}
+        </p>
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { childMilestones, supportStartAge } from "@/lib/plans/plan-children"
 import type { PlanChild, PlanDocument, Timing } from "@/lib/plans/plan-types"
 import { renameChild } from "@/lib/plans/plan-edits"
@@ -34,6 +35,7 @@ function MilestoneLine({ doc, child }: { doc: PlanDocument; child: PlanChild }) 
 export function ChildFields({ child, doc, update }: { child: PlanChild; doc: PlanDocument; update: (u: DocUpdater) => void }) {
   const patch = (change: Partial<PlanChild>) => update((d) => ({ ...d, children: patchItem(d.children, child.id, change) }))
   const supportFrom = child.birthYear + supportStartAge(child)
+  const { isBasic } = usePlanMode()
   return (
     <>
       <div className="grid grid-cols-2 gap-2 items-end">
@@ -72,7 +74,7 @@ export function ChildFields({ child, doc, update }: { child: PlanChild; doc: Pla
         </div>
       </ChildSection>
       <ChildCollegeFields child={child} patch={patch} />
-      <Child529Fields child={child} doc={doc} patch={patch} update={update} />
+      {!isBasic && <Child529Fields child={child} doc={doc} patch={patch} update={update} />}
       <ChildSection
         title="Support after college"
         description={`Help beyond ${child.college.enabled ? "college" : "childhood"}: rent, a car, a first apartment. Starts in ${supportFrom}.`}

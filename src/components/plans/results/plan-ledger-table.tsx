@@ -3,6 +3,8 @@
 import { memo, useEffect, useMemo, useState } from "react"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
+import { usePlanMode } from "@/hooks/plans/use-plan-mode"
+import { BASIC_LEDGER_VIEW } from "@/lib/plans/plan-mode"
 import { cn } from "@/lib/utils"
 import type { DollarBasis, PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import { columnsFor, LEDGER_VIEWS, lifetimeValue, startBalances, type LedgerView } from "./ledger-columns"
@@ -40,8 +42,11 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
   fileName?: string
 }) {
   const [expanded, setExpanded] = useState<number | null>(null)
-  const [view, setViewState] = useState<LedgerView>("summary")
+  const [savedView, setViewState] = useState<LedgerView>("summary")
   useEffect(() => setViewState(readView()), [])
+  // Basic shows only the summary columns; the saved choice comes back in Advanced.
+  const { isBasic } = usePlanMode()
+  const view = isBasic ? BASIC_LEDGER_VIEW : savedView
   const setView = (v: LedgerView) => {
     setViewState(v)
     try {
@@ -61,7 +66,7 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
       info="Growth is applied to start-of-year balances; the year's income, spending and contributions land at year end. Hover a column name for what it holds; click a year for detail. * = itemized deduction."
       right={
         <div className="flex flex-wrap items-center gap-3">
-          <ChoiceChips label="Columns" options={VIEW_OPTIONS} value={view} onChange={setView} />
+          {!isBasic && <ChoiceChips label="Columns" options={VIEW_OPTIONS} value={view} onChange={setView} />}
           <button
             type="button"
             onClick={() => downloadLedgerCsv(doc, rows, `${fileName}-${basis === "today" ? "todays-dollars" : "future-dollars"}.csv`)}
