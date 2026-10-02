@@ -26,15 +26,11 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
       /* private mode: stays for this visit */
     }
   }
-  const pick = (next: PlanTab) => {
-    onTabChange(next)
-    if (!open) setOpen(true)
-  }
   return (
     <section className="bg-card border border-card-border rounded-2xl" style={{ boxShadow: "var(--shadow-sm)" }}>
       <div className={`flex items-stretch gap-2 px-2 sm:px-4 ${open ? "border-b border-card-border" : ""}`}>
         <div className="min-w-0 flex-1">
-          <PlanEditorTabs value={tab} onChange={pick} open={open} onToggle={() => setOpen(!open)} />
+          <PlanEditorTabs value={tab} onChange={onTabChange} open={open} onToggle={() => setOpen(!open)} />
         </div>
         <div className="flex shrink-0 items-center">
           <button
