@@ -2,13 +2,15 @@
 
 import { useState } from "react"
 import { FireNumberField } from "@/components/fire/fire-number-field"
-import { AddMilestoneDialog, eventsFor } from "./add-milestone-dialog"
+import { AddMilestoneDialog } from "./add-milestone-dialog"
+import { ACCOUNT_EVENTS, AddAccountDialog } from "./add-account-dialog"
+import type { TemplateKey } from "@/lib/plans/milestone-templates"
 import { fmtPct } from "@/components/fire/fire-helpers"
 import { nominalRate } from "@/lib/plans/plan-dollars"
-import { DEFAULT_RETURN_RATE, PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
+import { PLAN_LIMITS, TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import type { PlanAccount, TaxTreatment } from "@/lib/plans/plan-types"
 import { removeAccount } from "@/lib/plans/plan-edits"
-import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
+import { patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { ReturnBasisToggle } from "./return-basis-toggle"
 import { otherReturn, returnBasisOf, shownReturn, storedReturn } from "@/lib/plans/plan-returns"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
@@ -20,46 +22,35 @@ const TREATMENT_OPTIONS = (Object.keys(TAX_TREATMENT_LABELS) as TaxTreatment[]).
   label: TAX_TREATMENT_LABELS[value],
 }))
 
-function newAccount(): PlanAccount {
-  return {
-    id: newItemId("acct"),
-    name: "New account",
-    taxTreatment: "taxable",
-    balance: 0,
-    costBasis: null,
-    returnRate: DEFAULT_RETURN_RATE,
-    owner: null,
-    source: null,
-  }
-}
-
 /** Accounts: balances at plan start, tax bucket, and expected return. */
 export function AccountsEditor({ doc, update, view, onEditItem, viewToggle }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAccount>) =>
     update((d) => ({ ...d, accounts: patchItem(d.accounts, id, change) }))
 
   const [adding, setAdding] = useState(false)
+  const [event, setEvent] = useState<TemplateKey | null>(null)
 
   return (
     <div className="space-y-3">
       {adding && (
+        <AddAccountDialog
+          doc={doc}
+          update={update}
+          onClose={() => setAdding(false)}
+          onEvent={(key) => {
+            setAdding(false)
+            setEvent(key)
+          }}
+        />
+      )}
+      {event && (
         <AddMilestoneDialog
           doc={doc}
           update={update}
-          title="Add an account"
-          keys={eventsFor("Accounts")}
-          instant={[
-            {
-              label: "An account you have",
-              icon: "account_balance",
-              detail: "Bank, brokerage or retirement account",
-              onPick: () => {
-                update((d) => ({ ...d, accounts: [...d.accounts, newAccount()] }))
-                setAdding(false)
-              },
-            },
-          ]}
-          onClose={() => setAdding(false)}
+          initial={event}
+          keys={ACCOUNT_EVENTS.map((t) => t.key)}
+          title="Add a life event"
+          onClose={() => setEvent(null)}
         />
       )}
       <EditorToolbar toggle={viewToggle}>
