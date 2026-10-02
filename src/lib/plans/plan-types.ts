@@ -136,6 +136,7 @@ export interface AccountMix {
 export interface EquityGrant {
   /** Ticker for looking up today's price; null when entered by hand (private company). */
   symbol: string | null
+  /** RSUs: shares granted (with `vesting`), or vesting each year (without); options: shares held. */
   shares: number
   /** Price per share today. */
   price: number
@@ -143,6 +144,22 @@ export interface EquityGrant {
   strike?: number
   /** Options only: the stock's yearly volatility, for the expected gain (outcomes above the strike count). */
   volatility?: number
+  /** RSUs: how the grant vests from the income's start; leaving (the income's stop) forfeits what hasn't. */
+  vesting?: VestingSchedule
+}
+
+/** An RSU grant's vesting: each year's share, the cliff, how often, and optional yearly refreshers. */
+export interface VestingSchedule {
+  /** Share of the grant vesting in each year after it's made (adds up to 1). */
+  yearly: number[]
+  /** Nothing vests until this many months after the grant; what would have vests then. */
+  cliffMonths: number
+  /** Months between vests after the cliff (1, 3, 6 or 12). */
+  every: number
+  /** Month of the year the grant was made (1–12). */
+  grantMonth: number
+  /** A new grant of the same value (today's dollars) every year while you're there, vesting the same way. */
+  refresh: boolean
 }
 
 /** Payroll contribution from an income stream into an account. */

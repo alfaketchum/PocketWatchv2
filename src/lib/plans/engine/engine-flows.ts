@@ -75,7 +75,7 @@ export function incomeForYear(
   }
   for (const { income, range } of entries) {
     if (!isActive(range, index, income.oneTime)) continue
-    const gross = income.kind === "equity" && income.equity && pricing ? equityGross(income.equity, income, index, pricing) : grown(income.amount, income.growth, inflation, index)
+    const gross = income.kind === "equity" && income.equity && pricing ? equityGross(income.equity, income, index, pricing, range, inflation) : grown(income.amount, income.growth, inflation, index)
     let taxable = income.taxable ? gross : 0
     let deposits = result.deposits
     let matchBy = result.matchBy

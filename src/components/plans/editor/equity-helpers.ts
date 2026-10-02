@@ -1,4 +1,6 @@
-import { DEFAULT_RETURN_RATE } from "@/lib/plans/plan-constants"
+import { DEFAULT_RETURN_RATE, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants"
+import { resolveTiming, timingContext } from "@/lib/plans/plan-timing"
+import { defaultVesting } from "@/lib/plans/plan-vesting"
 import { DEFAULT_STOCK_VOLATILITY, equityValueToday } from "@/lib/plans/engine/engine-equity"
 import type { EquityGrant, PlanAccount, PlanDocument, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { newItemId } from "../plans-helpers"
@@ -8,8 +10,6 @@ export type EquityMode = "rsu" | "options" | "espp"
 /** Account picker value that creates a new company-stock account on Add. */
 export const NEW_STOCK_ACCOUNT = "new"
 
-/** Typical RSU grant: vests over four years. */
-const RSU_VEST_YEARS = 4
 /** Company stock is all stock in the stress test. */
 const ALL_STOCK = { stocks: 1, bonds: 0, cash: 0, crypto: 0 }
 const ESPP_DEFAULT_PERCENT = 0.1
@@ -33,6 +33,11 @@ export interface EquityDraft {
   discount: number
 }
 
+/** Calendar year a timing lands in (the plan's first year when it can't be placed). */
+export function calendarYearOf(timing: Timing, doc: PlanDocument): number {
+  return doc.settings.startYear + (resolveTiming(timing, timingContext(doc)) ?? 0)
+}
+
 /** Taxable accounts that can hold company stock. */
 export function stockAccounts(doc: PlanDocument): PlanAccount[] {
   return doc.accounts.filter((a) => a.taxTreatment === "taxable")
@@ -51,10 +56,11 @@ export function initialEquityDraft(mode: EquityMode, doc: PlanDocument): EquityD
     grant:
       mode === "options"
         ? { symbol: null, shares: 1_000, price: 30, strike: 10, volatility: DEFAULT_STOCK_VOLATILITY }
-        : { symbol: null, shares: 200, price: 200 },
+        : { symbol: null, shares: 800, price: 200, vesting: defaultVesting(doc.settings.startMonth) },
     growth: DEFAULT_RETURN_RATE,
     start: mode === "options" ? { type: "year", year: year + 1 } : { type: "planStart" },
-    end: { type: "year", year: year + RSU_VEST_YEARS },
+    // Leaving forfeits what hasn't vested; most people stay until they retire, or the plan's end.
+    end: doc.milestones.some((m) => m.id === RETIREMENT_MILESTONE_ID) ? { type: "milestone", milestoneId: RETIREMENT_MILESTONE_ID } : { type: "planEnd" },
     kept: mode === "espp" ? 1 : 0,
     target: existing?.id ?? NEW_STOCK_ACCOUNT,
     incomeId: esppIncomes(doc)[0]?.id ?? "",

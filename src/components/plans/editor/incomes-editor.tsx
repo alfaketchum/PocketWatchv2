@@ -8,6 +8,7 @@ import { PLAN_LIMITS, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-constants
 import type { EquityGrant, IncomeKind, PlanIncome, Timing } from "@/lib/plans/plan-types"
 import { equityValueToday } from "@/lib/plans/engine/engine-equity"
 import { EquityGrantFields } from "./equity-grant-fields"
+import { calendarYearOf } from "./equity-helpers"
 import { newItemId, patchItem, type PlanEditorProps, planItemAnchor } from "../plans-helpers"
 import { DepositsEditor } from "./deposits-editor"
 import { GrowthField } from "./growth-field"
@@ -128,7 +129,7 @@ export function IncomesEditor({ doc, update, view, onEditItem, viewToggle }: Pla
               />
             )}
           </div>
-          {grantOf(inc) && <EquityGrantFields grant={grantOf(inc)!} onChange={(change) => patchGrant(inc, change)} />}
+          {grantOf(inc) && <EquityGrantFields grant={grantOf(inc)!} firstYear={calendarYearOf(inc.start, doc)} onChange={(change) => patchGrant(inc, change)} />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {inc.socialSecurity ? (
               <p className="self-center text-[11px] text-foreground-muted">Starts at the claiming age above.</p>

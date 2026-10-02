@@ -99,6 +99,15 @@ const equityGrant = z.object({
   price: z.number().min(0).max(1e7),
   strike: z.number().min(0).max(1e7).optional(),
   volatility: z.number().min(0).max(3).optional(),
+  vesting: z
+    .object({
+      yearly: z.array(share).min(1).max(10),
+      cliffMonths: z.number().int().min(0).max(60),
+      every: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)]),
+      grantMonth: z.number().int().min(1).max(12),
+      refresh: z.boolean(),
+    })
+    .optional(),
 })
 
 const income = z.object({

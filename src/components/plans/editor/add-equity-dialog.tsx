@@ -6,7 +6,7 @@ import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import type { PlanEditorProps } from "../plans-helpers"
-import { applyEquity, esppIncomes, initialEquityDraft, NEW_STOCK_ACCOUNT, stockAccounts, type EquityDraft, type EquityMode } from "./equity-helpers"
+import { applyEquity, calendarYearOf, esppIncomes, initialEquityDraft, NEW_STOCK_ACCOUNT, stockAccounts, type EquityDraft, type EquityMode } from "./equity-helpers"
 import { EquityGrantFields } from "./equity-grant-fields"
 import { SelectField, TextField } from "./plan-editor-controls"
 import { TimingPicker } from "./timing-picker"
@@ -69,18 +69,18 @@ function RsuFields(props: FormProps) {
   const { d, set, doc } = props
   return (
     <div className="space-y-3">
-      <EquityGrantFields grant={d.grant} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
+      <EquityGrantFields grant={d.grant} firstYear={calendarYearOf(d.start, doc)} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <TimingPicker label="Starts" value={d.start} doc={doc} onChange={(start) => set({ start })} />
-        <TimingPicker label="Last vest" value={d.end} doc={doc} allow={["planEnd", "age", "year", "milestone"]} onChange={(end) => set({ end })} />
+        <TimingPicker label="Granted" value={d.start} doc={doc} onChange={(start) => set({ start })} />
+        <TimingPicker label="Leave the company" value={d.end} doc={doc} allow={["planEnd", "age", "year", "milestone"]} onChange={(end) => set({ end })} />
       </div>
       <div className="grid grid-cols-2 gap-2 items-end">
         <PriceGrowthField {...props} />
         <KeptFields {...props} />
       </div>
       <p className="text-xs text-foreground-muted">
-        Each vest is taxed as wages (income and payroll tax) at that year&apos;s price. Kept shares start with that value as their cost basis. New grants?
-        Extend the last vest or add another.
+        Each vest is taxed as wages (income and payroll tax) at that year&apos;s price. Kept shares start with that value as their cost basis. Another
+        grant on a different schedule? Add it as its own RSUs.
       </p>
     </div>
   )
@@ -90,7 +90,7 @@ function OptionFields(props: FormProps) {
   const { d, set, doc } = props
   return (
     <div className="space-y-3">
-      <EquityGrantFields grant={d.grant} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
+      <EquityGrantFields grant={d.grant} firstYear={calendarYearOf(d.start, doc)} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
       <div className="grid grid-cols-2 gap-2 items-end">
         <TimingPicker label="Exercised" value={d.start} doc={doc} onChange={(start) => set({ start })} />
         <PriceGrowthField {...props} />
