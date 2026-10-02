@@ -88,7 +88,7 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
       return { points: debtPoints(doc, rows), all: [...perLoan("principal", principalKey), ...perLoan("interest", interestKey)] }
     }
     if (view === "accounts") {
-      // One bar per account, side by side each year, shaded within its tax treatment's color.
+      // Every account stacked each year, shaded within its tax treatment's color.
       const d = netWorthDetail(doc, rows)
       const accounts = d.series.filter((s) => s.key.startsWith("a:"))
       return { points: d.points, all: shadeDetail(accounts, (p) => nwColors[p as NetWorthLayer], (p) => NET_WORTH_LAYER_LABELS[p as NetWorthLayer], theme) }

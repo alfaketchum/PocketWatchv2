@@ -137,29 +137,17 @@ export const ChartPlot = memo(function ChartPlot({
   focused,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
-  // Accounts stand side by side (not stacked): the tallest one is the top of the year.
-  const sideBySide = mode === "accounts"
   const barTops = useMemo(
-    () =>
-      new Map(
-        points.map((p) => {
-          const values = series.map((s) => Math.max(0, p[s.key] ?? 0))
-          return [p.age, sideBySide ? Math.max(0, ...values) : values.reduce((sum, v) => sum + v, 0)]
-        }),
-      ),
-    [points, series, sideBySide],
+    () => new Map(points.map((p) => [p.age, series.reduce((sum, s) => sum + Math.max(0, p[s.key] ?? 0), 0)])),
+    [points, series],
   )
   const span = yAxis.domain[1] - yAxis.domain[0]
   const bars = ({ key, color, label }: Series) => (
-    <Bar key={key} dataKey={key} stackId={sideBySide ? undefined : "stack"} fill={color} isAnimationActive={false} cursor="pointer">
+    <Bar key={key} dataKey={key} stackId="stack" fill={color} isAnimationActive={false} cursor="pointer">
       {points.map((_, i) => (
         <Cell key={i} fillOpacity={focused || selected === null || selected === i ? 0.85 : DIMMED} />
       ))}
-      {focused && (sideBySide ? (
-        <LabelList dataKey={key} position="top" formatter={partLabel(label, span)} fill={foreground} fontSize={11} fontWeight={600} />
-      ) : (
-        <LabelList dataKey={key} position="center" formatter={partLabel(label, span)} fill="#fff" fontSize={11} fontWeight={600} />
-      ))}
+      {focused && <LabelList dataKey={key} position="center" formatter={partLabel(label, span)} fill="#fff" fontSize={11} fontWeight={600} />}
     </Bar>
   )
   return (
@@ -168,8 +156,7 @@ export const ChartPlot = memo(function ChartPlot({
         data={points}
         margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
         stackOffset="sign"
-        barCategoryGap={focused ? "30%" : sideBySide ? "18%" : "8%"}
-        barGap={sideBySide ? 1 : 4}
+        barCategoryGap={focused ? "30%" : "8%"}
         onMouseMove={(state) => onHover(indexOf(state))}
         onMouseLeave={() => onHover(null)}
         onClick={(state, event) => {
