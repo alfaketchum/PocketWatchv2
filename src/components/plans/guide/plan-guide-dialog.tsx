@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { AccountsModalShell } from "@/components/accounts/accounts-modal-shell"
-import { TOOLBAR_BUTTON_CLASS } from "@/components/layout/header-tools"
 import { PLAN_GUIDE } from "./plan-guide-content"
 
 /** "How it works": a short bulleted guide to the plan's tabs, chart and pages. */
@@ -10,8 +9,14 @@ export function PlanGuideButton() {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={TOOLBAR_BUTTON_CLASS} title="How your plan works" aria-label="How your plan works">
-        <span className="material-symbols-rounded" style={{ fontSize: 20 }} aria-hidden="true">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="How your plan works"
+        aria-label="How your plan works"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+      >
+        <span className="material-symbols-rounded" style={{ fontSize: 18 }} aria-hidden="true">
           help
         </span>
       </button>

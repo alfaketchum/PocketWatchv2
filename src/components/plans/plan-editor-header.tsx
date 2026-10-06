@@ -4,10 +4,9 @@ import Link from "next/link"
 import { HeaderTools, TOOLBAR_CLASS } from "@/components/layout/header-tools"
 import { BasicAdvancedToggle } from "@/components/ui/basic-advanced-toggle"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
-import { PlanGuideButton } from "./guide/plan-guide-dialog"
 import { EditLayoutButton } from "./plan-layout"
 
-/** Top of a single plan: its tools (Basic/Advanced, guide, layout) up in the top bar, then the back link and the name. */
+/** Top of a single plan: its tools (Basic/Advanced, layout) up in the top bar, then the back link and the name. */
 export function PlanEditorHeader({
   name,
   isPrimary,
@@ -29,9 +28,12 @@ export function PlanEditorHeader({
       <HeaderTools>
         <div className={TOOLBAR_CLASS}>
           <BasicAdvancedToggle mode={mode} onChange={setMode} label="Planner mode" bare />
-          <span className="mx-1 h-5 w-px bg-card-border" aria-hidden="true" />
-          <PlanGuideButton />
-          {!isBasic && <EditLayoutButton editing={editingLayout} onToggle={onEditLayout} onReset={onResetLayout} />}
+          {!isBasic && (
+            <>
+              <span className="mx-1 h-5 w-px bg-card-border" aria-hidden="true" />
+              <EditLayoutButton editing={editingLayout} onToggle={onEditLayout} onReset={onResetLayout} />
+            </>
+          )}
         </div>
       </HeaderTools>
       <Link href="/plans" className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">

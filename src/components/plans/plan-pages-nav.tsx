@@ -2,9 +2,11 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { TOOLBAR_CLASS } from "@/components/layout/header-tools"
 import { HybridTooltip } from "@/components/ui/hybrid-tooltip"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { useIsTouchDevice } from "@/hooks/use-touch-device"
+import { cn } from "@/lib/utils"
 
 interface PlanPage {
   /** After /plans/[id]; "" is the plan itself. */
@@ -31,44 +33,56 @@ const PLAN_PAGES: PlanPage[] = [
   { path: "stress", label: "Stress test", icon: "thunderstorm", hint: "Your plan replayed through every market since 1871, crashes and stagflation included", advanced: true },
 ]
 
-/** The page you're on: accent-filled, like the active Basic / Advanced segment. */
-const ACTIVE_STYLE = { background: "var(--primary)", borderColor: "var(--primary)", color: "#fff" }
-
-/** One page button; hovering says what's there (on touch, a tap just opens it). */
-function PageLink({ planId, page, active }: { planId: string; page: PlanPage; active: boolean }) {
+/** One tab; hovering names it and says what's there (on touch, a tap just opens it). `labelFromXl`: icon only below xl. */
+function PageLink({ planId, page, active, labelFromXl }: { planId: string; page: PlanPage; active: boolean; labelFromXl: boolean }) {
   const isTouch = useIsTouchDevice()
   const link = (
     <Link
       href={page.path ? `/plans/${planId}/${page.path}` : `/plans/${planId}`}
       aria-current={active ? "page" : undefined}
-      className="btn-secondary text-xs inline-flex items-center gap-1.5"
-      style={active ? ACTIVE_STYLE : undefined}
+      aria-label={page.label}
+      className={cn(
+        "flex h-11 lg:h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
+        active ? "bg-primary text-white" : "text-foreground-muted hover:bg-background-secondary hover:text-foreground",
+      )}
     >
-      <span className="material-symbols-rounded" style={{ fontSize: 16 }} aria-hidden="true">
+      <span className="material-symbols-rounded" style={{ fontSize: 17 }} aria-hidden="true">
         {page.icon}
       </span>
-      {page.label}
+      <span className={labelFromXl ? "hidden xl:inline" : undefined}>{page.label}</span>
     </Link>
   )
   if (isTouch) return link
   return (
-    <HybridTooltip content={page.hint} side="bottom" contentClassName="text-xs">
+    <HybridTooltip
+      side="bottom"
+      contentClassName="text-xs"
+      content={
+        <>
+          <span className="font-semibold">{page.label}</span>
+          <span className="block text-foreground-muted">{page.hint}</span>
+        </>
+      }
+    >
       {link}
     </HybridTooltip>
   )
 }
 
-/** A plan's pages as one row, the same on every one of them, with the current page highlighted. */
-export function PlanPagesNav({ planId }: { planId: string }) {
+/**
+ * A plan's pages as one tab group, boxed like the top-bar toolbars, with the current page highlighted. In the top bar
+ * (`inHeader`) the labels show from xl up, icons only below, so it fits between the toolbars.
+ */
+export function PlanPagesNav({ planId, inHeader = false }: { planId: string; inHeader?: boolean }) {
   const pathname = usePathname()
   const { isBasic } = usePlanMode()
   const current = pathname.replace(/\/$/, "").split("/")[3] ?? ""
   // Basic hides the Advanced pages, unless you're on one (it shows its own notice).
   const pages = PLAN_PAGES.filter((p) => !p.advanced || !isBasic || p.path === current)
   return (
-    <nav aria-label="Plan pages" className="flex items-center justify-center gap-2 flex-wrap">
+    <nav aria-label="Plan pages" className={cn(TOOLBAR_CLASS, "max-w-full overflow-x-auto scrollbar-hide")}>
       {pages.map((page) => (
-        <PageLink key={page.label} planId={planId} page={page} active={page.path === current} />
+        <PageLink key={page.label} planId={planId} page={page} active={page.path === current} labelFromXl={inHeader} />
       ))}
     </nav>
   )

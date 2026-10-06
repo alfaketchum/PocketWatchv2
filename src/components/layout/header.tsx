@@ -1,7 +1,7 @@
 "use client"
 
 import { memo } from "react"
-import { HEADER_TOOLS_ID } from "./header-tools"
+import { HEADER_NAV_ID, HEADER_TOOLS_ID } from "./header-tools"
 import { ViewControls } from "./view-controls"
 
 interface HeaderProps {
@@ -9,15 +9,15 @@ interface HeaderProps {
   onMenuClick?: () => void
 }
 
-/** Top bar on every page: menu button on phones, a page's own tools (if any), global view controls on the right. */
+/** Top bar on every page: menu button on phones, a page's own tools and tabs (if any), global view controls on the right. */
 export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) {
   return (
     <header
       className="min-h-12 sticky top-0 z-30 bg-background-secondary mobile-header md:static md:bg-transparent"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="flex items-center justify-between px-4 md:pt-3 max-w-[1700px] mx-auto">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="flex items-center gap-3 px-4 md:pt-3 max-w-[1700px] mx-auto">
+        <div className="flex min-w-0 shrink-0 items-center gap-4">
           <button
             onClick={onMenuClick}
             aria-label="Open navigation menu"
@@ -33,7 +33,10 @@ export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) 
           )}
           <div id={HEADER_TOOLS_ID} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 empty:hidden" />
         </div>
-        <ViewControls />
+        <div id={HEADER_NAV_ID} className="hidden min-w-0 flex-1 justify-center lg:flex" />
+        <div className="ml-auto shrink-0">
+          <ViewControls />
+        </div>
       </div>
     </header>
   )

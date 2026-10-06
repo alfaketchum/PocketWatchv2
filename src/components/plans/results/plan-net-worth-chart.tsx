@@ -11,6 +11,7 @@ import { PlanYearPanel } from "./plan-year-panel"
 import { fitAxis, stackMarks } from "./plan-chart-axis"
 import { chartModes, DetailToggle, ModeToggle } from "./plan-chart-controls"
 import { DollarsToggle } from "./dollars-toggle"
+import { PlanGuideButton } from "../guide/plan-guide-dialog"
 import { MilestoneCard } from "./plan-milestone-card"
 import { useChartDetail } from "./use-chart-detail"
 import { useChartSeries, type ChartMode, type ChartRow } from "./use-chart-series"
@@ -140,6 +141,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
             </button>
           )}
           {!isBasic && view !== "accounts" && <DetailToggle checked={detail} onChange={setDetail} />}
+          <PlanGuideButton />
         </div>
       }
     >
