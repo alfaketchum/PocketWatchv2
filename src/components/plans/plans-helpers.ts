@@ -55,7 +55,7 @@ export type DocUpdater = (doc: PlanDocument) => PlanDocument
 /** Props shared by every plan editor section. */
 export interface PlanEditorProps {
   doc: PlanDocument
-  update: (updater: DocUpdater) => void
+  update: (updater: DocUpdater, opts?: { undoLabel?: string }) => void
   /** Compact (table) or Detailed (cards); only tabs holding lists use it. */
   view?: "compact" | "detailed"
   /** From the compact table: open an item's full editor in the detailed view. */

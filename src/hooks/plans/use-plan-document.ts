@@ -92,10 +92,10 @@ export function usePlanDocument(id: string) {
   /**
    * An edit that removes things (an account, income, expense, asset, debt, milestone, child or person) offers Undo
    * for a few seconds. Undo restores the plan exactly as it was before the removal, so it's withdrawn by any later
-   * edit rather than reverting that edit too.
+   * edit rather than reverting that edit too. So does any edit given an `undoLabel` (Apply on the stress test).
    */
   const update = useCallback(
-    (updater: PlanUpdater) => {
+    (updater: PlanUpdater, opts?: { undoLabel?: string }) => {
       const current = qc.getQueryData<PlanDetail>(plansKeys.detail(id))
       if (!current) return
       const before = current.document
@@ -106,10 +106,10 @@ export function usePlanDocument(id: string) {
       }
       apply(current, next)
       const removed = removedItems(before, next)
-      if (removed.length === 0) return
-      const label = removalLabel(removed)
+      if (removed.length === 0 && !opts?.undoLabel) return
+      const label = opts?.undoLabel ?? removalLabel(removed)
       undoToast.current = showUndoToast({
-        message: `Removed ${label}`,
+        message: opts?.undoLabel ? `Applied: ${label}` : `Removed ${label}`,
         durationMs: UNDO_MS,
         onUndo: () => {
           undoToast.current = null
@@ -119,7 +119,7 @@ export function usePlanDocument(id: string) {
             return
           }
           apply(now, before)
-          toast.success(`Restored ${label}`)
+          toast.success(opts?.undoLabel ? "Change undone" : `Restored ${label}`)
         },
       })
     },

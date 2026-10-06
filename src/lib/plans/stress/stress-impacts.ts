@@ -3,15 +3,21 @@
  * a reader sees which levers move how often the money lasts. The changes are picked from what this plan holds.
  */
 
-import { RETIREMENT_MILESTONE_ID } from "../plan-constants"
 import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
 import { resolveTiming, timingContext } from "../plan-timing"
-import type { AccountMix, PlanDocument, PlanMilestone, Timing } from "../plan-types"
-import { DEFAULT_STOCK_SHARE, mixFor } from "./stress-mix"
+import type { AccountMix, PlanDocument } from "../plan-types"
+import {
+  hasEverydaySpending,
+  hasPaycheckToRetirement,
+  portfolioMix,
+  retireAt,
+  retirementAge,
+  scaleEverydaySpending,
+  withInvestmentMix,
+} from "./stress-levers"
+import { DEFAULT_STOCK_SHARE } from "./stress-mix"
 import type { CohortResult } from "./stress-test"
 
-/** Crypto at or above this share of the accounts gets its own what-ifs. */
-const CRYPTO_SHARE = 0.2
 /** How much less everyday spending to try. */
 const SPEND_CUT = 0.1
 /** How many more working years to try. */
@@ -20,10 +26,15 @@ const MORE_YEARS = 3
 const MAX_SKIPS = 2
 /** Rent at about 0.4% of the home's value a month, as the stress test setup guesses. */
 const RENT_PER_VALUE = 0.004
+/** A portfolio this far from 80/20 (in stocks, or any crypto or cash at all past this) gets an 80/20 row. */
+const MIX_GAP = 0.1
 
 export interface ImpactVariant {
   key: string
   label: string
+  /** The change itself, applied to whatever the plan is when it runs (so Apply never writes back a stale copy). */
+  apply: (doc: PlanDocument) => PlanDocument
+  /** The change applied to the plan these numbers came from. */
   doc: PlanDocument
 }
 
@@ -35,33 +46,21 @@ export interface ImpactResult {
   medianRunOutAge: number | null
 }
 
-const STOCKS_BONDS: AccountMix = { stocks: DEFAULT_STOCK_SHARE, bonds: 1 - DEFAULT_STOCK_SHARE, cash: 0, crypto: 0 }
+const variant = (doc: PlanDocument, key: string, label: string, apply: ImpactVariant["apply"]): ImpactVariant => ({ key, label, apply, doc: apply(doc) })
 
-/** Each account's crypto cut to `keep` of itself, the rest in 80/20 stocks and bonds. */
-function withCrypto(doc: PlanDocument, keep: number): PlanDocument {
-  const accounts = doc.accounts.map((a) => {
-    const mix = mixFor(a)
-    if (mix.crypto <= 0) return a
-    const moved = mix.crypto * (1 - keep)
-    return { ...a, mix: { stocks: mix.stocks + moved * STOCKS_BONDS.stocks, bonds: mix.bonds + moved * STOCKS_BONDS.bonds, cash: mix.cash, crypto: mix.crypto * keep } }
-  })
-  return { ...doc, accounts }
-}
+const EIGHTY_TWENTY: AccountMix = { stocks: DEFAULT_STOCK_SHARE, bonds: 1 - DEFAULT_STOCK_SHARE, cash: 0, crypto: 0 }
 
-function cryptoVariants(doc: PlanDocument): ImpactVariant[] {
-  const total = doc.accounts.reduce((s, a) => s + Math.max(0, a.balance), 0)
-  const crypto = doc.accounts.reduce((s, a) => s + Math.max(0, a.balance) * mixFor(a).crypto, 0)
-  if (total <= 0 || crypto / total < CRYPTO_SHARE) return []
-  return [
-    { key: "crypto-half", label: "Half your crypto in stocks & bonds", doc: withCrypto(doc, 0.5) },
-    { key: "crypto-none", label: "All your crypto in stocks & bonds", doc: withCrypto(doc, 0) },
-  ]
+/** A portfolio far from a plain 80/20 tries 80/20 everywhere. */
+function investDifferently(doc: PlanDocument): ImpactVariant[] {
+  const mix = portfolioMix(doc)
+  if (!mix) return []
+  const far = Math.abs(mix.stocks - EIGHTY_TWENTY.stocks) > MIX_GAP || mix.crypto > MIX_GAP / 2 || mix.cash > MIX_GAP
+  return far ? [variant(doc, "mix-80", "Invest 80/20 stocks/bonds", (d) => withInvestmentMix(d, EIGHTY_TWENTY))] : []
 }
 
 function spendLess(doc: PlanDocument): ImpactVariant[] {
-  if (!doc.expenses.some((e) => !e.oneTime && !e.origin)) return []
-  const expenses = doc.expenses.map((e) => (e.oneTime || e.origin ? e : { ...e, amount: e.amount * (1 - SPEND_CUT) }))
-  return [{ key: "spend-less", label: `Spend ${Math.round(SPEND_CUT * 100)}% less on everyday costs`, doc: { ...doc, expenses } }]
+  if (!hasEverydaySpending(doc)) return []
+  return [variant(doc, "spend-less", `Spend ${Math.round(SPEND_CUT * 100)}% less on everyday costs`, (d) => scaleEverydaySpending(d, 1 - SPEND_CUT))]
 }
 
 /** The biggest purchases still ahead (bought after the plan starts), each skipped on its own. */
@@ -71,34 +70,31 @@ function skipPurchases(doc: PlanDocument): ImpactVariant[] {
     .filter((a) => a.acquired !== "received" && !a.origin && !a.replacementOf && (resolveTiming(a.start, ctx) ?? 0) > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, MAX_SKIPS)
-    .map((a) => ({ key: `skip-${a.id}`, label: `Skip buying ${a.name}`, doc: { ...doc, assets: doc.assets.filter((x) => x.id !== a.id) } }))
+    .map((a) => variant(doc, `skip-${a.id}`, `Skip buying ${a.name}`, (d) => ({ ...d, assets: d.assets.filter((x) => x.id !== a.id) })))
 }
 
 /** Homes the plan keeps with no backup plan: sell one if the money runs out (rent from then on). */
 function sellIfNeeded(doc: PlanDocument): ImpactVariant[] {
   const homes = fallbackHomes(doc).filter((h) => !h.fallback && plannedSaleIndex(doc, h) === null)
   if (homes.length === 0) return []
-  const assets = doc.assets.map((a) =>
-    homes.some((h) => h.id === a.id) ? { ...a, fallback: { then: "rent" as const, monthlyRent: Math.round(a.value * RENT_PER_VALUE), price: 0 } } : a,
-  )
-  return [{ key: "sell-homes", label: homes.length === 1 ? `Sell ${homes[0].name} if the money runs out` : "Sell your homes if the money runs out", doc: { ...doc, assets } }]
+  const ids = new Set(homes.map((h) => h.id))
+  const apply = (d: PlanDocument): PlanDocument => ({
+    ...d,
+    assets: d.assets.map((a) => (ids.has(a.id) && !a.fallback ? { ...a, fallback: { then: "rent" as const, monthlyRent: Math.round(a.value * RENT_PER_VALUE), price: 0 } } : a)),
+  })
+  return [variant(doc, "sell-homes", homes.length === 1 ? `Sell ${homes[0].name} if the money runs out` : "Sell your homes if the money runs out", apply)]
 }
-
-const later = (t: Timing): Timing | null => (t.type === "age" ? { ...t, age: t.age + MORE_YEARS } : t.type === "year" ? { ...t, year: t.year + MORE_YEARS } : null)
 
 /** Retire a few years later, when the plan has a paycheck that stops at retirement. */
 function workLonger(doc: PlanDocument): ImpactVariant[] {
-  const paid = doc.incomes.some((i) => (i.kind === "salary" || i.kind === "business") && i.amount > 0)
-  const retirement = doc.milestones.find((m) => m.id === RETIREMENT_MILESTONE_ID)
-  const timing = retirement ? later(retirement.timing) : null
-  if (!paid || !retirement || !timing) return []
-  const milestones = doc.milestones.map((m): PlanMilestone => (m.id === RETIREMENT_MILESTONE_ID ? { ...m, timing } : m))
-  return [{ key: "work-longer", label: `Retire ${MORE_YEARS} years later`, doc: { ...doc, milestones } }]
+  const age = retirementAge(doc)
+  if (age === null || !hasPaycheckToRetirement(doc)) return []
+  return [variant(doc, "work-longer", `Retire ${MORE_YEARS} years later`, (d) => retireAt(d, age + MORE_YEARS))]
 }
 
 /** The changes worth trying for this plan, each one alone. */
 export function impactVariants(doc: PlanDocument): ImpactVariant[] {
-  return [...cryptoVariants(doc), ...spendLess(doc), ...skipPurchases(doc), ...sellIfNeeded(doc), ...workLonger(doc)]
+  return [...investDifferently(doc), ...spendLess(doc), ...skipPurchases(doc), ...sellIfNeeded(doc), ...workLonger(doc)]
 }
 
 /** One variant's trials boiled down: how often the money lasted and when it typically ran out. */

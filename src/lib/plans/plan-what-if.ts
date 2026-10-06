@@ -1,6 +1,7 @@
 import { withSettings } from "./plan-returns"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { PlanDocument, PlanExpense, PlanIncome } from "./plan-types"
+import { claimSocialSecurityAt } from "./stress/stress-levers"
 
 /**
  * What-if dials: quick changes tried on a copy of a plan, never saved unless asked. Each dial left unset (or at the
@@ -87,10 +88,10 @@ function withInflation(doc: PlanDocument, inflation: number | undefined): PlanDo
   return withSettings(doc, { inflation, inflationMode: "custom" })
 }
 
+/** Claiming moves when it starts and what it pays too, not just the claim age (the engine pays from the start). */
 function withClaimAge(doc: PlanDocument, age: number | undefined): PlanDocument {
   if (age === undefined || age === baselineOf(doc).ssClaimAge) return doc
-  const claim = (i: PlanIncome) => (i.socialSecurity ? { ...i, socialSecurity: { ...i.socialSecurity, claimAge: age } } : i)
-  return { ...doc, incomes: doc.incomes.map(claim) }
+  return claimSocialSecurityAt(doc, age)
 }
 
 function eventItem(e: WhatIfEvent): { income?: PlanIncome; expense?: PlanExpense } {

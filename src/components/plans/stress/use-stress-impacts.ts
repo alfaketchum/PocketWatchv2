@@ -59,5 +59,6 @@ export function useStressImpacts({ doc, annual, anchor, inflation, sampling, ena
     }
   }, [enabled, annual, anchor, inflation, method, trials, blockLength, seed, runs])
 
-  return { results, total: runs.length, available: runs.length > 1 }
+  const variants = useMemo(() => new Map(runs.flatMap((r) => ("apply" in r ? [[r.key, r] as const] : []))), [runs])
+  return { results, total: runs.length, available: runs.length > 1, variants }
 }

@@ -52,21 +52,25 @@ test("spend less cuts everyday costs by 10% and leaves one-time and generated on
   assert.equal(doc.expenses[0].amount, 60_000, "the plan itself is untouched")
 })
 
-test("crypto-heavy accounts try half and all of the crypto in stocks and bonds", () => {
+test("a crypto-heavy portfolio tries 80/20 stocks and bonds in every invested account", () => {
   const base = plan()
-  const doc = plan({ accounts: [{ ...base.accounts[0], balance: 900_000, source: { kind: "crypto", refId: "c" } }, { ...base.accounts[0], id: "b", balance: 100_000 }] })
-  const v = Object.fromEntries(impactVariants(doc).map((x) => [x.key, x.doc]))
-  assert.ok(v["crypto-half"] && v["crypto-none"])
-  const near = (got: Record<string, number>, want: Record<string, number>) => Object.keys(want).forEach((k) => assert.ok(Math.abs(got[k] - want[k]) < 1e-9, k))
-  near({ ...mixFor(v["crypto-half"].accounts[0]) }, { stocks: 0.4, bonds: 0.1, cash: 0, crypto: 0.5 })
-  near({ ...mixFor(v["crypto-none"].accounts[0]) }, { stocks: 0.8, bonds: 0.2, cash: 0, crypto: 0 })
-  assert.deepEqual(v["crypto-none"].accounts[1], doc.accounts[1], "accounts without crypto are left alone")
+  const doc = plan({
+    accounts: [
+      { ...base.accounts[0], taxTreatment: "taxable", balance: 900_000, source: { kind: "crypto", refId: "c" } },
+      { ...base.accounts[0], id: "b", taxTreatment: "taxable", balance: 100_000 },
+      { ...base.accounts[0], id: "cash", taxTreatment: "cash", balance: 20_000 },
+    ],
+  })
+  const mix = impactVariants(doc).find((x) => x.key === "mix-80")!
+  assert.equal(mix.label, "Invest 80/20 stocks/bonds")
+  const m = mixFor(mix.doc.accounts[0])
+  assert.ok(Math.abs(m.stocks - 0.8) < 1e-9 && Math.abs(m.bonds - 0.2) < 1e-9 && m.crypto === 0 && m.cash === 0)
+  assert.deepEqual(mix.doc.accounts[2], doc.accounts[2], "cash stays cash")
+  assert.deepEqual(mix.apply(doc), mix.doc, "apply makes the same change")
 })
 
-test("a little crypto isn't worth a row", () => {
-  const base = plan()
-  const doc = plan({ accounts: [{ ...base.accounts[0], balance: 50_000, source: { kind: "crypto", refId: "c" } }, { ...base.accounts[0], id: "b", balance: 950_000 }] })
-  assert.ok(!keys(doc).some((k) => k.startsWith("crypto")))
+test("a portfolio already near 80/20 has no mix row", () => {
+  assert.ok(!keys(plan()).includes("mix-80"))
 })
 
 test("the biggest future purchases are each skipped; homes owned now and inherited ones aren't", () => {
