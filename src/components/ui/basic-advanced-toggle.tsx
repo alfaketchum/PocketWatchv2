@@ -9,10 +9,13 @@ const MODES: { value: BasicAdvanced; label: string; icon: string }[] = [
   { value: "advanced", label: "Advanced", icon: "science" },
 ]
 
-/** Segmented Basic / Advanced switch, shared by FIRE and the planner. */
-export function BasicAdvancedToggle({ mode, onChange, label }: { mode: BasicAdvanced; onChange: (mode: BasicAdvanced) => void; label: string }) {
+/**
+ * Segmented Basic / Advanced switch, shared by FIRE and the planner. `bare` leaves out its own box, for sitting inside
+ * a toolbar group, at the toolbar's button height.
+ */
+export function BasicAdvancedToggle({ mode, onChange, label, bare = false }: { mode: BasicAdvanced; onChange: (mode: BasicAdvanced) => void; label: string; bare?: boolean }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl border border-card-border bg-card p-0.5">
+    <div role="radiogroup" aria-label={label} className={cn("inline-flex", !bare && "rounded-xl border border-card-border bg-card p-0.5")}>
       {MODES.map((m) => {
         const active = m.value === mode
         return (
@@ -23,7 +26,8 @@ export function BasicAdvancedToggle({ mode, onChange, label }: { mode: BasicAdva
             aria-checked={active}
             onClick={() => onChange(m.value)}
             className={cn(
-              "flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-xs font-medium transition-colors",
+              "flex items-center gap-1.5 px-3 text-xs font-medium transition-colors",
+              bare ? "h-11 lg:h-9 rounded-lg" : "rounded-[10px] py-1.5",
               active ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
             )}
           >

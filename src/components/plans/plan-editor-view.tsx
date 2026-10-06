@@ -147,7 +147,6 @@ export function PlanEditorView({ planId }: { planId: string }) {
   return (
     <div className="space-y-5">
       <PlanEditorHeader
-        planId={planId}
         name={plan.name}
         isPrimary={plan.isPrimary}
         isSaving={isSaving}

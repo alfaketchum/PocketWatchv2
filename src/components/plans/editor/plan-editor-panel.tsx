@@ -14,7 +14,10 @@ function readOpen(): boolean {
   }
 }
 
-/** The plan's tabs and the content they control in one panel; the content folds away to bring the chart up. */
+/**
+ * The plan's tabs and the content they control in one panel; the content folds away to bring the chart up. Folded,
+ * the panel is only as wide as its tabs, centered; open, it takes the full width with the tabs centered on top.
+ */
 export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; onTabChange: (tab: PlanTab) => void; children: ReactNode }) {
   const [open, setOpenState] = useState(false)
   useEffect(() => setOpenState(readOpen()), [])
@@ -27,9 +30,12 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
     }
   }
   return (
-    <section className="bg-card border border-card-border rounded-2xl" style={{ boxShadow: "var(--shadow-sm)" }}>
-      <div className={`flex items-stretch gap-2 px-2 sm:px-4 ${open ? "border-b border-card-border" : ""}`}>
-        <div className="min-w-0 flex-1">
+    <section
+      className={`bg-card border border-card-border rounded-2xl ${open ? "" : "mx-auto w-fit max-w-full"}`}
+      style={{ boxShadow: "var(--shadow-sm)" }}
+    >
+      <div className={`flex items-stretch justify-center gap-2 px-2 sm:px-4 ${open ? "border-b border-card-border" : ""}`}>
+        <div className="min-w-0">
           <PlanEditorTabs value={tab} onChange={onTabChange} open={open} onToggle={() => setOpen(!open)} />
         </div>
         <div className="flex shrink-0 items-center">

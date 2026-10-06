@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, type ReactNode } from "react"
+import { TOOLBAR_BUTTON_CLASS } from "@/components/layout/header-tools"
 import { cn } from "@/lib/utils"
 
 /** The plan page's movable blocks, top to bottom. */
@@ -63,30 +64,32 @@ export function moveBlock(layout: PlanLayout, block: PlanBlock, delta: -1 | 1): 
   return { ...layout, order }
 }
 
-/** "Edit layout" / "Done" in the plan header; Reset appears while editing. */
+/** Edit layout / done, as icon buttons in the plan toolbar; Reset appears beside it while editing. */
 export function EditLayoutButton({ editing, onToggle, onReset }: { editing: boolean; onToggle: () => void; onReset: () => void }) {
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <>
       {editing && (
-          <button type="button" onClick={onReset} className="btn-ghost h-7 px-2 text-[11px]">
-            Reset
-          </button>
-        )}
         <button
           type="button"
-          onClick={onToggle}
-          aria-pressed={editing}
-          className={cn(
-            "inline-flex h-7 items-center gap-1 rounded-lg border px-2.5 text-[11px] font-medium transition-colors",
-            editing ? "border-primary bg-primary text-white" : "border-card-border text-foreground-muted hover:text-foreground",
-          )}
+          onClick={onReset}
+          className="h-11 lg:h-9 rounded-lg px-2.5 text-xs font-medium text-foreground-muted hover:text-foreground hover:bg-background-secondary transition-colors"
         >
-          <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
-            {editing ? "check" : "dashboard_customize"}
-          </span>
-          {editing ? "Done" : "Edit layout"}
+          Reset
         </button>
-      </div>
+      )}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={editing}
+        title={editing ? "Done editing layout" : "Edit layout"}
+        aria-label={editing ? "Done editing layout" : "Edit layout"}
+        className={cn(TOOLBAR_BUTTON_CLASS, editing && "bg-primary text-white hover:bg-primary hover:text-white")}
+      >
+        <span className="material-symbols-rounded" style={{ fontSize: 20 }} aria-hidden="true">
+          {editing ? "check" : "dashboard_customize"}
+        </span>
+      </button>
+    </>
     )
   }
 
