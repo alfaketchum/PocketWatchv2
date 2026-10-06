@@ -19,6 +19,7 @@ import { StressCushionChart } from "./stress-cushion-chart"
 import { StressFanChart, type FanMeasure } from "./stress-fan-chart"
 import { StressOutcomeBuckets } from "./stress-outcome-buckets"
 import { StressPathsChart } from "./stress-paths-chart"
+import { StressHomeFallbacks } from "./stress-home-fallbacks"
 import { StressMixTable } from "./stress-mix-table"
 import { InflationSource } from "../editor/inflation-source"
 import { StressPeriodsTable } from "./stress-periods-table"
@@ -118,7 +119,9 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
             inflation={inflation}
             onInflation={setInflation}
             latestCape={annual?.latestCape ?? null}
-          />
+          >
+            <StressHomeFallbacks doc={doc} update={update} />
+          </StressControls>
         </div>
         {error && <p className="text-sm text-error">Couldn&apos;t load market history.</p>}
         {animating && runId !== null ? (

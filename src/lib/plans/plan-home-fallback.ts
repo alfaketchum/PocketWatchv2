@@ -8,6 +8,9 @@ export const SHORTFALL = 0.5
 export const FALLBACK_RENT = "~fallback-rent"
 export const FALLBACK_HOME = "~fallback-home"
 
+/** The plan's own homes that can have a backup plan (not a later home a replacement cycle adds). */
+export const fallbackHomes = (doc: PlanDocument): PlanAsset[] => doc.assets.filter((a) => a.kind === "home" && !a.replacementOf)
+
 /** A home with a backup plan that's owned in plan year `index` (it hasn't been sold before then). */
 export function fallbackHomeAt(doc: PlanDocument, index: number): PlanAsset | null {
   const ctx = timingContext(doc)

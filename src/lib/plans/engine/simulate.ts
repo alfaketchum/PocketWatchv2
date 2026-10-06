@@ -55,6 +55,8 @@ export interface SimulateOptions {
   inflation?: Inflation
   /** Market valuation (CAPE) per plan year for a CAPE spending rule: the latest, held flat, or history's in a stress run. */
   capeFor?: (index: number) => number | null
+  /** Carry out homes' backup plans when the money runs out. Only the stress test sets it; the plan itself never sells. */
+  homeFallbacks?: boolean
 }
 
 interface Plan {
@@ -404,9 +406,9 @@ function startTotals(plan: Plan): { netWorth: number; financial: number } {
 const MAX_HOME_SALES = 5
 
 /**
- * Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. When the accounts would run
- * dry and a home has a backup plan ("if the money runs out"), that home is sold at the start of that year and the plan
- * runs again, once per home.
+ * Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. With `homeFallbacks` (the
+ * stress test), when the accounts would run dry and a home has a backup plan ("if the money runs out"), that home is
+ * sold at the start of that year and the plan runs again, once per home.
  */
 export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): PlanProjection {
   let current = doc
@@ -414,7 +416,7 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
   for (let sales = 0; ; sales++) {
     const projection = simulateOnce(current, opts)
     const short = projection.rows.find((r) => r.shortfall > SHORTFALL)
-    const home = short && sales < MAX_HOME_SALES ? fallbackHomeAt(current, short.index) : null
+    const home = short && opts.homeFallbacks && sales < MAX_HOME_SALES ? fallbackHomeAt(current, short.index) : null
     if (!short || !home) return homeSales.length > 0 ? { ...projection, homeSales } : projection
     const sold = withHomeSold(current, home, short.index)
     current = sold.doc

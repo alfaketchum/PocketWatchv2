@@ -165,6 +165,7 @@ export function runPath(doc: PlanDocument, annual: AnnualHistory, path: number[]
   }
   const projection = simulatePlan(doc, {
     inflation,
+    homeFallbacks: true,
     returnFor: (account, index) => {
       const year = market(index)
       return year ? yearReturn(account, year, rateAt(inflation, index), doc.settings.inflation) : account.returnRate

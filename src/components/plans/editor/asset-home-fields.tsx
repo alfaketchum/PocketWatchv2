@@ -6,7 +6,6 @@ import { Toggle } from "@/components/fire/fire-input-controls"
 import { livesIn } from "@/lib/plans/plan-asset-costs"
 import { DEFAULT_RENTAL, netYearlyRent } from "@/lib/plans/plan-rentals"
 import type { AssetRental, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
-import { AssetHomeFallbackFields } from "./asset-home-fallback-fields"
 import { GrowthField } from "./growth-field"
 import { ASSET_START_TYPES, TimingPicker } from "./timing-picker"
 
@@ -57,7 +56,6 @@ export function AssetHomeFields({ asset, doc, onChange }: Props) {
           </p>
         </div>
       )}
-      <AssetHomeFallbackFields asset={asset} onChange={onChange} />
     </div>
   )
 }

@@ -7,6 +7,8 @@ import { summarizePlan } from "@/lib/plans/plan-summary"
 import type { HomeFallback, PlanDocument } from "@/lib/plans/plan-types"
 
 const SHORT = 0.5
+/** Home sales only happen under stress. */
+const STRESS = { homeFallbacks: true }
 
 /** $100k in the bank, $50k a year of spending, no income, a paid-off $500k home; no inflation, no taxes, 2026 start. */
 function plan(fallback?: HomeFallback): PlanDocument {
@@ -21,10 +23,10 @@ function plan(fallback?: HomeFallback): PlanDocument {
     debts: [],
   }
 }
-const shortYear = (doc: PlanDocument) => simulatePlan(doc).rows.find((r) => r.shortfall > SHORT)?.year
+const shortYear = (doc: PlanDocument) => simulatePlan(doc, STRESS).rows.find((r) => r.shortfall > SHORT)?.year
 
 test("without a backup plan the money runs out and nothing changes", () => {
-  const p = simulatePlan(plan())
+  const p = simulatePlan(plan(), STRESS)
   assert.equal(p.homeSales, undefined)
   assert.equal(shortYear(plan()), 2028)
   const s = summarizePlan(plan(), p)
@@ -34,7 +36,7 @@ test("without a backup plan the money runs out and nothing changes", () => {
 
 test("sell and rent: sold in the year the money would run out, then rent from then on", () => {
   const doc = plan({ then: "rent", monthlyRent: 1_000, price: 0 })
-  const p = simulatePlan(doc)
+  const p = simulatePlan(doc, STRESS)
   assert.deepEqual(p.homeSales?.map((s) => [s.name, s.year, s.then]), [["Home", 2028, "rent"]])
   const sold = p.rows.find((r) => r.year === 2028)!
   assert.ok(sold.assetSales > 400_000)
@@ -46,7 +48,7 @@ test("sell and rent: sold in the year the money would run out, then rent from th
 
 test("sell and buy smaller: a cash purchase that year, the rest keeps paying the bills", () => {
   const doc = plan({ then: "smaller", monthlyRent: 0, price: 200_000 })
-  const p = simulatePlan(doc)
+  const p = simulatePlan(doc, STRESS)
   assert.equal(p.homeSales?.length, 1)
   const r = p.rows.find((x) => x.year === 2028)!
   assert.ok(Math.abs(r.assetPurchases - 200_000) < 1)
@@ -57,26 +59,33 @@ test("sell and buy smaller: a cash purchase that year, the rest keeps paying the
   if (s.equityAtDepletion) assert.ok(s.equityAtDepletion.value > 150_000, "the smaller home counts as equity")
 })
 
+test("the plan itself never sells: a backup plan only acts in the stress test", () => {
+  const doc = plan({ then: "rent", monthlyRent: 1_000, price: 0 })
+  const p = simulatePlan(doc)
+  assert.equal(p.homeSales, undefined)
+  assert.deepEqual(p.rows, simulatePlan(plan()).rows)
+})
+
 test("a backup plan that isn't needed never fires", () => {
   const rich = { ...plan({ then: "rent", monthlyRent: 1_000, price: 0 }), accounts: [{ ...plan().accounts[0], balance: 5_000_000 }] }
-  const p = simulatePlan(rich)
+  const p = simulatePlan(rich, STRESS)
   assert.equal(p.homeSales, undefined)
   assert.deepEqual(p.rows, simulatePlan({ ...rich, assets: rich.assets.map((a) => ({ ...a, fallback: undefined })) }).rows)
 })
 
 const downsizeIn = (doc: PlanDocument, year: number) =>
   applyDispose(doc, "h", { mode: "downsize", when: { type: "year", year }, downsize: { to: "rent", price: 0, payWith: "cash", monthlyRent: 1_000 } }, (p) => `${p}-planned`)
-const salesYears = (doc: PlanDocument) => simulatePlan(doc).rows.filter((r) => r.assetSales > 0).map((r) => r.year)
+const salesYears = (doc: PlanDocument) => simulatePlan(doc, STRESS).rows.filter((r) => r.assetSales > 0).map((r) => r.year)
 
 test("a sale you planned yourself is never sold twice", () => {
   const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2027)
   assert.deepEqual(salesYears(doc), [2027])
-  assert.equal(simulatePlan(doc).homeSales, undefined, "already sold before the money runs out")
+  assert.equal(simulatePlan(doc, STRESS).homeSales, undefined, "already sold before the money runs out")
 })
 
 test("running out before a planned downsize sells early and replaces the planned rent, not adds to it", () => {
   const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2032)
-  const p = simulatePlan(doc)
+  const p = simulatePlan(doc, STRESS)
   assert.deepEqual(salesYears(doc), [2028])
   assert.equal(p.rows.find((r) => r.year === 2040)!.expenses, 62_000, "one rent: $50k living + $12k")
 })

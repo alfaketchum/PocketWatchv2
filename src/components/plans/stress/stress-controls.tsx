@@ -48,6 +48,8 @@ interface Props {
   onInflation: (i: StressInflation) => void
   /** Today's CAPE, for the expensive-markets filter's tooltip. */
   latestCape: number | null
+  /** Plan settings that only matter under stress (a home's backup plan), as a last row. */
+  children?: ReactNode
 }
 
 /** What the selected method does, in one line under the controls. */
@@ -60,7 +62,7 @@ function methodLine(s: SamplingOptions): string {
 }
 
 /** One labeled setting: a small caps name over its chips. */
-function Setting({ label, info, children }: { label: string; info?: string; children: ReactNode }) {
+export function Setting({ label, info, children }: { label: string; info?: string; children: ReactNode }) {
   return (
     <div className="min-w-0 space-y-1.5">
       <div className="flex items-center gap-1">
@@ -121,6 +123,7 @@ export function StressControls(p: Props) {
           <ChoiceChips label="Inflation" options={INFLATION_OPTIONS} value={p.inflation} onChange={p.onInflation} />
         </Setting>
       </div>
+      {p.children && <div className="border-t border-card-border pt-3">{p.children}</div>}
       <p className="text-xs text-foreground-muted">{methodLine(sampling)}</p>
     </div>
   )
