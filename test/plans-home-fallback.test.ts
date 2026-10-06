@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { applyDispose } from "@/lib/plans/plan-dispose"
+import { plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import { summarizePlan } from "@/lib/plans/plan-summary"
 import type { HomeFallback, PlanDocument } from "@/lib/plans/plan-types"
 
@@ -83,9 +84,11 @@ test("a sale you planned yourself is never sold twice", () => {
   assert.equal(simulatePlan(doc, STRESS).homeSales, undefined, "already sold before the money runs out")
 })
 
-test("running out before a planned downsize sells early and replaces the planned rent, not adds to it", () => {
+test("a home the plan sells later keeps to the plan: running out first doesn't sell it early", () => {
   const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2032)
   const p = simulatePlan(doc, STRESS)
-  assert.deepEqual(salesYears(doc), [2028])
-  assert.equal(p.rows.find((r) => r.year === 2040)!.expenses, 62_000, "one rent: $50k living + $12k")
+  assert.deepEqual(salesYears(doc), [2032])
+  assert.equal(p.homeSales, undefined)
+  assert.equal(plannedSaleIndex(doc, doc.assets.find((a) => a.id === "h")!), 6, "2032 is plan year 6")
+  assert.equal(plannedSaleIndex(plan(), plan().assets[0]), null, "kept to the plan's end")
 })

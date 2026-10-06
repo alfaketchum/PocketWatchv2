@@ -11,12 +11,21 @@ export const FALLBACK_HOME = "~fallback-home"
 /** The plan's own homes that can have a backup plan (not a later home a replacement cycle adds). */
 export const fallbackHomes = (doc: PlanDocument): PlanAsset[] => doc.assets.filter((a) => a.kind === "home" && !a.replacementOf)
 
-/** A home with a backup plan that's owned in plan year `index` (it hasn't been sold before then). */
+/** The plan year a home is sold in by the plan itself (a sale or downsize you entered), or null when it's kept. */
+export function plannedSaleIndex(doc: PlanDocument, home: PlanAsset, ctx = timingContext(doc)): number | null {
+  const { end } = resolveRange(home.start, home.end, ctx)
+  return end < ctx.length ? end : null
+}
+
+/**
+ * A home with a backup plan that's owned in plan year `index`. A home the plan already sells keeps to that plan: its
+ * backup plan never acts.
+ */
 export function fallbackHomeAt(doc: PlanDocument, index: number): PlanAsset | null {
   const ctx = timingContext(doc)
   return (
     doc.assets.find((a) => {
-      if (a.kind !== "home" || !a.fallback) return false
+      if (a.kind !== "home" || !a.fallback || plannedSaleIndex(doc, a, ctx) !== null) return false
       const range = resolveRange(a.start, a.end, ctx)
       return Math.max(0, range.start) <= index && index < range.end
     }) ?? null
@@ -31,11 +40,7 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
   const year = doc.settings.startYear + index
   const fallback = home.fallback!
   const when = { type: "year" as const, year }
-  // A downsize you planned for later is replaced: drop the rent or smaller home it would have added.
-  const planned = home.end.type === "milestone" ? home.end.milestoneId : null
-  const kept = <T extends { origin?: string }>(items: T[]) => (planned ? items.filter((i) => i.origin !== planned) : items)
-  const assets = kept(doc.assets).map((a) => (a.id === home.id ? { ...a, end: when, fallback: undefined } : a))
-  const expenses = kept(doc.expenses)
+  const assets = doc.assets.map((a) => (a.id === home.id ? { ...a, end: when, fallback: undefined } : a))
   const rent: PlanExpense = {
     id: `${home.id}${FALLBACK_RENT}`,
     name: `Rent after selling ${home.name}`,
@@ -60,8 +65,8 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
   }
   const next =
     fallback.then === "rent"
-      ? { ...doc, assets, expenses: [...expenses, rent] }
-      : { ...doc, assets: [...assets, smaller], expenses }
+      ? { ...doc, assets, expenses: [...doc.expenses, rent] }
+      : { ...doc, assets: [...assets, smaller] }
   return { doc: next, sale: { assetId: home.id, name: home.name, index, year, then: fallback.then } }
 }
 

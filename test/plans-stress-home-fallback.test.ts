@@ -1,7 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
-import { fallbackHomes } from "@/lib/plans/plan-home-fallback"
+import { fallbackHomes, plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import type { HomeFallback, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
 import type { AnnualHistory } from "@/lib/plans/stress/stress-history"
 import { bucketOf } from "@/lib/plans/stress/stress-outcomes"
@@ -102,4 +102,13 @@ test("the setting lists the plan's own homes only", () => {
     ],
   }
   assert.deepEqual(fallbackHomes(withOthers).map((a) => a.id), ["h", "h2"])
+})
+
+test("a home the plan sells itself keeps to that sale in every trial, whatever its setting", () => {
+  const doc = plan(RENT)
+  const planned: PlanDocument = { ...doc, assets: doc.assets.map((a) => ({ ...a, end: { type: "year" as const, year: 2035 } })) }
+  const c = runCohort(planned, flatHistory(), 0, 0)
+  assert.equal(c.soldHome, false, "the backup plan never acts")
+  assert.equal(c.depletedAge, 62, "running out at 62 doesn't pull the 2035 sale forward")
+  assert.equal(plannedSaleIndex(planned, planned.assets[0]), 9)
 })
