@@ -4,13 +4,27 @@ import type { MethodSection } from "./methodology-types"
 export const MARKET_SECTIONS: MethodSection[] = [
   {
     id: "stress-test",
-    title: "Stress test (history replay)",
+    title: "Stress test (simulated markets and history replay)",
     icon: "thunderstorm",
-    summary: "Your whole plan re-run through every stretch of market history since 1871.",
+    summary: "Your whole plan re-run through 1,000 markets built from history since 1871, or through history exactly as it happened.",
     blocks: [
       {
         kind: "text",
-        text: "Following Early Retirement Now's method, the full plan (taxes, account order, loans, everything) is re-run once for each start year in history. In each run, every account earns what its mix of investments actually earned in the years that followed, instead of its steady assumed return.",
+        text: "The full plan (taxes, account order, loans, everything) is re-run many times. In each run, every account earns what its mix of investments actually earned in the historical years that run lives through, instead of its steady assumed return. What changes between methods is which years each run lives through.",
+      },
+      {
+        kind: "table",
+        head: ["Method", "Which years each run lives through"],
+        rows: [
+          ["**Simulated** (default; the number on Overview and Compare)", "A block bootstrap: random runs of 10 consecutive historical years (5 or 15 if you pick), stitched together until the plan is covered. Crashes, recoveries and inflation streaks stay intact while eras mix, and it covers starting today, which history can't. 1,000 runs (500 or 2,000 if you pick)."],
+          ["**History**", "Early Retirement Now's replay: once per start year, in order, using only start years with history all the way to the plan's end."],
+          ["**Random restart**", "Each start year in order; when history runs out, it jumps to a random year and carries on (ProjectionLab's default)."],
+          ["**Random years**", "A random year for every plan year. Breaks up streaks, so bad decades are rarer and results usually look rosier."],
+        ],
+      },
+      {
+        kind: "text",
+        text: "Every run keeps a year's stocks, bonds, inflation and valuation (CAPE) together, so they move as they really did. Simulated runs always start at the plan's first year. A fixed random seed means the same plan always gets the same runs, so the success rate only moves when the plan does; **Reroll** draws a new set to show how much the number wobbles. Compare runs both plans through the same 1,000 markets, so the difference comes from the plans alone.",
       },
       {
         kind: "list",
@@ -20,11 +34,13 @@ export const MARKET_SECTIONS: MethodSection[] = [
           "**Cash** earns 0% after inflation (ERN's convention; the data has no T-bill series).",
           "**Crypto** has too little history, so it swings twice as hard as stocks did that year around its own assumed return, never worse than −90% in a year. The doubling is done in log terms so its long-run compounded return stays at your assumption.",
           "**Company stock behind RSUs and options** swings 1.5× as hard as the market did that year, around its own assumed price growth, never worse than −90% in a year. RSU vests are worth that path's price, and options pay exactly what that path leaves above the strike (nothing in a bad run). Only market-wide swings are replayed, not one company's own surprises. Company stock accounts default to all stocks.",
-          "**Lining up**: history's year 1 matches the plan's first year, or your retirement year (earlier plan years then use the years before it in history).",
-          "**Only complete runs count**: a start year is used only if history covers every year from there to the plan's end.",
+          "**Lining up** (History only): history's year 1 matches the plan's first year, or your retirement year (earlier plan years then use the years before it in history).",
+          "**Only complete runs count** (History only): a start year is used only if history covers every year from there to the plan's end.",
           "**Success** = the money lasts: no year where spending goes unfunded.",
           "**The outcomes** (under the Range chart), measured against your own plan: **Surplus** lasted and ended with more than you have today (after inflation); **Steady** lasted with at least 5 years of your end-of-plan spending left; **Just made it** lasted with less than that; **Lasted by selling the home** lasted only because a home's backup plan (\"If my money runs out\") sold it, and only shows when that happens; **Almost survived** ran out in the plan's last 5 years; **Catastrophic** ran out earlier, and both say how much home equity was typically still left then. Each outcome also shows how close its typical period came to running out: the **lowest point** (the fewest years of spending, bills plus debt payments, your accounts held in a year you were living off them, and the age) and the **danger-years**, the area under a 3-year line: every year under 3 years of spending adds how far under it was (a year at $0 adds 1, a year at 1.5 years adds 0.5). Working years, when income pays the bills, don't count. The **Close calls** chart draws that cushion by age for every period (median, middle 50% and 80%, the worst start year and your steady-return plan), with the under-3-years danger zone shaded; ages when most periods are still working are left blank. They're always measured on the money in your accounts (your home and other property don't pay the bills unless the plan sells them), whichever the chart shows, and follow the CAPE filter.",
-          "**CAPE filter**: show only the runs that started when stocks were as expensive as now (CAPE ≥ 20 or ≥ 30), since expensive starts have historically led to worse outcomes.",
+          "**CAPE filter**: show only the runs that started when stocks were as expensive as now (CAPE ≥ 20 or ≥ 30), since expensive starts have historically led to worse outcomes. For simulated runs that's the CAPE of their first year.",
+          "**Ending net worth histogram**: how many runs ended at each level (today's dollars), colored by outcome. Clicking a bar shows only those runs everywhere on the page. The table lists every run worst first, with the historical years it lived through.",
+          "**Withdrawal rate**: each year's withdrawals over what your accounts held at the start of that year, capped at 100%; a year your accounts couldn't cover counts as 100%.",
         ],
       },
       {

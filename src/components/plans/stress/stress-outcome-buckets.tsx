@@ -1,10 +1,9 @@
 "use client"
 
 import { useMemo } from "react"
-import { useChartTheme } from "@/hooks/use-chart-theme"
-import { mix } from "@/components/plans/results/use-plan-colors"
+import { useOutcomeColors } from "./use-outcome-colors"
 import { DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
-import { outcomeBuckets, type OutcomeBucket, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
+import { outcomeBuckets, type OutcomeBucket, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** Years listed per bucket before "and N more". */
@@ -23,23 +22,16 @@ function closenessLine(b: OutcomeBucket): string | null {
 
 /** The outcomes as a share bar, then one row each: share, count, the rule in this plan's numbers, and the years. */
 export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohorts: CohortResult[]; yardsticks: OutcomeYardsticks; isHidden: boolean }) {
-  const { success, warning, error, card, primary } = useChartTheme()
+  const colors = useOutcomeColors()
   // "Lasted by selling the home" only shows when a home's backup plan actually kicked in.
   const buckets = useMemo(() => outcomeBuckets(cohorts, yardsticks).filter((b) => b.key !== "soldHome" || b.count > 0), [cohorts, yardsticks])
-  // Good to bad: green, faded green, light amber, amber, red; selling the home is its own (accent) case. Theme tokens, so dark mode follows.
-  const colors: Record<OutcomeKey, string> = {
-    surplus: success,
-    steady: mix(success, card, 0.5),
-    justMadeIt: mix(warning, card, 0.5),
-    soldHome: primary,
-    almostSurvived: warning,
-    catastrophic: error,
-  }
   const total = cohorts.length
+  // Simulated trials mix eras, so their start years say little; the historical replay lists them.
+  const simulated = cohorts.some((c) => c.trial !== undefined)
   return (
     <div className="mt-5 space-y-3" style={isHidden ? { filter: "blur(6px)" } : undefined}>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">How the {total} periods ended</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">How the {total} {simulated ? "trials" : "periods"} ended</p>
       </div>
       <p className="text-[11px] text-foreground-muted">
         Measured on the money in your accounts, whichever the chart shows: running out means your accounts couldn&apos;t pay a year&apos;s
@@ -66,7 +58,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
             </span>
             <span className="col-span-2 text-[11px] leading-snug text-foreground-muted sm:col-span-1">
               {b.rule}
-              {b.years.length > 0 && (
+              {!simulated && b.years.length > 0 && (
                 <span className="block text-foreground-muted/80">
                   {b.years.slice(0, MAX_YEARS).join(", ")}
                   {b.years.length > MAX_YEARS && ` and ${b.years.length - MAX_YEARS} more`}

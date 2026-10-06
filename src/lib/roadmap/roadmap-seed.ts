@@ -111,7 +111,7 @@ export const ROADMAP_SEED: RoadmapSeed[] = [
     summary: "Monte Carlo / bootstrap runs next to the historical replay: histogram, filter trials, compare across plans.",
     demand: "Shipped by PL long ago · 29 compare across plans · 20 per-account trials · 8 filter trials",
     plStatus: "Shipped",
-    ourStatus: "Historical replay only (Stress test page)",
+    ourStatus: "Shipped: Stress test simulated markets (block bootstrap, random restart, random years) + history replay; histogram filter, trial table, Compare row",
     effort: "M",
   },
   {

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { fmtCompact, fmtMoney } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
@@ -18,25 +18,30 @@ interface FanRow {
   worst: number | null
 }
 
-function FanTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: FanRow }> }) {
+export type FanMeasure = "netWorth" | "invested" | "withdrawalRate"
+
+const fmtRate = (v: number) => fmtPct(v, 1)
+
+function FanTooltip({ active, payload, measure, worstLabel }: { active?: boolean; payload?: Array<{ payload: FanRow }>; measure: FanMeasure; worstLabel: string }) {
   const r = payload?.[0]?.payload
   if (!active || !r) return null
+  const money = measure !== "withdrawalRate"
   const line = (label: string, value: number, muted = true) => (
     <p className={`flex justify-between gap-4 ${muted ? "text-foreground-muted" : "text-foreground"}`}>
       <span>{label}</span>
-      <span className="tabular-nums">{fmtMoney(value)}</span>
+      <span className="tabular-nums">{money ? fmtMoney(value) : fmtRate(value)}</span>
     </p>
   )
   return (
     <div className="w-60 space-y-0.5 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className="font-semibold text-foreground">Age {r.age}</p>
-      {line("Good case (90th pct)", r.outer[1])}
+      {line(money ? "Good case (90th pct)" : "90th pct", r.outer[1])}
       {line("75th pct", r.inner[1])}
       {line("Median", r.median, false)}
       {line("25th pct", r.inner[0])}
-      {line("Bad case (10th pct)", r.outer[0])}
+      {line(money ? "Bad case (10th pct)" : "10th pct", r.outer[0])}
       <div className="border-t border-card-border pt-0.5">{line("Your plan (steady returns)", r.plan)}</div>
-      {r.worst !== null && line("Worst start year", r.worst)}
+      {r.worst !== null && line(worstLabel, r.worst)}
     </div>
   )
 }
@@ -47,11 +52,11 @@ interface Props {
   /** The steady-return plan, same measure, today's dollars. */
   plan: number[]
   worst: CohortResult | null
-  measure: "netWorth" | "invested"
+  measure: FanMeasure
   isHidden: boolean
 }
 
-/** The spread of outcomes by age across every historical period: 10–90 and 25–75 percentile bands and the median. */
+/** The spread of outcomes by age across every historical period or trial: 10–90 and 25–75 percentile bands and the median. */
 export function StressFanChart({ bands, age0, plan, worst, measure, isHidden }: Props) {
   const { primary, error, foreground, foregroundMuted, border } = useChartTheme()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
@@ -73,8 +78,8 @@ export function StressFanChart({ bands, age0, plan, worst, measure, isHidden }: 
         <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
           <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="age" tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} minTickGap={16} />
-          <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
-          <Tooltip content={<FanTooltip />} />
+          <YAxis tickFormatter={measure === "withdrawalRate" ? (v: number) => fmtPct(v, 0) : fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
+          <Tooltip content={<FanTooltip measure={measure} worstLabel={worst?.trial !== undefined ? "Worst trial" : "Worst start year"} />} />
           <Area dataKey="outer" stroke="none" fill={primary} fillOpacity={0.12} isAnimationActive={false} />
           <Area dataKey="inner" stroke="none" fill={primary} fillOpacity={0.22} isAnimationActive={false} />
           <Line dataKey="median" stroke={primary} strokeWidth={2} dot={false} isAnimationActive={false} />

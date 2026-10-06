@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { useIsNarrow } from "@/hooks/use-is-narrow"
 import { NOTABLE_PERIODS } from "@/lib/fire/fire-constants"
+import { sequenceLabel, trialId, trialName } from "@/lib/plans/stress/stress-labels"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** Drawn at a size close to the screen's, so the labels stay readable when the SVG scales to fit. */
@@ -44,18 +45,22 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
   const x = (i: number) => PAD.left + (i / years) * (W - PAD.left - PAD.right)
   const y = (v: number) => H - PAD.bottom - (Math.max(0, Math.min(v, top)) / top) * (H - PAD.top - PAD.bottom)
   const line = (values: number[]) => values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")
-  const hovered = cohorts.find((c) => c.year === hover)
-  const plain = cohorts.filter((c) => !notableLabel.has(c.year))
-  const notable = cohorts.filter((c) => notableLabel.has(c.year))
+  const hovered = cohorts.find((c) => trialId(c) === hover)
+  // Crisis start years are highlighted in the historical replay only; simulated trials mix eras.
+  const isNotable = (c: CohortResult) => c.trial === undefined && notableLabel.has(c.year)
+  const simulated = cohorts.some((c) => c.trial !== undefined)
+  const plain = cohorts.filter((c) => !isNotable(c))
+  const notable = cohorts.filter(isNotable)
   const ageTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * years))
 
   const path = (c: CohortResult, highlight: boolean) => {
     const failed = c.depletedAge !== null
-    const active = hover === c.year
+    const id = trialId(c)
+    const active = hover === id
     const stroke = failed ? "var(--error)" : highlight ? "var(--warning)" : "var(--foreground-muted)"
     const opacity = active ? 0.95 : highlight ? 0.9 : failed ? 0.45 : 0.2
     return (
-      <g key={c.year} onMouseEnter={() => setHover(c.year)} onMouseLeave={() => setHover(null)} onClick={() => setHover(c.year)}>
+      <g key={id} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onClick={() => setHover(id)}>
         <polyline points={line(c[measure])} fill="none" stroke="transparent" strokeWidth={hit} />
         <polyline points={line(c[measure])} fill="none" stroke={stroke} strokeOpacity={opacity} strokeWidth={active || highlight ? 2 : 1} />
       </g>
@@ -85,21 +90,22 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
       {hovered && (
         <div className="pointer-events-none absolute top-2 right-3 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
           <p className="font-semibold text-foreground">
-            Starting {hovered.year}
-            {notableLabel.has(hovered.year) ? ` · ${notableLabel.get(hovered.year)}` : ""}
+            {trialName(hovered)}
+            {isNotable(hovered) ? ` · ${notableLabel.get(hovered.year)}` : ""}
           </p>
+          {hovered.trial !== undefined && <p className="max-w-64 text-foreground-muted">{sequenceLabel(hovered.sequence, 4)}</p>}
           <p className={hovered.depletedAge !== null ? "text-error" : "text-foreground-muted"}>
             {hovered.depletedAge !== null ? `Money runs out at ${hovered.depletedAge}` : `Ends with ${fmtCompact(hovered[measure].at(-1) ?? 0)}`}
           </p>
-          {hovered.cape !== null && <p className="text-foreground-muted">CAPE then: {hovered.cape.toFixed(1)}</p>}
+          {hovered.cape !== null && hovered.trial === undefined && <p className="text-foreground-muted">CAPE then: {hovered.cape.toFixed(1)}</p>}
         </div>
       )}
       <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-foreground-muted">
-        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-warning" /> Crisis start years</span>
+        {!simulated && <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-warning" /> Crisis start years</span>}
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-error" /> Ran out of money</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-foreground-muted/40" /> Lasted</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 border-t-[1.5px] border-dashed border-foreground/70" /> Your plan (steady returns)</span>
-        <span>Values above {fmtCompact(top)} are clipped. Hover or tap a line for its start year.</span>
+        <span>Values above {fmtCompact(top)} are clipped. {simulated ? `A sample of ${cohorts.length} trials. Hover or tap a line for its years.` : "Hover or tap a line for its start year."}</span>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { fmtCompact } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtSuccess } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { PlanSummary } from "@/lib/plans/plan-types"
 import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
@@ -68,11 +68,40 @@ interface Props {
   b: PlanSummary
   names: [string, string]
   colors: [string, string]
+  /** Each plan's success rate through the default simulated markets (null while it runs); the row shows when given. */
+  safety?: [number | null, number | null]
   isHidden: boolean
 }
 
+/** Success rate through simulated markets, and B's difference in percentage points. */
+function SafetyRow({ safety }: { safety: [number | null, number | null] }) {
+  const [x, y] = safety
+  const points = x === null || y === null ? null : Math.floor(y * 100 + 1e-9) - Math.floor(x * 100 + 1e-9)
+  return (
+    <tr className="border-t border-card-border">
+      <td className="px-5 sm:px-6 py-2 text-xs text-foreground-muted whitespace-nowrap" title="The same 1,000 simulated markets for both plans, so the difference comes from the plans alone">
+        Survives simulated markets
+      </td>
+      {safety.map((rate, i) => (
+        <td key={i} className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
+          {rate === null ? <span className="inline-block h-3 w-10 animate-shimmer rounded" /> : fmtSuccess(rate)}
+        </td>
+      ))}
+      <td className="px-3 pr-5 sm:pr-6 py-2 text-right tabular-nums whitespace-nowrap">
+        {points === null ? (
+          <span className="text-foreground-muted">—</span>
+        ) : points === 0 ? (
+          <span className="text-foreground-muted">Same</span>
+        ) : (
+          <span className={`font-medium ${points > 0 ? "text-success" : "text-error"}`}>{signed(points, `${Math.abs(points)} pts`)}</span>
+        )}
+      </td>
+    </tr>
+  )
+}
+
 /** Key numbers for A and B, in today's dollars, with B's difference from A. */
-export function CompareTable({ a, b, names, colors, isHidden }: Props) {
+export function CompareTable({ a, b, names, colors, safety, isHidden }: Props) {
   const head = "px-3 py-2 text-right text-xs font-semibold text-foreground whitespace-nowrap"
   return (
     <FireSectionCard eyebrow="Key numbers" title="Today's dollars">
@@ -104,6 +133,7 @@ export function CompareTable({ a, b, names, colors, isHidden }: Props) {
                 </td>
               </tr>
             ))}
+            {safety && <SafetyRow safety={safety} />}
           </tbody>
         </table>
       </div>

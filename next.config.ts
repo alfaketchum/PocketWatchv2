@@ -75,7 +75,8 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.com wss://*.walletconnect.org https://*.web3modal.org https://*.reown.com wss://news.treeofalpha.com https://news.treeofalpha.com https://eth.llamarpc.com https://*.infura.io https://*.alchemy.com https://rpc.ankr.com https://*.base.org https://*.optimism.io https://*.arbitrum.io https://*.polygon-rpc.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.alternative.me https://api.llama.fi https://coins.llama.fi https://yields.llama.fi https://swap.defillama.com https://*.defillama.com https://discord.com https://pulse.walletconnect.org https://api.openai.com https://api.dexscreener.com https://*.plaid.com",
               "frame-src 'self' https://cdn.plaid.com https://s.tradingview.com https://s3.tradingview.com",
-              "worker-src 'self'",
+              // blob: for Web Workers (the Planner's stress test): Turbopack starts them from a blob bootstrap.
+              "worker-src 'self' blob:",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

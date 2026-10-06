@@ -25,6 +25,7 @@ test("each advanced setting is reported once set", () => {
     ["spendingRule", withSettings({ spendingRule: { kind: "guardrails", band: 0.2, step: 0.1 } })],
     ["cashBuffer", withSettings({ cashBuffer: 5_000 })],
     ["trading", { ...base, accounts: [cash, { ...brokerage, realizedShare: 0.2 }] }],
+    ["marketMix", { ...base, accounts: [cash, { ...brokerage, mix: { stocks: 0.6, bonds: 0.4, cash: 0, crypto: 0 } }] }],
     ["surplusOrder", { ...base, cashFlow: { ...base.cashFlow, surplusOrder: [{ accountId: brokerage.id, annualCap: null }] } }],
     ["withdrawalOrder", { ...base, cashFlow: { ...base.cashFlow, withdrawalOrder: [brokerage.id, cash.id] } }],
     ["earlyPenalty", { ...base, cashFlow: { ...base.cashFlow, avoidEarlyPenalty: false } }],

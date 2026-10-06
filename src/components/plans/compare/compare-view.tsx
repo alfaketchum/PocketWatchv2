@@ -1,12 +1,15 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { useComparePlans } from "@/hooks/plans/use-compare-plans"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
-import type { YearRow } from "@/lib/plans/plan-types"
+import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
+import { DEFAULT_SAMPLING } from "@/lib/plans/stress/stress-sampling"
+import { summarize } from "@/lib/plans/stress/stress-test"
+import { useStressTest } from "../stress/use-stress-test"
 import { usePlanColors } from "../results/use-plan-colors"
 import { CompareInputsDiff } from "./compare-inputs-diff"
 import { ComparePickers } from "./compare-pickers"
@@ -27,12 +30,19 @@ function lengthNote(a: YearRow[], b: YearRow[]): string | null {
 }
 
 /** Plan A against plan B: what's different in the inputs, then what that does to every chart. */
+/** A plan's success rate through the default simulated markets (null while loading or running). */
+function useSafety(doc: PlanDocument | null): number | null {
+  const { cohorts, running } = useStressTest(doc, "start", "plan", DEFAULT_SAMPLING)
+  return useMemo(() => (cohorts && !running && cohorts.length > 0 ? summarize(cohorts, null).successRate : null), [cohorts, running])
+}
+
 export function CompareView() {
   const { plans, isLoading, error, aId, bId, setA, setB, swap, basis, setBasis, a, b } = useComparePlans()
   const { isHidden } = usePrivacyMode()
   const { series } = usePlanColors()
   const colors: [string, string] = [series[0], series[1]]
   const { isBasic } = usePlanMode()
+  const safety: [number | null, number | null] = [useSafety(a.plan?.document ?? null), useSafety(b.plan?.document ?? null)]
   // Basic always shows today's dollars (its toggle is Advanced).
   useEffect(() => {
     if (isBasic) setBasis("today")
@@ -64,7 +74,7 @@ export function CompareView() {
     <div className="space-y-5">
       {pickers}
       <CompareInputsDiff a={a.plan.document} b={b.plan.document} colors={colors} note={lengthNote(a.rows, b.rows)} isHidden={isHidden} />
-      <CompareTable a={a.summary} b={b.summary} names={[a.plan.name, b.plan.name]} colors={colors} isHidden={isHidden} />
+      <CompareTable a={a.summary} b={b.summary} names={[a.plan.name, b.plan.name]} colors={colors} safety={safety} isHidden={isHidden} />
       <CompareCharts
         a={{ name: a.plan.name, view: a.view, projection: a.projection, rows: a.rows }}
         b={{ name: b.plan.name, view: b.view, projection: b.projection, rows: b.rows }}

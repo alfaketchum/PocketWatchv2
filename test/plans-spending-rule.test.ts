@@ -83,7 +83,7 @@ test("before retirement the rule doesn't touch spending", () => {
 })
 
 test("stress summary: how low the rule took spending (median and worst 10%); none without a rule", () => {
-  const cohort = (lowestSpending?: number) => ({ year: 1900, cape: null, avgInflation: null, depletedAge: null, netWorth: [1], invested: [1], ...(lowestSpending === undefined ? {} : { lowestSpending }) })
+  const cohort = (lowestSpending?: number) => ({ year: 1900, cape: null, avgInflation: null, depletedAge: null, sequence: [1900], netWorth: [1], invested: [1], withdrawalRate: [0], ...(lowestSpending === undefined ? {} : { lowestSpending }) })
   const lows = [1, 0.9, 0.81, 0.73, 0.66, 1, 1, 0.9, 0.9, 1, 0.59]
   const dip = summarize(lows.map((l) => cohort(l)), null).spendingDip!
   close(dip.median, 0.9, 1e-9)

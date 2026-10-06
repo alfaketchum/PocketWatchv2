@@ -26,7 +26,7 @@ export const BASIC_MILESTONE_TEMPLATES: readonly string[] = [
 export interface AdvancedSetting {
   key: string
   label: string
-  /** The editor tab where it's set in Advanced. */
+  /** The editor tab where it's set in Advanced, or a plan page path (e.g. "stress") when it's set on a page. */
   tab: string
 }
 
@@ -50,6 +50,7 @@ const CHECKS: Check[] = [
   { key: "realReturns", label: "Returns after inflation", tab: "accounts", inUse: (d) => d.settings.returnBasis === "real" },
   { key: "costBasis", label: "Cost basis", tab: "accounts", inUse: (d) => own(d.accounts).some((a) => a.costBasis !== null) },
   { key: "trading", label: "Trading activity", tab: "accounts", inUse: (d) => d.accounts.some((a) => (a.shortTermShare ?? 0) > 0 || (a.realizedShare ?? 0) > 0) },
+  { key: "marketMix", label: "What accounts hold in market tests", tab: "stress", inUse: (d) => d.accounts.some((a) => !!a.mix) },
   { key: "inherited", label: "Inherited account rules", tab: "accounts", inUse: (d) => own(d.accounts).some((a) => a.drainByYear != null) },
   { key: "equity", label: "Equity pay", tab: "income", inUse: (d) => d.incomes.some((i) => !!i.equity) },
   { key: "contributions", label: "Payroll contributions", tab: "income", inUse: (d) => d.incomes.some((i) => i.contributions.length > 0) },

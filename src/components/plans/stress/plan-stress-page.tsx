@@ -7,7 +7,7 @@ import { usePlanProjection } from "@/hooks/plans/use-plan-projection"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { StressTestView } from "./stress-test-view"
 
-/** A plan's stress test page: the whole plan replayed through every market since 1871. */
+/** A plan's stress test page: the whole plan through simulated markets, or replayed through every market since 1871. */
 export function PlanStressPage({ planId }: { planId: string }) {
   const { plan, document: doc, update, isLoading } = usePlanDocument(planId)
   const { projection } = usePlanProjection(doc)
@@ -28,7 +28,7 @@ export function PlanStressPage({ planId }: { planId: string }) {
         </Link>
         <div>
           <h1 className="text-xl sm:text-2xl text-foreground font-semibold">Stress test</h1>
-          <p className="text-xs text-foreground-muted mt-0.5">Your plan replayed through every market since 1871, crashes and stagflation included</p>
+          <p className="text-xs text-foreground-muted mt-0.5">Your plan through 1,000 markets built from history since 1871, crashes and stagflation included</p>
         </div>
       </div>
       <StressTestView doc={doc} update={update} projection={projection} isHidden={isHidden} />

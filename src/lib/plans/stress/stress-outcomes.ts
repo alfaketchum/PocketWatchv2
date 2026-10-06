@@ -35,8 +35,8 @@ export interface OutcomeYardsticks {
 
 const fmt = (v: number) => (v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `$${Math.round(v / 1e3)}k` : `$${Math.round(v)}`)
 
-/** Which bucket one historical period falls in. */
-function bucketOf(c: CohortResult, y: OutcomeYardsticks): OutcomeKey {
+/** Which bucket one historical period or trial falls in. */
+export function bucketOf(c: CohortResult, y: OutcomeYardsticks): OutcomeKey {
   if (c.depletedAge !== null) return c.depletedAge >= y.endAge - CLOSE_YEARS ? "almostSurvived" : "catastrophic"
   if (c.soldHome) return "soldHome"
   const end = (y.measure === "netWorth" ? c.netWorth : c.invested).at(-1) ?? 0

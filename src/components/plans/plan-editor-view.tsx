@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react"
-import { usePathname, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
@@ -99,12 +99,14 @@ export function PlanEditorView({ planId }: { planId: string }) {
     if (isBasic) setBasis("today")
   }, [isBasic, setBasis])
   const advancedInUse = useMemo(() => (isBasic && document ? advancedSettingsInUse(document) : []), [isBasic, document])
+  const router = useRouter()
   const openAdvanced = useCallback(
     (target: string) => {
       setMode("advanced")
       if (isPlanTab(target)) setTab(target)
+      else router.push(`/plans/${planId}/${target}`)
     },
-    [setMode, setTab],
+    [setMode, setTab, router, planId],
   )
 
   if (isLoading) return <EditorSkeleton />
@@ -136,7 +138,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
           />
         ) : (
           <>
-            {!isBasic && <StressOverviewCard doc={document} planId={planId} />}
+            <StressOverviewCard doc={document} planId={planId} projection={projection} />
             <PlanLedgerTable doc={view} rows={rows} basis={basis} isHidden={isHidden} fileName={plan.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")} />
           </>
         )}
