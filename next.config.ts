@@ -6,6 +6,9 @@ function git(cmd: string): string {
 }
 
 const nextConfig: NextConfig = {
+  // The dev server builds into its own folder (scripts/dev.mjs), so starting it never wipes the
+  // production build a running `next start` is serving from.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   env: {
     NEXT_PUBLIC_BUILD_VERSION: `0.${git("rev-list --count HEAD")}.0`,
     NEXT_PUBLIC_BUILD_HASH: git("rev-parse --short HEAD"),
