@@ -106,8 +106,8 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   )
   return (
     <div className="space-y-5">
-      <FireSectionCard eyebrow="Result" info={INFO}>
-        <div className="mb-4">
+      <FireSectionCard eyebrow="Test setup" info={INFO}>
+        <div className="mb-5">
           <StressControls
             sampling={sampling}
             onSampling={setSampling}
@@ -142,6 +142,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
           </p>
         ) : (
           <div key={runId ?? 0} className="animate-scale-in">
+            <p className="label-caps mb-2">Result</p>
             {bin && (
               <button type="button" onClick={() => setBin(null)} className="mb-3 inline-flex items-center gap-1 rounded-lg border border-primary bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                 Only {unit} that {sliceLabel(bin.slice)}
