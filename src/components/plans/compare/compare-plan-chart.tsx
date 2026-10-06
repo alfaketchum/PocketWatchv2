@@ -25,6 +25,7 @@ interface Props {
   onSelect: (index: number) => void
   onClear: () => void
   isHidden: boolean
+  syncId: string
 }
 
 /** One plan's stacked bars, named and colored as A or B; the highlighted year follows the other chart. */

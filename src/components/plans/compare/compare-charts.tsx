@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useId, useMemo, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { chartMilestones } from "@/lib/plans/plan-chart"
@@ -47,8 +47,8 @@ function useMarks(plan: ComparedPlan) {
 }
 
 /**
- * A and B side by side in one view, with B − A below. One view switch drives all three; hovering a year shows it in the
- * year card, pinning it highlights it everywhere. "Same scale" puts A and B on one axis so bar heights compare directly.
+ * A and B side by side in one view, with B − A below. One view switch drives all three; hovering a year shows it in all
+ * three charts and the year card, pinning it highlights it everywhere. "Same scale" puts A and B on one axis so bar heights compare directly.
  */
 export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: Props) {
   const { isBasic } = usePlanMode()
@@ -58,6 +58,7 @@ export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: 
   const [breakdown, setBreakdown] = useState(false)
   const [hovered, setHovered] = useState<number | null>(null)
   const [pinned, setPinned] = useState<number | null>(null)
+  const syncId = useId()
   const mode = isBasic && !BASIC_CHART_VIEWS.includes(pickedMode) ? "networth" : pickedMode
   const detail = savedDetail && !isBasic
 
@@ -105,8 +106,9 @@ export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: 
       stacked={(which === "A" ? marksA : marksB).stacked}
       mode={view}
       hasDebt={hasDebt}
-      // Pinned only: a hover changes just the year card, so moving the mouse doesn't redraw every bar of three charts.
+      // Pinned only: hovering moves the synced hover band (and the year card) without redrawing every bar.
       selected={pinned}
+      syncId={syncId}
       onHover={setHovered}
       onSelect={togglePinned}
       onClear={unpin}
@@ -142,7 +144,7 @@ export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: 
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="h-[220px] lg:h-[260px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-            <CompareDiffChart rows={diff} series={series} mode={view} breakdown={breakdown || cashflow} selected={pinned} onHover={setHovered} onSelect={togglePinned} />
+            <CompareDiffChart rows={diff} series={series} mode={view} breakdown={breakdown || cashflow} selected={pinned} onHover={setHovered} onSelect={togglePinned} syncId={syncId} />
           </div>
           {aligned.a[active] && aligned.b[active] && (
             <CompareYearCard

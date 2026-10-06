@@ -115,6 +115,8 @@ interface ChartPlotProps {
   focused: boolean
   /** What the dashed comparison line in the Expenses view shows. */
   steadyLabel?: string
+  /** Charts sharing one id show the hovered year together (Recharts moves only the hover layer, not the bars). */
+  syncId?: string
 }
 
 /** A part's label inside the year view's bar, when it's tall enough to read: "Taxable $1.2M". */
@@ -147,6 +149,7 @@ export const ChartPlot = memo(function ChartPlot({
   onHoverMark,
   focused,
   steadyLabel,
+  syncId,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
   // Phones: slimmer axes leave the bars room, and the tooltip sits at the top of the plot rather than over the bar.
@@ -169,6 +172,7 @@ export const ChartPlot = memo(function ChartPlot({
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
         data={points}
+        syncId={syncId}
         margin={{ top: iconRoom, right: 12, left: 4, bottom: 0 }}
         stackOffset="sign"
         barCategoryGap={focused ? "30%" : "8%"}

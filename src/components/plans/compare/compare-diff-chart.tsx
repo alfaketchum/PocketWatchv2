@@ -18,6 +18,8 @@ interface Props {
   selected: number | null
   onHover: (index: number | null) => void
   onSelect: (index: number) => void
+  /** Shared with the A and B charts, so a hovered year shows in all three. */
+  syncId: string
 }
 
 const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => {
@@ -29,7 +31,7 @@ const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => 
  * B minus A each year: one bar for the total, green where B comes out ahead and red where it falls behind, or each
  * band's difference stacked with the total as dots. Years only one plan runs stay empty.
  */
-export const CompareDiffChart = memo(function CompareDiffChart({ rows, series, mode, breakdown, selected, onHover, onSelect }: Props) {
+export const CompareDiffChart = memo(function CompareDiffChart({ rows, series, mode, breakdown, selected, onHover, onSelect, syncId }: Props) {
   const { success, error, foreground, foregroundMuted, border } = useChartTheme()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const toneColor = (v: number) => {
@@ -41,6 +43,7 @@ export const CompareDiffChart = memo(function CompareDiffChart({ rows, series, m
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart
         data={rows}
+        syncId={syncId}
         margin={{ top: 8, right: 12, left: 4, bottom: 0 }}
         stackOffset="sign"
         barCategoryGap="8%"
