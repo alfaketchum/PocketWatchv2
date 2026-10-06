@@ -47,8 +47,8 @@ function useMarks(plan: ComparedPlan) {
 }
 
 /**
- * A and B side by side in one view, with B − A below. One view switch drives all three; hovering or pinning a year
- * highlights it everywhere. "Same scale" puts A and B on one axis so bar heights compare directly.
+ * A and B side by side in one view, with B − A below. One view switch drives all three; hovering a year shows it in the
+ * year card, pinning it highlights it everywhere. "Same scale" puts A and B on one axis so bar heights compare directly.
  */
 export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: Props) {
   const { isBasic } = usePlanMode()
@@ -105,7 +105,8 @@ export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: 
       stacked={(which === "A" ? marksA : marksB).stacked}
       mode={view}
       hasDebt={hasDebt}
-      selected={highlighted}
+      // Pinned only: a hover changes just the year card, so moving the mouse doesn't redraw every bar of three charts.
+      selected={pinned}
       onHover={setHovered}
       onSelect={togglePinned}
       onClear={unpin}
@@ -141,7 +142,7 @@ export function CompareCharts({ a, b, colors, basis, onBasisChange, isHidden }: 
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div className="h-[220px] lg:h-[260px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-            <CompareDiffChart rows={diff} series={series} mode={view} breakdown={breakdown || cashflow} selected={highlighted} onHover={setHovered} onSelect={togglePinned} />
+            <CompareDiffChart rows={diff} series={series} mode={view} breakdown={breakdown || cashflow} selected={pinned} onHover={setHovered} onSelect={togglePinned} />
           </div>
           {aligned.a[active] && aligned.b[active] && (
             <CompareYearCard
