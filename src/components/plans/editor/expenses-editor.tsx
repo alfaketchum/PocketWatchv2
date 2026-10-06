@@ -15,7 +15,7 @@ import { GrowthField } from "./growth-field"
 import { ChildDialog } from "./child-dialog"
 import { KidCostList } from "./kid-cost-list"
 import { AddButton, EditorToolbar, EmptyNote, ItemCard, SelectField, TextField } from "./plan-editor-controls"
-import { useExpenseCategories } from "./use-expense-categories"
+import { NO_CATEGORY, useExpenseCategoryOptions } from "./use-expense-categories"
 import { TimingPicker } from "./timing-picker"
 import { AddExpenseDialog, EXPENSE_EVENTS } from "./add-expense-dialog"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
@@ -25,7 +25,6 @@ import { ExpensesTable } from "./expenses-table"
 import { AssetCostList } from "./asset-cost-list"
 import { assetCostLines } from "@/lib/plans/plan-asset-costs"
 
-const NO_CATEGORY = "none"
 
 /** Add a spending line, or a life event whose costs land here (opens the same form as on Milestones). */
 function AddExpenseButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
@@ -70,13 +69,7 @@ export function ExpensesEditor({ doc, update, view, onEditItem, viewToggle }: Pl
     [doc.expenses],
   )
   const ages = useMemo(() => ({ from: primaryAge(doc), to: doc.settings.endAge, retire: retirementAge(doc) }), [doc])
-  const categories = useExpenseCategories()
-  // Your categories, keeping a line's own category listed even if it's no longer one of them.
-  const categoryOptions = (current: string | null) => [
-    { value: NO_CATEGORY, label: "None" },
-    ...categories.map((c) => ({ value: c.label, label: c.label })),
-    ...(current && !categories.some((c) => c.label === current) ? [{ value: current, label: current }] : []),
-  ]
+  const categoryOptions = useExpenseCategoryOptions()
 
 
   return (

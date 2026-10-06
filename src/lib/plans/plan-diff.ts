@@ -1,5 +1,6 @@
+import { UNCATEGORIZED } from "./plan-constants"
 import { ITEM_KINDS, money, pct, ruleLabel, yesNo, type ItemKind } from "./plan-diff-items"
-import type { PlanDocument, PlanSettings } from "./plan-types"
+import type { PlanDocument, PlanExpense, PlanSettings } from "./plan-types"
 
 /**
  * What differs between two plans' inputs, for Compare: changed fields on items both plans have (matched by id, as a
@@ -106,11 +107,61 @@ function itemChanges<T extends { id: string }>(kind: ItemKind<T>, a: PlanDocumen
   ]
 }
 
+interface CategoryTotal {
+  /** Recurring lines' yearly amounts and one-time costs, today's dollars. */
+  yearly: number
+  once: number
+  /** Every line in it, ids left out, to tell when something besides the totals differs. */
+  lines: string[]
+}
+
+function categoryTotals(expenses: PlanExpense[]): Map<string, CategoryTotal> {
+  const out = new Map<string, CategoryTotal>()
+  for (const e of expenses) {
+    const key = e.category ?? UNCATEGORIZED
+    const cur = out.get(key) ?? { yearly: 0, once: 0, lines: [] }
+    out.set(key, {
+      yearly: cur.yearly + (e.oneTime ? 0 : e.amount),
+      once: cur.once + (e.oneTime ? e.amount : 0),
+      lines: [...cur.lines, stable({ ...e, id: null })],
+    })
+  }
+  return out
+}
+
+function categoryText(t: CategoryTotal): string {
+  const parts = [...(t.yearly > 0 || t.once === 0 ? [`${money(t.yearly)}/yr`] : []), ...(t.once > 0 ? [`${money(t.once)} once`] : [])]
+  return parts.join(" + ")
+}
+
+/**
+ * Expenses compared by category, not line by line (two plans rarely name their lines alike): each category's yearly
+ * total and one-time costs; when those match but its lines differ (timing, growth, how it's split), that's said too.
+ */
+function expenseCategoryChanges(a: PlanDocument, b: PlanDocument): InputChange[] {
+  const ta = categoryTotals(a.expenses)
+  const tb = categoryTotals(b.expenses)
+  const names = [...new Set([...ta.keys(), ...tb.keys()])].sort((x, y) => Number(x === UNCATEGORIZED) - Number(y === UNCATEGORIZED) || x.localeCompare(y))
+  return names.flatMap((name): InputChange[] => {
+    const x = ta.get(name)
+    const y = tb.get(name)
+    const change = { label: name, a: x ? categoryText(x) : null, b: y ? categoryText(y) : null }
+    if (change.a !== change.b) return [change]
+    const same = x && y && [...x.lines].sort().join("\n") === [...y.lines].sort().join("\n")
+    return same ? [] : [{ label: `${name} · Timing, growth or lines`, a: "Differs", b: "Differs" }]
+  })
+}
+
 /** Every input that differs between plan A and plan B, grouped like the editor's tabs; groups with no changes left out. */
 export function diffPlanInputs(a: PlanDocument, b: PlanDocument): InputDiffGroup[] {
+  const items = ITEM_KINDS.map((kind) => ({ key: kind.key, title: kind.title, changes: itemChanges(kind, a, b) }))
+  // Expenses sit after income, as in the editor's tabs.
+  const afterIncome = items.findIndex((g) => g.key === "incomes") + 1
   const groups: InputDiffGroup[] = [
     { key: "settings", title: "Assumptions", changes: settingChanges(a, b) },
-    ...ITEM_KINDS.map((kind) => ({ key: kind.key, title: kind.title, changes: itemChanges(kind, a, b) })),
+    ...items.slice(0, afterIncome),
+    { key: "expenses", title: "Expenses", changes: expenseCategoryChanges(a, b) },
+    ...items.slice(afterIncome),
     { key: "cashflow", title: "Cash flow", changes: cashFlowChanges(a, b) },
   ]
   return groups.filter((g) => g.changes.length > 0)

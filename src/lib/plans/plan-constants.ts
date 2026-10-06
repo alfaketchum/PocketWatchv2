@@ -114,3 +114,6 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
     ],
   }
 }
+
+/** How a spending line without a category is named where lines are grouped by category (Compare). */
+export const UNCATEGORIZED = "Uncategorized"

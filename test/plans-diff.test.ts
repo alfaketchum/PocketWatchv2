@@ -92,3 +92,44 @@ test("tone: more net worth is good, more taxes are bad, cash flow is neutral", (
   assert.equal(tone("expenses", -100), 1)
   assert.equal(tone("cashflow", 100), 0)
 })
+
+const line = (id: string, name: string, category: string | null, amount: number, oneTime = false) => ({
+  id,
+  name,
+  category,
+  amount,
+  growth: null,
+  start: { type: "planStart" as const },
+  end: { type: "planEnd" as const },
+  oneTime,
+})
+
+test("expenses compare by category totals, not line names", () => {
+  const a = { ...doc, expenses: [line("1", "Groceries", "Food", 6_000), line("2", "Eating out", "Food", 3_600)] }
+  // Same category, lines named and split differently, a higher total: one change for Food.
+  const b = { ...doc, expenses: [line("x", "Food & dining", "Food", 12_000)] }
+  const changes = changesOf(a, b, "expenses")
+  assert.equal(changes.length, 1)
+  assert.equal(changes[0].label, "Food")
+  assert.notEqual(changes[0].a, changes[0].b)
+})
+
+test("a category only one plan has, and uncategorized lines, are listed by category", () => {
+  const a = { ...doc, expenses: [line("1", "Gym", null, 600), line("2", "Wedding", "Events", 30_000, true)] }
+  const b = { ...doc, expenses: [line("1", "Gym", null, 600)] }
+  assert.deepEqual(
+    changesOf(a, b, "expenses").map((c) => [c.label, c.a !== null, c.b !== null]),
+    [["Events", true, false]],
+  )
+  const c = { ...doc, expenses: [line("1", "Gym", null, 1_200)] }
+  assert.equal(changesOf(b, c, "expenses")[0]?.label, "Uncategorized")
+})
+
+test("a category with the same totals but different lines says so", () => {
+  const a = { ...doc, expenses: [line("1", "Travel", "Travel", 6_000)] }
+  const b = { ...doc, expenses: [{ ...line("1", "Travel", "Travel", 6_000), growth: 0.05 }] }
+  assert.equal(changesOf(a, b, "expenses")[0]?.label, "Travel · Timing, growth or lines")
+  // Same total, a renamed line: the totals match, so it's flagged as a line difference.
+  const renamed = { ...doc, expenses: [line("9", "Trips", "Travel", 6_000)] }
+  assert.equal(changesOf(a, renamed, "expenses")[0]?.label, "Travel · Timing, growth or lines")
+})

@@ -35,3 +35,19 @@ export function useExpenseCategories(): ExpenseCategory[] {
     })
   }, [merged, spending])
 }
+
+/** The select value for a line with no category. */
+export const NO_CATEGORY = "none"
+
+/** Category choices for an expense line: your categories, keeping the line's own listed even if it's no longer one of them. */
+export function useExpenseCategoryOptions(): (current: string | null) => { value: string; label: string }[] {
+  const categories = useExpenseCategories()
+  return useMemo(
+    () => (current: string | null) => [
+      { value: NO_CATEGORY, label: "None" },
+      ...categories.map((c) => ({ value: c.label, label: c.label })),
+      ...(current && !categories.some((c) => c.label === current) ? [{ value: current, label: current }] : []),
+    ],
+    [categories],
+  )
+}

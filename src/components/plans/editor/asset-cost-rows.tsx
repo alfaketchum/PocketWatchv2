@@ -26,6 +26,9 @@ export function AssetCostRows({ lines, doc }: { lines: AssetCostLine[]; doc: Pla
               <Badge>{KIND_LABEL[asset.kind]}</Badge>
             </span>
           </Cell>
+          <Cell>
+            <span className="px-2">{e.category ?? "—"}</span>
+          </Cell>
           <Cell omit={isBasic} />
           <Cell align="right">
             <span className="px-2 tabular-nums">{fmtMoney(yearly / MONTHS)}</span>

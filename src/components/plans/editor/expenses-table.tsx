@@ -9,13 +9,14 @@ import { overlapWarning, retirementAge } from "@/lib/plans/plan-spending-pattern
 import type { PlanExpense } from "@/lib/plans/plan-types"
 import { patchItem, planItemAnchor, primaryAge, type PlanEditorProps } from "../plans-helpers"
 import { PatternChips } from "./expense-pattern-field"
-import { Badge, Cell, CellCheck, CellNumber, CellText, PlanTable, Row, RowButton } from "./plan-table"
+import { Badge, Cell, CellCheck, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 import { AssetCostRows } from "./asset-cost-rows"
+import { NO_CATEGORY, useExpenseCategoryOptions } from "./use-expense-categories"
 
 const MONTHS = 12
 
-type SortKey = "name" | "amount"
+type SortKey = "name" | "category" | "amount"
 type Sort = { key: SortKey; dir: "asc" | "desc" } | null
 
 /** Clicking a sortable header: amounts start highest first, names A–Z; a third click goes back to your order. */
@@ -25,12 +26,19 @@ function nextSort(current: Sort, key: SortKey): Sort {
   return current.dir === first ? { key, dir: first === "asc" ? "desc" : "asc" } : null
 }
 
-/** Sorted for display only (the saved order is untouched). By amount, one-time costs follow the recurring lines. */
+/**
+ * Sorted for display only (the saved order is untouched). By amount, one-time costs follow the recurring lines; by
+ * category, lines without one come last and each category's lines stay in your order.
+ */
 function sorted(expenses: PlanExpense[], sort: Sort): PlanExpense[] {
   if (!sort) return expenses
   const sign = sort.dir === "asc" ? 1 : -1
   return [...expenses].sort((a, b) => {
     if (sort.key === "name") return sign * a.name.localeCompare(b.name)
+    if (sort.key === "category") {
+      if ((a.category === null) !== (b.category === null)) return a.category === null ? 1 : -1
+      return sign * (a.category ?? "").localeCompare(b.category ?? "")
+    }
     if (a.oneTime !== b.oneTime) return a.oneTime ? 1 : -1
     return sign * (a.amount - b.amount)
   })
@@ -41,6 +49,7 @@ function columns(sort: Sort, setSort: (s: Sort) => void, basic: boolean) {
   const by = (key: SortKey) => ({ sort: sort?.key === key ? sort.dir : null, onSort: () => setSort(nextSort(sort, key)) })
   const all = [
     { label: "Expense", ...by("name") },
+    { label: "Category", width: "w-40", ...by("category") },
     { label: "As you age", width: "w-[27rem]", advanced: true },
     { label: "Per month", align: "right" as const, width: "w-28", ...by("amount") },
     { label: "Per year", align: "right" as const, width: "w-32", ...by("amount") },
@@ -65,6 +74,7 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
   const assetLines = useMemo(() => assetCostLines(doc), [doc])
   const [sort, setSort] = useState<Sort>(null)
   const { isBasic } = usePlanMode()
+  const categoryOptions = useExpenseCategoryOptions()
   const today = doc.expenses.filter((e) => !e.oneTime && e.start.type === "planStart").reduce((s, e) => s + e.amount, 0)
   return (
     <PlanTable
@@ -72,7 +82,9 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
       minWidth={isBasic ? "min-w-[640px]" : "min-w-[1080px]"}
       footer={
         <tr>
-          <td className="px-2 py-2">Spending today (excl. kids, home &amp; vehicle)</td>
+          <td className="px-2 py-2" colSpan={2}>
+            Spending today (excl. kids, home &amp; vehicle)
+          </td>
           {!isBasic && <td />}
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today / MONTHS)}</td>
           <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(today)}</td>
@@ -84,6 +96,14 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
         <Row key={e.id}>
           <Cell>
             <CellText label="Expense name" value={e.name} onChange={(name) => patch(e.id, { name })} />
+          </Cell>
+          <Cell>
+            <CellSelect
+              label={`Category of ${e.name}`}
+              value={e.category ?? NO_CATEGORY}
+              options={categoryOptions(e.category)}
+              onChange={(v) => patch(e.id, { category: v === NO_CATEGORY ? null : v })}
+            />
           </Cell>
           <Cell omit={isBasic}>
             {e.oneTime ? (
@@ -142,6 +162,9 @@ export function ExpensesTable({ doc, update, onEditItem, onEditChild }: PlanEdit
               {e.name}
               <Badge>Kids</Badge>
             </span>
+          </Cell>
+          <Cell>
+            <span className="px-2">{e.category ?? "—"}</span>
           </Cell>
           <Cell omit={isBasic} />
           <Cell align="right">

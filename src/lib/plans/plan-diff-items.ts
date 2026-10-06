@@ -90,19 +90,6 @@ export const ITEM_KINDS: ItemKind<{ id: string }>[] = [
     ],
   } satisfies ItemKind<PlanDocument["incomes"][number]>,
   {
-    key: "expenses",
-    title: "Expenses",
-    items: (d) => d.expenses,
-    name: (e) => e.name,
-    fields: [
-      { label: "Amount", value: (e) => (e.oneTime ? money(e.amount) : perYear(e.amount)) },
-      { label: "Growth", value: (e) => growth(e.growth) },
-      { label: "Starts", value: (e, d) => when(e.start, d) },
-      { label: "Ends", value: (e, d) => (e.oneTime ? "—" : when(e.end, d)) },
-      { label: "Pattern", value: (e) => e.pattern?.preset ?? "steady" },
-    ],
-  } satisfies ItemKind<PlanDocument["expenses"][number]>,
-  {
     key: "assets",
     title: "Assets",
     items: (d) => d.assets,

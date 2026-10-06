@@ -65,15 +65,17 @@ function shadeDetail<P extends string>(
 
 /**
  * The bars for the chosen view: grouped bands, or (with `detail`) every account, asset, loan, income,
- * spending line and kind of tax as a shade of its band. Empty bands are dropped.
+ * spending line and kind of tax as a shade of its band. Empty bands are dropped. `compare` (two plans side by side)
+ * keeps the Debt view and shows spending (Expenses, Cash flow) by category rather than by line, since the plans'
+ * lines rarely match.
  */
-export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMode, detail: boolean, keepDebtView = false) {
+export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMode, detail: boolean, compare = false) {
   const { card, foreground } = useChartTheme()
   const { netWorth: nwColors, cashFlow: cfColors, loan: loanColors, income: incomeColors, taxes: taxColor } = usePlanColors()
   const nwPoints = useMemo(() => netWorthPoints(doc, rows), [doc, rows])
   const hasDebt = useMemo(() => nwPoints.some((p) => p.debt < -0.5), [nwPoints])
   // The Debt view only exists while the plan has debt; fall back if it's all gone (Compare keeps it, next to a plan with debt).
-  const view: ChartMode = mode === "debt" && !hasDebt && !keepDebtView ? "networth" : mode
+  const view: ChartMode = mode === "debt" && !hasDebt && !compare ? "networth" : mode
 
   const { points, all } = useMemo((): { points: ChartRow[]; all: Series[] } => {
     const theme = { card, foreground }
@@ -112,7 +114,7 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
         taxes: cfColors.taxes,
         debt: cfColors.debtPayments,
       }
-      const e = expensesView(doc, rows, detail)
+      const e = expensesView(doc, rows, detail, compare)
       if (!detail) return { points: e.points, all: e.series.map((s) => ({ key: s.key, label: s.label, color: groupColor[s.group] })) }
       const byGroup = e.series.map((s) => ({ key: s.key, label: s.label, parent: s.group }))
       return { points: e.points, all: shadeDetail(byGroup, (g) => groupColor[g], (g) => EXPENSE_GROUP_LABELS[g], theme) }
@@ -132,9 +134,9 @@ export function useChartSeries(doc: PlanDocument, rows: YearRow[], mode: ChartMo
       const keys = [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS]
       return { points: cashFlowPoints(doc, rows), all: keys.map((k) => ({ key: k, label: CASH_FLOW_LABELS[k], color: cfColors[k] })) }
     }
-    const d = cashFlowDetail(doc, rows)
+    const d = cashFlowDetail(doc, rows, compare)
     return { points: d.points, all: shadeDetail(d.series, (p) => cfColors[p as CashFlowLayer], (p) => CASH_FLOW_LABELS[p as CashFlowLayer], theme) }
-  }, [view, detail, doc, rows, nwPoints, nwColors, cfColors, loanColors, incomeColors, taxColor, card, foreground])
+  }, [view, detail, compare, doc, rows, nwPoints, nwColors, cfColors, loanColors, incomeColors, taxColor, card, foreground])
 
   // Each year's loan payments split into principal and interest, for the hover card (not drawn as bars).
   const withLoans = useMemo(

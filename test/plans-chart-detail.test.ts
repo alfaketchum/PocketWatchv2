@@ -98,3 +98,30 @@ test("taxes view: the total band and the kinds of tax add up to every tax paid t
   })
   assert.ok(rows.some((r) => r.incomeTax > 0) && rows.some((r) => r.tradingTax > 0))
 })
+
+test("expenses view by category: one band per category, adding up to the same total spent", () => {
+  const base = plan()
+  const groceries = { id: "g1", name: "Groceries", category: "Food", amount: 9_000, growth: null, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, oneTime: false }
+  const d: PlanDocument = { ...base, expenses: [...base.expenses, groceries, { ...groceries, id: "g2", name: "Eating out", amount: 3_000 }] }
+  const rows = simulatePlan(d).rows
+  const { series, points } = expensesView(d, rows, true, true)
+  const spending = series.filter((s) => s.parent === "spending").map((s) => s.label)
+  assert.equal(spending.filter((l) => l === "Food").length, 1)
+  assert.ok(spending.includes("Uncategorized"))
+  assert.ok(!spending.includes("Groceries"))
+  points.forEach((p) => close(sumParent(p, series.map((s) => s.key)), p.spent, 1e-4))
+})
+
+test("cash flow by category still adds up to each band every year", () => {
+  const d = plan()
+  const rows = simulatePlan(d).rows
+  const grouped = cashFlowPoints(d, rows)
+  const { series, points } = cashFlowDetail(d, rows, true)
+  assert.ok(series.some((s) => s.key.startsWith("cat:")))
+  assert.ok(!series.some((s) => s.key.startsWith("sp:")))
+  points.forEach((p, i) => {
+    for (const layer of [...CASH_IN_LAYERS, ...CASH_OUT_LAYERS]) {
+      close(sumParent(p, series.filter((s) => s.parent === layer).map((s) => s.key)), grouped[i][layer], 1e-4)
+    }
+  })
+})

@@ -10,9 +10,10 @@ import {
   type NetWorthLayer,
 } from "./plan-chart"
 import { ASSET_COSTS_CATEGORY } from "./plan-asset-costs"
+import { UNCATEGORIZED } from "./plan-constants"
 import { TAX_PARTS } from "./plan-row-taxes"
 import { ageAtStart } from "./plan-timing"
-import type { IncomeKind, PlanDocument, YearRow } from "./plan-types"
+import type { IncomeKind, PlanDocument, PlanExpense, YearRow } from "./plan-types"
 
 /** One subcategory band: an account, asset, loan, income, spending line… inside its parent band. */
 export interface DetailSeries {
@@ -48,8 +49,25 @@ export function netWorthDetail(doc: PlanDocument, rows: YearRow[]): { series: De
   return { series: ordered(series, [...NET_WORTH_LAYERS, "debt"], points), points }
 }
 
-/** Cash flow by income, account, spending line and kind of tax; sums to the grouped view every year. */
-export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: DetailSeries[]; points: DetailRow[] } {
+const categoryKey = (category: string | null) => `cat:${category ?? ""}`
+
+/** A spending line's band: its own, or (by category) its category's, which lines without one share. */
+function spendingKey(e: PlanExpense, byCategory: boolean): string {
+  return byCategory ? categoryKey(e.category) : `sp:${e.id}`
+}
+
+/** The spending bands for a detail view: one per line, or one per category so two plans' spending compares. */
+function spendingBands(doc: PlanDocument, byCategory: boolean): { key: string; label: string; category: string | null }[] {
+  if (!byCategory) return doc.expenses.map((e) => ({ key: spendingKey(e, false), label: e.name, category: e.category }))
+  const categories = [...new Set(doc.expenses.map((e) => e.category))]
+  return categories.map((c) => ({ key: categoryKey(c), label: c ?? UNCATEGORIZED, category: c }))
+}
+
+/**
+ * Cash flow by income, account, spending line (or, `byCategory`, spending category) and kind of tax; sums to the
+ * grouped view every year.
+ */
+export function cashFlowDetail(doc: PlanDocument, rows: YearRow[], byCategory = false): { series: DetailSeries[]; points: DetailRow[] } {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
   const points = rows.map((r) => {
@@ -66,7 +84,10 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
       row[`wd:${a.id}`] = r.withdrawalsBy[a.id] ?? 0
       row[`sv:${a.id}`] = -((r.contributionsBy[a.id] ?? 0) - (r.employerMatchBy[a.id] ?? 0))
     }
-    for (const e of doc.expenses) row[`sp:${e.id}`] = -(r.expensesBy[e.id] ?? 0)
+    for (const e of doc.expenses) {
+      const key = spendingKey(e, byCategory)
+      row[key] = (row[key] ?? 0) - (r.expensesBy[e.id] ?? 0)
+    }
     for (const t of TAX_PARTS) row[t.key] = -r[t.field]
     for (const d of doc.debts) {
       const { principal, interest } = loanSplit(r, d.id)
@@ -85,7 +106,7 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     { key: "assetSales", label: "Asset sales", parent: "assetSales" },
     { key: "borrowed", label: "Borrowed", parent: "borrowed" },
     { key: "unfunded", label: "Unfunded (money ran out)", parent: "unfunded" },
-    ...doc.expenses.map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const })),
+    ...spendingBands(doc, byCategory).map((b) => ({ key: b.key, label: b.label, parent: "spending" as const })),
     ...TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const })),
     ...loanSeries(doc, "debtPayments" as const),
     { key: "assetPurchases", label: "Asset purchases", parent: "assetPurchases" },
@@ -119,9 +140,10 @@ const groupOfExpense = (category: string | null): ExpenseGroup =>
 
 /**
  * Everything spent each year (positive): spending lines, taxes and debt payments. Grouped, or with
- * `detail` each spending line and kind of tax; the groups add up to the same total either way.
+ * `detail` each spending line and kind of tax; the groups add up to the same total either way. `byCategory` makes
+ * the detail one band per spending category instead of per line, so two plans with differently named lines compare.
  */
-export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean): { series: (DetailSeries & { group: ExpenseGroup })[]; points: DetailRow[] } {
+export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean, byCategory = false): { series: (DetailSeries & { group: ExpenseGroup })[]; points: DetailRow[] } {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
   const points = rows.map((r) => {
@@ -135,7 +157,8 @@ export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean
     for (const g of ["living", "kids", "property", "taxes"] as const) row[g] = 0
     for (const e of doc.expenses) {
       const v = r.expensesBy[e.id] ?? 0
-      row[`sp:${e.id}`] = v
+      const key = spendingKey(e, byCategory)
+      row[key] = (row[key] ?? 0) + v
       row[groupOfExpense(e.category)] += v
       spent += v
     }
@@ -151,8 +174,8 @@ export function expensesView(doc: PlanDocument, rows: YearRow[], detail: boolean
   if (!detail) {
     return { series: EXPENSE_GROUPS.map((g) => ({ key: g, label: EXPENSE_GROUP_LABELS[g], parent: "spending", group: g })), points }
   }
-  const lines = doc.expenses
-    .map((e) => ({ key: `sp:${e.id}`, label: e.name, parent: "spending" as const, group: groupOfExpense(e.category) }))
+  const lines = spendingBands(doc, byCategory)
+    .map((b) => ({ key: b.key, label: b.label, parent: "spending" as const, group: groupOfExpense(b.category) }))
     .sort((a, b) => EXPENSE_GROUPS.indexOf(a.group) - EXPENSE_GROUPS.indexOf(b.group) || peak(b.key) - peak(a.key))
   const taxes = TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const, group: "taxes" as const }))
   const loans = loanSeries(doc, "debtPayments" as const).map((l) => ({ ...l, group: "debt" as const }))
