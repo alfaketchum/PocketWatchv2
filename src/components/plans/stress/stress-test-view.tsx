@@ -24,6 +24,7 @@ import { StressHomeFallbacks } from "./stress-home-fallbacks"
 import { StressMixTable } from "./stress-mix-table"
 import { StressImpactsTable } from "./stress-impacts-table"
 import { StressDiagnosisCard } from "./stress-diagnosis-card"
+import { StressKeyYearsCard } from "./stress-key-years-card"
 import { changeLabel, StressSolversCard } from "./stress-solvers-card"
 import { useStressSolvers } from "./use-stress-solvers"
 import { applyChange } from "@/lib/plans/stress/stress-solvers"
@@ -102,6 +103,10 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const bin = binChoice && binChoice.of === cohorts ? binChoice : null
   const capeMin = cape === "all" ? null : Number(cape)
   const all = useMemo(() => (cohorts ? summarize(cohorts, capeMin) : null), [cohorts, capeMin])
+  const runOutAge = useMemo(() => {
+    const ages = (all?.cohorts ?? []).flatMap((c) => (c.depletedAge !== null ? [c.depletedAge] : [])).sort((a, b) => a - b)
+    return ages.length > 0 ? ages[Math.floor((ages.length - 1) / 2)] : null
+  }, [all])
   const insights = useMemo(() => (all ? diagnose(doc, projection, all.cohorts, annual) : []), [all, doc, projection, annual])
   const summary = useMemo(
     () => (cohorts && bin ? summarize(cohorts, capeMin, (c) => inSlice(c, bin.slice)) : all),
@@ -178,6 +183,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
       {summary && all && summary.cohorts.length > 0 && (
         <div className={animating || running ? "space-y-5 opacity-50 transition-opacity" : "space-y-5 transition-opacity"}>
           {all.successRate < target && <StressDiagnosisCard insights={insights} />}
+          <StressKeyYearsCard doc={doc} projection={projection} runOutAge={runOutAge} isHidden={isHidden} />
           {impacts.available && (
             <FireSectionCard eyebrow="What would help" title="How often the money lasts with one change" info={IMPACTS_INFO}>
               <StressImpactsTable

@@ -9,7 +9,8 @@
  * rent ends the year the house is bought (both timed by age), so there's no gap between them. Re-running it
  * replaces the plan's document.
  *
- * Run: npx tsx scripts/seed-plan-john-persona.ts   (SEED_USER_ID picks the owner; default: the only user)
+ * Run: npx tsx scripts/seed-plan-john-persona.ts   (SEED_USER_ID picks the owner; default: the only user;
+ * DRY_RUN=out.json writes the document to a file without saving)
  */
 
 import "dotenv/config"
@@ -213,6 +214,13 @@ async function main() {
   const short = rows.find((r) => r.shortfall > 0.5)
   console.log(`📊 Smoke test: ${rows.length} years, runs out: ${short ? short.year : "never"}, final net worth $${Math.round(rows.at(-1)!.netWorth).toLocaleString()}`)
 
+  // DRY_RUN=path writes the built document there instead of saving it.
+  if (process.env.DRY_RUN) {
+    const { writeFileSync } = await import("node:fs")
+    writeFileSync(process.env.DRY_RUN, JSON.stringify(parsed.data))
+    console.log(`📝 Wrote the document to ${process.env.DRY_RUN} (not saved)`)
+    process.exit(0)
+  }
   const existing = await db.plan.findFirst({ where: { userId, name: NAME }, select: { id: true } })
   const plan = existing
     ? await db.plan.update({ where: { id: existing.id }, data: { document: parsed.data }, select: { id: true } })
