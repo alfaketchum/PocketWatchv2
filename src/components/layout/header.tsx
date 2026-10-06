@@ -1,6 +1,7 @@
 "use client"
 
 import { memo } from "react"
+import { HEADER_TOOLS_ID } from "./header-tools"
 import { ViewControls } from "./view-controls"
 
 interface HeaderProps {
@@ -8,7 +9,7 @@ interface HeaderProps {
   onMenuClick?: () => void
 }
 
-/** Top bar on every page: menu button on phones, global view controls on the right. */
+/** Top bar on every page: menu button on phones, a page's own tools (if any), global view controls on the right. */
 export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) {
   return (
     <header
@@ -16,7 +17,7 @@ export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) 
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="flex items-center justify-between px-4 md:pt-3 max-w-[1700px] mx-auto">
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex min-w-0 items-center gap-4">
           <button
             onClick={onMenuClick}
             aria-label="Open navigation menu"
@@ -30,6 +31,7 @@ export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) 
               {title}
             </h1>
           )}
+          <div id={HEADER_TOOLS_ID} className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 empty:hidden" />
         </div>
         <ViewControls />
       </div>

@@ -142,7 +142,7 @@ export function PlanEditorView({ planId }: { planId: string }) {
         )}
       </PlanEditorPanel>
     ),
-    chart: <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} isHidden={isHidden} panelSide={layout.panelSide} />,
+    chart: <PlanNetWorthChart doc={view} projection={projection} rows={rows} basis={basis} onBasisChange={setBasis} isHidden={isHidden} panelSide={layout.panelSide} />,
   }
   return (
     <div className="space-y-5">
@@ -151,8 +151,6 @@ export function PlanEditorView({ planId }: { planId: string }) {
         name={plan.name}
         isPrimary={plan.isPrimary}
         isSaving={isSaving}
-        basis={basis}
-        onBasisChange={setBasis}
         editingLayout={editingLayout && !isBasic}
         onEditLayout={() => setEditingLayout((on) => !on)}
         onResetLayout={() => setLayout(DEFAULT_LAYOUT)}

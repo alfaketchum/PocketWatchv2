@@ -10,6 +10,7 @@ import { PlanChartLegend } from "./plan-chart-legend"
 import { PlanYearPanel } from "./plan-year-panel"
 import { fitAxis, stackMarks } from "./plan-chart-axis"
 import { chartModes, DetailToggle, ModeToggle } from "./plan-chart-controls"
+import { DollarsToggle } from "./dollars-toggle"
 import { MilestoneCard } from "./plan-milestone-card"
 import { useChartDetail } from "./use-chart-detail"
 import { useChartSeries, type ChartMode, type ChartRow } from "./use-chart-series"
@@ -52,6 +53,7 @@ interface Props {
   projection: PlanProjection
   rows: YearRow[]
   basis: DollarBasis
+  onBasisChange: (basis: DollarBasis) => void
   isHidden: boolean
   /** Which side of the chart the year panel sits on (wide screens). */
   panelSide?: "left" | "right"
@@ -61,7 +63,7 @@ interface Props {
  * One stacked bar per plan year: net worth by tax treatment (with homes and other assets, and debt below zero), or
  * cash flow in and out. Hover a bar for that year's P&L panel; click to pin it.
  */
-export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, isHidden, panelSide = "right" }: Props) {
+export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projection, rows, basis, onBasisChange, isHidden, panelSide = "right" }: Props) {
   const [pickedMode, setMode] = useState<ChartMode>("networth")
   const [savedDetail, setDetail] = useChartDetail()
   // Basic: Net worth, Income and Expenses, without subcategories.
@@ -120,7 +122,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   return (
     <FireSectionCard
       eyebrow={EYEBROW[view]}
-      title={basis === "today" ? "In today's dollars" : "In future dollars"}
+      title={isBasic ? "In today's dollars" : <DollarsToggle value={basis} onChange={onBasisChange} />}
       info={INFO[view]}
       center={<ModeToggle value={view} onChange={setMode} modes={chartModes(hasDebt, isBasic)} />}
       right={
