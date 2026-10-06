@@ -3,7 +3,7 @@ import { nominalRate, realRate } from "../plan-dollars"
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
 import type { HomeSale, PlanAccount, PlanDocument, PlanIncome, PlanProjection, YearRow } from "../plan-types"
 import { plannedPricing, replayedPricing, type EquityPricing } from "./engine-equity"
-import { fallbackHomeAt, SHORTFALL, withHomeSold } from "../plan-home-fallback"
+import { homeToSellAt, SHORTFALL, withHomeSold, withPlannedSaleEarly } from "../plan-home-fallback"
 import {
   applyAssetEvents,
   assetEntries,
@@ -407,8 +407,9 @@ const MAX_HOME_SALES = 5
 
 /**
  * Year-by-year projection of a plan, in nominal dollars. Pure; safe on client and server. With `homeFallbacks` (the
- * stress test), when the accounts would run dry and a home has a backup plan ("if the money runs out"), that home is
- * sold at the start of that year and the plan runs again, once per home.
+ * stress test), when the accounts would run dry and a home is still owned that the plan sells later, or that has a
+ * backup plan ("if the money runs out"), that home is sold at the start of that year and the plan runs again, once
+ * per home.
  */
 export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): PlanProjection {
   let current = doc
@@ -416,9 +417,9 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
   for (let sales = 0; ; sales++) {
     const projection = simulateOnce(current, opts)
     const short = projection.rows.find((r) => r.shortfall > SHORTFALL)
-    const home = short && opts.homeFallbacks && sales < MAX_HOME_SALES ? fallbackHomeAt(current, short.index) : null
-    if (!short || !home) return homeSales.length > 0 ? { ...projection, homeSales } : projection
-    const sold = withHomeSold(current, home, short.index)
+    const pick = short && opts.homeFallbacks && sales < MAX_HOME_SALES ? homeToSellAt(current, short.index) : null
+    if (!short || !pick) return homeSales.length > 0 ? { ...projection, homeSales } : projection
+    const sold = pick.early ? withPlannedSaleEarly(current, pick.home, short.index) : withHomeSold(current, pick.home, short.index)
     current = sold.doc
     homeSales.push(sold.sale)
   }

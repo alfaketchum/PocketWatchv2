@@ -19,6 +19,7 @@ import { StressCushionChart } from "./stress-cushion-chart"
 import { StressFanChart, type FanMeasure } from "./stress-fan-chart"
 import { StressOutcomeBuckets } from "./stress-outcome-buckets"
 import { StressPathsChart } from "./stress-paths-chart"
+import { StressEarlySales } from "./stress-early-sales"
 import { StressHomeFallbacks } from "./stress-home-fallbacks"
 import { StressMixTable } from "./stress-mix-table"
 import { InflationSource } from "../editor/inflation-source"
@@ -97,7 +98,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     return projection.rows.map((r) => (measure === "netWorth" ? r.netWorth : r.accountsTotal) / deflator(inflationOf(doc.settings), r.index, "balance"))
   }, [projection, measure, doc])
   const planCushion = useMemo(() => closeCall(projection.rows, age0).cushion, [projection, age0])
-  const yardsticks = usePlanYardsticks(doc, projection)
+  const yardsticks = usePlanYardsticks(doc, projection, endView === "accounts" ? "invested" : "netWorth")
   const bands = summary ? { netWorth: summary.netWorthBands, invested: summary.investedBands, withdrawalRate: summary.withdrawalBands }[measure] : []
 
   const planNetWorth = useMemo(
@@ -152,6 +153,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
               </button>
             )}
             <StressSummary summary={summary} simulated={simulated} isHidden={isHidden} />
+            <StressEarlySales cohorts={summary.cohorts} unit={unit} />
           </div>
         )}
       </FireSectionCard>

@@ -13,12 +13,13 @@ import { useOutcomeColors } from "./use-outcome-colors"
 
 const HEIGHT = 240
 /** Stacked bottom to top: worst outcomes at the base, so failures read first. */
-const STACK: OutcomeKey[] = ["catastrophic", "almostSurvived", "soldHome", "justMadeIt", "steady", "surplus"]
+const STACK: OutcomeKey[] = ["catastrophic", "almostSurvived", "outOfCash", "soldHome", "justMadeIt", "steady", "surplus"]
 const LABELS: Record<OutcomeKey, string> = {
   surplus: "Surplus",
   steady: "Steady",
   justMadeIt: "Just made it",
   soldHome: "Sold the home",
+  outOfCash: "Out of cash",
   almostSurvived: "Almost survived",
   catastrophic: "Catastrophic",
 }

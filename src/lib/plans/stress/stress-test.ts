@@ -14,11 +14,11 @@
 import { simulatePlan } from "../engine/simulate"
 import { deflator } from "../plan-dollars"
 import { expandPlan } from "../plan-expand"
-import { homeEquity, SHORTFALL } from "../plan-home-fallback"
+import { fallbackHomes, homeEquity, plannedSaleIndex, SHORTFALL } from "../plan-home-fallback"
 import { inflationOf, inflationPath, rateAt, type Inflation } from "../plan-inflation"
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument } from "../plan-types"
-import type { YearRow } from "../plan-row-types"
+import type { PlanProjection, YearRow } from "../plan-row-types"
 import { CPI_RELIABLE_FROM, type AnnualHistory } from "./stress-history"
 import { closeCall, type CloseCall } from "./stress-close-calls"
 import { equityYearReturn, yearReturn } from "./stress-mix"
@@ -47,8 +47,12 @@ export interface CohortResult {
   depletedAge: number | null
   /** A home's backup plan sold it to keep the money going. */
   soldHome?: boolean
+  /** Every home sold in this trial, in order: by the plan itself (planned) or by the stress test's backup plan. */
+  homeSales?: TrialHomeSale[]
   /** When it ran out: home equity left, today's dollars. */
   equityAtDepletion?: number
+  /** When it ran out: the lowest net worth from then to the end, today's dollars (above 0: never broke). */
+  lowestWorthAfterRunOut?: number
   /** Lowest point and area under the danger line (stress-close-calls). */
   lowPoint?: CloseCall["lowPoint"]
   dangerArea?: number
@@ -61,6 +65,31 @@ export interface CohortResult {
   /** Each year's withdrawals as a share of the accounts at the start of the year. */
   withdrawalRate: number[]
 }
+
+export interface TrialHomeSale {
+  name: string
+  age: number
+  /** Sold by the plan itself (a sale or downsize you entered). */
+  planned: boolean
+  /** A planned sale this trial brought forward because the money ran short first: the age the plan had it. */
+  plannedAge?: number
+}
+
+/** The homes sold in one run, by age: the plan's own sales (some brought forward), then the backup plans it carried out. */
+function trialHomeSales(doc: PlanDocument, projection: PlanProjection, age0: number): TrialHomeSale[] {
+  const ctx = timingContext(doc)
+  const sales = projection.homeSales ?? []
+  const planned = fallbackHomes(doc).flatMap((h) => {
+    const index = plannedSaleIndex(doc, h, ctx)
+    if (index === null || index < 0) return []
+    const early = sales.find((s) => s.assetId === h.id)
+    return [early ? { name: h.name, age: age0 + early.index, planned: true, plannedAge: age0 + index } : { name: h.name, age: age0 + index, planned: true }]
+  })
+  const stressed = sales.filter((s) => s.then !== "asPlanned").map((s) => ({ name: s.name, age: age0 + s.index, planned: false }))
+  return [...planned, ...stressed].sort((a, b) => a.age - b.age)
+}
+
+const withSales = (sales: TrialHomeSale[]) => (sales.length > 0 ? { homeSales: sales } : {})
 
 /** Plan index of the anchor (0, or the retirement year), or null when the plan has no retirement inside it. */
 export function anchorIndex(doc: PlanDocument, align: StressAlign): number | null {
@@ -193,7 +222,9 @@ export function runPath(doc: PlanDocument, annual: AnnualHistory, path: number[]
     avgInflation: averageInflation(annual, path, anchor),
     depletedAge: failed ? age0 + failed.index : null,
     soldHome: (projection.homeSales?.length ?? 0) > 0,
+    ...withSales(trialHomeSales(doc, projection, age0)),
     equityAtDepletion: failed ? real(homeEquity(expandPlan(doc, inflation), failed), failed.index) : 0,
+    ...(failed ? { lowestWorthAfterRunOut: Math.min(...projection.rows.slice(failed.index).map((r) => real(r.netWorth, r.index))) } : {}),
     ...closeCall(projection.rows, age0),
     ...(doc.settings.spendingRule ? { lowestSpending: Math.min(1, ...projection.rows.map((r) => r.spendingFactor)) } : {}),
     netWorth: projection.rows.map((r) => real(r.netWorth, r.index)),

@@ -4,10 +4,13 @@ import { useMemo } from "react"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { useOutcomeColors } from "./use-outcome-colors"
 import { DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
-import { outcomeBuckets, type OutcomeBucket, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
+import { outcomeBuckets, type OutcomeBucket, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
-const BUCKETS_INFO = `Measured on the money in your accounts: running out means your accounts couldn't pay a year's spending. Your home and other property don't pay the bills unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that cushion counts half). Typical values shown.`
+/** Outcomes listed only when some trial lands in them. */
+const CONDITIONAL: OutcomeKey[] = ["soldHome", "outOfCash"]
+
+const BUCKETS_INFO = `Measured on whichever the chart shows. Running out means your accounts couldn't pay a year's spending; on Money in accounts that's catastrophic, while on Net worth it's out of cash if no home had been sold yet and net worth stayed above $0 (the home could still be sold), and catastrophic once a home was already sold or net worth hits $0. Your home and other property don't pay the bills unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that cushion counts half). Typical values shown.`
 
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6
@@ -26,8 +29,8 @@ function closenessLine(b: OutcomeBucket): string | null {
 /** The outcomes as a share bar, then one row each: share, count, the rule in this plan's numbers, and the years. */
 export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohorts: CohortResult[]; yardsticks: OutcomeYardsticks; isHidden: boolean }) {
   const colors = useOutcomeColors()
-  // "Lasted by selling the home" only shows when a home's backup plan actually kicked in.
-  const buckets = useMemo(() => outcomeBuckets(cohorts, yardsticks).filter((b) => b.key !== "soldHome" || b.count > 0), [cohorts, yardsticks])
+  // Selling the home and running out of cash with net worth left only show when some trial did.
+  const buckets = useMemo(() => outcomeBuckets(cohorts, yardsticks).filter((b) => !CONDITIONAL.includes(b.key) || b.count > 0), [cohorts, yardsticks])
   const total = cohorts.length
   // Simulated trials mix eras, so their start years say little; the historical replay lists them.
   const simulated = cohorts.some((c) => c.trial !== undefined)
@@ -68,6 +71,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
               )}
               {closenessLine(b) && <span className="block text-foreground">{closenessLine(b)}</span>}
               {b.note && <span className="block text-foreground">{b.note}</span>}
+              {b.salesNote && <span className="block text-foreground">{b.salesNote}</span>}
             </span>
           </li>
         ))}

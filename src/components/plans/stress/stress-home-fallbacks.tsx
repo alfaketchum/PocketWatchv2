@@ -21,7 +21,7 @@ const OPTIONS: { value: Choice; label: string }[] = [
 ]
 
 const INFO =
-  "What happens to each home in a trial where your accounts can't pay a year's bills. Kept, it's never sold, so a trial can run out of money with its equity untouched. Sold, it goes that year, its loans are paid off from the sale, and you rent or buy a smaller home with cash from then on; those trials count as \"Lasted by selling the home\". A home your plan already sells keeps to that sale. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
+  "What happens to each home in a trial where your accounts can't pay a year's bills. Kept, it's never sold, so a trial can run out of money with its equity untouched. Sold, it goes that year, its loans are paid off from the sale, and you rent or buy a smaller home with cash from then on; those trials count as \"Lasted by selling the home\". A home your plan already sells keeps that sale, but in a trial where the money runs out first it's sold that year instead, as someone watching their accounts drain would. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
 
 /** The first-guess backup plan when one is turned on. */
 const defaultFallback = (home: PlanAsset, then: HomeFallback["then"]): HomeFallback => ({
@@ -41,7 +41,7 @@ function HomeName({ home }: { home: PlanAsset }) {
   )
 }
 
-/** A home the plan sells itself: that sale stands in every trial, so there's nothing to choose. */
+/** A home the plan sells itself: nothing to choose, but trials that run short first sell it sooner. */
 function PlannedSaleRow({ home, year }: { home: PlanAsset; year: number }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -50,7 +50,7 @@ function PlannedSaleRow({ home, year }: { home: PlanAsset; year: number }) {
         <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">
           lock
         </span>
-        Sold in your plan in {year}
+        Sold in your plan in {year} · sooner in trials where the money runs out first
       </span>
     </li>
   )

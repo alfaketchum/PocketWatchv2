@@ -84,11 +84,19 @@ test("a sale you planned yourself is never sold twice", () => {
   assert.equal(simulatePlan(doc, STRESS).homeSales, undefined, "already sold before the money runs out")
 })
 
-test("a home the plan sells later keeps to the plan: running out first doesn't sell it early", () => {
-  const doc = downsizeIn(plan({ then: "rent", monthlyRent: 1_000, price: 0 }), 2032)
+test("running out before a planned downsize brings it forward: sold that year, its rent starts then, never doubled", () => {
+  const doc = downsizeIn(plan(), 2032)
   const p = simulatePlan(doc, STRESS)
-  assert.deepEqual(salesYears(doc), [2032])
-  assert.equal(p.homeSales, undefined)
+  assert.deepEqual(salesYears(doc), [2028])
+  assert.deepEqual(p.homeSales?.map((s) => [s.year, s.then, s.plannedYear]), [[2028, "asPlanned", 2032]])
+  assert.equal(p.rows.find((r) => r.year === 2029)!.expenses, 62_000, "the planned $12k rent starts with the early sale")
+  assert.equal(p.rows.find((r) => r.year === 2040)!.expenses, 62_000, "one rent: $50k living + $12k")
   assert.equal(plannedSaleIndex(doc, doc.assets.find((a) => a.id === "h")!), 6, "2032 is plan year 6")
   assert.equal(plannedSaleIndex(plan(), plan().assets[0]), null, "kept to the plan's end")
+})
+
+test("the plan itself never brings a sale forward: only the stress test does", () => {
+  const doc = downsizeIn(plan(), 2032)
+  assert.equal(simulatePlan(doc).homeSales, undefined)
+  assert.deepEqual(simulatePlan(doc).rows.filter((r) => r.assetSales > 0).map((r) => r.year), [2032])
 })

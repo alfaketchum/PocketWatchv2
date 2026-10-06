@@ -33,3 +33,32 @@ test("selling the home is its own outcome, and ran-out buckets say what home equ
   assert.match(by.catastrophic.note ?? "", /\$300k of home equity/)
   assert.equal(by.surplus.note, undefined)
 })
+
+test("on net worth, running out with net worth left is out of cash; only hitting $0 is catastrophic", () => {
+  const worth = { ...yard, measure: "netWorth" as const }
+  const outOfCash = { ...run(1929, 300_000, 70), lowestWorthAfterRunOut: 300_000 }
+  const broke = { ...run(1937, 0, 70), lowestWorthAfterRunOut: 0 }
+  const lateBroke = { ...run(1966, 0, 92), lowestWorthAfterRunOut: 0 }
+  const by = Object.fromEntries(outcomeBuckets([outOfCash, broke, lateBroke], worth).map((x) => [x.key, x]))
+  assert.deepEqual(by.outOfCash.years, [1929])
+  assert.deepEqual(by.catastrophic.years, [1937])
+  assert.deepEqual(by.almostSurvived.years, [1966])
+  assert.match(by.catastrophic.rule, /net worth at \$0/)
+})
+
+test("on net worth, running out after a home sale is catastrophic even with net worth left", () => {
+  const worth = { ...yard, measure: "netWorth" as const }
+  const sale = (age: number, planned: boolean) => ({ name: "Home", age, planned })
+  const soldThenOut = { ...run(1929, 300_000, 70), lowestWorthAfterRunOut: 300_000, homeSales: [sale(65, false)] }
+  const outBeforePlannedSale = { ...run(1937, 300_000, 70), lowestWorthAfterRunOut: 300_000, homeSales: [sale(80, true)] }
+  const by = Object.fromEntries(outcomeBuckets([soldThenOut, outBeforePlannedSale], worth).map((x) => [x.key, x]))
+  assert.deepEqual(by.catastrophic.years, [1929])
+  assert.deepEqual(by.outOfCash.years, [1937], "the home hadn't been sold yet")
+})
+
+test("on money in accounts, running out is catastrophic even with net worth left", () => {
+  const outOfCash = { ...run(1929, 300_000, 70), lowestWorthAfterRunOut: 300_000 }
+  const by = Object.fromEntries(outcomeBuckets([outOfCash], { ...yard, measure: "invested" }).map((x) => [x.key, x]))
+  assert.deepEqual(by.catastrophic.years, [1929])
+  assert.equal(by.outOfCash.count, 0)
+})

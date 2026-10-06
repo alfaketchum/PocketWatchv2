@@ -1,6 +1,6 @@
 import { typicalRunningCosts } from "./plan-asset-costs"
 import { resolveRange, timingContext } from "./plan-timing"
-import type { HomeSale, PlanAsset, PlanDocument, PlanExpense, YearRow } from "./plan-types"
+import type { HomeSale, PlanAsset, PlanDocument, PlanExpense, Timing, YearRow } from "./plan-types"
 
 /** A year counts as running out when this much (or more) spending goes unfunded. */
 export const SHORTFALL = 0.5
@@ -18,18 +18,33 @@ export function plannedSaleIndex(doc: PlanDocument, home: PlanAsset, ctx = timin
 }
 
 /**
- * A home with a backup plan that's owned in plan year `index`. A home the plan already sells keeps to that plan: its
- * backup plan never acts.
+ * The home to sell in plan year `index`, when the money runs short then: one the plan sells later is sold now instead
+ * (someone watching their accounts drain would sell sooner), or a kept home whose backup plan says to sell.
  */
-export function fallbackHomeAt(doc: PlanDocument, index: number): PlanAsset | null {
+export function homeToSellAt(doc: PlanDocument, index: number): { home: PlanAsset; early: boolean } | null {
   const ctx = timingContext(doc)
-  return (
-    doc.assets.find((a) => {
-      if (a.kind !== "home" || !a.fallback || plannedSaleIndex(doc, a, ctx) !== null) return false
-      const range = resolveRange(a.start, a.end, ctx)
-      return Math.max(0, range.start) <= index && index < range.end
-    }) ?? null
-  )
+  for (const home of fallbackHomes(doc)) {
+    const range = resolveRange(home.start, home.end, ctx)
+    if (Math.max(0, range.start) > index || index >= range.end) continue
+    if (plannedSaleIndex(doc, home, ctx) !== null) return { home, early: true }
+    if (home.fallback) return { home, early: false }
+  }
+  return null
+}
+
+/**
+ * The plan with a home's planned sale brought forward to year `index`: the home is sold then, and whatever its
+ * downsize adds (the rent or the smaller home, tagged with its milestone) starts then too.
+ */
+export function withPlannedSaleEarly(doc: PlanDocument, home: PlanAsset, index: number): { doc: PlanDocument; sale: HomeSale } {
+  const year = doc.settings.startYear + index
+  const plannedYear = doc.settings.startYear + (plannedSaleIndex(doc, home) ?? index)
+  const when = { type: "year" as const, year }
+  const milestone = home.end.type === "milestone" ? home.end.milestoneId : null
+  const moved = <T extends { origin?: string; start: Timing }>(items: T[]) =>
+    milestone ? items.map((i) => (i.origin === milestone ? { ...i, start: when } : i)) : items
+  const assets = moved(doc.assets).map((a) => (a.id === home.id ? { ...a, end: when } : a))
+  return { doc: { ...doc, assets, expenses: moved(doc.expenses) }, sale: { assetId: home.id, name: home.name, index, year, then: "asPlanned", plannedYear } }
 }
 
 /**

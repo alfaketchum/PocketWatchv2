@@ -4,7 +4,7 @@ import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { fallbackHomes, plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import type { HomeFallback, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
 import type { AnnualHistory } from "@/lib/plans/stress/stress-history"
-import { bucketOf } from "@/lib/plans/stress/stress-outcomes"
+import { bucketOf, outcomeBuckets } from "@/lib/plans/stress/stress-outcomes"
 import { runCohort, summarize } from "@/lib/plans/stress/stress-test"
 
 const NOW = new Date(2026, 0, 15)
@@ -104,11 +104,42 @@ test("the setting lists the plan's own homes only", () => {
   assert.deepEqual(fallbackHomes(withOthers).map((a) => a.id), ["h", "h2"])
 })
 
-test("a home the plan sells itself keeps to that sale in every trial, whatever its setting", () => {
-  const doc = plan(RENT)
-  const planned: PlanDocument = { ...doc, assets: doc.assets.map((a) => ({ ...a, end: { type: "year" as const, year: 2035 } })) }
-  const c = runCohort(planned, flatHistory(), 0, 0)
-  assert.equal(c.soldHome, false, "the backup plan never acts")
-  assert.equal(c.depletedAge, 62, "running out at 62 doesn't pull the 2035 sale forward")
-  assert.equal(plannedSaleIndex(planned, planned.assets[0]), 9)
+/** The plan with its home sold in 2035 (plan year 9, age 69). */
+function sellsIn2035(): PlanDocument {
+  const doc = plan()
+  return { ...doc, assets: doc.assets.map((a) => ({ ...a, end: { type: "year" as const, year: 2035 } })) }
+}
+
+test("a home the plan sells later is sold sooner in a trial where the money runs out first", () => {
+  const c = runCohort(sellsIn2035(), flatHistory(), 0, 0)
+  assert.deepEqual(c.homeSales, [{ name: "Home", age: 62, planned: true, plannedAge: 69 }])
+  assert.ok(c.depletedAge === null || c.depletedAge > 62, "the early sale keeps the money going past 62")
+})
+
+test("a trial that never runs short keeps the plan's sale year", () => {
+  const doc = sellsIn2035()
+  const rich = { ...doc, accounts: [{ ...doc.accounts[0], balance: 5_000_000 }] }
+  assert.deepEqual(runCohort(rich, flatHistory(), 0, 0).homeSales, [{ name: "Home", age: 69, planned: true }])
+})
+
+test("a kept home is out of cash on net worth, catastrophic on money in accounts", () => {
+  const c = runCohort(plan(), flatHistory(), 0, 0)
+  assert.ok(Math.abs((c.lowestWorthAfterRunOut ?? 0) - 500_000) < 1, "the home's $500k is the net worth left")
+  assert.equal(bucketOf(c, yard), "catastrophic")
+  assert.equal(bucketOf(c, { ...yard, measure: "netWorth" }), "outOfCash")
+})
+
+test("each trial lists its home sales: the stress test's own, with the age", () => {
+  const sold = runCohort(plan(RENT), flatHistory(), 0, 0)
+  assert.deepEqual(sold.homeSales, [{ name: "Home", age: 62, planned: false }])
+  assert.equal(runCohort(plan(), flatHistory(), 0, 0).homeSales, undefined, "a kept home is never listed")
+})
+
+test("running out after a sale, early or by the backup plan, says so on the outcome", () => {
+  const early = runCohort(sellsIn2035(), flatHistory(), 0, 0)
+  const backup = runCohort(plan(RENT), flatHistory(), 0, 0)
+  assert.ok(early.depletedAge !== null && backup.depletedAge !== null, "$500k doesn't last to 80 either way")
+  const by = Object.fromEntries(outcomeBuckets([early, backup], yard).map((b) => [b.key, b]))
+  assert.equal(by.catastrophic.count, 2)
+  assert.equal(by.catastrophic.salesNote, "2 ran out after selling a home")
 })

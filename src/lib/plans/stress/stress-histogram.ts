@@ -26,7 +26,7 @@ export interface HistogramBin {
   property: number
 }
 
-const emptyOutcomes = (): Record<OutcomeKey, number> => ({ surplus: 0, steady: 0, justMadeIt: 0, soldHome: 0, almostSurvived: 0, catastrophic: 0 })
+const emptyOutcomes = (): Record<OutcomeKey, number> => ({ surplus: 0, steady: 0, justMadeIt: 0, soldHome: 0, outOfCash: 0, almostSurvived: 0, catastrophic: 0 })
 
 /** A trial's ending net worth or money in accounts (today's dollars). */
 export const endingValue = (c: CohortResult, measure: EndingMeasure = "netWorth"): number => c[measure].at(-1) ?? 0

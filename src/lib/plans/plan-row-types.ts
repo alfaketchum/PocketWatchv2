@@ -96,7 +96,10 @@ export interface HomeSale {
   /** Plan year index of the sale. */
   index: number
   year: number
-  then: HomeFallback["then"]
+  /** What came after: the backup plan's rent or smaller home, or the plan's own sale brought forward. */
+  then: HomeFallback["then"] | "asPlanned"
+  /** A planned sale brought forward: the year the plan had it. */
+  plannedYear?: number
 }
 
 export interface PlanProjection {

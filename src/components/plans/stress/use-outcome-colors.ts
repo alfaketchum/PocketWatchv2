@@ -6,7 +6,7 @@ import { mix } from "@/components/plans/results/use-plan-colors"
 import type { OutcomeKey } from "@/lib/plans/stress/stress-outcomes"
 
 /**
- * Outcome colors, good to bad: green, faded green, light amber, amber, red; selling the home is its own (accent)
+ * Outcome colors, good to bad: green, faded green, light amber, deeper amber (out of cash), amber, red; selling the home is its own (accent)
  * case. Theme tokens, so dark mode follows.
  */
 export function useOutcomeColors(): Record<OutcomeKey, string> {
@@ -17,6 +17,7 @@ export function useOutcomeColors(): Record<OutcomeKey, string> {
       steady: mix(success, card, 0.5),
       justMadeIt: mix(warning, card, 0.5),
       soldHome: primary,
+      outOfCash: mix(warning, card, 0.25),
       almostSurvived: warning,
       catastrophic: error,
     }),

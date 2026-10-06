@@ -14,6 +14,7 @@ const OUTCOME_LABELS: Record<OutcomeKey, string> = {
   steady: "Steady",
   justMadeIt: "Just made it",
   soldHome: "Sold the home",
+  outOfCash: "Out of cash",
   almostSurvived: "Almost survived",
   catastrophic: "Catastrophic",
 }
@@ -39,6 +40,7 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
   const sorted = useMemo(() => [...cohorts].sort(worstFirst), [cohorts])
   const blur = isHidden ? { filter: "blur(6px)" } : undefined
   const atRetirement = retirementIndex !== null && retirementIndex > 0
+  const anySales = cohorts.some((c) => c.homeSales)
   return (
     <div className="space-y-2">
       <div className="scroll-hint overflow-x-auto">
@@ -50,6 +52,7 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
               {atRetirement && <th className="py-1.5 pl-2 text-right font-semibold">At retirement</th>}
               <th className="py-1.5 pl-2 text-right font-semibold" title="Money left in your accounts at the end: what pays the bills">Ending in accounts</th>
               <th className="py-1.5 pl-2 text-right font-semibold" title="Accounts plus home and other property, minus debts">Ending net worth</th>
+              {anySales && <th className="py-1.5 pl-3 font-semibold" title="Homes sold in this trial, and at what age: by your plan, or by the stress test because the money ran out">Home sold</th>}
               <th className="py-1.5 pl-3 font-semibold">Outcome</th>
             </tr>
           </thead>
@@ -71,6 +74,16 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right font-data text-foreground-muted" style={blur}>
                     {fmtMoney(endingValue(c, "netWorth"))}
                   </td>
+                  {anySales && (
+                    <td className="py-1.5 pl-3 text-foreground-muted">
+                      {c.homeSales?.map((s) => (
+                        <span key={`${s.name}-${s.age}`} className="block whitespace-nowrap">
+                          {s.name} at {s.age}
+                          {s.planned ? (s.plannedAge !== undefined ? ` (plan had ${s.plannedAge})` : " (plan)") : ""}
+                        </span>
+                      )) ?? "—"}
+                    </td>
+                  )}
                   <td className="whitespace-nowrap py-1.5 pl-3 text-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: colors[outcome] }} aria-hidden="true" />

@@ -27,6 +27,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
   const animating = runId !== null && runId !== finishedRun
   const plan = useMemo(() => projection.rows.map((r) => r.netWorth / deflator(inflationOf(doc.settings), r.index, "balance")), [projection, doc.settings])
   const summary = useMemo(() => (cohorts ? summarize(cohorts, null) : null), [cohorts])
+  const early = summary ? summary.cohorts.filter((c) => c.homeSales?.some((s) => s.plannedAge !== undefined)).length : 0
   const verdict = summary && summary.cohorts.length > 0 ? stressVerdict(summary.successRate, true) : null
   const href = `/plans/${planId}/stress`
   const details = isBasic ? (
@@ -72,6 +73,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
                 ? `Your whole plan run through ${summary.cohorts.length.toLocaleString()} markets built from real history since 1871.`
                 : `Your whole plan through ${summary.cohorts.length.toLocaleString()} simulated markets (${DEFAULT_SAMPLING.blockLength}-year blocks of history since 1871).`}
               {!isBasic && summary.spendingDip && ` Your spending rule cut spending to ${fmtPct(summary.spendingDip.worst10, 0)} of plan in the worst 10% of them.`}
+              {early > 0 && ` Includes selling a home sooner than planned in ${early.toLocaleString()} of them, when the money ran short first.`}
             </p>
           </div>
         </div>
