@@ -123,3 +123,24 @@ export function removeMilestoneWithItems(doc: PlanDocument, id: string): PlanDoc
   for (const person of next.people.filter(own)) next = removePerson(next, person.id)
   return detachMilestone(next, id)
 }
+
+/**
+ * Costs left behind when a purchase timed to a milestone is removed: recurring expenses that still stop at that
+ * milestone (rent that ends when the home is bought), though nothing is bought there any more. Null when none.
+ */
+export function strandedByRemoval(doc: PlanDocument, assetId: string): { milestone: PlanMilestone; expenseIds: string[]; names: string[] } | null {
+  const asset = doc.assets.find((a) => a.id === assetId)
+  if (!asset || asset.start.type !== "milestone") return null
+  const id = asset.start.milestoneId
+  const milestone = doc.milestones.find((m) => m.id === id)
+  if (!milestone || doc.assets.some((a) => a.id !== assetId && pointsAt(a.start, id))) return null
+  const stranded = doc.expenses.filter((e) => !e.oneTime && pointsAt(e.end, id))
+  if (stranded.length === 0) return null
+  return { milestone, expenseIds: stranded.map((e) => e.id), names: stranded.map((e) => e.name) }
+}
+
+/** Those expenses run to the plan's end instead (nothing replaces them now). */
+export function keepPaying(doc: PlanDocument, expenseIds: string[]): PlanDocument {
+  const ids = new Set(expenseIds)
+  return { ...doc, expenses: doc.expenses.map((e) => (ids.has(e.id) ? { ...e, end: { type: "planEnd" as const } } : e)) }
+}

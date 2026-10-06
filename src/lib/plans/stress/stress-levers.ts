@@ -4,6 +4,7 @@
  */
 
 import { RETIREMENT_MILESTONE_ID } from "../plan-constants"
+import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { AccountMix, PlanAccount, PlanDocument, PlanIncome } from "../plan-types"
 import { claimFactor, SS_EARLIEST_AGE, SS_LATEST_AGE, yearlyBenefit } from "../social-security"
@@ -124,3 +125,29 @@ export function claimSocialSecurityAt(doc: PlanDocument, age: number): PlanDocum
   }
   return { ...doc, incomes: doc.incomes.map((i) => (i.id === ss.income.id ? next : i)) }
 }
+
+/** Rent at about 0.4% of the home's value a month, as the stress test setup guesses. */
+const RENT_PER_VALUE = 0.004
+
+/** Homes the plan keeps with no backup plan (the ones "sell if the money runs out" would change). */
+export const homesWithoutBackup = (doc: PlanDocument) => fallbackHomes(doc).filter((h) => !h.fallback && plannedSaleIndex(doc, h) === null)
+
+/** Every kept home with no backup plan sells (and you rent) if the money runs out. */
+export function sellHomesIfNeeded(doc: PlanDocument): PlanDocument {
+  const ids = new Set(homesWithoutBackup(doc).map((h) => h.id))
+  if (ids.size === 0) return doc
+  return {
+    ...doc,
+    assets: doc.assets.map((a) => (ids.has(a.id) ? { ...a, fallback: { then: "rent" as const, monthlyRent: Math.round(a.value * RENT_PER_VALUE), price: 0 } } : a)),
+  }
+}
+
+/** Purchases still ahead (bought after the plan starts, by you), biggest first. */
+export function futurePurchases(doc: PlanDocument) {
+  const ctx = timingContext(doc)
+  return doc.assets
+    .filter((a) => a.acquired !== "received" && !a.origin && !a.replacementOf && (resolveTiming(a.start, ctx) ?? 0) > 0)
+    .sort((a, b) => b.value - a.value)
+}
+
+export const skipPurchase = (doc: PlanDocument, assetId: string): PlanDocument => ({ ...doc, assets: doc.assets.filter((a) => a.id !== assetId) })

@@ -77,9 +77,53 @@ test("a paycheck through the crunch years means no 'no paycheck'", () => {
   assert.ok(!keys(doc).includes("noPaycheck"))
 })
 
-test("one account holding nearly everything is called out", () => {
-  const doc = plan({ accounts: [account("Big", { balance: 900_000 }), account("Small", { balance: 100_000 })] })
-  assert.equal(find(doc, "riskyMix")!.title, "90% of your investments are in Big")
+test("a diversified 401(k) holding nearly everything isn't a risk", () => {
+  const doc = plan({ accounts: [account("401(k)", { taxTreatment: "traditional", balance: 900_000 }), account("Roth", { taxTreatment: "roth", balance: 100_000 })] })
+  assert.ok(!keys(doc).includes("riskyMix"))
+})
+
+const home = (extra: Partial<PlanDocument["assets"][number]> = {}): PlanDocument["assets"][number] => ({
+  id: "home",
+  name: "Home",
+  kind: "home",
+  value: 750_000,
+  appreciation: 0.03,
+  start: { type: "year", year: 2036 },
+  end: { type: "planEnd" },
+  financing: { mode: "loan", rate: 0.07, downShare: 0.1, termYears: 30 },
+  runningCosts: [],
+  ...extra,
+})
+
+test("big purchase: a financed home names its down payment and how long the payments run", () => {
+  const p = find(plan({ assets: [home()] }), "bigPurchase")!
+  assert.equal(p.title, "Buying Home at 50 is what drains the accounts")
+  assert.match(p.detail, /^\$75k down and \$\d+k a year of payments until 79/)
+  assert.equal(p.fix, "skip-home")
+})
+
+test("big purchase: payments that outlast the paycheck say by how much", () => {
+  const salary = { id: "s", name: "Salary", kind: "salary" as const, amount: 150_000, growth: null, start: { type: "planStart" as const }, end: { type: "year" as const, year: 2051 }, taxable: false, oneTime: false, contributions: [] }
+  const p = find(plan({ assets: [home()], incomes: [salary] }), "bigPurchase")!
+  assert.match(p.detail, /, 15 years past your last paycheck/)
+})
+
+test("housing gap: rent that stops years before a home is bought", () => {
+  const doc = plan({ expenses: [expense("Living", 40_000), expense("Rent", 20_000, { category: "Housing", end: { type: "year", year: 2036 } })], assets: [home({ start: { type: "year", year: 2044 }, financing: { mode: "cash", rate: 0, downShare: 1, termYears: 1 } })] })
+  const g = find(doc, "housingGap")!
+  assert.equal(g.title, "Rent stops at 50, but no home is bought until 58")
+  assert.equal(g.detail, "8 years with no housing cost. Check when it should stop.")
+})
+
+test("no housing gap when the home is bought the year the rent stops", () => {
+  const doc = plan({ expenses: [expense("Living", 40_000), expense("Rent", 20_000, { category: "Housing", end: { type: "year", year: 2036 } })], assets: [home({ financing: { mode: "cash", rate: 0, downShare: 1, termYears: 1 } })] })
+  assert.ok(!keys(doc).includes("housingGap"))
+})
+
+test("failures that had already sold the home are counted", () => {
+  const sold = (age: number) => ({ ...trial(age), homeSales: [{ name: "Home", age: age - 5, planned: false }] }) as CohortResult
+  const s = find(plan(), "soldStillFailed", [sold(60), sold(61), trial(62), trial(null)])!
+  assert.equal(s.title, "67% of the failures had already sold the home")
 })
 
 test("mostly bonds over a long plan is too timid", () => {

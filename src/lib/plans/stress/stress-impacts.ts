@@ -3,16 +3,18 @@
  * a reader sees which levers move how often the money lasts. The changes are picked from what this plan holds.
  */
 
-import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
-import { resolveTiming, timingContext } from "../plan-timing"
 import type { AccountMix, PlanDocument } from "../plan-types"
 import {
+  futurePurchases,
   hasEverydaySpending,
+  homesWithoutBackup,
   hasPaycheckToRetirement,
   portfolioMix,
   retireAt,
   retirementAge,
   scaleEverydaySpending,
+  sellHomesIfNeeded,
+  skipPurchase,
   withInvestmentMix,
 } from "./stress-levers"
 import { DEFAULT_STOCK_SHARE } from "./stress-mix"
@@ -24,8 +26,6 @@ const SPEND_CUT = 0.1
 const MORE_YEARS = 3
 /** Future purchases to try skipping, biggest first. */
 const MAX_SKIPS = 2
-/** Rent at about 0.4% of the home's value a month, as the stress test setup guesses. */
-const RENT_PER_VALUE = 0.004
 /** A portfolio this far from 80/20 (in stocks, or any crypto or cash at all past this) gets an 80/20 row. */
 const MIX_GAP = 0.1
 
@@ -65,24 +65,16 @@ function spendLess(doc: PlanDocument): ImpactVariant[] {
 
 /** The biggest purchases still ahead (bought after the plan starts), each skipped on its own. */
 function skipPurchases(doc: PlanDocument): ImpactVariant[] {
-  const ctx = timingContext(doc)
-  return doc.assets
-    .filter((a) => a.acquired !== "received" && !a.origin && !a.replacementOf && (resolveTiming(a.start, ctx) ?? 0) > 0)
-    .sort((a, b) => b.value - a.value)
+  return futurePurchases(doc)
     .slice(0, MAX_SKIPS)
-    .map((a) => variant(doc, `skip-${a.id}`, `Skip buying ${a.name}`, (d) => ({ ...d, assets: d.assets.filter((x) => x.id !== a.id) })))
+    .map((a) => variant(doc, `skip-${a.id}`, `Skip buying ${a.name}`, (d) => skipPurchase(d, a.id)))
 }
 
-/** Homes the plan keeps with no backup plan: sell one if the money runs out (rent from then on). */
+/** Homes the plan keeps with no backup plan: sell them if the money runs out (rent from then on). */
 function sellIfNeeded(doc: PlanDocument): ImpactVariant[] {
-  const homes = fallbackHomes(doc).filter((h) => !h.fallback && plannedSaleIndex(doc, h) === null)
+  const homes = homesWithoutBackup(doc)
   if (homes.length === 0) return []
-  const ids = new Set(homes.map((h) => h.id))
-  const apply = (d: PlanDocument): PlanDocument => ({
-    ...d,
-    assets: d.assets.map((a) => (ids.has(a.id) && !a.fallback ? { ...a, fallback: { then: "rent" as const, monthlyRent: Math.round(a.value * RENT_PER_VALUE), price: 0 } } : a)),
-  })
-  return [variant(doc, "sell-homes", homes.length === 1 ? `Sell ${homes[0].name} if the money runs out` : "Sell your homes if the money runs out", apply)]
+  return [variant(doc, "sell-homes", homes.length === 1 ? `Sell ${homes[0].name} if the money runs out` : "Sell your homes if the money runs out", sellHomesIfNeeded)]
 }
 
 /** Retire a few years later, when the plan has a paycheck that stops at retirement. */

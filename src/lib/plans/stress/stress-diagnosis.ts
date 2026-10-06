@@ -11,13 +11,25 @@ import { inflationOf } from "../plan-inflation"
 import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument, PlanProjection, YearRow } from "../plan-types"
 import type { AnnualHistory } from "./stress-history"
-import { isInvested, portfolioMix } from "./stress-levers"
+import { futurePurchases, isInvested, portfolioMix } from "./stress-levers"
 import { CRYPTO_BETA, mixFor } from "./stress-mix"
 import { percentile, type CohortResult } from "./stress-test"
 
-export type InsightKey = "when" | "crunch" | "noPaycheck" | "riskyMix" | "lowRisk" | "lateMoney" | "illiquid" | "optimism" | "taxDrag"
+export type InsightKey =
+  | "when"
+  | "housingGap"
+  | "bigPurchase"
+  | "crunch"
+  | "noPaycheck"
+  | "riskyMix"
+  | "lowRisk"
+  | "lateMoney"
+  | "soldStillFailed"
+  | "illiquid"
+  | "optimism"
+  | "taxDrag"
 /** What an insight's "See fix" points at: a solver (or What would help row) that pulls the matching lever. */
-export type InsightFix = "spending" | "mix" | "retirement" | "socialSecurity" | "sell-homes"
+export type InsightFix = "spending" | "mix" | "retirement" | "socialSecurity" | "sell-homes" | `skip-${string}`
 
 export interface Insight {
   key: InsightKey
@@ -28,8 +40,11 @@ export interface Insight {
 
 /** Crypto at or past this share of invested money is called out. */
 const CRYPTO_SHARE = 0.2
-/** One account holding this much of everything is concentrated. */
-const ONE_ACCOUNT_SHARE = 0.7
+/** A purchase whose down payment takes this share of the accounts, or whose payments take this share of income. */
+const BIG_DOWN = 0.2
+const BIG_PAYMENTS = 0.3
+/** A housing cost that stops this many years before any home is owned leaves a gap worth flagging. */
+const GAP_YEARS = 1
 /** Mostly cash and bonds past this share, over a long plan, is too timid. */
 const LOW_RISK_SHARE = 0.7
 const LOW_RISK_YEARS = 25
@@ -61,6 +76,81 @@ function when(c: Context, total: number): Insight {
     key: "when",
     title: `${pct(c.ages.length / total)} of trials run out, typically at ${c.age}`,
     detail: p10 === p90 ? `All of them at about ${c.age}.` : `Most between ${p10} and ${p90}.`,
+  }
+}
+
+const earnedKinds = new Set(["salary", "business", "equity"])
+
+/** The last plan year with a paycheck, or null with none. */
+function lastPaycheck(c: Context): number | null {
+  const earned = c.doc.incomes.filter((i) => earnedKinds.has(i.kind) && i.amount > 0)
+  for (let i = c.rows.length - 1; i >= 0; i--) if (earned.some((e) => (c.rows[i].incomeBy[e.id] ?? 0) > 0)) return i
+  return null
+}
+
+/**
+ * The biggest purchase still ahead, when it's heavy: a down payment that takes a big bite of the accounts, payments
+ * that eat a big share of income, or a loan that outlasts the paycheck.
+ */
+function bigPurchase(c: Context): Insight | null {
+  const expanded = expandPlan(c.doc)
+  const paycheck = lastPaycheck(c)
+  for (const asset of futurePurchases(c.doc)) {
+    const p = resolveTiming(asset.start, timingContext(c.doc))
+    const row = p === null ? undefined : c.rows[p]
+    if (p === null || !row || p > c.index) continue
+    const before = c.rows[p - 1]?.accountsTotal ?? 0
+    const loans = expanded.debts.filter((d) => d.assetId === asset.id)
+    const paid = (i: number) => loans.reduce((s, d) => s + (c.rows[i]?.debtPaymentsBy[d.id] ?? 0), 0)
+    let last = -1
+    for (let i = c.rows.length - 1; i >= p; i--) if (paid(i) > 0) { last = i; break }
+    const down = row.assetPurchases
+    const yearly = c.today(paid(p + 1 < c.rows.length ? p + 1 : p), p + 1)
+    const pastPay = paycheck !== null && last > paycheck ? last - paycheck : 0
+    const heavy = (before > 0 && down / before >= BIG_DOWN) || yearly >= BIG_PAYMENTS * c.today(row.income, p) || pastPay > 0
+    if (!heavy) continue
+    const parts = [`${k(c.today(down, p))} down`, yearly > 0 ? `${k(yearly)} a year of payments until ${c.age0 + last}` : ""].filter(Boolean)
+    return {
+      key: "bigPurchase",
+      title: `Buying ${asset.name} at ${c.age0 + p} is what drains the accounts`,
+      detail: `${parts.join(" and ")}${pastPay > 0 ? `, ${pastPay} years past your last paycheck` : ""} (today's dollars).`,
+      fix: `skip-${asset.id}`,
+    }
+  }
+  return null
+}
+
+const HOUSING = /\b(rent|housing|mortgage)\b/i
+
+/** Rent (or another housing cost) that stops years before any home is owned: years with no place to live. */
+function housingGap(c: Context): Insight | null {
+  const ctx = timingContext(c.doc)
+  const homes = c.doc.assets.filter((a) => a.kind === "home").map((a) => resolveTiming(a.start, ctx) ?? 0)
+  for (const e of c.doc.expenses) {
+    if (e.oneTime || !(e.category === "Housing" || HOUSING.test(e.name))) continue
+    const end = resolveTiming(e.end, ctx)
+    if (end === null || end >= c.rows.length) continue
+    const next = homes.filter((h) => h >= end).sort((a, b) => a - b)[0]
+    const owned = homes.some((h) => h < end)
+    if (owned || (next !== undefined && next - end < GAP_YEARS)) continue
+    const gap = (next ?? c.rows.length) - end
+    return {
+      key: "housingGap",
+      title: `${e.name} stops at ${c.age0 + end}, but no home is bought until ${next === undefined ? "the plan ends" : c.age0 + next}`,
+      detail: `${gap} years with no housing cost. Check when it should stop.`,
+    }
+  }
+  return null
+}
+
+/** Failed trials that had already sold a home: the backup plan ran out too. */
+function soldStillFailed(failed: CohortResult[]): Insight | null {
+  const sold = failed.filter((f) => (f.homeSales ?? []).some((s) => s.age <= f.depletedAge!)).length
+  if (sold === 0) return null
+  return {
+    key: "soldStillFailed",
+    title: `${pct(sold / failed.length)} of the failures had already sold the home`,
+    detail: "Selling it bought time, but the proceeds ran out too.",
   }
 }
 
@@ -106,13 +196,6 @@ function mixInsights(c: Context): Insight[] {
   const out: Insight[] = []
   if (mix.crypto >= CRYPTO_SHARE) {
     out.push({ key: "riskyMix", title: `${pct(mix.crypto)} of your investments are crypto`, detail: `The stress test swings crypto ${CRYPTO_BETA}× as hard as stocks, so a crash while you're selling does lasting damage.`, fix: "mix" })
-  } else {
-    const invested = c.doc.accounts.filter((a) => isInvested(a) && a.balance > 0)
-    const total = invested.reduce((s, a) => s + a.balance, 0)
-    const top = invested.reduce((m, a) => (a.balance > m.balance ? a : m), invested[0])
-    if (top && total > 0 && top.balance / total >= ONE_ACCOUNT_SHARE && invested.length > 1) {
-      out.push({ key: "riskyMix", title: `${pct(top.balance / total)} of your investments are in ${top.name}`, detail: "One account carries the whole plan; its swings are your plan's swings.", fix: "mix" })
-    }
   }
   if (mix.cash + mix.bonds >= LOW_RISK_SHARE && c.rows.length >= LOW_RISK_YEARS) {
     out.push({ key: "lowRisk", title: `${pct(mix.cash + mix.bonds)} in cash and bonds`, detail: "Over a plan this long, they barely beat inflation; some stocks usually help.", fix: "mix" })
@@ -206,6 +289,18 @@ export function diagnose(doc: PlanDocument, projection: PlanProjection, cohorts:
   const today = (v: number, i: number) => v / deflator(inflation, i, "flow")
   const spending = today(rows[index]?.expenses ?? 0, index)
   const c: Context = { doc, rows, age0, ages, age, index, today, spending }
-  const found = [when(c, cohorts.length), crunch(c), ...mixInsights(c), noPaycheck(c), lateMoney(c), illiquid(c, failed), optimism(c, annual), taxDrag(c)]
+  const found = [
+    when(c, cohorts.length),
+    housingGap(c),
+    bigPurchase(c),
+    crunch(c),
+    ...mixInsights(c),
+    noPaycheck(c),
+    lateMoney(c),
+    soldStillFailed(failed),
+    illiquid(c, failed),
+    optimism(c, annual),
+    taxDrag(c),
+  ]
   return found.filter((i): i is Insight => i !== null)
 }

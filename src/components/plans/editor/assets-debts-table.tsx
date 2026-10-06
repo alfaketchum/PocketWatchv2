@@ -7,7 +7,7 @@ import { milestoneAsAge, patchItem, planItemAnchor, type PlanEditorProps } from 
 import { Badge, Cell, CellNumber, CellSelect, CellText, PlanTable, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 import { paidWithLabel } from "@/lib/plans/plan-financing"
-import { removeAsset } from "@/lib/plans/plan-edits"
+import { removeAssetWithNotice } from "./remove-asset"
 import { generatedDebts } from "@/lib/plans/plan-expand"
 import { scheduledPayment } from "@/lib/plans/plan-debt-payments"
 import { DEBT_KINDS, withDebtKind } from "./debt-constants"
@@ -128,7 +128,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
                 name={a.name}
                 anchor={planItemAnchor(a.id)}
                 onEditItem={onEditItem}
-                onRemove={() => update((d) => removeAsset(d, a.id))}
+                onRemove={() => removeAssetWithNotice(doc, update, a.id)}
                 onDispose={() => setDisposeId(a.id)}
               />
             </Cell>

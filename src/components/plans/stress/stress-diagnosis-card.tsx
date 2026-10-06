@@ -5,6 +5,9 @@ import type { Insight, InsightFix, InsightKey } from "@/lib/plans/stress/stress-
 
 const ICONS: Record<InsightKey, string> = {
   when: "schedule",
+  housingGap: "event_busy",
+  bigPurchase: "real_estate_agent",
+  soldStillFailed: "sell",
   crunch: "trending_up",
   noPaycheck: "work_off",
   riskyMix: "candlestick_chart",

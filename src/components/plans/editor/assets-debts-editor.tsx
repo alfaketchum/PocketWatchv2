@@ -21,7 +21,7 @@ import { AddDebtDialog } from "./add-debt-dialog"
 import { DisposeAssetDialog } from "./dispose-asset-dialog"
 import { VehicleValueFields } from "./vehicle-value-fields"
 import { typicalRunningCosts } from "@/lib/plans/plan-asset-costs"
-import { removeAsset } from "@/lib/plans/plan-edits"
+import { removeAssetWithNotice } from "./remove-asset"
 import { generatedDebts } from "@/lib/plans/plan-expand"
 import { Badge } from "./plan-table"
 import { DEBT_KINDS, withDebtKind } from "./debt-constants"
@@ -76,8 +76,7 @@ function AddDebtButton({ doc, update }: Pick<PlanEditorProps, "doc" | "update">)
 
 function AssetsList({ doc, update }: PlanEditorProps) {
   const patch = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
-  const remove = (id: string) =>
-    update((d) => removeAsset(d, id))
+  const remove = (id: string) => removeAssetWithNotice(doc, update, id)
   const [disposeId, setDisposeId] = useState<string | null>(null)
   const { isBasic } = usePlanMode()
   return (

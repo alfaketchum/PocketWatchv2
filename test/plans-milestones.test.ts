@@ -12,7 +12,7 @@ import {
   applyWindfall,
   monthlyPayment,
 } from "@/lib/plans/milestone-templates"
-import { detachMilestone, milestoneUses } from "@/lib/plans/plan-milestone-uses"
+import { detachMilestone, keepPaying, milestoneUses, strandedByRemoval } from "@/lib/plans/plan-milestone-uses"
 import { planDocumentSchema, parsePlanDocument } from "@/lib/plans/plan-schema"
 import type { PlanDocument, PlanIncome } from "@/lib/plans/plan-types"
 
@@ -141,4 +141,19 @@ test("a home bought at a milestone gets no second 'Buy …' marker; one bought a
   assert.ok(names.includes("Buy first home"))
   assert.ok(!names.includes("Buy Condo"))
   assert.ok(names.includes("Buy House"))
+})
+
+test("removing a home bought at a milestone flags the rent that still stops there, and Keep paying runs it on", () => {
+  const ms = { id: "ms-home", name: "Buy first home", kind: "custom" as const, icon: "home", timing: { type: "year" as const, year: 2035 } }
+  const at = { type: "milestone" as const, milestoneId: "ms-home" }
+  const rent = { id: "rent", name: "Rent", category: "Housing", amount: 20_000, growth: null, start: { type: "planStart" as const }, end: at, oneTime: false }
+  const home = { id: "h", name: "Home", kind: "home" as const, value: 500_000, appreciation: 0.03, start: at, end: { type: "planEnd" as const }, runningCosts: [] }
+  const doc = plan({ milestones: [...plan().milestones, ms], expenses: [rent], assets: [home] })
+  const s = strandedByRemoval(doc, "h")!
+  assert.equal(s.milestone.name, "Buy first home")
+  assert.deepEqual(s.names, ["Rent"])
+  assert.deepEqual(keepPaying(doc, s.expenseIds).expenses[0].end, { type: "planEnd" })
+  const another = { ...home, id: "h2", name: "Other home" }
+  assert.equal(strandedByRemoval({ ...doc, assets: [home, another] }, "h"), null, "another home is still bought there")
+  assert.equal(strandedByRemoval({ ...doc, assets: [{ ...home, start: { type: "year" as const, year: 2035 } }] }, "h"), null, "not timed to a milestone")
 })
