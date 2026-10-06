@@ -116,3 +116,14 @@ test("an amount entered by hand is rescaled by the claim factors", () => {
   assert.equal(at67.amount, Math.round((20_000 * claimFactor(person.birthYear, 67)) / claimFactor(person.birthYear, 62)))
   assert.equal(claimSocialSecurityAt(doc, 75).incomes[0].start.type === "age" && (claimSocialSecurityAt(doc, 75).incomes[0].start as { age: number }).age, 70, "clamped to 70")
 })
+
+test("everyday spending today counts only the lines running now, not later ones", () => {
+  const doc = plan({
+    expenses: [
+      { id: "rent1", name: "Rent (shared)", category: "Housing", amount: 30_000, growth: null, start: { type: "planStart" }, end: { type: "year", year: 2030 }, oneTime: false },
+      { id: "rent2", name: "Rent (1BR)", category: "Housing", amount: 54_000, growth: null, start: { type: "year", year: 2030 }, end: { type: "planEnd" }, oneTime: false },
+      { id: "food", name: "Food", category: "Food", amount: 10_000, growth: null, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false },
+    ],
+  })
+  assert.equal(everydaySpending(doc), 40_000)
+})

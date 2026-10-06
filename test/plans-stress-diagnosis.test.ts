@@ -111,7 +111,7 @@ test("big purchase: payments that outlast the paycheck say by how much", () => {
 test("housing gap: rent that stops years before a home is bought", () => {
   const doc = plan({ expenses: [expense("Living", 40_000), expense("Rent", 20_000, { category: "Housing", end: { type: "year", year: 2036 } })], assets: [home({ start: { type: "year", year: 2044 }, financing: { mode: "cash", rate: 0, downShare: 1, termYears: 1 } })] })
   const g = find(doc, "housingGap")!
-  assert.equal(g.title, "Rent stops at 50, but no home is bought until 58")
+  assert.equal(g.title, "Rent stops at 50, but Home isn't bought until 58")
   assert.equal(g.detail, "8 years with no housing cost. Check when it should stop.")
 })
 
@@ -159,4 +159,41 @@ test("illiquid: failed trials that still owned a lot of property", () => {
 test("optimism: the steady plan never runs out but trials do", () => {
   const o = find(plan(), "optimism")!
   assert.match(o.detail, /^It assumes 6% a year after inflation/)
+})
+
+test("back-to-back rents are one stretch of housing, not a gap", () => {
+  const doc = plan({
+    expenses: [
+      expense("Living", 40_000),
+      expense("Rent (shared)", 15_000, { category: "Housing", end: { type: "year", year: 2030 } }),
+      expense("Rent (1BR)", 25_000, { category: "Housing", start: { type: "year", year: 2030 }, end: { type: "year", year: 2036 } }),
+    ],
+    assets: [home({ financing: { mode: "cash", rate: 0, downShare: 1, termYears: 1 } })],
+  })
+  assert.ok(!keys(doc).includes("housingGap"))
+})
+
+const job = (id: string, amount: number, start: number | null, end: number | null) => ({
+  id,
+  name: id,
+  kind: "salary" as const,
+  amount,
+  growth: null,
+  start: start === null ? { type: "planStart" as const } : { type: "year" as const, year: start },
+  end: end === null ? { type: "planEnd" as const } : { type: "year" as const, year: end },
+  taxable: false,
+  oneTime: false,
+  contributions: [],
+})
+
+test("income drop: a layoff to a lower-paid job before the money runs out, with spending that stays", () => {
+  const doc = plan({ incomes: [job("Banker", 500_000, null, 2045), job("Corporate", 200_000, 2046, null)] })
+  const d = find(doc, "incomeDrop")!
+  assert.equal(d.title, "Pay falls from $500k to $200k a year at 59")
+  assert.match(d.detail, /^Spending doesn't fall with it: \$40k a year/)
+})
+
+test("a short break that pays the same after isn't an income drop", () => {
+  const doc = plan({ incomes: [job("Before", 100_000, null, 2030), job("After", 100_000, 2032, null)] })
+  assert.ok(!keys(doc).includes("incomeDrop"))
 })

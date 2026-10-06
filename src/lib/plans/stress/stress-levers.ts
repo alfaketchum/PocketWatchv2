@@ -5,7 +5,7 @@
 
 import { RETIREMENT_MILESTONE_ID } from "../plan-constants"
 import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
-import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
+import { ageAtStart, resolveRange, resolveTiming, timingContext } from "../plan-timing"
 import type { AccountMix, PlanAccount, PlanDocument, PlanIncome } from "../plan-types"
 import { claimFactor, SS_EARLIEST_AGE, SS_LATEST_AGE, yearlyBenefit } from "../social-security"
 import { mixFor } from "./stress-mix"
@@ -15,8 +15,19 @@ const isEveryday = (e: PlanDocument["expenses"][number]) => !e.oneTime && !e.ori
 
 export const hasEverydaySpending = (doc: PlanDocument) => doc.expenses.some(isEveryday)
 
-/** Today's dollars a year of everyday costs (their amounts as entered). */
-export const everydaySpending = (doc: PlanDocument) => doc.expenses.filter(isEveryday).reduce((s, e) => s + e.amount, 0)
+/**
+ * A year of everyday costs today: the lines running in the plan's first year (lines that come later, like a
+ * bigger rent or a degree, don't add to it). Every line when none runs yet.
+ */
+export function everydaySpending(doc: PlanDocument): number {
+  const ctx = timingContext(doc)
+  const lines = doc.expenses.filter(isEveryday)
+  const now = lines.filter((e) => {
+    const { start, end } = resolveRange(e.start, e.end, ctx)
+    return Math.max(0, start) <= 0 && 0 < end
+  })
+  return (now.length > 0 ? now : lines).reduce((s, e) => s + e.amount, 0)
+}
 
 /** Every everyday cost scaled by `factor` (kids' costs, home and car costs and one-time items stay as they are). */
 export function scaleEverydaySpending(doc: PlanDocument, factor: number): PlanDocument {

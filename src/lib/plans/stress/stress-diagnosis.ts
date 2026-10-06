@@ -8,7 +8,8 @@ import { expensesView } from "../plan-chart-detail"
 import { deflator, realRate } from "../plan-dollars"
 import { expandPlan } from "../plan-expand"
 import { inflationOf } from "../plan-inflation"
-import { ageAtStart, resolveTiming, timingContext } from "../plan-timing"
+import { rowTaxes } from "../plan-row-taxes"
+import { ageAtStart, resolveRange, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument, PlanProjection, YearRow } from "../plan-types"
 import type { AnnualHistory } from "./stress-history"
 import { futurePurchases, isInvested, portfolioMix } from "./stress-levers"
@@ -19,6 +20,7 @@ export type InsightKey =
   | "when"
   | "housingGap"
   | "bigPurchase"
+  | "incomeDrop"
   | "crunch"
   | "noPaycheck"
   | "riskyMix"
@@ -45,6 +47,8 @@ const BIG_DOWN = 0.2
 const BIG_PAYMENTS = 0.3
 /** A housing cost that stops this many years before any home is owned leaves a gap worth flagging. */
 const GAP_YEARS = 1
+/** Pay falling by this share or more before the money runs out is a cause worth naming. */
+const INCOME_DROP = 0.3
 /** Mostly cash and bonds past this share, over a long plan, is too timid. */
 const LOW_RISK_SHARE = 0.7
 const LOW_RISK_YEARS = 25
@@ -122,22 +126,51 @@ function bigPurchase(c: Context): Insight | null {
 
 const HOUSING = /\b(rent|housing|mortgage)\b/i
 
-/** Rent (or another housing cost) that stops years before any home is owned: years with no place to live. */
+/**
+ * A stretch with no housing cost at all: no rent or other housing line running and no home owned, after there was
+ * one and before the next one starts (rent that stops years before the home it was waiting for). Back-to-back
+ * housing lines (a cheaper rent, then a bigger one) are continuous.
+ */
 function housingGap(c: Context): Insight | null {
   const ctx = timingContext(c.doc)
-  const homes = c.doc.assets.filter((a) => a.kind === "home").map((a) => resolveTiming(a.start, ctx) ?? 0)
-  for (const e of c.doc.expenses) {
-    if (e.oneTime || !(e.category === "Housing" || HOUSING.test(e.name))) continue
-    const end = resolveTiming(e.end, ctx)
-    if (end === null || end >= c.rows.length) continue
-    const next = homes.filter((h) => h >= end).sort((a, b) => a - b)[0]
-    const owned = homes.some((h) => h < end)
-    if (owned || (next !== undefined && next - end < GAP_YEARS)) continue
-    const gap = (next ?? c.rows.length) - end
+  const spans = [
+    ...c.doc.expenses.filter((e) => !e.oneTime && (e.category === "Housing" || HOUSING.test(e.name))).map((e) => ({ name: e.name, kind: "cost" as const, ...resolveRange(e.start, e.end, ctx) })),
+    ...c.doc.assets.filter((a) => a.kind === "home").map((a) => ({ name: a.name, kind: "home" as const, ...resolveRange(a.start, a.end, ctx) })),
+  ]
+  const covered = (i: number) => spans.some((s) => Math.max(0, s.start) <= i && i < s.end)
+  for (let i = 1; i < c.rows.length; i++) {
+    if (!covered(i - 1) || covered(i)) continue
+    const before = spans.find((s) => s.end === i)
+    const next = spans.filter((s) => s.start > i).sort((a, b) => a.start - b.start)[0]
+    if (!before || !next || next.start - i < GAP_YEARS) continue
     return {
       key: "housingGap",
-      title: `${e.name} stops at ${c.age0 + end}, but no home is bought until ${next === undefined ? "the plan ends" : c.age0 + next}`,
-      detail: `${gap} years with no housing cost. Check when it should stop.`,
+      title: `${before.name} stops at ${c.age0 + i}, but ${next.kind === "home" ? `${next.name} isn't bought` : `${next.name} doesn't start`} until ${c.age0 + next.start}`,
+      detail: `${next.start - i} years with no housing cost. Check when it should stop.`,
+    }
+  }
+  return null
+}
+
+/** Household pay over a year: every salary, business and equity income (today's dollars). */
+const earnedIn = (c: Context, i: number) => c.today(c.doc.incomes.filter((x) => earnedKinds.has(x.kind)).reduce((s, x) => s + (c.rows[i]?.incomeBy[x.id] ?? 0), 0), i)
+
+/** Before the money runs out, pay falls hard (a layoff, a lower-paid job, a partner stopping work) and spending doesn't. */
+function incomeDrop(c: Context): Insight | null {
+  const retirement = c.doc.milestones.find((m) => m.kind === "retirement")
+  const retireIndex = retirement ? (resolveTiming(retirement.timing, timingContext(c.doc)) ?? c.rows.length) : c.rows.length
+  for (let t = Math.min(c.index, retireIndex - 1); t >= 1; t--) {
+    const before = earnedIn(c, t - 1)
+    if (before <= 0 || earnedIn(c, t) > before * (1 - INCOME_DROP)) continue
+    // The new level: the first year pay picks up again, or nothing.
+    let after = earnedIn(c, t)
+    for (let i = t; i <= Math.min(c.index, retireIndex - 1) && after <= 0; i++) after = earnedIn(c, i)
+    if (after > before * (1 - INCOME_DROP)) continue
+    return {
+      key: "incomeDrop",
+      title: `Pay falls from ${k(before)} to ${k(after)} a year at ${c.age0 + t}`,
+      detail: `Spending doesn't fall with it: ${k(c.today(c.rows[t].expenses + c.rows[t].debtPayments, t))} a year goes out (today's dollars).`,
+      fix: "spending",
     }
   }
   return null
@@ -267,9 +300,14 @@ function optimism(c: Context, annual: AnnualHistory | null): Insight | null {
 function taxDrag(c: Context): Insight | null {
   const r = c.rows[c.index]
   if (!r || r.withdrawals <= 0) return null
-  const share = r.incomeTax / (r.withdrawals + r.income)
+  const taxes = rowTaxes(r)
+  const share = taxes / (r.withdrawals + r.income)
   if (share < TAX_DRAG) return null
-  return { key: "taxDrag", title: `Taxes take ${pct(share)} of what you live on by ${c.age}`, detail: `About ${k(c.today(r.incomeTax, c.index))} a year in today's dollars, mostly on investments you sell.` }
+  const why =
+    r.earlyWithdrawalPenalty > 0
+      ? `including ${k(c.today(r.earlyWithdrawalPenalty, c.index))} of early-withdrawal penalty for taking retirement money before 59½`
+      : "mostly on investments you sell"
+  return { key: "taxDrag", title: `Taxes take ${pct(share)} of what you live on by ${c.age}`, detail: `About ${k(c.today(taxes, c.index))} a year in today's dollars, ${why}.` }
 }
 
 /**
@@ -292,6 +330,7 @@ export function diagnose(doc: PlanDocument, projection: PlanProjection, cohorts:
   const found = [
     when(c, cohorts.length),
     housingGap(c),
+    incomeDrop(c),
     bigPurchase(c),
     crunch(c),
     ...mixInsights(c),

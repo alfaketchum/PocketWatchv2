@@ -7,6 +7,7 @@ const ICONS: Record<InsightKey, string> = {
   when: "schedule",
   housingGap: "event_busy",
   bigPurchase: "real_estate_agent",
+  incomeDrop: "trending_down",
   soldStillFailed: "sell",
   crunch: "trending_up",
   noPaycheck: "work_off",
