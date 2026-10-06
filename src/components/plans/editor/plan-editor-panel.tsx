@@ -31,10 +31,10 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
   }
   return (
     <section
-      className={`bg-card border border-card-border rounded-2xl ${open ? "" : "mx-auto w-fit max-w-full"}`}
+      className={`bg-card border border-card-border rounded-2xl ${open ? "" : "w-full sm:mx-auto sm:w-fit sm:max-w-full"}`}
       style={{ boxShadow: "var(--shadow-sm)" }}
     >
-      <div className={`flex items-stretch justify-center gap-2 px-2 sm:px-4 ${open ? "border-b border-card-border" : ""}`}>
+      <div className={`flex items-stretch justify-between gap-1 pl-1 pr-2 sm:justify-center sm:gap-2 sm:px-4 ${open ? "border-b border-card-border" : ""}`}>
         <div className="min-w-0">
           <PlanEditorTabs value={tab} onChange={onTabChange} open={open} onToggle={() => setOpen(!open)} />
         </div>
@@ -43,12 +43,13 @@ export function PlanEditorPanel({ tab, onTabChange, children }: { tab: PlanTab; 
             type="button"
             onClick={() => setOpen(!open)}
             aria-expanded={open}
-            className="inline-flex h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            aria-label={open ? "Collapse" : "Expand"}
+            className="inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 lg:h-8 lg:min-w-0"
           >
             <span className="material-symbols-rounded" style={{ fontSize: 18 }} aria-hidden="true">
               {open ? "remove" : "add"}
             </span>
-            {open ? "Collapse" : "Expand"}
+            <span className="hidden sm:inline">{open ? "Collapse" : "Expand"}</span>
           </button>
         </div>
       </div>

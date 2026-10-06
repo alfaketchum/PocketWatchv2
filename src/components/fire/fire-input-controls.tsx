@@ -18,7 +18,7 @@ export function InputBlock({ title, description, children }: { title?: string; d
   const row = useContext(RowLayout)
   if (row) {
     return (
-      <section id={title ? inputBlockAnchor(title) : undefined} className="grid scroll-mt-4 gap-3 py-5 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
+      <section id={title ? inputBlockAnchor(title) : undefined} className="grid scroll-mt-20 gap-3 md:scroll-mt-4 py-5 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10">
         <div>
           {title && <p className="text-sm font-semibold text-foreground">{title}</p>}
           {description && <p className="text-xs text-foreground-muted mt-0.5">{description}</p>}
@@ -42,8 +42,8 @@ export function InputBlock({ title, description, children }: { title?: string; d
 
 export function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="inline-flex items-center gap-2 text-xs text-foreground cursor-pointer select-none">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-[var(--primary)]" />
+    <label className="inline-flex min-h-10 items-center gap-2 text-xs text-foreground cursor-pointer select-none md:min-h-0">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[var(--primary)] md:h-auto md:w-auto" />
       {label}
     </label>
   )
@@ -63,7 +63,7 @@ export function ChoiceChips<T extends string>({
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+            "min-h-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0",
             value === o.value ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
           )}
         >

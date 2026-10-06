@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import { fmtCompact, fmtMoney } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { ProgressPoint } from "@/lib/plans/plan-progress"
@@ -58,6 +59,7 @@ export function ProgressChart({
   isHidden: boolean
 }) {
   const { primary, foregroundMuted, border } = useChartTheme()
+  const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const data = useMemo(() => merge(actual, plan, now + YEARS_AHEAD), [actual, plan, now])
   return (
     <FireSectionCard
@@ -70,7 +72,7 @@ export function ProgressChart({
           <ComposedChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
             <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={(v: number) => String(Math.floor(v))} axisLine={false} tickLine={false} allowDecimals={false} />
-            <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={fmtCompact} axisLine={false} tickLine={false} width={56} />
+            <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={fmtCompact} axisLine={false} tickLine={false} width={axisWidth} />
             <Tooltip content={<ProgressTooltip />} />
             <ReferenceLine x={now} stroke={foregroundMuted} strokeDasharray="4 4" label={{ value: "Today", position: "insideTopRight", fontSize: 10, fill: foregroundMuted }} />
             <Line type="monotone" dataKey="actual" stroke={primary} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />

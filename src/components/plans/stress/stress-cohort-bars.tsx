@@ -3,6 +3,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { fmtCompact, fmtMoney } from "@/components/fire/fire-helpers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 const HEIGHT = 240
@@ -25,6 +26,7 @@ function CohortTooltip({ active, payload }: { active?: boolean; payload?: Array<
 /** Ending net worth (today's dollars) for each historical start year; red where the money ran out. */
 export function StressCohortBars({ cohorts, isHidden }: { cohorts: CohortResult[]; isHidden: boolean }) {
   const { primary, error, foregroundMuted, border, foreground } = useChartTheme()
+  const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const data = cohorts.map((c) => ({ ...c, end: c.netWorth.at(-1) ?? 0 }))
   return (
     <div style={{ height: HEIGHT, filter: isHidden ? "blur(8px)" : undefined }}>
@@ -32,7 +34,7 @@ export function StressCohortBars({ cohorts, isHidden }: { cohorts: CohortResult[
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 4 }} barCategoryGap="12%">
           <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="year" tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} minTickGap={20} />
-          <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={56} />
+          <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
           <Tooltip content={<CohortTooltip />} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
           <Bar dataKey="end" isAnimationActive={false}>
             {data.map((c) => (

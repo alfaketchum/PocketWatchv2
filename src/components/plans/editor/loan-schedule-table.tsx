@@ -44,7 +44,7 @@ export function LoanScheduleTable({ schedule, age0, colors }: { schedule: LoanSc
   const max = Math.max(0, ...schedule.years.map((y) => y.payment))
   return (
     <div className="space-y-2">
-      <div className="flex gap-4 text-[11px] text-foreground-muted">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-foreground-muted">
         <Swatch color={colors.principal} label="Principal (pays the loan down)" />
         <Swatch color={colors.interest} label="Interest (the cost of borrowing)" />
       </div>

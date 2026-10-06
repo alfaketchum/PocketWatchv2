@@ -45,7 +45,7 @@ export function ClaimAgeSlider({
           value={age}
           onChange={(e) => onChange(Number(e.target.value))}
           aria-valuetext={`Age ${age}: ${pct(factor)} of your full benefit`}
-          className="w-full accent-[var(--primary)]"
+          className="w-full accent-[var(--primary)] [@media(pointer:coarse)]:h-8"
         />
         {/* Inset by half the slider's thumb so each age sits under the thumb's centre. */}
         <div className="relative mx-2 mt-1 h-7 text-[10px] tabular-nums" aria-hidden="true">

@@ -33,8 +33,14 @@ const PLAN_PAGES: PlanPage[] = [
   { path: "stress", label: "Stress test", icon: "thunderstorm", hint: "Your plan replayed through every market since 1871, crashes and stagflation included", advanced: true },
 ]
 
-/** One tab; hovering names it and says what's there (on touch, a tap just opens it). `labelFromXl`: icon only below xl. */
-function PageLink({ planId, page, active, labelFromXl }: { planId: string; page: PlanPage; active: boolean; labelFromXl: boolean }) {
+/** Which tabs show their label: in the top bar, all from xl; in the page, all from sm, and only the current one on phones. */
+function labelClass(inHeader: boolean, active: boolean): string | undefined {
+  if (inHeader) return "hidden xl:inline"
+  return active ? undefined : "hidden sm:inline"
+}
+
+/** One tab; hovering names it and says what's there (on touch, a tap just opens it). */
+function PageLink({ planId, page, active, inHeader }: { planId: string; page: PlanPage; active: boolean; inHeader: boolean }) {
   const isTouch = useIsTouchDevice()
   const link = (
     <Link
@@ -42,14 +48,14 @@ function PageLink({ planId, page, active, labelFromXl }: { planId: string; page:
       aria-current={active ? "page" : undefined}
       aria-label={page.label}
       className={cn(
-        "flex h-11 lg:h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
+        "flex h-11 lg:h-9 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
         active ? "bg-primary text-white" : "text-foreground-muted hover:bg-background-secondary hover:text-foreground",
       )}
     >
       <span className="material-symbols-rounded" style={{ fontSize: 17 }} aria-hidden="true">
         {page.icon}
       </span>
-      <span className={labelFromXl ? "hidden xl:inline" : undefined}>{page.label}</span>
+      <span className={labelClass(inHeader, active)}>{page.label}</span>
     </Link>
   )
   if (isTouch) return link
@@ -71,7 +77,8 @@ function PageLink({ planId, page, active, labelFromXl }: { planId: string; page:
 
 /**
  * A plan's pages as one tab group, boxed like the top-bar toolbars, with the current page highlighted. In the top bar
- * (`inHeader`) the labels show from xl up, icons only below, so it fits between the toolbars.
+ * (`inHeader`) the labels show from xl up, icons only below, so it fits between the toolbars. In the page, phones see
+ * icons plus the current page's name, so every tab fits without scrolling.
  */
 export function PlanPagesNav({ planId, inHeader = false }: { planId: string; inHeader?: boolean }) {
   const pathname = usePathname()
@@ -82,7 +89,7 @@ export function PlanPagesNav({ planId, inHeader = false }: { planId: string; inH
   return (
     <nav aria-label="Plan pages" className={cn(TOOLBAR_CLASS, "max-w-full overflow-x-auto scrollbar-hide")}>
       {pages.map((page) => (
-        <PageLink key={page.label} planId={planId} page={page} active={page.path === current} labelFromXl={inHeader} />
+        <PageLink key={page.label} planId={planId} page={page} active={page.path === current} inHeader={inHeader} />
       ))}
     </nav>
   )

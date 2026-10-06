@@ -4,6 +4,7 @@ import { memo } from "react"
 import { Bar, CartesianGrid, Cell, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import { DIMMED } from "../results/plan-chart-plot"
 import type { ChartMode, ChartRow, Series } from "../results/use-chart-series"
 import { tone } from "./compare-helpers"
@@ -30,6 +31,7 @@ const indexOf = (state: { activeTooltipIndex?: unknown } | null | undefined) => 
  */
 export const CompareDiffChart = memo(function CompareDiffChart({ rows, series, mode, breakdown, selected, onHover, onSelect }: Props) {
   const { success, error, foreground, foregroundMuted, border } = useChartTheme()
+  const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const toneColor = (v: number) => {
     const t = tone(mode, v)
     return t > 0 ? success : t < 0 ? error : foregroundMuted
@@ -51,7 +53,7 @@ export const CompareDiffChart = memo(function CompareDiffChart({ rows, series, m
       >
         <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
         <XAxis dataKey="age" tick={{ fontSize: 10, fill: foregroundMuted }} axisLine={false} tickLine={false} minTickGap={16} />
-        <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={fmtCompact} axisLine={false} tickLine={false} width={56} />
+        <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={fmtCompact} axisLine={false} tickLine={false} width={axisWidth} />
         {/* The year card beside the chart shows the numbers; the tooltip only draws the hover band. */}
         <Tooltip content={() => null} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
         <ReferenceLine y={0} stroke={foregroundMuted} />

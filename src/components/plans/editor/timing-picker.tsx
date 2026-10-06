@@ -76,7 +76,7 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
   }
   if (value.type === "milestone") {
     return (
-      <div className="flex gap-2 items-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <label className="block min-w-0 flex-1">
           <span className="block text-[11px] font-medium text-foreground-muted mb-1">Milestone</span>
           <select
@@ -92,7 +92,7 @@ function TimingDetail({ value, doc, onChange }: { value: Timing; doc: PlanDocume
             ))}
           </select>
         </label>
-        <div className="w-28 shrink-0">
+        <div className="w-full shrink-0 sm:w-28">
           <FireNumberField
             label="Years after"
             min={0}

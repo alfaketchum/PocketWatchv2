@@ -97,7 +97,7 @@ export function PlansList() {
       ) : (
         <>
           <div className="flex justify-end">
-            <button type="button" onClick={() => setDialog({ kind: "new" })} disabled={atLimit} className="btn-primary text-sm disabled:opacity-50">
+            <button type="button" onClick={() => setDialog({ kind: "new" })} disabled={atLimit} className="btn-primary w-full justify-center text-sm disabled:opacity-50 sm:w-auto">
               <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
                 add
               </span>

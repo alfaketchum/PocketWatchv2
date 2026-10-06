@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import type { LoanOutcome } from "@/lib/plans/plan-loan-compare"
 import { optionLabel } from "@/lib/plans/plan-loan-options"
@@ -14,6 +15,7 @@ const signed = (v: number) => `${v >= 0 ? "+" : "−"}${fmtCompact(Math.abs(v))}
 /** Net worth of each option minus the plan as it is, year by year (today's dollars). */
 export function LoanDifferenceChart({ planned, shown, colors, isHidden }: { planned: LoanOutcome; shown: LoanOutcome[]; colors: string[]; isHidden: boolean }) {
   const { foregroundMuted, border, foreground } = useChartTheme()
+  const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 60
   const rows = useMemo(
     () =>
       planned.years.map((year, i) => {
@@ -30,7 +32,7 @@ export function LoanDifferenceChart({ planned, shown, colors, isHidden }: { plan
           <LineChart data={rows} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke={border} strokeDasharray="3 3" />
             <XAxis dataKey="year" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 10, fill: foregroundMuted }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={signed} axisLine={false} tickLine={false} width={60} />
+            <YAxis tick={{ fontSize: 10, fill: foregroundMuted }} tickFormatter={signed} axisLine={false} tickLine={false} width={axisWidth} />
             <ReferenceLine y={0} stroke={foreground} strokeOpacity={0.4} strokeDasharray="4 4" />
             <Tooltip
               formatter={(value, key) => [signed(Number(value)), optionLabel(shown[Number(String(key).slice(1))].option)]}

@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react"
 import { fmtCompact } from "@/components/fire/fire-helpers"
+import { useIsNarrow } from "@/hooks/use-is-narrow"
 import { NOTABLE_PERIODS } from "@/lib/fire/fire-constants"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
-const W = 960
-const H = 340
-const PAD = { top: 12, right: 12, bottom: 24, left: 56 }
+/** Drawn at a size close to the screen's, so the labels stay readable when the SVG scales to fit. */
+const WIDE = { W: 960, H: 340, PAD: { top: 12, right: 12, bottom: 24, left: 56 }, hit: 8 }
+const NARROW = { W: 380, H: 300, PAD: { top: 12, right: 8, bottom: 24, left: 42 }, hit: 14 }
 /** The y-axis tops out a bit above the 90th-percentile path, so a few boom years don't flatten the rest. */
 const Y_HEADROOM = 1.15
 const Y_PERCENTILE = 0.9
@@ -37,6 +38,7 @@ function yTop(cohorts: CohortResult[], measure: Props["measure"], plan: number[]
  */
 export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Props) {
   const [hover, setHover] = useState<number | null>(null)
+  const { W, H, PAD, hit } = useIsNarrow() ? NARROW : WIDE
   const years = Math.max(1, (cohorts[0]?.[measure].length ?? plan.length) - 1)
   const top = useMemo(() => yTop(cohorts, measure, plan), [cohorts, measure, plan])
   const x = (i: number) => PAD.left + (i / years) * (W - PAD.left - PAD.right)
@@ -53,8 +55,8 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
     const stroke = failed ? "var(--error)" : highlight ? "var(--warning)" : "var(--foreground-muted)"
     const opacity = active ? 0.95 : highlight ? 0.9 : failed ? 0.45 : 0.2
     return (
-      <g key={c.year} onMouseEnter={() => setHover(c.year)} onMouseLeave={() => setHover(null)}>
-        <polyline points={line(c[measure])} fill="none" stroke="transparent" strokeWidth={8} />
+      <g key={c.year} onMouseEnter={() => setHover(c.year)} onMouseLeave={() => setHover(null)} onClick={() => setHover(c.year)}>
+        <polyline points={line(c[measure])} fill="none" stroke="transparent" strokeWidth={hit} />
         <polyline points={line(c[measure])} fill="none" stroke={stroke} strokeOpacity={opacity} strokeWidth={active || highlight ? 2 : 1} />
       </g>
     )
@@ -97,7 +99,7 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-error" /> Ran out of money</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-foreground-muted/40" /> Lasted</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 border-t-[1.5px] border-dashed border-foreground/70" /> Your plan (steady returns)</span>
-        <span>Values above {fmtCompact(top)} are clipped. Hover a line for its start year.</span>
+        <span>Values above {fmtCompact(top)} are clipped. Hover or tap a line for its start year.</span>
       </div>
     </div>
   )

@@ -16,8 +16,9 @@ function Sparkline({ values }: { values: number[] }) {
     .map((v, i) => `${((i / (values.length - 1)) * SPARK_W).toFixed(1)},${(SPARK_H - ((v - min) / span) * SPARK_H).toFixed(1)}`)
     .join(" ")
   return (
-    <svg width={SPARK_W} height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} aria-hidden="true" className="shrink-0">
-      <polyline points={points} fill="none" stroke="var(--primary)" strokeWidth={1.5} />
+    // Narrower on phones so the plan's name keeps its room; the line stretches to fit.
+    <svg viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} preserveAspectRatio="none" aria-hidden="true" className="h-8 w-20 shrink-0 sm:w-[120px]">
+      <polyline points={points} fill="none" stroke="var(--primary)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }
@@ -57,19 +58,19 @@ export function PlanCard({
         <div style={blur}>{s && <Sparkline values={s.spark} />}</div>
       </div>
       {s ? (
-        <dl className="grid grid-cols-3 gap-3 text-xs">
+        <dl className="grid grid-cols-3 gap-2 text-[11px] sm:gap-3 sm:text-xs">
           <div>
-            <dt className="text-foreground-muted">Retire</dt>
+            <dt className="truncate text-foreground-muted">Retire</dt>
             <dd className="font-semibold text-foreground tabular-nums">{s.retirementAge === null ? "—" : `Age ${s.retirementAge}`}</dd>
           </div>
           <div style={blur}>
-            <dt className="text-foreground-muted">At retirement</dt>
+            <dt className="truncate text-foreground-muted">At retirement</dt>
             <dd className="font-semibold text-foreground tabular-nums">
               {s.netWorthAtRetirement === null ? "—" : fmtCompact(s.netWorthAtRetirement)}
             </dd>
           </div>
           <div>
-            <dt className="text-foreground-muted">Money lasts</dt>
+            <dt className="truncate text-foreground-muted">Money lasts</dt>
             <dd className={`font-semibold tabular-nums ${s.depletedAge === null ? "text-success" : "text-error"}`}>
               {s.depletedAge === null ? `Past ${s.endAge}` : `Until ${s.depletedAge}`}
             </dd>
@@ -79,7 +80,7 @@ export function PlanCard({
         <p className="text-xs text-error">This plan couldn&apos;t be read.</p>
       )}
       <div className="flex items-center gap-0.5 border-t border-card-border pt-3 -mb-1">
-        <Link href={`/plans/${plan.id}`} className="mr-auto inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+        <Link href={`/plans/${plan.id}`} className="mr-auto inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline lg:min-h-0">
           Open
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
             arrow_forward
@@ -92,7 +93,7 @@ export function PlanCard({
             onClick={() => onAction(a.action, plan)}
             title={a.label}
             aria-label={`${a.label} ${plan.name}`}
-            className="btn-ghost h-8 px-1.5 text-foreground-muted hover:text-foreground"
+            className="btn-ghost h-8 min-w-11 justify-center px-1.5 text-foreground-muted hover:text-foreground lg:min-w-0"
           >
             <span className="material-symbols-rounded" style={{ fontSize: 17 }}>
               {a.icon}

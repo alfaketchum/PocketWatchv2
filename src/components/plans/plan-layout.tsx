@@ -102,7 +102,7 @@ export function EditLayoutButton({ editing, onToggle, onReset }: { editing: bool
         aria-label={label}
         title={label}
         className={cn(
-          "inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors disabled:opacity-30",
+          "inline-flex h-10 min-w-10 lg:h-7 lg:min-w-7 items-center justify-center gap-1 rounded-md px-1.5 text-[11px] font-medium transition-colors disabled:opacity-30",
           active ? "bg-primary text-white" : "text-primary hover:bg-primary/10",
         )}
       >
@@ -142,7 +142,7 @@ export function EditLayoutButton({ editing, onToggle, onReset }: { editing: bool
           </span>
           <div className="flex items-center gap-1">
             {block === "chart" && (
-              <div className="mr-1 flex items-center gap-0.5 border-r border-primary/20 pr-1.5">
+              <div className="mr-1 hidden items-center gap-0.5 border-r border-primary/20 pr-1.5 lg:flex">
                 <span className="mr-1 text-[11px] text-foreground-muted">Year panel</span>
                 <MoveButton icon="west" label="Year panel on the left" active={layout.panelSide === "left"} onClick={() => onChange({ ...layout, panelSide: "left" })} />
                 <MoveButton icon="east" label="Year panel on the right" active={layout.panelSide === "right"} onClick={() => onChange({ ...layout, panelSide: "right" })} />

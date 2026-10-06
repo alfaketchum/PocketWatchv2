@@ -46,7 +46,7 @@ export function ElderCareFields({ d, set, doc }: { d: ElderCareDraft; set: (chan
   }
   return (
     <>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 [&>*:first-child]:col-span-2 sm:[&>*:first-child]:col-span-1">
         <TextField label="Who" value={d.name} maxLength={40} onChange={(name) => set({ name })} />
         <FireNumberField label="Starting in (year)" min={1900} max={2200} value={d.startYear} onChange={(startYear) => set({ startYear })} />
         <FireNumberField label="For how many years" min={1} max={30} value={d.years} onChange={(years) => set({ years })} />

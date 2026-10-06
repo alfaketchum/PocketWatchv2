@@ -3,6 +3,7 @@
 import { memo, useMemo, type SyntheticEvent } from "react"
 import { Bar, CartesianGrid, Cell, ComposedChart, LabelList, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import type { ChartMilestone } from "@/lib/plans/plan-chart"
 import { PlanBarTooltip } from "./plan-bar-tooltip"
@@ -31,7 +32,7 @@ export interface HoveredMark {
   y: number
 }
 
-/** Small round icon at the top of a milestone's line; hovering it shows a card with details. */
+/** Small round icon at the top of a milestone's line; hovering (or tapping) it shows a card with details. */
 function MilestoneMarker({
   viewBox,
   mark,
@@ -53,7 +54,14 @@ function MilestoneMarker({
       style={{ cursor: "help", pointerEvents: "all" }}
       onMouseEnter={() => onHover({ mark, x: cx, y: cy })}
       onMouseLeave={() => onHover(null)}
+      onClick={(e) => {
+        // A tap shows the card without also pinning or unpinning a year underneath.
+        e.stopPropagation()
+        onHover({ mark, x: cx, y: cy })
+      }}
     >
+      {/* A finger-sized hit area around the small icon. */}
+      <circle cx={cx} cy={cy} r={18} fill="transparent" />
       <circle cx={cx} cy={cy} r={10} fill={color} />
       <text
         x={cx}
@@ -141,6 +149,9 @@ export const ChartPlot = memo(function ChartPlot({
   steadyLabel,
 }: ChartPlotProps) {
   const { error, foregroundMuted, border, foreground } = useChartTheme()
+  // Phones: slimmer axes leave the bars room, and the tooltip sits at the top of the plot rather than over the bar.
+  const isNarrow = useIsNarrow()
+  const axisWidth = isNarrow ? NARROW_AXIS_WIDTH : 56
   const barTops = useMemo(
     () => new Map(points.map((p) => [p.age, series.reduce((sum, s) => sum + Math.max(0, p[s.key] ?? 0), 0)])),
     [points, series],
@@ -179,7 +190,7 @@ export const ChartPlot = memo(function ChartPlot({
           tickFormatter={fmtCompact}
           axisLine={false}
           tickLine={false}
-          width={56}
+          width={axisWidth}
         />
         {mode === "debt" && (
           <YAxis
@@ -190,12 +201,14 @@ export const ChartPlot = memo(function ChartPlot({
             axisLine={false}
             tickLine={false}
             width={56}
+            hide={isNarrow}
           />
         )}
         <Tooltip
           content={<PlanBarTooltip series={series} mode={mode} steadyLabel={steadyLabel} />}
           cursor={{ fill: foreground, fillOpacity: 0.06 }}
-          allowEscapeViewBox={{ x: false, y: true }}
+          allowEscapeViewBox={{ x: false, y: !isNarrow }}
+          position={isNarrow ? { y: 0 } : undefined}
           wrapperStyle={{ zIndex: 20, pointerEvents: "none" }}
         />
         <ReferenceLine y={0} stroke={border} />

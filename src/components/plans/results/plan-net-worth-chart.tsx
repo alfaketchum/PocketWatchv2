@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useCallback, useMemo, useState } from "react"
+import { memo, useCallback, useMemo, useRef, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
@@ -8,6 +8,7 @@ import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { ChartPlot, ICON_ROW, ICON_STACK, type HoveredMark } from "./plan-chart-plot"
 import { PlanChartLegend } from "./plan-chart-legend"
 import { PlanYearPanel } from "./plan-year-panel"
+import { PlanYearSummaryBar } from "./plan-year-summary-bar"
 import { fitAxis, stackMarks } from "./plan-chart-axis"
 import { chartModes, DetailToggle, ModeToggle } from "./plan-chart-controls"
 import { DollarsToggle } from "./dollars-toggle"
@@ -25,9 +26,9 @@ const EYEBROW: Record<ChartMode, string> = { networth: "Net worth", accounts: "A
 
 const INFO: Record<ChartMode, string> = {
   networth:
-    "Year-end balances by tax treatment, plus assets (homes, cars and other things you own) at what they're worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover a bar to see that year; click to pin it.",
+    "Year-end balances by tax treatment, plus assets (homes, cars and other things you own) at what they're worth. Every debt, mortgages and car loans included, shows below zero; net worth is the dot. Hover or tap a bar to see that year; click or tap to pin it.",
   accounts:
-    "Each account's year-end balance, stacked: what's in your accounts and how it's split, account by account. Colors follow the tax treatment (shades of the Net worth bands). Homes and loans are left out; they have their own views. Hover a bar to see each account.",
+    "Each account's year-end balance, stacked: what's in your accounts and how it's split, account by account. Colors follow the tax treatment (shades of the Net worth bands). Homes and loans are left out; they have their own views. Hover or tap a bar to see each account.",
   cashflow:
     "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
   income:
@@ -119,6 +120,8 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     () => yearMetrics(doc, rows, active, projection.startNetWorth),
     [doc, rows, active, projection.startNetWorth],
   )
+  const panelRef = useRef<HTMLDivElement>(null)
+  const showPanel = useCallback(() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), [])
 
   return (
     <FireSectionCard
@@ -127,12 +130,12 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
       info={INFO[view]}
       center={<ModeToggle value={view} onChange={setMode} modes={chartModes(hasDebt, isBasic)} />}
       right={
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           {selected !== null && focused === null && nwPoints[selected] && (
             <button
               type="button"
               onClick={() => setFocus(selected)}
-              className="inline-flex items-center gap-1 rounded-lg border border-card-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-foreground/5"
+              className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-card-border px-2 py-1 text-[11px] font-medium lg:min-h-0 text-foreground hover:bg-foreground/5"
             >
               <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">
                 open_in_full
@@ -147,13 +150,23 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
     >
       <div className={`grid gap-4 lg:items-start ${panelSide === "left" ? "lg:grid-cols-[18rem_minmax(0,1fr)]" : "lg:grid-cols-[minmax(0,1fr)_18rem]"}`}>
         <div className="min-w-0">
+          {selected !== null && metrics && activePoint && (
+            <PlanYearSummaryBar
+              age={activePoint.age}
+              year={activePoint.year}
+              netWorth={metrics.netWorth}
+              change={metrics.netWorthChange}
+              onDetails={showPanel}
+              onUnpin={() => setSelected(null)}
+            />
+          )}
           <div className="relative h-[340px] lg:h-[500px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
             {focused !== null && (
               <button
                 type="button"
                 onClick={() => setFocus(null)}
-                className="absolute left-16 top-1 z-10 inline-flex items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
+                className="absolute left-2 top-1 z-10 inline-flex sm:left-16 items-center gap-1 rounded-lg border border-card-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm hover:bg-foreground/5"
               >
                 <span className="material-symbols-rounded" style={{ fontSize: 15 }} aria-hidden="true">
                   arrow_back
@@ -193,7 +206,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           )}
         </div>
         {metrics && activePoint && (
-          <div className={`lg:sticky lg:top-4 ${panelSide === "left" ? "lg:order-first" : ""}`} style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+          <div ref={panelRef} className={`scroll-mt-20 lg:sticky lg:top-4 ${panelSide === "left" ? "lg:order-first" : ""}`} style={{ filter: isHidden ? "blur(8px)" : undefined }}>
             <PlanYearPanel
               metrics={metrics}
               age={activePoint.age}

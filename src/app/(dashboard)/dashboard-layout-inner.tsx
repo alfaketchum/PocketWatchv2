@@ -64,7 +64,7 @@ export function DashboardLayoutInner({
   }, [])
 
   return (
-    <div className="min-h-screen page-bg">
+    <div className="min-h-dvh page-bg">
       <GlobalSyncPoller />
       <FinanceSyncPoller />
       <Sidebar

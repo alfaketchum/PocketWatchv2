@@ -24,7 +24,7 @@ export function FireSectionCard({ eyebrow, title, info, right, center, className
       <div className="relative flex items-start justify-between gap-4 flex-wrap mb-4">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">{eyebrow}</p>
+            <p className="text-[10px] sm:text-[9px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">{eyebrow}</p>
             {info && (
               <InfoTooltip content={info}>
                 <span className="material-symbols-rounded text-foreground-muted cursor-help" style={{ fontSize: 13 }}>
@@ -36,7 +36,7 @@ export function FireSectionCard({ eyebrow, title, info, right, center, className
           {title && <div className="text-sm font-semibold text-foreground mt-1">{title}</div>}
         </div>
         {center && <div className="w-full flex justify-center sm:absolute sm:inset-x-0 sm:top-0 sm:w-auto sm:pointer-events-none">
-          <div className="sm:pointer-events-auto">{center}</div>
+          <div className="min-w-0 max-w-full sm:pointer-events-auto">{center}</div>
         </div>}
         {right}
       </div>

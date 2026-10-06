@@ -10,13 +10,13 @@ export function PlanAdvancedGate({ planId, title, children }: { planId: string; 
   if (!isBasic) return <>{children}</>
   return (
     <div className="space-y-4">
-      <Link href={`/plans/${planId}`} className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
+      <Link href={`/plans/${planId}`} className="-ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0">
         <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
           arrow_back
         </span>
         Back to plan
       </Link>
-      <div className="bg-card border border-card-border rounded-2xl p-8 text-center">
+      <div className="bg-card border border-card-border rounded-2xl p-6 text-center sm:p-8">
         <span className="material-symbols-rounded text-primary mb-2 block" style={{ fontSize: 32 }}>
           science
         </span>

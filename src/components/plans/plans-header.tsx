@@ -36,7 +36,7 @@ export function PlansHeader() {
                 role="tab"
                 aria-selected={active}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap text-sm transition-colors",
+                  "flex shrink-0 items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 border-b-2 whitespace-nowrap text-xs sm:text-sm transition-colors",
                   active ? "text-primary border-b-primary font-medium" : "text-foreground-muted border-b-transparent hover:text-foreground",
                 )}
               >

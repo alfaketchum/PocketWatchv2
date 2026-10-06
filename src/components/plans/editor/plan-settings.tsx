@@ -39,7 +39,7 @@ function PersonFields({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${person.name}`}
-          className="btn-ghost h-[34px] px-2 text-foreground-muted hover:text-error"
+          className="btn-ghost col-span-2 h-[34px] justify-self-end px-2 text-foreground-muted hover:text-error sm:col-span-1"
         >
           <span className="material-symbols-rounded" style={{ fontSize: 18 }}>
             delete
@@ -64,7 +64,7 @@ function JumpLinks({ sections }: { sections: string[] }) {
         <a
           key={title}
           href={`#${inputBlockAnchor(title)}`}
-          className="rounded-full border border-card-border px-2.5 py-1 text-[11px] text-foreground-muted hover:border-card-border-hover hover:text-foreground"
+          className="rounded-full border border-card-border px-3 py-1.5 text-xs text-foreground-muted md:px-2.5 md:py-1 md:text-[11px] hover:border-card-border-hover hover:text-foreground"
         >
           {title}
         </a>
@@ -97,7 +97,7 @@ export function PlanSettingsEditor({ doc, update }: PlanEditorProps) {
               <button
                 type="button"
                 onClick={() => update((d) => ({ ...d, people: [...d.people, newPartner(d.people[0]?.birthYear ?? d.settings.startYear - 35)] }))}
-                className="text-[11px] text-primary hover:underline"
+                className="inline-flex min-h-10 items-center text-xs text-primary hover:underline md:min-h-0 md:text-[11px]"
               >
                 + Add partner
               </button>

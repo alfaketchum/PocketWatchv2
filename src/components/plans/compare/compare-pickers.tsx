@@ -49,7 +49,7 @@ export function ComparePickers({ plans, aId, bId, colors, onA, onB, onSwap }: Pr
         onClick={onSwap}
         aria-label="Swap A and B"
         title="Swap A and B"
-        className="self-center rounded-lg border border-card-border p-1.5 text-foreground-muted hover:bg-foreground/5 hover:text-foreground"
+        className="touch-target self-center rounded-lg border border-card-border p-1.5 text-foreground-muted hover:bg-foreground/5 hover:text-foreground"
       >
         <span className="material-symbols-rounded block" style={{ fontSize: 18 }} aria-hidden="true">
           swap_horiz

@@ -45,7 +45,7 @@ function exampleFor(example: YearRow | null, accountId: string, seen: Set<string
 
 function RemoveButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} className="btn-ghost h-7 px-1 text-foreground-muted hover:text-error">
+    <button type="button" onClick={onClick} aria-label={label} className="btn-ghost h-7 min-w-10 justify-center px-1 text-foreground-muted hover:text-error lg:min-w-0">
       <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
         close
       </span>

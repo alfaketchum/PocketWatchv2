@@ -66,11 +66,11 @@ function YearPicker({
         value={index}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Plan year"
-        className="min-w-[10rem] flex-1 accent-[var(--primary)]"
+        className="min-w-[10rem] flex-1 basis-full accent-[var(--primary)] sm:basis-auto [@media(pointer:coarse)]:h-8"
       />
       <div className="flex gap-1.5">
         {jumps.map((j) => (
-          <button key={j.label} type="button" onClick={() => onChange(j.index)} className="rounded-lg border border-card-border px-2.5 py-1 text-[11px] text-foreground-muted hover:text-foreground">
+          <button key={j.label} type="button" onClick={() => onChange(j.index)} className="min-h-9 rounded-lg border border-card-border px-3 py-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0 lg:px-2.5 lg:text-[11px]">
             {j.label}
           </button>
         ))}
@@ -109,7 +109,7 @@ export function PlanCashflowView({ planId }: { planId: string }) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <Link href={`/plans/${planId}`} className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
+        <Link href={`/plans/${planId}`} className="-ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0">
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
             arrow_back
           </span>
@@ -117,7 +117,7 @@ export function PlanCashflowView({ planId }: { planId: string }) {
         </Link>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl text-foreground font-semibold">Money flow</h1>
+            <h1 className="text-xl sm:text-2xl text-foreground font-semibold">Money flow</h1>
             <p className="text-xs text-foreground-muted mt-0.5">Where each year&apos;s money comes from and where it goes</p>
           </div>
           <DollarsToggle value={basis} onChange={setBasis} />
@@ -125,7 +125,7 @@ export function PlanCashflowView({ planId }: { planId: string }) {
       </div>
       <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 space-y-5" style={{ boxShadow: "var(--shadow-sm)" }}>
         <YearPicker index={row.index} count={rows.length} label={`Age ${age} · ${row.year}`} jumps={jumps} onChange={setIndex} />
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">
           <Stat label="Income" value={flow.income} isHidden={isHidden} />
           <Stat label="Withdrawals" value={withdrawals} isHidden={isHidden} />
           <Stat label="Taxes" value={-flow.taxes} isHidden={isHidden} />
@@ -133,7 +133,7 @@ export function PlanCashflowView({ planId }: { planId: string }) {
           <Stat label="Contributions" value={-flow.saved} isHidden={isHidden} />
         </div>
         <div className="overflow-x-auto">
-          <div className="min-w-[760px]" style={isHidden ? { filter: "blur(8px)" } : undefined}>
+          <div className="min-w-[520px] sm:min-w-[760px]" style={isHidden ? { filter: "blur(8px)" } : undefined}>
             <PlanSankeyChart sankey={sankey} isHidden={isHidden} />
           </div>
         </div>

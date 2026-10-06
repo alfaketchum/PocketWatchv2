@@ -24,7 +24,7 @@ function Dial({ label, shown, planValue, moved, onReset, children }: DialProps) 
         <span className="flex items-center gap-1.5">
           <span className={`text-xs tabular-nums font-semibold ${moved ? "text-primary" : "text-foreground"}`}>{shown}</span>
           {moved && (
-            <button type="button" onClick={onReset} title={`Back to the plan's ${planValue}`} aria-label={`Reset ${label}`} className="text-foreground-muted hover:text-foreground">
+            <button type="button" onClick={onReset} title={`Back to the plan's ${planValue}`} aria-label={`Reset ${label}`} className="-m-2 inline-flex p-2 text-foreground-muted hover:text-foreground lg:m-0 lg:p-0">
               <span className="material-symbols-rounded block" style={{ fontSize: 14 }} aria-hidden="true">
                 undo
               </span>
@@ -57,7 +57,7 @@ function Range({ label, value, min, max, step, onChange }: RangeProps) {
       step={step}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full accent-[var(--primary)]"
+      className="w-full accent-[var(--primary)] [@media(pointer:coarse)]:h-8"
     />
   )
 }
@@ -88,7 +88,7 @@ export function WhatIfDials({ doc, dials, onChange, onSave }: Props) {
 
   return (
     <section className="space-y-4 rounded-2xl border border-card-border bg-card p-5" style={{ boxShadow: "var(--shadow-sm)" }}>
-      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-foreground-muted">Dials</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-foreground-muted sm:text-[9px]">Dials</p>
       {retire !== null && base.retireAge !== null && (
         <Dial label="Retire at" shown={`Age ${retire}`} planValue={`age ${base.retireAge}`} moved={dials.retireAge !== undefined} onReset={() => set({ retireAge: undefined })}>
           <Range label="Retire at" value={retire} {...L.retireAge} onChange={(v) => set({ retireAge: v === base.retireAge ? undefined : v })} />

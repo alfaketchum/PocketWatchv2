@@ -6,9 +6,9 @@ import type { PlanDocument, YearRow } from "@/lib/plans/plan-types"
 import type { LedgerColumn, LedgerContext } from "./ledger-columns"
 import { PlanYearDetail } from "./plan-year-detail"
 
-/** Year and Age stay put while the money columns scroll sideways. */
-export const STICKY_YEAR = "sticky left-0 z-[1] bg-card w-24 min-w-24"
-export const STICKY_AGE = "sticky left-24 z-[1] bg-card"
+/** Year and Age stay put while the money columns scroll sideways; on phones only Year does, leaving room for money. */
+export const STICKY_YEAR = "sticky left-0 z-[1] bg-card w-20 min-w-20 sm:w-24 sm:min-w-24"
+export const STICKY_AGE = "sm:sticky sm:left-24 sm:z-[1] sm:bg-card"
 
 /** One column's value in a cell: money, a rate, or a dash when there's nothing. */
 export function LedgerCell({ column, value, itemized, bold }: { column: LedgerColumn; value: number | null; itemized?: boolean; bold?: boolean }) {
@@ -59,7 +59,7 @@ export function PlanLedgerRow({
         <td className={cn("px-3 py-2 tabular-nums whitespace-nowrap group-hover:bg-row-hover", STICKY_AGE)}>
           {row.ages.join(" / ")}
           {row.milestones.length > 0 && (
-            <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" title={row.milestones.join(", ")}>
+            <span className="mt-0.5 block w-fit rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary sm:ml-2 sm:mt-0 sm:inline" title={row.milestones.join(", ")}>
               {row.milestones.length === 1 ? row.milestones[0] : `${row.milestones.length} milestones`}
             </span>
           )}
@@ -71,7 +71,10 @@ export function PlanLedgerRow({
       {expanded && (
         <tr className="bg-background-secondary/40">
           <td colSpan={columns.length + 2} className="px-3 py-3">
-            <PlanYearDetail row={row} doc={doc} />
+            {/* On a phone the row is far wider than the screen: keep the detail in view instead of spread across it. */}
+            <div className="sticky left-3 max-w-[calc(100vw-4rem)] sm:static sm:max-w-none">
+              <PlanYearDetail row={row} doc={doc} />
+            </div>
           </td>
         </tr>
       )}

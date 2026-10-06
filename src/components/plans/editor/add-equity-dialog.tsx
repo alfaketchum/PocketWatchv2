@@ -91,7 +91,7 @@ function OptionFields(props: FormProps) {
   return (
     <div className="space-y-3">
       <EquityGrantFields grant={d.grant} firstYear={calendarYearOf(d.start, doc)} onChange={(change) => set({ grant: { ...d.grant, ...change } })} />
-      <div className="grid grid-cols-2 gap-2 items-end">
+      <div className="grid grid-cols-1 gap-2 items-end sm:grid-cols-2">
         <TimingPicker label="Exercised" value={d.start} doc={doc} onChange={(start) => set({ start })} />
         <PriceGrowthField {...props} />
         <KeptFields {...props} />

@@ -2,15 +2,28 @@
 
 import { useState, type ReactNode } from "react"
 import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
+import { useIsTouchDevice } from "@/hooks/use-touch-device"
 import { TAX_TREATMENT_LABELS } from "@/lib/plans/plan-constants"
 import { TAX_BALANCE_LABELS, type TaxBalance, type YearMetrics } from "@/lib/plans/plan-year-metrics"
 import { cn } from "@/lib/utils"
 
+/** A line's explanation: on hover from the whole line, on touch from a tappable info icon. */
 function Line({ label, value, tone, hint }: { label: string; value: string; tone?: "good" | "bad"; hint?: string }) {
+  const isTouch = useIsTouchDevice()
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1" title={hint}>
-      <span className="text-xs text-foreground-muted">{label}</span>
+    <div className="flex items-baseline justify-between gap-3 py-1" title={isTouch ? undefined : hint}>
+      <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
+        {label}
+        {hint && isTouch && (
+          <InfoTooltip content={hint}>
+            <span className="material-symbols-rounded" style={{ fontSize: 13 }} aria-label={`About ${label}`}>
+              info
+            </span>
+          </InfoTooltip>
+        )}
+      </span>
       <span className={cn("text-xs font-medium tabular-nums", tone === "good" ? "text-success" : tone === "bad" ? "text-error" : "text-foreground")}>
         {value}
       </span>
@@ -99,14 +112,17 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
           Age {age} · {year}
         </p>
         {pinned ? (
-          <button type="button" onClick={onUnpin} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline">
+          <button type="button" onClick={onUnpin} className="-my-2 inline-flex min-h-9 items-center gap-1 text-[11px] text-primary hover:underline">
             <span className="material-symbols-rounded" style={{ fontSize: 13 }}>
               push_pin
             </span>
             Pinned
           </button>
         ) : (
-          <span className="text-[10px] text-foreground-muted">Click a bar to pin</span>
+          <span className="text-[10px] text-foreground-muted">
+            <span className="[@media(hover:none)]:hidden">Click a bar to pin</span>
+            <span className="hidden [@media(hover:none)]:inline">Tap a bar to pin</span>
+          </span>
         )}
       </div>
       <p className="text-2xl font-semibold tabular-nums text-foreground mt-2">{fmtMoney(m.netWorth)}</p>

@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { fmtCompact, fmtMoney } from "@/components/fire/fire-helpers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
+import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 const HEIGHT = 320
@@ -53,6 +54,7 @@ interface Props {
 /** The spread of outcomes by age across every historical period: 10–90 and 25–75 percentile bands and the median. */
 export function StressFanChart({ bands, age0, plan, worst, measure, isHidden }: Props) {
   const { primary, error, foreground, foregroundMuted, border } = useChartTheme()
+  const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const data = useMemo<FanRow[]>(
     () =>
       bands.map(([p10, p25, p50, p75, p90], i) => ({
@@ -71,7 +73,7 @@ export function StressFanChart({ bands, age0, plan, worst, measure, isHidden }: 
         <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 4 }}>
           <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="age" tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} minTickGap={16} />
-          <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={56} />
+          <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
           <Tooltip content={<FanTooltip />} />
           <Area dataKey="outer" stroke="none" fill={primary} fillOpacity={0.12} isAnimationActive={false} />
           <Area dataKey="inner" stroke="none" fill={primary} fillOpacity={0.22} isAnimationActive={false} />

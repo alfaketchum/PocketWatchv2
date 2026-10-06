@@ -40,7 +40,7 @@ export const ComparePlanChart = memo(function ComparePlanChart({ side, name, col
         </span>
         <span className="truncate">{name}</span>
       </p>
-      <div className="relative h-[300px] lg:h-[380px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+      <div className="relative h-[240px] sm:h-[300px] lg:h-[380px]" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
         {hoveredMark && <MilestoneCard hovered={hoveredMark} doc={doc} />}
         <ChartPlot {...plot} showSteady={false} markColor={markColor} onHoverMark={setHoveredMark} focused={false} />
       </div>

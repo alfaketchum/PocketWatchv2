@@ -8,6 +8,7 @@ import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { cn } from "@/lib/utils"
 import { compareTrading, tradingAccounts, type TradingComparison, type TradingOutcome } from "@/lib/plans/plan-trading-compare"
 import type { PlanDocument } from "@/lib/plans/plan-types"
+import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
 
 type Horizon = "10" | "20" | "end"
 
@@ -46,10 +47,10 @@ function bestIndex(row: TradingOutcome[]): number {
 function Grid({ result, yourEdge, isHidden }: { result: TradingComparison; yourEdge: number | null; isHidden: boolean }) {
   return (
     <div className="overflow-x-auto -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-      <table className="w-full text-sm">
+      <table className={cn("w-full text-sm", PIN_FIRST_COLUMN_ON_PHONES)}>
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
-            <th className="px-3 py-2 font-semibold text-left whitespace-nowrap">Trading beats holding by (per yr)</th>
+            <th className="min-w-[8rem] px-3 py-2 font-semibold text-left sm:whitespace-nowrap">Trading beats holding by (per yr)</th>
             {result.sleeves.map((s) => (
               <th key={s} className="px-3 py-2 font-semibold text-right whitespace-nowrap">{SLEEVE_LABELS[s] ?? `${s * 100}%`}</th>
             ))}

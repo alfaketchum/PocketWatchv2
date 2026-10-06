@@ -8,7 +8,7 @@ function DetailList({ title, entries }: { title: string; entries: { label: strin
   const shown = entries.filter((e) => Math.abs(e.value) >= 0.5)
   if (shown.length === 0) return null
   return (
-    <div className="min-w-[12rem]">
+    <div className="min-w-0 sm:min-w-[12rem]">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted mb-1">{title}</p>
       {shown.map((e) => (
         <p key={e.label} className="flex justify-between gap-4 text-xs">

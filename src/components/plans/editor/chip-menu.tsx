@@ -24,8 +24,11 @@ const TONE: Record<ChipTone, { chip: string; dot: string }> = {
   primary: { chip: "border-primary/40 bg-primary/10 text-primary", dot: "bg-primary" },
 }
 
-export const MENU_PANEL = "z-[60] rounded-lg border border-card-border bg-card shadow-lg"
-const PANEL = MENU_PANEL
+const PANEL = "z-[60] rounded-lg border border-card-border bg-card shadow-lg"
+/** A dropdown panel: kept on screen on phones (narrower than the screen, scrolls when taller than the room left). */
+export const MENU_PANEL = cn(PANEL, "max-w-[calc(100vw-16px)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto overscroll-contain")
+/** Gap kept between a menu and the screen edge. */
+export const MENU_COLLISION_PADDING = 8
 
 /** Choices with a colored dot, a label and what each means; `selected` is highlighted. */
 export function OptionList<T extends string>({
@@ -48,7 +51,7 @@ export function OptionList<T extends string>({
           role="option"
           aria-selected={o.value === selected}
           onClick={() => onPick(o.value)}
-          className={cn("flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left hover:bg-foreground/5", o.value === selected && "bg-primary/5")}
+          className={cn("flex w-full items-start gap-2 rounded-md px-2 py-2.5 text-left sm:py-1.5 hover:bg-foreground/5", o.value === selected && "bg-primary/5")}
         >
           <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", TONE[o.tone ?? "neutral"].dot)} />
           <span className="min-w-0">
@@ -85,7 +88,7 @@ export function ChipMenu<T extends string>({
         type="button"
         aria-label={`${label}: ${current.label}`}
         className={cn(
-          "inline-flex items-center gap-0.5 rounded-full border py-0.5 pl-2.5 pr-1.5 text-[11px] font-medium leading-4 transition-colors hover:brightness-95",
+          "inline-flex min-h-8 items-center gap-0.5 rounded-full border py-0.5 pl-3 pr-1.5 text-xs font-medium leading-4 transition-colors hover:brightness-95 sm:min-h-0 sm:pl-2.5 sm:text-[11px]",
           TONE[current.tone ?? "neutral"].chip,
         )}
       >
@@ -113,7 +116,7 @@ export function ChipMenu<T extends string>({
         </Tooltip.Provider>
       )}
       <Popover.Portal>
-        <Popover.Content side="bottom" align="start" sideOffset={4} className={cn(PANEL, "w-72 p-1")}>
+        <Popover.Content side="bottom" align="start" sideOffset={4} collisionPadding={MENU_COLLISION_PADDING} className={cn(MENU_PANEL, "w-72 p-1")}>
           <OptionList
             label={label}
             options={options}

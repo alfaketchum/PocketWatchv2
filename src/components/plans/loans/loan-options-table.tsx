@@ -5,6 +5,7 @@ import { FireNumberField } from "@/components/fire/fire-number-field"
 import { cn } from "@/lib/utils"
 import type { LoanOutcome } from "@/lib/plans/plan-loan-compare"
 import { optionLabel, type LoanOption, type LoanTerm } from "@/lib/plans/plan-loan-options"
+import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
 
 interface Props {
   outcomes: LoanOutcome[]
@@ -69,7 +70,7 @@ export function LoanOptionsTable({ outcomes, colors, loanYear, extra, onExtra, r
   const num = "px-3 py-2 text-right tabular-nums whitespace-nowrap"
   return (
     <div className="overflow-x-auto -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-      <table className="w-full text-sm">
+      <table className={cn("w-full text-sm", PIN_FIRST_COLUMN_ON_PHONES)}>
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
             <th className="px-3 py-2 font-semibold text-left">Option</th>
@@ -91,7 +92,7 @@ export function LoanOptionsTable({ outcomes, colors, loanYear, extra, onExtra, r
                   {colors[i] && <span className="h-2 w-2 rounded-sm" style={{ background: colors[i]! }} />}
                   {optionLabel(o.option)}
                 </span>
-                {i === best && <span className="ml-1.5 text-[10px] font-medium text-success">Most at the end</span>}
+                {i === best && <span className="block text-[10px] font-medium text-success sm:ml-1.5 sm:inline">Most at the end</span>}
               </td>
               <td className="px-3 py-1">
                 <OptionCell outcome={o} extra={extra} onExtra={onExtra} rates={rates} onRate={onRate} loanYear={loanYear} />

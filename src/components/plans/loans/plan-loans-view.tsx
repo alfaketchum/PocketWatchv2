@@ -76,14 +76,14 @@ export function PlanLoansView({ planId }: { planId: string }) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <Link href={`/plans/${planId}`} className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
+        <Link href={`/plans/${planId}`} className="-ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0">
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
             arrow_back
           </span>
           {plan.name}
         </Link>
         <div>
-          <h1 className="text-2xl text-foreground font-semibold">Loans</h1>
+          <h1 className="text-xl sm:text-2xl text-foreground font-semibold">Loans</h1>
           <p className="text-xs text-foreground-muted mt-0.5">Each loan&apos;s amortization, and what paying extra, investing the difference or a shorter loan does to your whole plan</p>
         </div>
       </div>

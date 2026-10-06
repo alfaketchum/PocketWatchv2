@@ -3,7 +3,9 @@
 import { memo, useEffect, useMemo, useState } from "react"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
+import { useIsTouchDevice } from "@/hooks/use-touch-device"
 import { BASIC_LEDGER_VIEW } from "@/lib/plans/plan-mode"
 import { cn } from "@/lib/utils"
 import type { DollarBasis, PlanDocument, YearRow } from "@/lib/plans/plan-types"
@@ -56,6 +58,7 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
     }
   }
   const columns = useMemo(() => columnsFor(view), [view])
+  const isTouch = useIsTouchDevice()
   const starts = useMemo(() => startBalances(doc, rows), [doc, rows])
   const ctx = (i: number) => ({ doc, startBalance: starts[i] })
 
@@ -63,7 +66,7 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
     <FireSectionCard
       eyebrow="Ledger"
       title={`Every year of the plan, ${basis === "today" ? "in today's dollars" : "in future dollars"}`}
-      info="Growth is applied to start-of-year balances; the year's income, spending and contributions land at year end. Hover a column name for what it holds; click a year for detail. * = itemized deduction."
+      info="Growth is applied to start-of-year balances; the year's income, spending and contributions land at year end. Hover (or tap) a column name for what it holds; click or tap a year for detail. * = itemized deduction."
       right={
         <div className="flex flex-wrap items-center gap-3">
           {!isBasic && <ChoiceChips label="Columns" options={VIEW_OPTIONS} value={view} onChange={setView} />}
@@ -79,15 +82,21 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
       }
     >
       {/* Scrolls on its own (up to a screen tall) so the header row stays in view; Year and Age stay pinned sideways. */}
-      <div className="overflow-auto max-h-[calc(100dvh-5rem)] -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
+      <div className="overflow-auto max-h-[calc(100dvh-12rem)] md:max-h-[calc(100dvh-5rem)] -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
               <th className={cn("px-3 py-2 font-semibold text-left", STICKY_YEAR, HEADER_CELL, "z-[3]")}>Year</th>
               <th className={cn("px-3 py-2 font-semibold text-left", STICKY_AGE, HEADER_CELL, "z-[3]")}>Age</th>
               {columns.map((c) => (
-                <th key={c.id} title={c.hint} className={cn("px-3 py-2 font-semibold whitespace-nowrap text-right cursor-help", HEADER_CELL)}>
-                  {c.label}
+                <th key={c.id} title={isTouch ? undefined : c.hint} className={cn("px-3 py-2 font-semibold whitespace-nowrap text-right cursor-help", HEADER_CELL)}>
+                  {isTouch ? (
+                    <InfoTooltip content={c.hint} side="bottom">
+                      <span>{c.label}</span>
+                    </InfoTooltip>
+                  ) : (
+                    c.label
+                  )}
                 </th>
               ))}
             </tr>
@@ -108,7 +117,9 @@ export const PlanLedgerTable = memo(function PlanLedgerTable({
           <tfoot>
             <tr className="border-t-2 border-card-border">
               <td className={cn("px-3 py-2 font-semibold", STICKY_YEAR)}>Lifetime</td>
-              <td className={cn("px-3 py-2 text-[11px] text-foreground-muted", STICKY_AGE)}>sums · balances at end</td>
+              <td className={cn("px-3 py-2 text-[11px] text-foreground-muted", STICKY_AGE)}>
+                <span className="hidden sm:inline">sums · balances at end</span>
+              </td>
               {columns.map((c) => (
                 <LedgerCell key={c.id} column={c} value={lifetimeValue(c, rows, ctx)} bold />
               ))}

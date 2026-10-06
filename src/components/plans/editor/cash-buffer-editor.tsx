@@ -37,7 +37,7 @@ function ProtectSwitch({ checked, disabled, onChange }: { checked: boolean; disa
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="inline-flex items-center gap-2.5 text-sm font-medium text-foreground disabled:opacity-50"
+      className="inline-flex min-h-10 items-center gap-2.5 text-sm font-medium text-foreground disabled:opacity-50 md:min-h-0"
     >
       <span className={cn("relative h-5 w-9 rounded-full transition-colors", checked ? "bg-primary" : "bg-card-border")}>
         <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all", checked ? "left-[18px]" : "left-0.5")} />

@@ -41,7 +41,7 @@ export function StressSummary({ summary, isHidden }: { summary: Summary; isHidde
           {verdict.text}
           {failed > 0 && <span className="text-foreground-muted font-normal"> · runs out in {failed}</span>}
         </p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">
           <Stat label="Median ending net worth" value={fmtCompact(summary.medianEnd)} hint="Half of historical periods end above this (today's dollars)" isHidden={isHidden} />
           <Stat label="Bad case (10th pct)" value={fmtCompact(summary.p10End)} hint="9 in 10 historical periods end above this (today's dollars)" isHidden={isHidden} />
           {summary.spendingDip && (

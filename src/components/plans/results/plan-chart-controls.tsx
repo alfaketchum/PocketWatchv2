@@ -28,7 +28,7 @@ export function DetailToggle({ checked, onChange, label = "Subcategories" }: { c
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="inline-flex items-center gap-2 text-[11px] font-medium text-foreground-muted hover:text-foreground"
+      className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-foreground-muted hover:text-foreground lg:min-h-0 lg:text-[11px]"
     >
       {label}
       <span className={cn("relative inline-block h-4 w-7 rounded-full transition-colors", checked ? "bg-primary" : "bg-foreground/15")}>
@@ -38,9 +38,10 @@ export function DetailToggle({ checked, onChange, label = "Subcategories" }: { c
   )
 }
 
+/** Seven views don't fit a phone's width: the strip scrolls sideways there instead of being cut off. */
 export function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
   return (
-    <div role="radiogroup" aria-label="Chart view" className="inline-flex rounded-lg border border-card-border p-0.5">
+    <div role="radiogroup" aria-label="Chart view" className="scrollbar-hide inline-flex max-w-full overflow-x-auto rounded-lg border border-card-border p-0.5">
       {MODES.filter((m) => modes.includes(m.value)).map((m) => (
         <button
           key={m.value}
@@ -49,7 +50,7 @@ export function ModeToggle({ value, onChange, modes }: { value: ChartMode; onCha
           aria-checked={value === m.value}
           onClick={() => onChange(m.value)}
           className={cn(
-            "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+            "min-h-9 shrink-0 whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors lg:min-h-0 lg:px-2.5 lg:text-[11px]",
             value === m.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
           )}
         >

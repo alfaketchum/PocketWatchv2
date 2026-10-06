@@ -18,7 +18,7 @@ export function AdvancedInUseNotice({ settings, onOpen }: { settings: AdvancedSe
           type="button"
           onClick={() => onOpen(s.tab)}
           title="Switch to Advanced and open it"
-          className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-medium text-primary hover:bg-primary/15"
+          className="min-h-8 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 font-medium lg:min-h-0 lg:px-2 text-primary hover:bg-primary/15"
         >
           {s.label}
         </button>

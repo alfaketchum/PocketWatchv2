@@ -14,7 +14,7 @@ export function PlanGuideButton() {
         onClick={() => setOpen(true)}
         title="How your plan works"
         aria-label="How your plan works"
-        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-foreground-muted lg:h-7 lg:w-7 transition-colors hover:bg-background-secondary hover:text-foreground"
       >
         <span className="material-symbols-rounded" style={{ fontSize: 18 }} aria-hidden="true">
           help

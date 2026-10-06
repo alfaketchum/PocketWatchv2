@@ -29,7 +29,7 @@ export function DollarsToggle({ value, onChange }: { value: DollarBasis; onChang
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+              "min-h-9 rounded-md px-3 py-1 text-xs font-medium transition-colors lg:min-h-0 lg:px-2.5 lg:text-[11px]",
               value === o.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
             )}
           >

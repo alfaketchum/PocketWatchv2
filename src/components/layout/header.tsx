@@ -17,7 +17,7 @@ export const Header = memo(function Header({ title, onMenuClick }: HeaderProps) 
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       <div className="flex items-center gap-3 px-4 md:pt-3 max-w-[1700px] mx-auto">
-        <div className="flex min-w-0 shrink-0 items-center gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-4 lg:flex-none lg:shrink-0">
           <button
             onClick={onMenuClick}
             aria-label="Open navigation menu"

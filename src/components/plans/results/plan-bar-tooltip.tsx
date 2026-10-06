@@ -114,7 +114,7 @@ export function PlanBarTooltip({
   const sum = (list: TooltipSeries[]) => list.reduce((t, s) => t + Math.abs(row[s.key]), 0)
   const loansSplitInBars = series.some((s) => s.key.startsWith("prin:"))
   return (
-    <div className="w-64 space-y-1 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
+    <div className="w-[min(16rem,calc(100vw-4rem))] space-y-1 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className="font-semibold text-foreground">
         Age {row.age} · {row.year}
       </p>

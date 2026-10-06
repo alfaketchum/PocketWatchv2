@@ -3,8 +3,10 @@
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import type { PlanSummary } from "@/lib/plans/plan-types"
+import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
+import { cn } from "@/lib/utils"
 
-interface Metric {
+export interface Metric {
   label: string
   value: (s: PlanSummary) => string
   /** The number the difference is taken on; null when there's none (never retires, money lasts). */
@@ -19,7 +21,7 @@ const signed = (d: number, text: string) => `${d > 0 ? "+" : d < 0 ? "−" : ""}
 const moneyDelta = (d: number) => signed(d, fmtCompact(Math.abs(d)))
 const yearsDelta = (d: number) => signed(d, `${Math.abs(d)} yr${Math.abs(d) === 1 ? "" : "s"}`)
 
-const METRICS: Metric[] = [
+export const METRICS: Metric[] = [
   {
     label: "Retire",
     value: (s) => (s.retirementAge === null ? "—" : `Age ${s.retirementAge} (${s.retirementYear})`),
@@ -46,7 +48,7 @@ const METRICS: Metric[] = [
   { label: "Lifetime taxes", value: (s) => fmtCompact(s.lifetimeTaxes), num: (s) => s.lifetimeTaxes, fmtDelta: moneyDelta, better: "lower", money: true },
 ]
 
-function Delta({ metric, a, b, isHidden }: { metric: Metric; a: PlanSummary; b: PlanSummary; isHidden: boolean }) {
+export function Delta({ metric, a, b, isHidden }: { metric: Metric; a: PlanSummary; b: PlanSummary; isHidden: boolean }) {
   const x = metric.num(a)
   const y = metric.num(b)
   if (x === null || y === null) return <span className="text-foreground-muted">—</span>
@@ -75,7 +77,7 @@ export function CompareTable({ a, b, names, colors, isHidden }: Props) {
   return (
     <FireSectionCard eyebrow="Key numbers" title="Today's dollars">
       <div className="overflow-x-auto -mx-5 sm:-mx-6">
-        <table className="w-full text-sm">
+        <table className={cn("w-full text-sm", PIN_FIRST_COLUMN_ON_PHONES)}>
           <thead>
             <tr>
               <th className="px-5 sm:px-6 py-2" />

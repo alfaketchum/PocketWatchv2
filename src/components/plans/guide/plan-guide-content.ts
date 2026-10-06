@@ -22,7 +22,7 @@ export const PLAN_GUIDE: GuideSection[] = [
     title: "Read the chart",
     items: [
       { name: "Views", text: "Net worth, Cash flow, Income, Expenses, Debt, Taxes, Accounts." },
-      { name: "Subcategories", text: "Splits each band into its accounts, lines or kinds of tax; hover a bar to see them." },
+      { name: "Subcategories", text: "Splits each band into its accounts, lines or kinds of tax; hover or tap a bar to see them." },
       { name: "Pin a year", text: "Click a bar to pin it in the side panel; View it alone to zoom in. Click empty space to unpin." },
       { name: "Today's / future $", text: "Today's dollars take inflation out, so years compare fairly." },
     ],

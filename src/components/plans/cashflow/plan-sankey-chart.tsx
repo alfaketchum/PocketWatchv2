@@ -2,11 +2,15 @@
 
 import { ResponsiveContainer, Sankey, Tooltip, type SankeyNodeOptions } from "recharts"
 import { fmtMoney } from "@/components/fire/fire-helpers"
+import { useIsNarrow } from "@/hooks/use-is-narrow"
 import type { PlanSankey, SankeyGroup } from "@/lib/plans/plan-sankey"
 import { usePlanColors } from "../results/use-plan-colors"
 
 const LABEL_ROOM = 230
 const MAX_LABEL = 28
+/** Phones: shorter names with the amount on a second line, so the flows keep most of the width. */
+const NARROW_LABEL_ROOM = 104
+const NARROW_MAX_LABEL = 14
 const ROW_HEIGHT = 38
 const MIN_HEIGHT = 420
 const LABEL_GAP = 8
@@ -46,6 +50,9 @@ export function PlanSankeyChart({ sankey, isHidden }: { sankey: PlanSankey; isHi
   const { cashFlow, hub } = usePlanColors()
   const colorOf = (group: SankeyGroup) => (group === "hub" ? hub : cashFlow[group])
   const height = Math.max(MIN_HEIGHT, tallestColumn(sankey) * ROW_HEIGHT)
+  const isNarrow = useIsNarrow()
+  const labelRoom = isNarrow ? NARROW_LABEL_ROOM : LABEL_ROOM
+  const maxLabel = isNarrow ? NARROW_MAX_LABEL : MAX_LABEL
 
   const renderNode: SankeyNodeOptions = ({ x, y, width, height: h, payload }) => {
     const node = payload as unknown as NodePayload
@@ -56,12 +63,12 @@ export function PlanSankeyChart({ sankey, isHidden }: { sankey: PlanSankey; isHi
       <g>
         <rect x={x} y={y} width={width} height={Math.max(1, h)} rx={2} fill={colorOf(node.group)} />
         <text x={tx} y={y + h / 2} textAnchor={anchor} dominantBaseline="central" fontSize={11}>
-            <tspan fill="var(--foreground)" fontWeight={node.group === "hub" ? 600 : 500}>
-              {node.name.length > MAX_LABEL ? `${node.name.slice(0, MAX_LABEL - 1)}…` : node.name}
+            <tspan fill="var(--foreground)" fontWeight={node.group === "hub" ? 600 : 500} dy={isNarrow ? "-0.6em" : undefined}>
+              {node.name.length > maxLabel ? `${node.name.slice(0, maxLabel - 1)}…` : node.name}
             </tspan>
             <tspan
               fill="var(--foreground-muted)"
-              dx={6}
+              {...(isNarrow ? { x: tx, dy: "1.2em" } : { dx: 6 })}
               style={isHidden ? { filter: "blur(4px)" } : undefined}
             >
               {fmtMoney(node.value)}
@@ -97,7 +104,7 @@ export function PlanSankeyChart({ sankey, isHidden }: { sankey: PlanSankey; isHi
           align="left"
           sort={false}
           iterations={0}
-          margin={{ top: 12, right: LABEL_ROOM, bottom: 12, left: LABEL_ROOM }}
+          margin={{ top: 12, right: labelRoom, bottom: 12, left: labelRoom }}
         >
           <Tooltip content={<SankeyTooltip />} />
         </Sankey>

@@ -4,6 +4,8 @@ import { fmtCompact } from "@/components/fire/fire-helpers"
 import type { LoanOutcome } from "@/lib/plans/plan-loan-compare"
 import { optionLabel } from "@/lib/plans/plan-loan-options"
 import type { LoanStress } from "./use-loan-stress"
+import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
+import { cn } from "@/lib/utils"
 
 const pct = (v: number) => `${Math.round(v * 100)}%`
 
@@ -17,7 +19,7 @@ export function LoanStressTable({ outcomes, stress, running, isHidden }: { outco
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined, opacity: running ? 0.6 : 1 }}>
-        <table className="w-full text-sm">
+        <table className={cn("w-full text-sm", PIN_FIRST_COLUMN_ON_PHONES)}>
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
               <th className="px-3 py-2 font-semibold text-left">Option</th>

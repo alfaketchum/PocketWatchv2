@@ -174,13 +174,13 @@ export function ImportPreviewDialog({ initialName, isPending, onCreate, onClose 
           )}
           <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground-muted">{g.title}</p>
           {g.rows.map((r) => (
-            <label key={r.id} className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-row-hover cursor-pointer">
-              <input type="checkbox" checked={!unticked.has(r.id)} onChange={() => toggle(r.id)} className="accent-[var(--primary)]" />
+            <label key={r.id} className="flex min-h-11 items-center gap-2.5 rounded-lg px-1 py-1.5 hover:bg-row-hover cursor-pointer md:min-h-0 md:gap-2 md:py-1">
+              <input type="checkbox" checked={!unticked.has(r.id)} onChange={() => toggle(r.id)} className="h-4 w-4 shrink-0 accent-[var(--primary)] md:h-auto md:w-auto" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm text-foreground">{r.label}</span>
                 <span className="block text-[10px] text-foreground-muted">{r.detail}</span>
               </span>
-              <span className={`text-xs tabular-nums ${r.amount < 0 ? "text-error" : "text-foreground"}`}>{fmtMoney(r.amount)}</span>
+              <span className={`shrink-0 text-xs tabular-nums ${r.amount < 0 ? "text-error" : "text-foreground"}`}>{fmtMoney(r.amount)}</span>
             </label>
           ))}
         </div>

@@ -27,7 +27,7 @@ export function BasicAdvancedToggle({ mode, onChange, label, bare = false }: { m
             onClick={() => onChange(m.value)}
             className={cn(
               "flex items-center gap-1.5 px-3 text-xs font-medium transition-colors",
-              bare ? "h-11 lg:h-9 rounded-lg px-2.5" : "rounded-[10px] py-1.5",
+              bare ? "h-11 lg:h-9 rounded-lg px-2.5" : "min-h-9 rounded-[10px] py-1.5 md:min-h-0",
               active ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
             )}
           >

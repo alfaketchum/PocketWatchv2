@@ -268,7 +268,7 @@ export function AddExpenseDialog({
           </div>
           {picked && !line.oneTime && <MeasureChips category={picked} amount={line.amount} onPick={(amount) => set({ amount })} />}
           <Toggle label="One-time" checked={line.oneTime} onChange={setOneTime} />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <TimingPicker label={line.oneTime ? "When" : "Starts"} value={line.start} doc={doc} onChange={(start) => set({ start })} />
             {!line.oneTime && <TimingPicker label="Stops" value={line.end} doc={doc} onChange={(end) => set({ end })} />}
           </div>

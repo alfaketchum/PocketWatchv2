@@ -25,7 +25,7 @@ export function OrderButtons({ index, count, onMove }: { index: number; count: n
           disabled={b.disabled}
           onClick={() => onMove(b.delta)}
           aria-label={b.label}
-          className="btn-ghost h-7 px-1 text-foreground-muted hover:text-foreground disabled:opacity-30"
+          className="btn-ghost h-7 min-w-10 justify-center px-1 text-foreground-muted hover:text-foreground disabled:opacity-30 lg:min-w-0"
         >
           <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
             {b.icon}

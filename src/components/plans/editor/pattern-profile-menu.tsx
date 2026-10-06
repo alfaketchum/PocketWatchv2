@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { applyProfile, PATTERN_PROFILES, profileStatus, type PatternProfile } from "@/lib/plans/plan-spending-patterns"
 import type { PlanEditorProps } from "../plans-helpers"
-import { MENU_PANEL, OptionList, type ChipOption, type ChipTone } from "./chip-menu"
+import { MENU_COLLISION_PADDING, MENU_PANEL, OptionList, type ChipOption, type ChipTone } from "./chip-menu"
 
 const PROFILE_TONE: Record<PatternProfile, ChipTone> = {
   typical: "primary",
@@ -51,7 +51,7 @@ export function PatternProfileMenu({ doc, update }: Pick<PlanEditorProps, "doc" 
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content side="bottom" align="end" sideOffset={4} className={cn(MENU_PANEL, "w-80 p-1")}>
+        <Popover.Content side="bottom" align="end" sideOffset={4} collisionPadding={MENU_COLLISION_PADDING} className={cn(MENU_PANEL, "w-80 p-1")}>
           <p className="px-2 pb-1 pt-1.5 text-[11px] text-foreground-muted">
             {status.edited
               ? "Some lines were changed since. Pick a profile to set every line to it again."

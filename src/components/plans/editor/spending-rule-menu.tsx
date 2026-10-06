@@ -9,7 +9,7 @@ import { CAPE_RULE_DEFAULT_A, CAPE_RULE_DEFAULT_B } from "@/lib/fire/fire-consta
 import { GUARDRAIL_BAND, GUARDRAIL_STEP } from "@/lib/fire/withdrawal-strategies"
 import type { SpendingRule } from "@/lib/plans/plan-types"
 import type { PlanEditorProps } from "../plans-helpers"
-import { MENU_PANEL, OptionList, type ChipOption } from "./chip-menu"
+import { MENU_COLLISION_PADDING, MENU_PANEL, OptionList, type ChipOption } from "./chip-menu"
 
 type RuleKind = SpendingRule["kind"] | "none"
 
@@ -106,7 +106,7 @@ export function SpendingRuleMenu({ doc, update }: Pick<PlanEditorProps, "doc" | 
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content side="bottom" align="end" sideOffset={4} className={cn(MENU_PANEL, "w-80 space-y-2 p-1")}>
+        <Popover.Content side="bottom" align="end" sideOffset={4} collisionPadding={MENU_COLLISION_PADDING} className={cn(MENU_PANEL, "w-80 space-y-2 p-1")}>
           <p className="px-2 pb-0.5 pt-1.5 text-[11px] text-foreground-muted">
             From retirement, flexible spending follows your portfolio. Kids, home &amp; vehicle costs and one-time items stay as planned.
           </p>

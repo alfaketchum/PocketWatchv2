@@ -29,27 +29,28 @@ export function PlanEditorHeader({
         <div className={TOOLBAR_CLASS}>
           <BasicAdvancedToggle mode={mode} onChange={setMode} label="Planner mode" bare />
           {!isBasic && (
-            <>
+            // Rearranging blocks is a wide-screen thing; on a phone they simply stack.
+            <div className="hidden items-center gap-0.5 md:flex">
               <span className="mx-1 h-5 w-px bg-card-border" aria-hidden="true" />
               <EditLayoutButton editing={editingLayout} onToggle={onEditLayout} onReset={onResetLayout} />
-            </>
+            </div>
           )}
         </div>
       </HeaderTools>
-      <Link href="/plans" className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
+      <Link href="/plans" className="-ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0">
         <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
           arrow_back
         </span>
         All plans
       </Link>
       <div className="flex items-center gap-2 min-w-0">
-        <h1 className="text-2xl text-foreground font-semibold truncate">{name}</h1>
+        <h1 className="text-xl sm:text-2xl text-foreground font-semibold truncate">{name}</h1>
         {isPrimary && (
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-primary bg-primary/10 rounded px-1.5 py-0.5">
+          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wider text-primary bg-primary/10 rounded px-1.5 py-0.5">
             Primary
           </span>
         )}
-        <span className="text-[11px] text-foreground-muted">{isSaving ? "Saving…" : "Saved"}</span>
+        <span className="shrink-0 text-[11px] text-foreground-muted">{isSaving ? "Saving…" : "Saved"}</span>
       </div>
     </div>
   )

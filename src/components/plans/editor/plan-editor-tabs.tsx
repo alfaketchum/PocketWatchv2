@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { BASIC_TABS } from "@/lib/plans/plan-mode"
 import { cn } from "@/lib/utils"
@@ -50,8 +51,16 @@ export function PlanEditorTabs({
 }) {
   const { isBasic } = usePlanMode()
   const tabs = isBasic ? PLAN_TABS.filter((t) => BASIC_TABS.includes(t.value)) : PLAN_TABS
+  const navRef = useRef<HTMLElement>(null)
+  // On a phone only a few tabs fit: keep the selected one in view (scrolling the strip only, never the page).
+  useEffect(() => {
+    const nav = navRef.current
+    const el = nav?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return
+    nav.scrollTo({ left: el.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2, behavior: "smooth" })
+  }, [value])
   return (
-    <nav className="flex -mb-px overflow-x-auto scrollbar-hide" role="tablist">
+    <nav ref={navRef} className="relative flex -mb-px overflow-x-auto scrollbar-hide" role="tablist">
       {tabs.map((tab) => {
         const active = tab.value === value
         return (
@@ -74,7 +83,7 @@ export function PlanEditorTabs({
             {tab.label}
             {active && onToggle && (
               <span
-                className="material-symbols-rounded inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 bg-primary/10"
+                className="material-symbols-rounded inline-flex h-5 w-5 items-center max-sm:!hidden justify-center rounded-full border border-primary/40 bg-primary/10"
                 style={{ fontSize: 16 }}
                 aria-hidden="true"
               >

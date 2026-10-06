@@ -17,13 +17,16 @@ function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
   return uses.length > 0 ? `Used by: ${uses.join(" · ")}` : "Nothing is tied to it yet"
 }
 
-/** Hover card for a milestone icon, placed just below the icon. */
+/** Half the card's width: the most it can be centered toward an edge of the chart without running off it. */
+const HALF_CARD = "7.5rem"
+
+/** Hover card for a milestone icon, placed just below the icon (slid inward near the chart's edges). */
 export function MilestoneCard({ hovered, doc }: { hovered: HoveredMark; doc: PlanDocument }) {
   const { mark, x, y } = hovered
   return (
     <div
       className="pointer-events-none absolute z-10 w-60 -translate-x-1/2 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg"
-      style={{ left: x, top: y + 16 }}
+      style={{ left: `clamp(${HALF_CARD}, ${x}px, calc(100% - ${HALF_CARD}))`, top: y + 16 }}
     >
       <p className="font-semibold text-foreground">{mark.name}</p>
       <p className="text-foreground-muted">

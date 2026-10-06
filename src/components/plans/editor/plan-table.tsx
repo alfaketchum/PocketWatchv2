@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils"
 
 /** Overrides the unlayered global input styles (see FireNumberField). */
 const CELL_STYLE = { padding: "4px 8px", fontSize: 13, border: "1px solid transparent", background: "transparent", boxShadow: "none" } as const
+/** On touch screens there is no hover, so the cell border always shows to mark it editable. */
 const CELL_CLASS =
-  "w-full min-w-0 rounded-md text-foreground outline-none hover:!border-[var(--card-border)] focus:!border-[var(--primary)] focus:!bg-[var(--background)]"
+  "w-full min-w-0 rounded-md text-foreground outline-none hover:!border-[var(--card-border)] [@media(hover:none)]:!border-[var(--card-border)] focus:!border-[var(--primary)] focus:!bg-[var(--background)]"
 
 function display(value: number, scale: number): string {
   const scaled = value * scale
@@ -90,7 +91,11 @@ export function CellSelect<T extends string>({
 }
 
 export function CellCheck({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return <input type="checkbox" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-[var(--primary)]" />
+  return (
+    <label className="mobile-checkbox-wrap inline-flex cursor-pointer">
+      <input type="checkbox" aria-label={label} checked={checked} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+    </label>
+  )
 }
 
 export function RowButton({ icon, label, onClick, danger }: { icon: string; label: string; onClick: () => void; danger?: boolean }) {
@@ -100,7 +105,7 @@ export function RowButton({ icon, label, onClick, danger }: { icon: string; labe
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={cn("btn-ghost h-7 px-1 text-foreground-muted", danger ? "hover:text-error" : "hover:text-foreground")}
+      className={cn("btn-ghost h-7 min-w-10 justify-center px-1 text-foreground-muted lg:min-w-0", danger ? "hover:text-error" : "hover:text-foreground")}
     >
       <span className="material-symbols-rounded" style={{ fontSize: 16 }}>
         {icon}
@@ -144,7 +149,25 @@ function HeaderLabel({ column }: { column: Column }) {
   )
 }
 
-/** Compact table shell: sticky header, horizontal scroll on narrow screens, optional totals row. */
+/**
+ * The first column (the item's name) stays pinned while the rest scrolls sideways on narrow screens. Its cells need
+ * an opaque fill, so the header and totals use their translucent tints mixed over the card.
+ */
+const PINNED_FIRST_COLUMN = cn(
+  "[&_tr>*:first-child]:sticky [&_tr>*:first-child]:left-0 [&_tr>*:first-child]:z-[1] [&_tr>*:first-child]:shadow-[inset_-1px_0_0_var(--card-border)] sm:[&_tr>*:first-child]:shadow-none",
+  "[&_td:first-child]:bg-card [&_tr:hover>td:first-child]:bg-row-hover",
+  "[&_thead_th:first-child]:bg-[color-mix(in_srgb,var(--background-secondary)_60%,var(--card))]",
+  "[&_tfoot_td:first-child]:bg-[color-mix(in_srgb,var(--background-secondary)_40%,var(--card))]",
+)
+
+/**
+ * For the results tables (loans, trading, compare): on phones, where they scroll sideways, the row label stays pinned.
+ * Wider screens show them whole, row tints included.
+ */
+export const PIN_FIRST_COLUMN_ON_PHONES =
+  "max-sm:[&_tr>*:first-child]:sticky max-sm:[&_tr>*:first-child]:left-0 max-sm:[&_tr>*:first-child]:z-[1] max-sm:[&_tr>*:first-child]:bg-card max-sm:[&_tr>*:first-child]:shadow-[inset_-1px_0_0_var(--card-border)]"
+
+/** Compact table shell: pinned name column, horizontal scroll on narrow screens, optional totals row. */
 export function PlanTable({
   columns,
   children,
@@ -159,7 +182,7 @@ export function PlanTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-card-border">
-      <table className={cn("w-full text-sm", minWidth)}>
+      <table className={cn("w-full text-sm", minWidth, PINNED_FIRST_COLUMN)}>
         <thead className="bg-background-secondary/60">
           <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
             {columns.map((c, i) => (

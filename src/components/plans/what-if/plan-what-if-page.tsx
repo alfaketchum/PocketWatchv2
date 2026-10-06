@@ -15,6 +15,7 @@ import { CompareTable } from "../compare/compare-table"
 import { PlanNameDialog } from "../plan-name-dialog"
 import { usePlanColors } from "../results/use-plan-colors"
 import { WhatIfDials } from "./what-if-dials"
+import { WhatIfPhoneSummary } from "./what-if-phone-summary"
 
 const CompareCharts = dynamic(() => import("../compare/compare-charts").then((m) => m.CompareCharts), {
   ssr: false,
@@ -62,14 +63,14 @@ export function PlanWhatIfPage({ planId }: { planId: string }) {
   return (
     <div className="space-y-5">
       <div className="space-y-2">
-        <Link href={`/plans/${planId}`} className="inline-flex items-center gap-1 text-xs text-foreground-muted hover:text-foreground">
+        <Link href={`/plans/${planId}`} className="-ml-1 inline-flex min-h-11 items-center gap-1 px-1 text-xs text-foreground-muted hover:text-foreground lg:min-h-0">
           <span className="material-symbols-rounded" style={{ fontSize: 14 }}>
             arrow_back
           </span>
           {plan.name}
         </Link>
         <div>
-          <h1 className="text-2xl text-foreground font-semibold">What if…</h1>
+          <h1 className="text-xl sm:text-2xl text-foreground font-semibold">What if…</h1>
           <p className="text-xs text-foreground-muted mt-0.5">Try changes without touching your plan. Save one as a new plan if you like it.</p>
         </div>
       </div>
@@ -94,6 +95,7 @@ export function PlanWhatIfPage({ planId }: { planId: string }) {
           <div className="h-[760px] animate-shimmer rounded-2xl" />
         )}
       </div>
+      {a.summary && b.summary && <WhatIfPhoneSummary a={a.summary} b={b.summary} isHidden={isHidden} />}
       {saving && (
         <PlanNameDialog
           title="Save as a new plan"

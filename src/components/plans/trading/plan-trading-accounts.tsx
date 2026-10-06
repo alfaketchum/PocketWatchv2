@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { tradingAccounts } from "@/lib/plans/plan-trading-compare"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import Link from "next/link"
+import { PIN_FIRST_COLUMN_ON_PHONES } from "../editor/plan-table"
+import { cn } from "@/lib/utils"
 
 const COLUMNS = ["Account", "Balance", "Return / yr", "Sold each year", "Short-term"]
 
@@ -34,7 +36,7 @@ export function PlanTradingAccounts({ doc, planId, isHidden }: { doc: PlanDocume
         }
       >
         <div className="overflow-x-auto -mx-5 sm:-mx-6" style={{ filter: isHidden ? "blur(8px)" : undefined }}>
-          <table className="w-full text-sm">
+          <table className={cn("w-full text-sm", PIN_FIRST_COLUMN_ON_PHONES)}>
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
                 {COLUMNS.map((c, i) => (
