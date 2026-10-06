@@ -22,6 +22,8 @@ import { StressPathsChart } from "./stress-paths-chart"
 import { StressEarlySales } from "./stress-early-sales"
 import { StressHomeFallbacks } from "./stress-home-fallbacks"
 import { StressMixTable } from "./stress-mix-table"
+import { StressImpactsTable } from "./stress-impacts-table"
+import { IMPACT_TRIALS, useStressImpacts } from "./use-stress-impacts"
 import { InflationSource } from "../editor/inflation-source"
 import { StressPeriodsTable } from "./stress-periods-table"
 import { StressSummary } from "./stress-summary"
@@ -53,6 +55,9 @@ const MEASURE_OPTIONS: { value: FanMeasure; label: string }[] = [
 const INFO =
   "Your whole plan (income, spending, taxes, loans, purchases) re-run many times, with each account earning what its mix earned in the historical years the trial lives through, after inflation. Simulated trials stitch history's years together in new orders; History replays every complete start year since 1871 (Early Retirement Now's method). Crypto swings twice as hard as stocks around its assumed return."
 
+const IMPACTS_INFO =
+  "Your plan run again with one change at a time, through the same markets, to show which levers matter most: moving crypto into stocks and bonds, spending less, skipping a big purchase still ahead, selling a home if the money runs out, or retiring later. Only the changes that fit your plan are tried. They use a smaller set of the simulated markets so they finish in seconds, and your plan as it is runs on that same set, so compare against that row. Nothing in your plan changes."
+
 /** Evenly spaced trials, for drawing a readable sample of many. */
 const sampleOf = (cohorts: CohortResult[], n: number) => (cohorts.length <= n ? cohorts : Array.from({ length: n }, (_, i) => cohorts[Math.floor((i * cohorts.length) / n)]))
 
@@ -73,10 +78,11 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [chartView, setChartView] = useState<ChartView>("range")
   const [endView, setEndView] = useState<EndingView>("accounts")
   const [binChoice, setBin] = useState<{ slice: HistogramSlice; of: CohortResult[] } | null>(null)
-  const { annual, cohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
+  const { annual, anchor, cohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
   // Each run plays its animation once; the results take over when it's done.
   const [finishedRun, setFinishedRun] = useState<number | null>(null)
   const animating = runId !== null && runId !== finishedRun
+  const impacts = useStressImpacts({ doc, annual, anchor, inflation, sampling, enabled: !running && cohorts !== null })
   // Labels follow the results on screen, which lag the controls while a new run is in progress.
   const simulated = isSimulated(method)
   const unit = simulated ? "trials" : "periods"
@@ -160,6 +166,11 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
 
       {summary && all && summary.cohorts.length > 0 && (
         <div className={animating || running ? "space-y-5 opacity-50 transition-opacity" : "space-y-5 transition-opacity"}>
+          {impacts.available && (
+            <FireSectionCard eyebrow="What would help" title="How often the money lasts with one change" info={IMPACTS_INFO}>
+              <StressImpactsTable results={impacts.results} total={impacts.total} unit={unit} sampleSize={simulated ? Math.min(IMPACT_TRIALS, sampling.trials) : summary.cohorts.length} />
+            </FireSectionCard>
+          )}
           <FireSectionCard
             eyebrow="How it ended"
             title={endView === "accounts" ? "Left in accounts, today's dollars" : "Net worth at the end, today's dollars"}
