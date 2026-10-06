@@ -14,7 +14,6 @@ import { anchorIndex, summarize, withdrawalRates, type CohortResult, type Stress
 import type { PlanEditorProps } from "../plans-helpers"
 import { sliceLabel, StressHistogramChart } from "./stress-histogram-chart"
 import { StressCohortBars } from "./stress-cohort-bars"
-import { StressCompositionChart } from "./stress-composition-chart"
 import { StressControls, type Cape } from "./stress-controls"
 import { StressCushionChart } from "./stress-cushion-chart"
 import { StressFanChart, type FanMeasure } from "./stress-fan-chart"
@@ -38,10 +37,10 @@ const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
   { value: "range", label: "Range" },
   { value: "years", label: "Each line" },
 ]
-type EndingView = "accounts" | "split"
+type EndingView = "accounts" | "netWorth"
 const ENDING_OPTIONS: { value: EndingView; label: string }[] = [
   { value: "accounts", label: "Money in accounts" },
-  { value: "split", label: "Net worth mix" },
+  { value: "netWorth", label: "Net worth" },
 ]
 const MEASURE_OPTIONS: { value: FanMeasure; label: string }[] = [
   { value: "netWorth", label: "Net worth" },
@@ -158,26 +157,22 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         <div className={animating || running ? "space-y-5 opacity-50 transition-opacity" : "space-y-5 transition-opacity"}>
           <FireSectionCard
             eyebrow="How it ended"
-            title={endView === "accounts" ? "Left in accounts, today's dollars" : "What net worth is made of"}
+            title={endView === "accounts" ? "Left in accounts, today's dollars" : "Net worth at the end, today's dollars"}
             info={
               endView === "accounts"
                 ? `How many ${unit} ran out of money, and how many of the rest ended with each amount in your accounts, colored by outcome. Money in accounts is what pays the bills, and what the outcomes below are measured on. Click a bar to show only those ${unit} everywhere on this page; click it again to clear.`
-                : `The ${unit} grouped by ending net worth; each bar splits it into money in accounts and home and other property (net of debts). A run can end with a valuable home and nothing left to spend.`
+                : `How many ${unit} ran out of money, and how many of the rest ended with each net worth, each bar split by how much of it is money in your accounts versus home and other property (net of debts). A run can end with a valuable home and nothing left to spend. Click a bar to show only those ${unit} everywhere on this page; click it again to clear.`
             }
             right={<ChoiceChips label="Ending" options={ENDING_OPTIONS} value={endView} onChange={setEndView} />}
           >
-            {endView === "accounts" ? (
-              <StressHistogramChart
-                cohorts={all.cohorts}
-                yardsticks={yardsticks}
-                measure="invested"
-                selected={bin?.slice ?? null}
-                onSelect={(slice) => setBin(slice && cohorts ? { slice, of: cohorts } : null)}
-                isHidden={isHidden}
-              />
-            ) : (
-              <StressCompositionChart cohorts={summary.cohorts} unit={unit} isHidden={isHidden} />
-            )}
+            <StressHistogramChart
+              cohorts={all.cohorts}
+              yardsticks={yardsticks}
+              measure={endView === "accounts" ? "invested" : "netWorth"}
+              selected={bin?.slice ?? null}
+              onSelect={(slice) => setBin(slice && cohorts ? { slice, of: cohorts } : null)}
+              isHidden={isHidden}
+            />
             <StressOutcomeBuckets cohorts={summary.cohorts} yardsticks={yardsticks} isHidden={isHidden} />
           </FireSectionCard>
           <FireSectionCard

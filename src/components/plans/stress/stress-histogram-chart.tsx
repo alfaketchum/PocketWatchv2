@@ -2,7 +2,8 @@
 
 import { useMemo } from "react"
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { fmtCompact } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
+import { mix } from "@/components/plans/results/use-plan-colors"
 import { useChartTheme } from "@/hooks/use-chart-theme"
 import { NARROW_AXIS_WIDTH, useIsNarrow } from "@/hooks/use-is-narrow"
 import { histogram, sameSlice, type EndingMeasure, type HistogramBin, type HistogramSlice } from "@/lib/plans/stress/stress-histogram"
@@ -22,7 +23,18 @@ const LABELS: Record<OutcomeKey, string> = {
   catastrophic: "Catastrophic",
 }
 
-type Row = HistogramBin & Record<OutcomeKey, number> & { label: string }
+/** The net worth view stacks each bar by what its trials' net worth is made of, split by trial count. */
+type WorthKey = "inAccounts" | "inProperty"
+const WORTH_LABELS: Record<WorthKey, string> = { inAccounts: "Money in accounts", inProperty: "Home & property" }
+
+type Row = HistogramBin & Record<OutcomeKey, number> & Record<WorthKey, number> & { label: string }
+
+/** A bar's trial count split by its accounts' share of net worth (all accounts when there's nothing). */
+function worthSplit(b: HistogramBin): Record<WorthKey, number> {
+  const total = b.accounts + b.property
+  const share = total > 0 ? b.accounts / total : 1
+  return { inAccounts: b.count * share, inProperty: b.count * (1 - share) }
+}
 
 /** "ran out", "under $9M", "$9M – $15M" or "$120M+". */
 export function sliceLabel(s: HistogramSlice): string {
@@ -35,7 +47,27 @@ export function sliceLabel(s: HistogramSlice): string {
 
 const axisLabel = (s: HistogramSlice) => (s.kind === "ranOut" ? "Ran out" : s.from === -Infinity ? `<${fmtCompact(s.to)}` : fmtCompact(s.from))
 
-function BinTooltip({ active, payload, total }: { active?: boolean; payload?: Array<{ payload: Row }>; total: number }) {
+/** Average money in accounts and home and property per trial in the bar, with each one's share. */
+function WorthLines({ r }: { r: Row }) {
+  const total = r.accounts + r.property
+  const line = (label: string, value: number) => (
+    <p className="flex justify-between gap-4 text-foreground-muted">
+      <span>{label}</span>
+      <span className="tabular-nums">
+        {fmtMoney(value / Math.max(1, r.count))} · {total > 0 ? fmtPct(value / total, 0) : "—"}
+      </span>
+    </p>
+  )
+  return (
+    <>
+      {line(WORTH_LABELS.inAccounts, r.accounts)}
+      {line(WORTH_LABELS.inProperty, r.property)}
+      <p className="text-[10px] text-foreground-muted">Average per trial</p>
+    </>
+  )
+}
+
+function BinTooltip({ active, payload, total, worth }: { active?: boolean; payload?: Array<{ payload: Row }>; total: number; worth: boolean }) {
   const r = payload?.[0]?.payload
   if (!active || !r) return null
   return (
@@ -44,14 +76,18 @@ function BinTooltip({ active, payload, total }: { active?: boolean; payload?: Ar
       <p className="text-foreground-muted">
         {r.count} of {total} trials ({Math.round((r.count / Math.max(1, total)) * 100)}%)
       </p>
-      {STACK.filter((k) => r.byOutcome[k] > 0)
-        .reverse()
-        .map((k) => (
-          <p key={k} className="flex justify-between gap-4 text-foreground-muted">
-            <span>{LABELS[k]}</span>
-            <span className="tabular-nums">{r.byOutcome[k]}</span>
-          </p>
-        ))}
+      {worth ? (
+        <WorthLines r={r} />
+      ) : (
+        STACK.filter((k) => r.byOutcome[k] > 0)
+          .reverse()
+          .map((k) => (
+            <p key={k} className="flex justify-between gap-4 text-foreground-muted">
+              <span>{LABELS[k]}</span>
+              <span className="tabular-nums">{r.byOutcome[k]}</span>
+            </p>
+          ))
+      )}
       <p className="pt-0.5 text-[10px] text-foreground-muted">Click to show only these trials</p>
     </div>
   )
@@ -68,44 +104,62 @@ interface Props {
 }
 
 /**
- * How many trials ran out, and how many ended at each level of net worth (today's dollars), colored by outcome;
- * click a bar to filter.
+ * How many trials ran out, and how many ended at each level of money in accounts (colored by outcome) or net worth
+ * (split into money in accounts vs home and property), today's dollars; click a bar to filter.
  */
 export function StressHistogramChart({ cohorts, yardsticks, measure, selected, onSelect, isHidden }: Props) {
-  const { foregroundMuted, border, foreground } = useChartTheme()
+  const { foregroundMuted, border, foreground, primary, card } = useChartTheme()
   const colors = useOutcomeColors()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 40
+  const worth = measure === "netWorth"
   const data = useMemo<Row[]>(
-    () => histogram(cohorts, yardsticks, measure).map((b) => ({ ...b, ...b.byOutcome, label: axisLabel(b.slice) })),
+    () => histogram(cohorts, yardsticks, measure).map((b) => ({ ...b, ...b.byOutcome, ...worthSplit(b), label: axisLabel(b.slice) })),
     [cohorts, yardsticks, measure],
   )
+  const stack: { key: OutcomeKey | WorthKey; fill: string }[] = worth
+    ? [
+        { key: "inAccounts", fill: primary },
+        { key: "inProperty", fill: mix(foregroundMuted, card, 0.6) },
+      ]
+    : STACK.map((key) => ({ key, fill: colors[key] }))
   const isSelected = (r: Row) => !!selected && sameSlice(r.slice, selected)
   const select = (r: Row) => onSelect(isSelected(r) ? null : r.slice)
   return (
-    <div style={{ height: HEIGHT, filter: isHidden ? "blur(8px)" : undefined }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 4 }} barCategoryGap={2}>
-          <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} minTickGap={24} />
-          <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
-          <Tooltip content={<BinTooltip total={cohorts.length} />} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
-          {STACK.map((key) => (
-            <Bar
-              key={key}
-              dataKey={key}
-              stackId="outcome"
-              fill={colors[key]}
-              isAnimationActive={false}
-              cursor="pointer"
-              onClick={(entry: { payload?: Row }) => entry.payload && select(entry.payload)}
-            >
-              {data.map((r) => (
-                <Cell key={r.key} fillOpacity={!selected || isSelected(r) ? 0.9 : 0.25} />
-              ))}
-            </Bar>
+    <div>
+      <div style={{ height: HEIGHT, filter: isHidden ? "blur(8px)" : undefined }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 4 }} barCategoryGap={2}>
+            <CartesianGrid stroke={border} strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} minTickGap={24} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: foregroundMuted }} tickLine={false} axisLine={false} width={axisWidth} />
+            <Tooltip content={<BinTooltip total={cohorts.length} worth={worth} />} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
+            {stack.map(({ key, fill }) => (
+              <Bar
+                key={key}
+                dataKey={key}
+                stackId="ending"
+                fill={fill}
+                isAnimationActive={false}
+                cursor="pointer"
+                onClick={(entry: { payload?: Row }) => entry.payload && select(entry.payload)}
+              >
+                {data.map((r) => (
+                  <Cell key={r.key} fillOpacity={!selected || isSelected(r) ? 0.9 : 0.25} />
+                ))}
+              </Bar>
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {worth && (
+        <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-foreground-muted">
+          {stack.map(({ key, fill }) => (
+            <span key={key} className="flex items-center gap-1">
+              <span className="inline-block h-2 w-2 rounded-[2px]" style={{ background: fill }} /> {WORTH_LABELS[key as WorthKey]}
+            </span>
           ))}
-        </BarChart>
-      </ResponsiveContainer>
+        </div>
+      )}
     </div>
   )
 }

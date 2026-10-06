@@ -4,7 +4,7 @@ import { blankPlanDocument, RETIREMENT_MILESTONE_ID } from "@/lib/plans/plan-con
 import type { PlanAccount, PlanDocument } from "@/lib/plans/plan-types"
 import type { AnnualHistory } from "@/lib/plans/stress/stress-history"
 import { DEFAULT_SAMPLING, seededRandom, trialPaths, type SamplingOptions } from "@/lib/plans/stress/stress-sampling"
-import { endingComposition, histogram, inSlice } from "@/lib/plans/stress/stress-histogram"
+import { histogram, inSlice } from "@/lib/plans/stress/stress-histogram"
 import { cohortStarts, runCohort, runPath, stressPaths, summarize, type CohortResult } from "@/lib/plans/stress/stress-test"
 
 const NOW = new Date(2026, 0, 15)
@@ -137,17 +137,11 @@ test("histogram: one bar for every trial that ran out, the rest split by ending;
   for (const b of bars) assert.equal(trials.filter((c) => inSlice(c, b.slice)).length, b.count)
 })
 
-test("ending composition: grouped by net worth range, accounts plus property add up", () => {
-  const trial = (accounts: number, netWorth: number, ranOut = false) =>
-    ({ netWorth: [netWorth], invested: [accounts], depletedAge: ranOut ? 40 : null }) as unknown as CohortResult
-  const trials = [...Array.from({ length: 10 }, () => trial(0, 500_000, true)), ...Array.from({ length: 10 }, () => trial(900_000, 1_000_000))]
-  const groups = endingComposition(trials, 2)
-  assert.equal(groups.length, 2)
-  assert.equal(groups[0].from, -Infinity)
-  assert.equal(groups.at(-1)!.to, Infinity)
-  assert.equal(groups.reduce((s, g) => s + g.count, 0), trials.length)
-  assert.equal(groups[0].accountsShare, 0)
-  assert.equal(groups[0].ranOut, 10)
-  assert.equal(groups[1].accounts + groups[1].property, 10_000_000)
-  assert.ok(Math.abs(groups[1].accountsShare! - 0.9) < 1e-12)
+test("histogram bars total each one's ending accounts and property", () => {
+  const trial = (accounts: number, netWorth: number) => ({ netWorth: [netWorth], invested: [accounts], depletedAge: null }) as unknown as CohortResult
+  const trials = [trial(900_000, 1_000_000), trial(100_000, 1_000_000)]
+  const y = { startValue: 100_000, yearlySpending: 9_000, endAge: 45, measure: "invested" as const }
+  const [bar] = histogram(trials, y, "netWorth", 1)
+  assert.equal(bar.accounts, 1_000_000)
+  assert.equal(bar.property, 1_000_000)
 })

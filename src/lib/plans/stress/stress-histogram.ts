@@ -21,6 +21,9 @@ export interface HistogramBin {
   count: number
   /** Trials in this bar by outcome. */
   byOutcome: Record<OutcomeKey, number>
+  /** Totals over the bar's trials at the end, today's dollars: money in accounts, and home and other property net of debts (neither below zero). */
+  accounts: number
+  property: number
 }
 
 const emptyOutcomes = (): Record<OutcomeKey, number> => ({ surplus: 0, steady: 0, justMadeIt: 0, soldHome: 0, almostSurvived: 0, catastrophic: 0 })
@@ -55,62 +58,16 @@ export function histogram(cohorts: CohortResult[], y: OutcomeYardsticks, measure
   return slices.map((slice, i) => {
     const byOutcome = emptyOutcomes()
     let count = 0
+    let accounts = 0
+    let property = 0
     for (const c of cohorts) {
       if (!inSlice(c, slice)) continue
       count++
       byOutcome[bucketOf(c, y)]++
+      const invested = Math.max(0, endingValue(c, "invested"))
+      accounts += invested
+      property += Math.max(0, endingValue(c) - invested)
     }
-    return { key: String(i), slice, count, byOutcome }
+    return { key: String(i), slice, count, byOutcome, accounts, property }
   })
-}
-
-/** About this many bars in the accounts-vs-net-worth chart (the step rounds to a tidy dollar amount). */
-export const COMPOSITION_GROUPS = 8
-
-export interface CompositionGroup {
-  /** Ending net worth range, today's dollars: [from, to), open-ended at either end. */
-  from: number
-  to: number
-  /** Totals over the group, today's dollars. */
-  accounts: number
-  /** Home and other property, net of debts (never below zero here; debts beyond property show as a lower net worth). */
-  property: number
-  /** Accounts as a share of accounts plus property (null when both are zero). */
-  accountsShare: number | null
-  count: number
-  ranOut: number
-}
-
-/** The smallest 1, 2, 2.5 or 5 times a power of ten at least `raw`. */
-function tidyStep(raw: number): number {
-  const power = 10 ** Math.floor(Math.log10(raw))
-  return ([1, 2, 2.5, 5, 10].find((m) => m * power >= raw) ?? 10) * power
-}
-
-/** Tidy equal-width net worth ranges from the lowest ending up to the 97th percentile, the last one open-ended. */
-function worthRanges(ends: number[], groups: number): [number, number][] {
-  const low = Math.max(0, Math.min(...ends))
-  const high = Math.max(percentile(ends, TOP_PERCENTILE), low + 1)
-  const step = tidyStep((high - low) / groups)
-  const start = Math.floor(low / step) * step
-  const n = Math.max(1, Math.ceil((high - start) / step))
-  return Array.from({ length: n }, (_, i) => [i === 0 ? -Infinity : start + i * step, i === n - 1 ? Infinity : start + (i + 1) * step])
-}
-
-/**
- * What the endings are made of: trials grouped by ending net worth range, each with the share held in accounts
- * versus home and other property, so "rich but out of money" endings show for what they are. Empty ranges are dropped.
- */
-export function endingComposition(cohorts: CohortResult[], groups = COMPOSITION_GROUPS): CompositionGroup[] {
-  if (cohorts.length === 0) return []
-  const ranges = worthRanges(cohorts.map((c) => endingValue(c)), groups)
-  return ranges
-    .map(([from, to]) => {
-      const members = cohorts.filter((c) => endingValue(c) >= from && endingValue(c) < to)
-      const accounts = members.reduce((s, c) => s + Math.max(0, endingValue(c, "invested")), 0)
-      const property = members.reduce((s, c) => s + Math.max(0, endingValue(c) - Math.max(0, endingValue(c, "invested"))), 0)
-      const total = accounts + property
-      return { from, to, accounts, property, accountsShare: total > 0 ? accounts / total : null, count: members.length, ranOut: members.filter((c) => c.depletedAge !== null).length }
-    })
-    .filter((g) => g.count > 0)
 }
