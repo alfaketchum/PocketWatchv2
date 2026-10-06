@@ -36,7 +36,7 @@ export function StressSummary({ summary, simulated, isHidden }: { summary: Summa
       <div>
         <p className={`text-4xl font-semibold tabular-nums ${verdict.tone}`}>{fmtSuccess(successRate)}</p>
         <p className="text-[11px] text-foreground-muted">
-          of {cohorts.length.toLocaleString()} {unit} last to the end of the plan
+          of {cohorts.length.toLocaleString()} {unit} last
         </p>
       </div>
       <div className="min-w-0 flex-1 space-y-3">
@@ -45,12 +45,12 @@ export function StressSummary({ summary, simulated, isHidden }: { summary: Summa
           {failed > 0 && <span className="text-foreground-muted font-normal"> · runs out in {failed}</span>}
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">
-          <Stat label="Left in accounts (median)" value={fmtCompact(summary.medianEndInvested)} hint={`Money left in your accounts at the end: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
-          <Stat label="Left in accounts (bad case)" value={fmtCompact(summary.p10EndInvested)} hint={`9 in 10 ${unit} end with more than this in your accounts (10th percentile, today's dollars)`} isHidden={isHidden} />
-          <Stat label="Net worth at end (median)" value={fmtCompact(summary.medianEnd)} hint={`Accounts plus your home and other property, minus debts: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
+          <Stat label="Accounts · median" value={fmtCompact(summary.medianEndInvested)} hint={`Money left in your accounts at the end: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
+          <Stat label="Accounts · bad case" value={fmtCompact(summary.p10EndInvested)} hint={`9 in 10 ${unit} end with more than this in your accounts (10th percentile, today's dollars)`} isHidden={isHidden} />
+          <Stat label="Net worth · median" value={fmtCompact(summary.medianEnd)} hint={`Accounts plus your home and other property, minus debts: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
           {summary.spendingDip && (
             <Stat
-              label="Spending rule: lowest spending"
+              label="Lowest spending"
               value={`${fmtPct(summary.spendingDip.worst10, 0)} of plan`}
               hint={`How far the spending rule cut flexible spending: in the worst 10% of ${unit} it fell to this share of plan at some point (median ${fmtPct(summary.spendingDip.median, 0)})`}
               isHidden={false}
@@ -59,7 +59,7 @@ export function StressSummary({ summary, simulated, isHidden }: { summary: Summa
           {worst && (
             <Stat
               label={simulated ? "Worst trial" : "Worst start year"}
-              value={`${simulated ? sequenceLabel(worst.sequence, 1) : worst.year} · ${worst.depletedAge !== null ? `runs out at ${worst.depletedAge}` : `ends with ${fmtCompact(worst.invested.at(-1) ?? 0)} in accounts`}`}
+              value={`${simulated ? sequenceLabel(worst.sequence, 1) : worst.year} · ${worst.depletedAge !== null ? `runs out at ${worst.depletedAge}` : `${fmtCompact(worst.invested.at(-1) ?? 0)} left`}`}
               hint={simulated ? sequenceLabel(worst.sequence) : undefined}
               isHidden={isHidden && worst.depletedAge === null}
             />

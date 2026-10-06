@@ -41,7 +41,7 @@ const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
 type EndingView = "accounts" | "split"
 const ENDING_OPTIONS: { value: EndingView; label: string }[] = [
   { value: "accounts", label: "Money in accounts" },
-  { value: "split", label: "Accounts vs net worth" },
+  { value: "split", label: "Net worth mix" },
 ]
 const MEASURE_OPTIONS: { value: FanMeasure; label: string }[] = [
   { value: "netWorth", label: "Net worth" },
@@ -104,11 +104,9 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     () => projection.rows.map((r) => r.netWorth / deflator(inflationOf(doc.settings), r.index, "balance")),
     [projection, doc.settings],
   )
-  const title = simulated ? `Your plan through ${(cohorts?.length ?? sampling.trials).toLocaleString()} simulated markets` : "Your plan through every market since 1871"
-
   return (
     <div className="space-y-5">
-      <FireSectionCard eyebrow="Stress test" title={title} info={INFO}>
+      <FireSectionCard eyebrow="Result" info={INFO}>
         <div className="mb-4">
           <StressControls
             sampling={sampling}
@@ -120,6 +118,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
             onCape={setCape}
             inflation={inflation}
             onInflation={setInflation}
+            latestCape={annual?.latestCape ?? null}
           />
         </div>
         {error && <p className="text-sm text-error">Couldn&apos;t load market history.</p>}
@@ -150,10 +149,6 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
               </button>
             )}
             <StressSummary summary={summary} simulated={simulated} isHidden={isHidden} />
-            <p className="mt-3 text-[11px] text-foreground-muted">
-              Today&apos;s CAPE is {annual?.latestCape.toFixed(1)}: stock prices are high against earnings, which historically came before weaker returns.
-              {cape === "all" ? ` Filter to ${unit} starting in expensive markets to see those only.` : ""}
-            </p>
           </div>
         )}
       </FireSectionCard>
@@ -162,11 +157,11 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         <div className={animating || running ? "space-y-5 opacity-50 transition-opacity" : "space-y-5 transition-opacity"}>
           <FireSectionCard
             eyebrow="How it ended"
-            title={endView === "accounts" ? "Money left in your accounts at the end, today's dollars" : "Net worth at the end: accounts vs home and property"}
+            title={endView === "accounts" ? "Left in accounts, today's dollars" : "What net worth is made of"}
             info={
               endView === "accounts"
                 ? `How many ${unit} ran out of money, and how many of the rest ended with each amount in your accounts, colored by outcome. Money in accounts is what pays the bills, and what the outcomes below are measured on. Click a bar to show only those ${unit} everywhere on this page; click it again to clear.`
-                : `Each bar is a tenth of the ${unit}, sorted by ending net worth: the average money in your accounts, with your home and other property (net of debts) stacked on top, and the accounts' share of net worth. A run can end with a valuable home and nothing left to spend, which is why net worth alone can look rich when the money ran out.`
+                : `The ${unit} grouped by ending net worth; each bar splits it into money in accounts and home and other property (net of debts). A run can end with a valuable home and nothing left to spend.`
             }
             right={<ChoiceChips label="Ending" options={ENDING_OPTIONS} value={endView} onChange={setEndView} />}
           >
@@ -186,7 +181,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
           </FireSectionCard>
           <FireSectionCard
             eyebrow={chartView === "range" ? "Range of outcomes" : simulated ? "Sample of trials" : "Every historical start year"}
-            title={measure === "withdrawalRate" ? "Withdrawals as a share of your accounts, by age" : "Today's dollars, by age"}
+            title={measure === "withdrawalRate" ? "Withdrawal rate by age" : "Today's dollars by age"}
             info={
               chartView === "range"
                 ? `Shaded: the middle 80% and middle 50% of ${unit}. Solid: the median. Dashed: your plan with its steady assumed returns. Red: the worst ${simulated ? "trial" : "start year"}. Withdrawal rate: each year's withdrawals over what your accounts held at its start, capped at 100% (a year they couldn't cover counts as 100%).`
@@ -218,7 +213,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
           </FireSectionCard>
           <FireSectionCard
             eyebrow="Close calls"
-            title="Years of spending in your accounts, by age"
+            title="Years of spending left, by age"
             info={`How long the money in your accounts would pay that year's bills and debt payments, counted only once you're living off them (blank while income pays the bills). Shaded red: under ${DANGER_YEARS} years, the danger zone; the area a line spends in it is the danger-years. Bands: the middle 80% and 50% of ${unit}. Solid: the median. Dashed: your plan with steady returns. Red line: the worst one. Drawn up to 25 years.`}
           >
             <StressCushionChart cohorts={summary.cohorts} age0={age0} plan={planCushion} worst={summary.worst} isHidden={isHidden} />
@@ -236,7 +231,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         </div>
       )}
 
-      <FireSectionCard eyebrow="Assumptions" title="Inflation and what each account holds" info="Inflation is the plan's own (shared with Assumptions). The mix is used only for the stress test. Stocks and bonds earn their historical returns after inflation, cash earns nothing after inflation, and crypto swings twice as hard as stocks around its own assumed return.">
+      <FireSectionCard eyebrow="Assumptions" title="Inflation and account mix" info="Inflation is the plan's own (shared with Assumptions). The mix is used only for the stress test. Stocks and bonds earn their historical returns after inflation, cash earns nothing after inflation, and crypto swings twice as hard as stocks around its own assumed return.">
         <div className="mb-4">
           <InflationSource doc={doc} update={update} compact />
         </div>

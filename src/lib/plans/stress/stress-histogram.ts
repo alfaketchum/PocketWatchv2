@@ -64,50 +64,53 @@ export function histogram(cohorts: CohortResult[], y: OutcomeYardsticks, measure
   })
 }
 
-/** Groups in the accounts-vs-net-worth chart (tenths of the trials, by ending net worth). */
-export const COMPOSITION_GROUPS = 10
+/** About this many bars in the accounts-vs-net-worth chart (the step rounds to a tidy dollar amount). */
+export const COMPOSITION_GROUPS = 8
 
 export interface CompositionGroup {
-  /** "Bottom 10%", "10–20%", …, "Top 10%" of trials by ending net worth. */
-  label: string
-  /** Averages over the group, today's dollars. */
+  /** Ending net worth range, today's dollars: [from, to), open-ended at either end. */
+  from: number
+  to: number
+  /** Totals over the group, today's dollars. */
   accounts: number
   /** Home and other property, net of debts (never below zero here; debts beyond property show as a lower net worth). */
   property: number
-  netWorth: number
-  /** Accounts as a share of net worth (null when net worth isn't positive). */
+  /** Accounts as a share of accounts plus property (null when both are zero). */
   accountsShare: number | null
   count: number
   ranOut: number
 }
 
-const groupLabel = (i: number, n: number) => {
-  const step = 100 / n
-  if (i === 0) return `Bottom ${Math.round(step)}%`
-  if (i === n - 1) return `Top ${Math.round(step)}%`
-  return `${Math.round(i * step)}–${Math.round((i + 1) * step)}%`
+/** The smallest 1, 2, 2.5 or 5 times a power of ten at least `raw`. */
+function tidyStep(raw: number): number {
+  const power = 10 ** Math.floor(Math.log10(raw))
+  return ([1, 2, 2.5, 5, 10].find((m) => m * power >= raw) ?? 10) * power
+}
+
+/** Tidy equal-width net worth ranges from the lowest ending up to the 97th percentile, the last one open-ended. */
+function worthRanges(ends: number[], groups: number): [number, number][] {
+  const low = Math.max(0, Math.min(...ends))
+  const high = Math.max(percentile(ends, TOP_PERCENTILE), low + 1)
+  const step = tidyStep((high - low) / groups)
+  const start = Math.floor(low / step) * step
+  const n = Math.max(1, Math.ceil((high - start) / step))
+  return Array.from({ length: n }, (_, i) => [i === 0 ? -Infinity : start + i * step, i === n - 1 ? Infinity : start + (i + 1) * step])
 }
 
 /**
- * What the endings are made of: trials sorted by ending net worth and cut into equal groups, each with its average
- * money in accounts and average home and other property, so "rich but out of money" endings show for what they are.
+ * What the endings are made of: trials grouped by ending net worth range, each with the share held in accounts
+ * versus home and other property, so "rich but out of money" endings show for what they are. Empty ranges are dropped.
  */
 export function endingComposition(cohorts: CohortResult[], groups = COMPOSITION_GROUPS): CompositionGroup[] {
-  const sorted = [...cohorts].sort((a, b) => endingValue(a) - endingValue(b))
-  const n = Math.min(groups, sorted.length)
-  return Array.from({ length: n }, (_, i) => {
-    const members = sorted.slice(Math.floor((i * sorted.length) / n), Math.floor(((i + 1) * sorted.length) / n))
-    const avg = (f: (c: CohortResult) => number) => members.reduce((s, c) => s + f(c), 0) / Math.max(1, members.length)
-    const accounts = avg((c) => endingValue(c, "invested"))
-    const netWorth = avg((c) => endingValue(c))
-    return {
-      label: groupLabel(i, n),
-      accounts,
-      property: Math.max(0, netWorth - accounts),
-      netWorth,
-      accountsShare: netWorth > 0 ? accounts / netWorth : null,
-      count: members.length,
-      ranOut: members.filter((c) => c.depletedAge !== null).length,
-    }
-  })
+  if (cohorts.length === 0) return []
+  const ranges = worthRanges(cohorts.map((c) => endingValue(c)), groups)
+  return ranges
+    .map(([from, to]) => {
+      const members = cohorts.filter((c) => endingValue(c) >= from && endingValue(c) < to)
+      const accounts = members.reduce((s, c) => s + Math.max(0, endingValue(c, "invested")), 0)
+      const property = members.reduce((s, c) => s + Math.max(0, endingValue(c) - Math.max(0, endingValue(c, "invested"))), 0)
+      const total = accounts + property
+      return { from, to, accounts, property, accountsShare: total > 0 ? accounts / total : null, count: members.length, ranOut: members.filter((c) => c.depletedAge !== null).length }
+    })
+    .filter((g) => g.count > 0)
 }

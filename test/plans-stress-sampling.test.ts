@@ -137,14 +137,17 @@ test("histogram: one bar for every trial that ran out, the rest split by ending;
   for (const b of bars) assert.equal(trials.filter((c) => inSlice(c, b.slice)).length, b.count)
 })
 
-test("ending composition: tenths by net worth, accounts plus property add up to net worth", () => {
+test("ending composition: grouped by net worth range, accounts plus property add up", () => {
   const trial = (accounts: number, netWorth: number, ranOut = false) =>
     ({ netWorth: [netWorth], invested: [accounts], depletedAge: ranOut ? 40 : null }) as unknown as CohortResult
   const trials = [...Array.from({ length: 10 }, () => trial(0, 500_000, true)), ...Array.from({ length: 10 }, () => trial(900_000, 1_000_000))]
   const groups = endingComposition(trials, 2)
-  assert.deepEqual(groups.map((g) => g.label), ["Bottom 50%", "Top 50%"])
+  assert.equal(groups.length, 2)
+  assert.equal(groups[0].from, -Infinity)
+  assert.equal(groups.at(-1)!.to, Infinity)
+  assert.equal(groups.reduce((s, g) => s + g.count, 0), trials.length)
   assert.equal(groups[0].accountsShare, 0)
   assert.equal(groups[0].ranOut, 10)
-  assert.equal(groups[1].accounts + groups[1].property, groups[1].netWorth)
+  assert.equal(groups[1].accounts + groups[1].property, 10_000_000)
   assert.ok(Math.abs(groups[1].accountsShare! - 0.9) < 1e-12)
 })

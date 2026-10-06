@@ -1,10 +1,13 @@
 "use client"
 
 import { useMemo } from "react"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { useOutcomeColors } from "./use-outcome-colors"
 import { DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
 import { outcomeBuckets, type OutcomeBucket, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
+
+const BUCKETS_INFO = `Measured on the money in your accounts: running out means your accounts couldn't pay a year's spending. Your home and other property don't pay the bills unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that cushion counts half). Typical values shown.`
 
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6
@@ -30,15 +33,14 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
   const simulated = cohorts.some((c) => c.trial !== undefined)
   return (
     <div className="mt-5 space-y-3" style={isHidden ? { filter: "blur(6px)" } : undefined}>
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-center gap-1.5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground-muted">How the {total} {simulated ? "trials" : "periods"} ended</p>
+        <InfoTooltip content={BUCKETS_INFO}>
+          <span className="material-symbols-rounded cursor-help text-foreground-muted" style={{ fontSize: 13 }}>
+            info
+          </span>
+        </InfoTooltip>
       </div>
-      <p className="text-[11px] text-foreground-muted">
-        Measured on the money in your accounts, whichever the chart shows: running out means your accounts couldn&apos;t pay a year&apos;s
-        spending. Your home and other property don&apos;t pay the bills unless the plan sells them. Lowest point is the fewest years
-        of spending your accounts held while you lived off them; each year under {DANGER_YEARS} years adds to the danger-years (a year at
-        $0 counts 1, a year at half that cushion counts half). Typical values shown.
-      </p>
       <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={buckets.map((b) => `${b.label} ${Math.round(b.share * 100)}%`).join(", ")}>
         {buckets
           .filter((b) => b.count > 0)

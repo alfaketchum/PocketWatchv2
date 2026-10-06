@@ -30,6 +30,8 @@ const CAPE_OPTIONS: { value: Cape; label: string }[] = [
   { value: "20", label: "CAPE ≥ 20" },
   { value: "30", label: "CAPE ≥ 30" },
 ]
+const capeInfo = (latest: number | null) =>
+  `Only starts in expensive markets (CAPE: price over ten years of earnings).${latest !== null ? ` Today's CAPE is ${latest.toFixed(1)}; high readings have historically come before weaker returns.` : ""}`
 const trialOptions = TRIAL_OPTIONS.map((n) => ({ value: String(n), label: n.toLocaleString() }))
 const blockOptions = BLOCK_OPTIONS.map((n) => ({ value: String(n), label: `${n} yrs` }))
 
@@ -43,6 +45,8 @@ interface Props {
   onCape: (c: Cape) => void
   inflation: StressInflation
   onInflation: (i: StressInflation) => void
+  /** Today's CAPE, for the expensive-markets filter's tooltip. */
+  latestCape: number | null
 }
 
 /** The stress test's settings: how trials are drawn, how many, and the filters that apply to any method. */
@@ -72,7 +76,10 @@ export function StressControls(p: Props) {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         {!simulated && p.canAlignRetirement && <ChoiceChips label="Line history up with" options={ALIGN_OPTIONS} value={p.align} onChange={p.onAlign} />}
-        <ChoiceChips label="Expensive markets only" options={CAPE_OPTIONS} value={p.cape} onChange={p.onCape} />
+        <div className="flex items-center gap-1">
+          <ChoiceChips label="Expensive markets only" options={CAPE_OPTIONS} value={p.cape} onChange={p.onCape} />
+          <InfoTooltip content={capeInfo(p.latestCape)} />
+        </div>
         <div className="flex items-center gap-1">
           <ChoiceChips label="Inflation" options={INFLATION_OPTIONS} value={p.inflation} onChange={p.onInflation} />
           <InfoTooltip content={INFLATION_INFO} />

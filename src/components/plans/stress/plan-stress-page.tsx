@@ -28,7 +28,7 @@ export function PlanStressPage({ planId }: { planId: string }) {
         </Link>
         <div>
           <h1 className="text-xl sm:text-2xl text-foreground font-semibold">Stress test</h1>
-          <p className="text-xs text-foreground-muted mt-0.5">Your plan through 1,000 markets built from history since 1871, crashes and stagflation included</p>
+          <p className="text-xs text-foreground-muted mt-0.5">Your plan through markets built from history since 1871</p>
         </div>
       </div>
       <StressTestView doc={doc} update={update} projection={projection} isHidden={isHidden} />
