@@ -67,7 +67,7 @@ export function isFuturePurchase(asset: PlanAsset, startIndex: number | null): b
 
 /**
  * Loans generated from assets' "How you'll pay": one per financed future purchase, sized on the price
- * in the purchase year. A debt already linked to the asset (a real or hand-entered loan) always wins. `scoreAt` gives
+ * in the purchase year. A replacement's loan is named with its year ("Car loan (2043)") so the cycles tell apart. A debt already linked to the asset (a real or hand-entered loan) always wins. `scoreAt` gives
  * the credit score a lender sees in a plan year, which prices loans whose terms aren't decided yet.
  */
 export function financingDebts(
@@ -87,7 +87,7 @@ export function financingDebts(
     return [
       {
         id: `fin-${asset.id}`,
-        name: `${asset.name} ${LOAN_NAME[asset.kind]}`,
+        name: `${asset.name} ${LOAN_NAME[asset.kind]}${asset.replacementOf ? ` (${doc.settings.startYear + (start ?? 0)})` : ""}`,
         kind: LOAN_KIND[asset.kind],
         balance: loan,
         rate: terms.rate,

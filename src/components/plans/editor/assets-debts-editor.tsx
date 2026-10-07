@@ -195,7 +195,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
       {generated.length > 0 && (
         <div className="space-y-1 rounded-xl border border-card-border p-3">
           <p className="text-[11px] text-foreground-muted">From your financed purchases. Edit them on the asset&apos;s &ldquo;How you&apos;ll pay&rdquo;.</p>
-          {generated.map(({ debt, assetId, year }) => (
+          {generated.map(({ debt, assetId, year, deflator }) => (
             <div key={debt.id} className="flex items-center gap-1">
               <button
                 type="button"
@@ -207,6 +207,7 @@ function DebtsList({ doc, update }: PlanEditorProps) {
                 <span className="text-foreground-muted tabular-nums">
                   {fmtMoney(debt.balance)} at {(debt.rate * 100).toFixed(2)}% · {fmtMoney(debt.monthlyPayment)}/mo
                   {year !== null && ` · from ${year} (${year} dollars)`}
+                  {deflator > 1 && ` · ≈ ${fmtMoney(debt.balance / deflator)} at ${fmtMoney(debt.monthlyPayment / deflator)}/mo today`}
                 </span>
                 <Badge>From asset</Badge>
                 <span className="ml-auto text-[11px] text-primary">Edit on the asset →</span>

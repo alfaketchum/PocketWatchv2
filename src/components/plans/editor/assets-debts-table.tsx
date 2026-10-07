@@ -76,6 +76,12 @@ function Actions({
 }
 
 /** Assets and debts as two editable tables; timings open in detailed view. */
+/** Under a future loan's amount (in its start year's dollars): what it is in today's dollars. */
+function TodayHint({ amount, deflator }: { amount: number; deflator: number }) {
+  if (deflator <= 1) return null
+  return <span className="block text-[10px] text-foreground-muted">≈ {fmtMoney(amount / deflator)} today</span>
+}
+
 export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
   const patchAsset = (id: string, change: Partial<PlanAsset>) => update((d) => ({ ...d, assets: patchItem(d.assets, id, change) }))
   const patchDebt = (id: string, change: Partial<PlanDebt>) => update((d) => ({ ...d, debts: patchItem(d.debts, id, change) }))
@@ -204,7 +210,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
             </Cell>
           </Row>
         ))}
-        {generated.map(({ debt, assetId, year }) => (
+        {generated.map(({ debt, assetId, year, deflator }) => (
           <Row key={debt.id} muted>
             <Cell>
               <span className="flex items-center px-2">
@@ -216,13 +222,19 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               <span className="px-2 text-xs">{DEBT_KINDS.find((k) => k.value === debt.kind)?.label ?? debt.kind}</span>
             </Cell>
             <Cell align="right">
-              <span className="px-2 tabular-nums" title={year !== null ? `Borrowed in ${year}, in ${year} dollars` : undefined}>{fmtMoney(debt.balance)}</span>
+              <span className="block px-2 tabular-nums" title={year !== null ? `Borrowed in ${year}, in ${year} dollars` : undefined}>
+                {fmtMoney(debt.balance)}
+                <TodayHint amount={debt.balance} deflator={deflator} />
+              </span>
             </Cell>
             <Cell align="right">
               <span className="px-2 tabular-nums">{(debt.rate * 100).toFixed(2)}%</span>
             </Cell>
             <Cell align="right">
-              <span className="px-2 tabular-nums">{fmtMoney(debt.monthlyPayment)}</span>
+              <span className="block px-2 tabular-nums">
+                {fmtMoney(debt.monthlyPayment)}
+                <TodayHint amount={debt.monthlyPayment} deflator={deflator} />
+              </span>
             </Cell>
             <Cell>
               <TimingCell timing={debt.start} doc={doc} />
