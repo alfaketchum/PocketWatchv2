@@ -51,7 +51,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
       {runId !== null && (
         <div className="mb-3">
           <StressRunAnimation
-            key={runId}
+            key={`chart-${runId}`}
             trials={live?.trials ?? cohorts ?? []}
             total={live?.total ?? cohorts?.length ?? 0}
             plan={plan}
@@ -68,7 +68,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
       ) : !verdict ? (
         <p className="text-sm text-foreground-muted">Couldn&apos;t run this plan through simulated markets.</p>
       ) : (
-        <div key={runId ?? 0} className="animate-scale-in flex flex-wrap items-end gap-x-6 gap-y-1">
+        <div key={`numbers-${runId ?? 0}`} className="animate-scale-in flex flex-wrap items-end gap-x-6 gap-y-1">
           <div>
             <p className={`text-3xl font-semibold tabular-nums ${VERDICT_TONE_CLASS[verdict.tone]}`}>{fmtSuccess(summary.netWorthRate)}</p>
             <p className="text-[11px] text-foreground-muted">net worth lasts</p>

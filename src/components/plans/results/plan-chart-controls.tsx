@@ -38,11 +38,11 @@ export function DetailToggle({ checked, onChange, label = "Subcategories" }: { c
   )
 }
 
-/** Seven views don't fit a phone's width: the strip scrolls sideways there instead of being cut off. */
-export function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
+/** A chart's view switch: one bordered strip of options, the chosen one filled; scrolls sideways on a phone. */
+export function SegmentedToggle<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
   return (
-    <div role="radiogroup" aria-label="Chart view" className="scrollbar-hide inline-flex max-w-full overflow-x-auto rounded-lg border border-card-border p-0.5">
-      {MODES.filter((m) => modes.includes(m.value)).map((m) => (
+    <div role="radiogroup" aria-label={label} className="scrollbar-hide inline-flex max-w-full overflow-x-auto rounded-lg border border-card-border p-0.5">
+      {options.map((m) => (
         <button
           key={m.value}
           type="button"
@@ -59,4 +59,9 @@ export function ModeToggle({ value, onChange, modes }: { value: ChartMode; onCha
       ))}
     </div>
   )
+}
+
+/** Seven views don't fit a phone's width: the strip scrolls sideways there instead of being cut off. */
+export function ModeToggle({ value, onChange, modes }: { value: ChartMode; onChange: (mode: ChartMode) => void; modes: ChartMode[] }) {
+  return <SegmentedToggle label="Chart view" value={value} onChange={onChange} options={MODES.filter((m) => modes.includes(m.value))} />
 }

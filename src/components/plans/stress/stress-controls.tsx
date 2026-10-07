@@ -8,13 +8,14 @@ import type { StressAlign, StressInflation } from "@/lib/plans/stress/stress-tes
 
 export type Cape = "all" | "20" | "30"
 
-const METHOD_OPTIONS: { value: StressSampling; label: string }[] = [
+/** The four ways to draw trials; the switch sits on the result chart. */
+export const METHOD_OPTIONS: { value: StressSampling; label: string }[] = [
   { value: "block", label: "Simulated" },
   { value: "history", label: "History" },
   { value: "restart", label: "Random restart" },
   { value: "random", label: "Random years" },
 ]
-const METHOD_INFO =
+export const METHOD_INFO =
   "Simulated (block bootstrap): each trial stitches together random runs of consecutive historical years, so crashes, recoveries and inflation streaks stay intact while eras mix; it covers today's start too, which history can't. History: your plan once per complete start year since 1871, exactly as it happened. Random restart: each start year in order, jumping to a random year whenever history runs out (ProjectionLab's default). Random years: a random year for every year of the plan, which breaks up streaks and usually looks rosier. Every trial keeps a year's stocks, bonds, inflation and valuation together. A fixed seed keeps the numbers steady; Reroll draws a new set."
 const ALIGN_OPTIONS: { value: StressAlign; label: string }[] = [
   { value: "start", label: "From today" },
@@ -87,30 +88,25 @@ export function StressControls(p: Props) {
   const simulated = sampling.method !== "history"
   return (
     <div className="space-y-3 rounded-xl border border-card-border bg-background-secondary/40 p-3 sm:p-4">
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
-        <Setting label="Method" info={METHOD_INFO}>
-          <ChoiceChips label="Method" options={METHOD_OPTIONS} value={sampling.method} onChange={(method) => set({ method })} />
-        </Setting>
-        {simulated && (
+      {simulated && (
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-b border-card-border pb-3">
           <Setting label="Trials">
             <ChoiceChips label="Trials" options={trialOptions} value={String(sampling.trials)} onChange={(v) => set({ trials: Number(v) })} />
           </Setting>
-        )}
-        {sampling.method === "block" && (
-          <Setting label="Block length">
-            <ChoiceChips label="Block length" options={blockOptions} value={String(sampling.blockLength)} onChange={(v) => set({ blockLength: Number(v) })} />
-          </Setting>
-        )}
-        {simulated && (
+          {sampling.method === "block" && (
+            <Setting label="Block length">
+              <ChoiceChips label="Block length" options={blockOptions} value={String(sampling.blockLength)} onChange={(v) => set({ blockLength: Number(v) })} />
+            </Setting>
+          )}
           <button type="button" className="btn-secondary inline-flex min-h-9 items-center gap-1 px-3 py-1.5 text-xs md:min-h-0" onClick={() => set({ seed: sampling.seed + 1 })} title="Draw a new set of markets">
             <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">
               casino
             </span>
             Reroll
           </button>
-        )}
-      </div>
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-card-border pt-3">
+        </div>
+      )}
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
         {!simulated && p.canAlignRetirement && (
           <Setting label="Line history up with">
             <ChoiceChips label="Line history up with" options={ALIGN_OPTIONS} value={p.align} onChange={p.onAlign} />

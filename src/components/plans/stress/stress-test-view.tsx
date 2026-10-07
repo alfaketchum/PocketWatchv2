@@ -17,6 +17,7 @@ import type { Cape } from "./stress-controls"
 import { fixAnchor } from "./stress-diagnosis-card"
 import type { FanMeasure } from "./stress-fan-chart"
 import { sliceLabel } from "./stress-histogram-chart"
+import { StressChartHeader } from "./stress-result-chart"
 import { settingsLine, StressResultBar } from "./stress-result-bar"
 import { StressRunAnimation } from "./stress-run-animation"
 import { StressHeadline } from "./stress-summary"
@@ -127,7 +128,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const chart =
     runId !== null ? (
       <StressRunAnimation
-        key={runId}
+        key={`chart-${runId}`}
         trials={live?.trials ?? cohorts ?? []}
         total={live?.total ?? cohorts?.length ?? 0}
         plan={planNetWorth}
@@ -147,7 +148,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
       {!simulated && align === "start" && canAlignRetirement && " Try lining history up with retirement, or a simulated method."}
     </p>
   ) : (
-    <div key={runId ?? 0} className="animate-scale-in">
+    <div key={`numbers-${runId ?? 0}`} className="animate-scale-in">
       <StressHeadline summary={summary} simulated={simulated} />
     </div>
   )
@@ -175,6 +176,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     <div className="space-y-5">
       {error && <p className="text-sm text-error">Couldn&apos;t load market history.</p>}
       <StressResultBar
+        header={<StressChartHeader sampling={sampling} onSampling={setSampling} size={ready ? `${summary.cohorts.length.toLocaleString()} ${simulated ? "trials" : "start years"}` : null} />}
         settings={settingsLine(sampling, cape, inflation)}
         onChangeSettings={() => setTab("setup")}
         filter={bin ? `Only ${unit} that ${sliceLabel(bin.slice)}` : null}

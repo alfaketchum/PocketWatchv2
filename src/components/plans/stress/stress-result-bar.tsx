@@ -17,7 +17,9 @@ export function settingsLine(sampling: SamplingOptions, cape: Cape, inflation: S
 }
 
 interface Props {
-  /** The headline (or the run animation, or a placeholder while it loads). */
+  /** The chart's header: the method switch, the run's size, Reroll. */
+  header: ReactNode
+  /** The chart and the headline under it (or a placeholder while it loads). */
   children: ReactNode
   settings: string
   onChangeSettings: () => void
@@ -26,10 +28,14 @@ interface Props {
   onClearFilter: () => void
 }
 
-/** Above every tab: the result, the settings it came from with a way to change them, and any bar filter in force. */
-export function StressResultBar({ children, settings, onChangeSettings, filter, onClearFilter }: Props) {
+/**
+ * Above every tab, like the plan's chart card: the method switch on top, the run's chart and the result under it,
+ * then the rest of the settings with a way to change them, and any bar filter in force.
+ */
+export function StressResultBar({ header, children, settings, onChangeSettings, filter, onClearFilter }: Props) {
   return (
     <section className="space-y-3 rounded-2xl border border-card-border bg-card p-5 sm:p-6" style={{ boxShadow: "var(--shadow-sm)" }}>
+      {header}
       {children}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-foreground-muted">
         <span>{settings}</span>
