@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { fmtPct, fmtSuccess } from "@/components/fire/fire-helpers"
+import { fmtPct } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import { deflator } from "@/lib/plans/plan-dollars"
@@ -69,16 +69,8 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
       ) : !verdict ? (
         <p className="text-sm text-foreground-muted">Couldn&apos;t run this plan through simulated markets.</p>
       ) : (
-        <div key={`numbers-${runId ?? 0}`} className="animate-scale-in flex flex-wrap items-end gap-x-6 gap-y-1">
-          <div>
-            <p className={`text-3xl font-semibold tabular-nums ${VERDICT_TONE_CLASS[verdict.tone]}`}>{fmtSuccess(summary.netWorthRate)}</p>
-            <p className="text-[11px] text-foreground-muted">solvent</p>
-          </div>
-          <div>
-            <p className={`text-xl font-semibold tabular-nums ${summary.successRate >= summary.netWorthRate - 1e-9 ? "text-foreground" : "text-warning"}`}>{fmtSuccess(summary.successRate)}</p>
-            <p className="text-[11px] text-foreground-muted">fully funded</p>
-          </div>
-          <div className="min-w-0 flex-1">
+        <div key={`numbers-${runId ?? 0}`} className="animate-scale-in">
+          <div className="min-w-0">
             <p className={`text-sm font-medium ${VERDICT_TONE_CLASS[verdict.tone]}`}>{verdict.text}</p>
             <p className="text-xs text-foreground-muted">
               {isBasic

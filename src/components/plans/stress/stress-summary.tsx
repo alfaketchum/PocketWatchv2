@@ -1,6 +1,6 @@
 "use client"
 
-import { fmtCompact, fmtPct, fmtSuccess } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtPct } from "@/components/fire/fire-helpers"
 import { sequenceLabel } from "@/lib/plans/stress/stress-labels"
 import type { StressSummary as Summary } from "@/lib/plans/stress/stress-test"
 import { stressVerdict, VERDICT_TONE_CLASS } from "@/lib/plans/stress/stress-verdict"
@@ -16,31 +16,16 @@ function Stat({ label, value, hint, isHidden }: { label: string; value: string; 
   )
 }
 
-/**
- * The headline, net worth first: how often the plan stays solvent (the big number), how often it's fully funded beside it,
- * and the verdict. Always above the stress test's tabs.
- */
+/** The verdict in one line, with how many trials it covers (the chart's legend carries the shares). Above the tabs. */
 export function StressHeadline({ summary, simulated }: { summary: Summary; simulated: boolean }) {
   const { successRate, netWorthRate, cohorts } = summary
   const unit = simulated ? "simulated trials" : "historical periods"
   const verdict = stressVerdict(successRate, netWorthRate, simulated ? "markets" : "historical markets")
   return (
-    <div className="flex flex-wrap items-end gap-x-8 gap-y-2">
-      <div className="flex items-end gap-6">
-        <div>
-          <p className={`text-4xl font-semibold tabular-nums ${VERDICT_TONE_CLASS[verdict.tone]}`}>{fmtSuccess(netWorthRate)}</p>
-          <p className="text-[11px] text-foreground-muted">solvent</p>
-        </div>
-        <div>
-          <p className={`text-2xl font-semibold tabular-nums ${successRate >= netWorthRate - 1e-9 ? "text-foreground" : "text-warning"}`}>{fmtSuccess(successRate)}</p>
-          <p className="text-[11px] text-foreground-muted">fully funded</p>
-        </div>
-      </div>
-      <p className={`min-w-0 flex-1 pb-1 text-sm font-medium ${VERDICT_TONE_CLASS[verdict.tone]}`}>
-        {verdict.text}
-        <span className="font-normal text-foreground-muted"> · {cohorts.length.toLocaleString()} {unit}</span>
-      </p>
-    </div>
+    <p className={`text-sm font-medium ${VERDICT_TONE_CLASS[verdict.tone]}`}>
+      {verdict.text}
+      <span className="font-normal text-foreground-muted"> · {cohorts.length.toLocaleString()} {unit}</span>
+    </p>
   )
 }
 
