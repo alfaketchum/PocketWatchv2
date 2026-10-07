@@ -90,7 +90,7 @@ function SafetyRow({ label, safety }: { label: string; safety: [number | null, n
   const points = x === null || y === null ? null : Math.floor(y * 100 + 1e-9) - Math.floor(x * 100 + 1e-9)
   return (
     <tr className="border-t border-card-border">
-      <td className="px-5 sm:px-6 py-2 text-xs text-foreground-muted whitespace-nowrap" title="The same 1,000 simulated markets for both plans, so the difference comes from the plans alone">
+      <td className="px-5 sm:px-6 py-2 text-xs text-foreground-muted whitespace-nowrap" title="The same 500 simulated markets for both plans, so the difference comes from the plans alone">
         {label} <span className="text-foreground-muted/70">· simulated markets</span>
       </td>
       {safety.map((rate, i) => (

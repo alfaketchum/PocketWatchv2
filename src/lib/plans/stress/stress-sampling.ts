@@ -25,7 +25,7 @@ export interface SamplingOptions {
 }
 
 /** What Basic, the Overview card and the stress test page show by default. */
-export const DEFAULT_SAMPLING: SamplingOptions = { method: "block", trials: 1000, blockLength: 10, seed: 1 }
+export const DEFAULT_SAMPLING: SamplingOptions = { method: "block", trials: 500, blockLength: 10, seed: 1 }
 
 export const TRIAL_OPTIONS = [500, 1000, 2000] as const
 export const BLOCK_OPTIONS = [5, 10, 15] as const

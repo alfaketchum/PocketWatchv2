@@ -18,6 +18,7 @@ import { fixAnchor } from "./stress-diagnosis-card"
 import type { FanMeasure } from "./stress-fan-chart"
 import { sliceLabel } from "./stress-histogram-chart"
 import { StressChartHeader } from "./stress-result-chart"
+import { StressLaunchPanel, StressRunButton } from "./stress-launch-panel"
 import { settingsLine, StressResultBar } from "./stress-result-bar"
 import { StressRunAnimation } from "./stress-run-animation"
 import { StressHeadline } from "./stress-summary"
@@ -81,7 +82,17 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [chartView, setChartView] = useState<ChartView>("range")
   const [endView, setEndView] = useState<EndingView>("netWorth")
   const [binChoice, setBin] = useState<{ slice: HistogramSlice; of: CohortResult[] } | null>(null)
-  const { annual, anchor, cohorts: runCohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
+  // Nothing runs until Run simulation: the settings above are a draft, and a run takes them (and the plan) as they are.
+  const [committed, setCommitted] = useState<{ doc: typeof doc; sampling: SamplingOptions; align: StressAlign; inflation: StressInflation; nonce: number } | null>(null)
+  const runSimulation = useCallback(() => setCommitted((c) => ({ doc, sampling, align, inflation, nonce: (c?.nonce ?? 0) + 1 })), [doc, sampling, align, inflation])
+  const stale = committed !== null && (committed.doc !== doc || committed.sampling !== sampling || committed.align !== align || committed.inflation !== inflation)
+  const { annual, anchor, cohorts: runCohorts, method, runId, running, live, loading, error } = useStressTest(
+    committed?.doc ?? null,
+    committed?.align ?? align,
+    committed?.inflation ?? inflation,
+    committed?.sampling ?? sampling,
+    committed?.nonce ?? 0,
+  )
   // Each run plays its animation once; the results take over when it's done.
   const [finishedRun, setFinishedRun] = useState<number | null>(null)
   const animating = runId !== null && runId !== finishedRun
@@ -144,7 +155,9 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         done={!animating}
       />
     ) : null
-  const numbers = animating ? null : loading || !summary ? (
+  const numbers = committed === null ? (
+    <StressLaunchPanel sampling={sampling} onSampling={setSampling} inflation={inflation} onInflation={setInflation} onRun={runSimulation} onMore={() => setTab("setup")} />
+  ) : animating ? null : loading || !summary ? (
     <div className="h-16 animate-shimmer rounded-xl" />
   ) : !ready ? (
     <p className="text-sm text-foreground-muted">
@@ -190,7 +203,9 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     () =>
       tab === "setup" ? (
         <StressTabSetup v={setup} />
-      ) : v === null ? null : tab === "summary" ? (
+      ) : v === null ? (
+        <p className="py-6 text-center text-sm text-foreground-muted">{committed === null ? "Run the simulation to see this." : ""}</p>
+      ) : tab === "summary" ? (
         <StressTabSummary v={v} />
       ) : tab === "improve" ? (
         <StressTabImprove v={v} />
@@ -199,15 +214,25 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
       ) : (
         <StressTabTrials v={v} />
       ),
-    [tab, setup, v],
+    [tab, setup, v, committed],
   )
 
   return (
     <div className="space-y-5">
       {error && <p className="text-sm text-error">Couldn&apos;t load market history.</p>}
       <StressResultBar
-        header={<StressChartHeader sampling={sampling} onSampling={setSampling} size={ready ? `${summary.cohorts.length.toLocaleString()} ${simulated ? "trials" : "start years"}` : null} />}
-        settings={settingsLine(sampling, cape, inflation)}
+        header={
+          committed === null ? null : (
+            <StressChartHeader
+              sampling={sampling}
+              onSampling={setSampling}
+              size={ready ? `${summary.cohorts.length.toLocaleString()} ${simulated ? "trials" : "start years"}` : null}
+              stale={stale}
+              action={<StressRunButton stale={stale} sampling={sampling} onSampling={setSampling} inflation={inflation} onInflation={setInflation} onRun={runSimulation} onMore={() => setTab("setup")} />}
+            />
+          )
+        }
+        settings={committed === null ? null : settingsLine(committed.sampling, cape, committed.inflation)}
         onChangeSettings={() => setTab("setup")}
         filter={bin ? `Only ${unit} that ${sliceLabel(bin.slice)}` : null}
         onClearFilter={() => setBin(null)}

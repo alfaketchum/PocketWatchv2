@@ -24,9 +24,9 @@ export interface StressLive {
 
 /**
  * The plan's stress test trials (every complete historical cohort, or simulated trials), run off the main thread
- * after edits settle. The last results stay on screen while a new run is in progress.
+ * after edits settle (no doc: nothing runs). A new `nonce` runs it again with the same inputs. The last results stay on screen while a new run is in progress.
  */
-export function useStressTest(doc: PlanDocument | null, align: StressAlign, inflation: StressInflation, sampling: SamplingOptions = DEFAULT_SAMPLING) {
+export function useStressTest(doc: PlanDocument | null, align: StressAlign, inflation: StressInflation, sampling: SamplingOptions = DEFAULT_SAMPLING, nonce = 0) {
   const history = useFireHistoryData(doc !== null)
   const annual = useMemo(() => (history.data ? annualHistory(history.data) : null), [history.data])
   // Simulated trials always start from the plan's first year; lining up with retirement is for the plain replay.
@@ -70,7 +70,7 @@ export function useStressTest(doc: PlanDocument | null, align: StressAlign, infl
       if (flushTimer !== null) clearTimeout(flushTimer)
       cancel()
     }
-  }, [doc, annual, anchor, inflation, method, trials, blockLength, seed])
+  }, [doc, annual, anchor, inflation, method, trials, blockLength, seed, nonce])
 
   return { annual, anchor, cohorts: result?.cohorts ?? null, method: result?.method ?? method, runId: live?.runId ?? result?.runId ?? null, running: live !== null, live, loading: history.isLoading, error: history.isError }
 }

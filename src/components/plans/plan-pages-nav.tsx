@@ -30,7 +30,7 @@ const PLAN_PAGES: PlanPage[] = [
     hint: "Each loan's amortization, and what paying extra, investing the difference or a shorter loan does to your plan",
     advanced: true,
   },
-  { path: "stress", label: "Stress test", icon: "thunderstorm", hint: "Your plan through 1,000 markets built from history since 1871, crashes and stagflation included", advanced: true },
+  { path: "stress", label: "Stress test", icon: "thunderstorm", hint: "Your plan through 500 markets built from history since 1871, crashes and stagflation included", advanced: true },
 ]
 
 /** Which tabs show their label: in the top bar, all from xl; in the page, all from sm, and only the current one on phones. */
