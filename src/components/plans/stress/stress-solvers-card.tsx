@@ -19,7 +19,7 @@ const LEVERS: Record<SolverKey, string> = {
 }
 
 const INFO =
-  "Each lever moved on its own until your plan meets the goal in the target share of trials, on the same simulated markets as What would help. Goal: Cash lasts (your accounts pay every year's bills, the stricter one) or Net worth lasts (you never go broke: out of cash with less than a year of spending left in anything you own). Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
+  "Each lever moved on its own until your plan meets the goal in the target share of trials, on the same simulated markets as What would help. Goal: Fully funded (your accounts fund every year's spending, the stricter one) or Solvent (assets never exhausted: net worth never falls below one year of spending after the accounts are depleted). Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
 
 const money = (v: number | string) => (typeof v === "number" ? `${fmtCompact(v)} a year` : v)
 
@@ -59,8 +59,8 @@ export function changeLabel(r: SolverResult): string {
 const changes = (r: SolverResult) => r.value !== r.now && !(r.key === "mix" && r.status === "alreadyMet")
 
 const GOAL_OPTIONS: { value: StressGoal; label: string }[] = [
-  { value: "cash", label: "Cash lasts" },
-  { value: "netWorth", label: "Net worth lasts" },
+  { value: "cash", label: "Fully funded" },
+  { value: "netWorth", label: "Solvent" },
 ]
 
 interface Props {

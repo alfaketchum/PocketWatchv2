@@ -7,8 +7,8 @@ import type { HoveredMark } from "./plan-chart-plot"
 
 /** What to say under a milestone's name: what's tied to it, or where it comes from. */
 function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
-  if (mark.kind === "depleted") return "Your accounts can't pay this year's bills; anything you own is still there and could be sold."
-  if (mark.kind === "broke") return "Net worth is $0 or less: the cash is gone and nothing is left to sell."
+  if (mark.kind === "depleted") return "Every account is empty and this year's spending goes unfunded. Property and other assets are still owned and could be sold."
+  if (mark.kind === "broke") return "Net worth has fallen below one year of spending. Accounts are empty and little is left to sell."
   if (mark.kind === "child") return "From Kids · edit on Expenses → Kids"
   if (mark.kind === "asset") return "From Assets & debts · edit it there"
   if (mark.kind === "income") return "From Income · edit it there"

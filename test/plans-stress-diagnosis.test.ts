@@ -60,7 +60,7 @@ test("nothing ran out: nothing to explain", () => {
 test("when: the share that runs out and the typical age, first", () => {
   const w = insights(plan())[0]
   assert.equal(w.key, "when")
-  assert.equal(w.title, "50% of trials run out of cash, typically at 62")
+  assert.equal(w.title, "Accounts depleted in 50% of trials, typically at 62")
   assert.equal(w.detail, "Most between 60 and 64.")
 })
 
@@ -97,7 +97,7 @@ const home = (extra: Partial<PlanDocument["assets"][number]> = {}): PlanDocument
 
 test("big purchase: a financed home names its down payment and how long the payments run", () => {
   const p = find(plan({ assets: [home()] }), "bigPurchase")!
-  assert.equal(p.title, "Buying Home at 50 is what drains the accounts")
+  assert.equal(p.title, "Buying Home at 50 is the main draw on the accounts")
   assert.match(p.detail, /^\$75k down and \$\d+k a year of payments until 79/)
   assert.equal(p.fix, "skip-home")
 })
@@ -123,7 +123,7 @@ test("no housing gap when the home is bought the year the rent stops", () => {
 test("failures that had already sold the home are counted", () => {
   const sold = (age: number) => ({ ...trial(age), homeSales: [{ name: "Home", age: age - 5, planned: false }] }) as CohortResult
   const s = find(plan(), "soldStillFailed", [sold(60), sold(61), trial(62), trial(null)])!
-  assert.equal(s.title, "67% of the failures had already sold the home")
+  assert.equal(s.title, "67% of failed trials had already sold the home")
 })
 
 test("mostly bonds over a long plan is too timid", () => {
@@ -152,7 +152,7 @@ test("an inheritance before the failures isn't late", () => {
 })
 
 test("illiquid: failed trials that still owned a lot of property", () => {
-  assert.equal(find(plan(), "illiquid", halfFail(800_000))!.title, "Typically $800k of property left when the cash runs out")
+  assert.equal(find(plan(), "illiquid", halfFail(800_000))!.title, "Typically $800k of property remaining at depletion")
   assert.ok(!keys(plan(), halfFail(0)).includes("illiquid"))
 })
 

@@ -148,5 +148,5 @@ test("running out after a sale, early or by the backup plan, says so on the outc
   assert.ok(early.depletedAge !== null && backup.depletedAge !== null, "$500k doesn't last to 80 either way")
   const by = Object.fromEntries(outcomeBuckets([early, backup], yard).map((b) => [b.key, b]))
   assert.equal(by.catastrophic.count, 2)
-  assert.equal(by.catastrophic.salesNote, "2 ran out after selling a home")
+  assert.equal(by.catastrophic.salesNote, "2 depleted after selling a home")
 })

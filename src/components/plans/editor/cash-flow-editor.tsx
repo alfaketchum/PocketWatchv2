@@ -35,7 +35,7 @@ export function CashFlowEditor(props: PlanEditorProps) {
     <div className="space-y-6">
       <p className="text-sm text-foreground-muted">
         Each year, <span className="font-medium text-foreground">income − taxes − spending</span> is either{" "}
-        <span className="text-success font-medium">left over</span> or <span className="text-error font-medium">short</span>.
+        a <span className="text-success font-medium">surplus</span> or a <span className="text-error font-medium">deficit</span>.
       </p>
       <CashBufferEditor {...props} />
       <div className="grid gap-8 lg:grid-cols-2">

@@ -16,12 +16,12 @@ const HEIGHT = 240
 const STACK: OutcomeKey[] = ["catastrophic", "almostSurvived", "outOfCash", "soldHome", "justMadeIt", "steady", "surplus"]
 const LABELS: Record<OutcomeKey, string> = {
   surplus: "Surplus",
-  steady: "Steady",
-  justMadeIt: "Just made it",
-  soldHome: "Sold the home",
-  outOfCash: "Out of cash",
-  almostSurvived: "Almost survived",
-  catastrophic: "Catastrophic",
+  steady: "Solid reserve",
+  justMadeIt: "Thin reserve",
+  soldHome: "Home sale",
+  outOfCash: "Accounts depleted",
+  almostSurvived: "Late depletion",
+  catastrophic: "Early depletion",
 }
 
 /** The net worth view stacks each bar by what its trials' net worth is made of, split by trial count. */
@@ -37,16 +37,16 @@ function worthSplit(b: HistogramBin): Record<WorthKey, number> {
   return { inAccounts: b.count * share, inProperty: b.count * (1 - share) }
 }
 
-/** "ran out", "under $9M", "$9M – $15M" or "$120M+". */
+/** "depleted", "under $9M", "$9M – $15M" or "$120M+". */
 export function sliceLabel(s: HistogramSlice): string {
-  if (s.kind === "ranOut") return "ran out"
+  if (s.kind === "ranOut") return "depleted"
   const what = s.measure === "invested" ? " in accounts" : " net worth"
   if (s.from === -Infinity) return `ended with under ${fmtCompact(s.to)}${what}`
   if (s.to === Infinity) return `ended with ${fmtCompact(s.from)}+${what}`
   return `ended with ${fmtCompact(s.from)} – ${fmtCompact(s.to)}${what}`
 }
 
-const axisLabel = (s: HistogramSlice) => (s.kind === "ranOut" ? "Ran out" : s.from === -Infinity ? `<${fmtCompact(s.to)}` : fmtCompact(s.from))
+const axisLabel = (s: HistogramSlice) => (s.kind === "ranOut" ? "Depleted" : s.from === -Infinity ? `<${fmtCompact(s.to)}` : fmtCompact(s.from))
 
 /** Average money in accounts and home and property per trial in the bar, with each one's share. */
 function WorthLines({ r }: { r: Row }) {

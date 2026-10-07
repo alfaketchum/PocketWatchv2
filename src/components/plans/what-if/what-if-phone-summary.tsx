@@ -4,7 +4,7 @@ import type { PlanSummary } from "@/lib/plans/plan-types"
 import { Delta, METRICS } from "../compare/compare-table"
 
 /** The headline differences, shown while dialling. */
-const SHOWN = ["Ending net worth", "Cash lasts"]
+const SHOWN = ["Ending net worth", "Funded through"]
 
 /**
  * Below lg the dials sit above the results, so moving one changes nothing in view: this bar stays on screen above

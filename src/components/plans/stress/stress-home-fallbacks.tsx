@@ -30,7 +30,7 @@ function optionsFor(home: PlanAsset): { value: Choice; label: string }[] {
 }
 
 const INFO =
-  "What happens to each home in a trial where your accounts can't pay a year's bills. Kept, it's never sold, so a trial can run out of money with its equity untouched. Sold, it goes that year and its loans are paid off from the sale; for the home you live in you then rent or buy a smaller home with cash, while a second home or a rental is just sold and its costs stop; those trials count as \"Lasted by selling the home\". A home your plan already sells keeps that sale, but in a trial where the money runs out first it's sold that year instead, as someone watching their accounts drain would. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
+  "What happens to each home in a trial where your accounts are depleted and a year's spending goes unfunded. Kept, it's never sold, so a trial's accounts can be depleted with its equity untouched. Sold, it goes that year and its loans are paid off from the proceeds; for the home you live in you then rent or buy a smaller home with cash, while a second home or a rental is simply sold and its costs stop; those trials count as \"Funded by a home sale\". A home your plan already sells keeps that sale, but in a trial where the accounts are depleted first it's sold that year instead. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
 
 /** The first-guess backup plan when one is turned on. */
 const defaultFallback = (home: PlanAsset, then: HomeFallback["then"]): HomeFallback => ({
@@ -72,7 +72,7 @@ function PlannedSaleRow({ home, year }: { home: PlanAsset; year: number }) {
         <span className="material-symbols-rounded" style={{ fontSize: 14 }} aria-hidden="true">
           lock
         </span>
-        Sold in your plan in {year} · sooner in trials where the money runs out first
+        Sold in your plan in {year} · sooner in trials where the accounts are depleted first
       </span>
     </li>
   )
@@ -85,7 +85,7 @@ function HomeRow({ home, onChange }: { home: PlanAsset; onChange: (fallback: Hom
   return (
     <li className="flex flex-wrap items-end gap-x-4 gap-y-2">
       <HomeName home={home} />
-      <ChoiceChips label={`If the money runs out: ${home.name}`} options={optionsFor(home)} value={fallback?.then ?? "keep"} onChange={choose} />
+      <ChoiceChips label={`If accounts are depleted: ${home.name}`} options={optionsFor(home)} value={fallback?.then ?? "keep"} onChange={choose} />
       {fallback && fallback.then !== "sell" && (
         <div className="w-44">
           {fallback.then === "rent" ? (
@@ -105,7 +105,7 @@ export function StressHomeFallbacks({ doc, update }: Pick<PlanEditorProps, "doc"
   if (homes.length === 0) return null
   const setFallback = (id: string, fallback: HomeFallback | undefined) => update((d) => ({ ...d, assets: patchItem(d.assets, id, { fallback }) }))
   return (
-    <Setting label="If the money runs out" info={INFO}>
+    <Setting label="If accounts are depleted" info={INFO}>
       <ul className="space-y-2">
         {homes.map((home) => {
           const sold = plannedSaleIndex(doc, home)

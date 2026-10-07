@@ -32,8 +32,8 @@ export const METRICS: Metric[] = [
   },
   { label: "Ending net worth", value: (s) => fmtCompact(s.endingNetWorth), num: (s) => s.endingNetWorth, fmtDelta: moneyDelta, better: "higher", money: true },
   {
-    label: "Cash lasts",
-    value: (s) => (s.depletedAge === null ? `Past ${s.endAge}` : s.brokeAge !== null ? `Until ${s.depletedAge} (broke at ${s.brokeAge})` : `Until ${s.depletedAge}`),
+    label: "Funded through",
+    value: (s) => (s.depletedAge === null ? `Age ${s.endAge} (full plan)` : s.brokeAge !== null ? `Age ${s.depletedAge} (assets exhausted at ${s.brokeAge})` : `Age ${s.depletedAge}`),
     num: (s) => s.depletedAge ?? s.endAge,
     fmtDelta: yearsDelta,
     better: "higher",
@@ -80,8 +80,8 @@ export interface Safety {
 }
 
 const SAFETY_ROWS: { key: keyof Safety; label: string }[] = [
-  { key: "netWorth", label: "Net worth lasts" },
-  { key: "cash", label: "Cash lasts" },
+  { key: "netWorth", label: "Solvent" },
+  { key: "cash", label: "Fully funded" },
 ]
 
 /** One rate through simulated markets, and B's difference in percentage points. */

@@ -9,7 +9,7 @@ interface EarlySale {
   earliestAge: number
 }
 
-/** Per home, the trials that sold it sooner than the plan does because the money ran short first. */
+/** Per home, the trials that sold it sooner than the plan does because the accounts were depleted first. */
 function earlySales(cohorts: CohortResult[]): EarlySale[] {
   const byHome = new Map<string, EarlySale>()
   for (const c of cohorts) {
@@ -40,7 +40,7 @@ export function StressEarlySales({ cohorts, unit }: { cohorts: CohortResult[]; u
           </span>
           <span>
             <span className="font-medium">{s.name}</span> sold sooner than your plan (age {s.plannedAge}) in {s.count.toLocaleString()} of{" "}
-            {cohorts.length.toLocaleString()} {unit}, as early as {s.earliestAge}: the money ran short first.
+            {cohorts.length.toLocaleString()} {unit}, as early as {s.earliestAge}, when the accounts were depleted first.
           </span>
         </p>
       ))}

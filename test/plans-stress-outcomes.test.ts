@@ -45,7 +45,7 @@ test("on net worth, running out with net worth left is out of cash; only hitting
   assert.deepEqual(by.outOfCash.years, [1929])
   assert.deepEqual(by.catastrophic.years, [1937])
   assert.deepEqual(by.almostSurvived.years, [1966])
-  assert.match(by.catastrophic.rule, /going broke/)
+  assert.match(by.catastrophic.rule, /assets exhausted/)
 })
 
 test("on net worth, running out after a home sale is catastrophic even with net worth left", () => {

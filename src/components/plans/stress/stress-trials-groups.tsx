@@ -59,7 +59,7 @@ function TrialRow({ c, top, color, open, onToggle, detail, isHidden }: RowProps)
           <Spark values={c.netWorth} top={top} color={color} />
         </span>
         <span className="w-24 shrink-0 truncate font-medium text-foreground">{trialName(c)}</span>
-        <span className={`w-40 shrink-0 truncate ${TRIAL_TONE_CLASS[status.tone]}`}>{status.tone === "ok" ? "Lasts to the end" : status.text}</span>
+        <span className={`w-40 shrink-0 truncate ${TRIAL_TONE_CLASS[status.tone]}`}>{status.tone === "ok" ? "Fully funded" : status.text}</span>
         <span className="hidden min-w-0 flex-1 truncate text-foreground-muted md:inline">{sales?.join(" · ") ?? sequenceLabel(c.sequence, 3)}</span>
         <span className="ml-auto w-20 shrink-0 text-right font-data text-foreground" style={blur} title="Net worth at the end, today's dollars">
           {fmtCompact(endingValue(c, "netWorth"))}

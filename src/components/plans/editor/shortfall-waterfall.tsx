@@ -36,9 +36,9 @@ export function ShortfallWaterfall({ doc, update, example }: PlanEditorProps & {
     <WaterfallColumn
       icon="north"
       tone="out"
-      title="When money is short"
+      title="When there's a deficit"
       description="Drawn top down."
-      example={example ? `${example.year} · age ${example.ages[0]} · ${fmtMoney(needed)} withdrawn (incl. tax)` : "Never happens in this plan yet."}
+      example={example ? `${example.year} · age ${example.ages[0]} · ${fmtMoney(needed)} withdrawn (incl. tax)` : "No deficit years in this plan yet."}
     >
       {sequence.map((a, i) => (
         <WaterfallStep

@@ -54,7 +54,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
       {
         kind: "list",
         items: [
-          "**Automatic**: before the year you reach 59½, the plan spends cash, taxable and Roth money first and touches your 401(k)/IRA only when those run out. If it has to, the 10% penalty is added and shows as its own tax.",
+          "**Automatic**: before the year you reach 59½, the plan spends cash, taxable and Roth money first and touches your 401(k)/IRA only once those are depleted. If it has to, the 10% penalty is added and shows as its own tax.",
           "**You can change it**: Cash flow › \"Before 59½, use 401(k)/IRA last\". Off, your withdrawal order applies at every age, penalty included.",
           "**Tip**: a taxable brokerage or Roth balance is your bridge to 59½. If the penalty shows up in the Taxes view, that bridge is too small.",
           "**Not covered**: the age-55 rule for leaving a job, and equal yearly payments (72(t)) that avoid the penalty.",

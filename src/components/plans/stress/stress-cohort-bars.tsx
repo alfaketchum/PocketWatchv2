@@ -22,7 +22,7 @@ function CohortTooltip({ active, payload }: { active?: boolean; payload?: Array<
   )
 }
 
-/** Ending net worth (today's dollars) for each historical start year; amber where the cash ran out, red where net worth hit $0. */
+/** Ending net worth (today's dollars) for each historical start year; amber where accounts were depleted, red where assets were exhausted. */
 export function StressCohortBars({ cohorts, isHidden }: { cohorts: CohortResult[]; isHidden: boolean }) {
   const { primary, error, warning, foregroundMuted, border, foreground } = useChartTheme()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56

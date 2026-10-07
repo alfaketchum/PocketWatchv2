@@ -77,7 +77,7 @@ function skipPurchases(doc: PlanDocument): ImpactVariant[] {
 function sellIfNeeded(doc: PlanDocument): ImpactVariant[] {
   const homes = homesWithoutBackup(doc)
   if (homes.length === 0) return []
-  return [variant(doc, "sell-homes", homes.length === 1 ? `Sell ${homes[0].name} if the money runs out` : "Sell your homes if the money runs out", sellHomesIfNeeded)]
+  return [variant(doc, "sell-homes", homes.length === 1 ? `Sell ${homes[0].name} if accounts are depleted` : "Sell your homes if accounts are depleted", sellHomesIfNeeded)]
 }
 
 /** Retire a few years later, when the plan has a paycheck that stops at retirement. */

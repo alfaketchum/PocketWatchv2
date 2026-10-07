@@ -21,7 +21,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
           "**Assets and loans**: purchases, sales (with capital-gains tax), and this year's loan payments split into principal and interest.",
           "**Spending**: every expense line, grown by inflation (or its own growth rate) and shaped by its spending pattern.",
           "**Growth**: each account grows by its return on the balance it started the year with.",
-          "**Leftover or shortfall**: money left over is saved; money missing is withdrawn from accounts (see Cash flow).",
+          "**Surplus or deficit**: a surplus is saved; a deficit is withdrawn from accounts (see Cash flow).",
           "**Tax true-up**: with brackets, the year's exact tax is recomputed on the final totals and the difference is settled.",
         ],
       },
@@ -38,7 +38,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
   },
   {
     id: "cash-flow",
-    title: "Cash flow: where leftover money goes, and where shortfalls come from",
+    title: "Cash flow: where a surplus goes, and how a deficit is funded",
     icon: "swap_vert",
     summary: "The rules that move money between your accounts each year.",
     blocks: [
@@ -59,7 +59,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
           "Anything still left goes to the last uncapped account in that order, or else the first taxable brokerage account.",
         ],
       },
-      { kind: "text", text: "**When money is short**, accounts are drawn down in the plan's withdrawal order. Accounts not listed follow this default:" },
+      { kind: "text", text: "**In a deficit year**, accounts are drawn down in the plan's withdrawal order. Accounts not listed follow this default:" },
       {
         kind: "table",
         head: ["Order", "Account type", "Tax on the withdrawal"],
@@ -76,11 +76,11 @@ export const PLAN_SECTIONS: MethodSection[] = [
         items: [
           "Each withdrawal is **grossed up** for its tax: to get $10,000 to spend from a traditional IRA at a 22% rate, the engine withdraws about $12,820.",
           "**Before 59½**, a withdrawal from your own 401(k) or IRA pays a **10% penalty** on top of income tax, so by default those accounts are used last until the year you reach 59½ (\"Before 59½, use 401(k)/IRA last\" on the Cash flow tab; turn it off and your order applies at every age, penalty included). Inherited accounts have no penalty.",
-          "A protected cash buffer is spent last, only after every other account is empty.",
-          "529 accounts only pay the education costs earmarked for them, never general shortfalls.",
-          "If every account is empty, the unfunded amount is recorded as a **shortfall**: the plan has run out of money that year.",
-          "A home with a **backup plan** (\"If my money runs out\" on its card) is sold at the start of the first year that would run out (half or more of the year's spending unfunded); its loans are paid off from the sale, then you rent or buy a smaller home with cash, and the whole plan runs again. Each home's backup plan is used at most once, and the chart marks the year. A home you've already planned to sell is only sold early if the money runs out before your date, and then your planned downsize (its rent or smaller home) is replaced by the backup plan's, never added to it.",
-          "When a plan still runs out, the summary shows the **home equity left** that year (home values less their loans), in today's dollars and as years of that year's spending. It's not counted as spendable: your home only pays the bills if the plan sells it.",
+          "A protected cash buffer is spent last, only after every other account is depleted.",
+          "529 accounts only pay the education costs earmarked for them, never a general deficit.",
+          "If every account is depleted, the remainder is recorded as **unfunded spending** and the plan is marked **accounts depleted** from that year. Unfunded spending accumulates as a debt, so it lowers net worth; once net worth falls below one year of spending, the plan is marked **assets exhausted**.",
+          "In the **Stress test** only (your plan's own projection never does this), a home set to \"If accounts are depleted: sell\" is sold at the start of the first year with unfunded spending; its loans are paid off from the sale, then you rent or buy a smaller home with cash, and the trial runs again. Each home's backup plan is used at most once. A home you've already planned to sell is only sold early if the accounts are depleted before your date, and then your planned downsize (its rent or smaller home) is replaced by the backup plan's, never added to it.",
+          "When a plan's accounts are depleted, the summary shows the **property equity remaining** that year (home values less their loans), in today's dollars and as years of that year's spending. It's not counted as spendable: your home only funds spending if the plan sells it.",
         ],
       },
       {

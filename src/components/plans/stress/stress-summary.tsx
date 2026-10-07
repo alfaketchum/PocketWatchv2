@@ -17,7 +17,7 @@ function Stat({ label, value, hint, isHidden }: { label: string; value: string; 
 }
 
 /**
- * The headline, net worth first: how often net worth lasts (the big number), how often the cash lasts beside it,
+ * The headline, net worth first: how often the plan stays solvent (the big number), how often it's fully funded beside it,
  * and the verdict. Always above the stress test's tabs.
  */
 export function StressHeadline({ summary, simulated }: { summary: Summary; simulated: boolean }) {
@@ -29,11 +29,11 @@ export function StressHeadline({ summary, simulated }: { summary: Summary; simul
       <div className="flex items-end gap-6">
         <div>
           <p className={`text-4xl font-semibold tabular-nums ${VERDICT_TONE_CLASS[verdict.tone]}`}>{fmtSuccess(netWorthRate)}</p>
-          <p className="text-[11px] text-foreground-muted">net worth lasts</p>
+          <p className="text-[11px] text-foreground-muted">solvent</p>
         </div>
         <div>
           <p className={`text-2xl font-semibold tabular-nums ${successRate >= netWorthRate - 1e-9 ? "text-foreground" : "text-warning"}`}>{fmtSuccess(successRate)}</p>
-          <p className="text-[11px] text-foreground-muted">cash lasts</p>
+          <p className="text-[11px] text-foreground-muted">fully funded</p>
         </div>
       </div>
       <p className={`min-w-0 flex-1 pb-1 text-sm font-medium ${VERDICT_TONE_CLASS[verdict.tone]}`}>
@@ -50,9 +50,9 @@ export function StressStats({ summary, simulated, isHidden }: { summary: Summary
   const unit = simulated ? "simulated trials" : "historical periods"
   const worstText = (c: NonNullable<typeof worst>) =>
     c.brokeAge !== undefined
-      ? `goes broke at ${c.brokeAge}`
+      ? `assets exhausted at ${c.brokeAge}`
       : c.depletedAge !== null
-        ? `cash runs out at ${c.depletedAge}, net worth ${fmtCompact(c.netWorth.at(-1) ?? 0)}`
+        ? `accounts depleted at ${c.depletedAge}, net worth ${fmtCompact(c.netWorth.at(-1) ?? 0)}`
         : `${fmtCompact(c.netWorth.at(-1) ?? 0)} net worth`
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">

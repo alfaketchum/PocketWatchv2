@@ -48,7 +48,7 @@ export function netWorthDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     ...doc.accounts.map((a) => ({ key: `a:${a.id}`, label: a.name, parent: LAYER_FOR[a.taxTreatment] })),
     ...doc.assets.map((a) => ({ key: `p:${a.id}`, label: a.name, parent: "realAssets" as const })),
     ...doc.debts.map((d) => ({ key: `d:${d.id}`, label: d.name, parent: "debt" as const })),
-    ...(unpaid ? [{ key: `d:${UNPAID_BILLS_ID}`, label: "Unpaid bills", parent: "debt" as const }] : []),
+    ...(unpaid ? [{ key: `d:${UNPAID_BILLS_ID}`, label: "Accrued unfunded spending", parent: "debt" as const }] : []),
   ]
   return { series: ordered(series, [...NET_WORTH_LAYERS, "debt"], points), points }
 }
@@ -109,7 +109,7 @@ export function cashFlowDetail(doc: PlanDocument, rows: YearRow[], byCategory = 
     ...doc.accounts.map((a) => ({ key: `wd:${a.id}`, label: `From ${a.name}`, parent: withdrawalParent(a.id) })),
     { key: "assetSales", label: "Asset sales", parent: "assetSales" },
     { key: "borrowed", label: "Borrowed", parent: "borrowed" },
-    { key: "unfunded", label: "Unpaid (cash ran out)", parent: "unfunded" },
+    { key: "unfunded", label: "Unfunded spending", parent: "unfunded" },
     ...spendingBands(doc, byCategory).map((b) => ({ key: b.key, label: b.label, parent: "spending" as const })),
     ...TAX_PARTS.map((t) => ({ key: t.key, label: t.label, parent: "taxes" as const })),
     ...loanSeries(doc, "debtPayments" as const),

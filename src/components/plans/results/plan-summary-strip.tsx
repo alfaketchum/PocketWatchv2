@@ -23,7 +23,7 @@ const splitNote = (split: { accounts: number; property: number } | null) =>
 
 /**
  * Headline numbers, always in today's dollars: net worth at retirement and at the end lead, with what's liquid vs
- * property; whether the cash keeps paying the bills comes after, amber unless the plan goes broke.
+ * property; whether the accounts fund every year comes after, amber unless assets are exhausted.
  */
 export function PlanSummaryStrip({ summary, isHidden }: { summary: PlanSummary; isHidden: boolean }) {
   const blur = isHidden ? { filter: "blur(8px)" } : undefined
@@ -49,7 +49,7 @@ export function PlanSummaryStrip({ summary, isHidden }: { summary: PlanSummary; 
         value={summary.retirementAge === null ? "—" : `Age ${summary.retirementAge}`}
         sub={summary.retirementYear === null ? "No retirement milestone" : `${summary.retirementYear} · ${fmtCompact(summary.lifetimeTaxes)} lifetime taxes`}
       />
-      <Stat label="Cash" value={cash.value} sub={cash.note} className={CASH_TONE_CLASS[cash.tone]} />
+      <Stat label="Funding" value={cash.value} sub={cash.note} className={CASH_TONE_CLASS[cash.tone]} />
     </div>
   )
 }

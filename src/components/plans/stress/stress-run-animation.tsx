@@ -12,7 +12,7 @@ const SWEEP_MS = 450
 const REPORT_MS = 120
 /** A beat after the last line lands, before the results take over. */
 const HOLD_MS = 350
-/** Settled lines: faint when the money lasted, stronger red when it ran out. */
+/** Settled lines: faint when fully funded, amber when accounts were depleted, red when assets were exhausted. */
 const LASTED_ALPHA = 0.07
 const FAILED_ALPHA = 0.22
 /** The y-axis tops out a bit above the 90th percentile of the first trials, so booms don't flatten the rest. */
@@ -60,8 +60,8 @@ interface Props {
 }
 
 /**
- * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if the money lasted, red
- * if net worth hit $0, amber if only the cash ran out) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
+ * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if fully funded, red
+ * if assets were exhausted, amber if only the accounts were depleted) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
 export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, done = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -247,7 +247,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
           <div className="pointer-events-none absolute left-0 top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
             <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
             <p className="text-[11px] tabular-nums text-foreground-muted">
-              net worth lasts · {counts.count.toLocaleString()}
+              solvent · {counts.count.toLocaleString()}
               {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
             </p>
           </div>
@@ -270,9 +270,9 @@ function Legend() {
   )
   return (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground-muted">
-      {swatch("var(--foreground-muted)", "Lasted")}
-      {swatch("var(--warning)", "Cash ran out")}
-      {swatch("var(--error)", "Went broke")}
+      {swatch("var(--foreground-muted)", "Fully funded")}
+      {swatch("var(--warning)", "Accounts depleted")}
+      {swatch("var(--error)", "Assets exhausted")}
       {swatch("var(--foreground)", "Your plan (steady returns)", true)}
       <span>Net worth by age, today&apos;s dollars</span>
     </div>

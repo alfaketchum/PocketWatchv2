@@ -115,13 +115,13 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   marks.push(...payoffMarks(doc, projection, age0))
   marks.push(...requiredStartMarks(doc, projection, age0))
   for (const sale of projection.homeSales ?? []) {
-    marks.push({ id: "", name: `Sold ${sale.name} (money ran low)`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
+    marks.push({ id: "", name: `Sold ${sale.name} to fund spending`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
   }
   // The cash running out is a warning; net worth hitting $0 after it is the real failure.
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
-  if (depleted) marks.push({ id: "", name: "Cash runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
+  if (depleted) marks.push({ id: "", name: "Accounts depleted", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   const broke = depleted ? projection.rows.slice(depleted.index).find((r) => isBrokeYear(r.netWorth, r.expenses)) : undefined
-  if (broke) marks.push({ id: "", name: "Broke: nothing left to sell", kind: "broke", age: age0 + broke.index, year: broke.year })
+  if (broke) marks.push({ id: "", name: "Assets exhausted", kind: "broke", age: age0 + broke.index, year: broke.year })
   return marks
 }
 
@@ -140,7 +140,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   wdTaxFree529: "Withdrawals · tax-free (529)",
   assetSales: "Asset sales",
   borrowed: "Borrowed",
-  unfunded: "Unpaid (cash ran out)",
+  unfunded: "Unfunded spending",
   spending: "Spending",
   taxes: "Taxes",
   debtPayments: "Debt payments",

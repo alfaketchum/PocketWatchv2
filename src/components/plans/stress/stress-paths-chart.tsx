@@ -103,9 +103,10 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
         </div>
       )}
       <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-foreground-muted">
-        {!simulated && <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-warning" /> Crisis start years</span>}
-        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-error" /> Ran out of money</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-foreground-muted/40" /> Lasted</span>
+        {!simulated && <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-primary" /> Crisis start years</span>}
+        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-warning" /> Accounts depleted</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-error" /> Assets exhausted</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-foreground-muted/40" /> Fully funded</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 border-t-[1.5px] border-dashed border-foreground/70" /> Your plan (steady returns)</span>
         <span>Values above {fmtCompact(top)} are clipped. {simulated ? `A sample of ${cohorts.length} trials. Hover or tap a line for its years.` : "Hover or tap a line for its start year."}</span>
       </div>

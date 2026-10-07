@@ -25,8 +25,8 @@ export function bufferStatus(doc: PlanDocument): { tone: "on" | "off" | "none"; 
   if (doc.settings.cashBuffer <= 0) return { tone: "none", text: "Set an amount to keep a buffer.", notes: [] }
   const notes = bufferNotes(doc, account.id, account.balance)
   return doc.settings.protectBuffer
-    ? { tone: "on", text: "Protected: spent only after every other account is empty.", notes }
-    : { tone: "off", text: "Not protected: spent first when money is short.", notes }
+    ? { tone: "on", text: "Protected: spent only after every other account is depleted.", notes }
+    : { tone: "off", text: "Not protected: spent first in a deficit year.", notes }
 }
 
 function ProtectSwitch({ checked, disabled, onChange }: { checked: boolean; disabled: boolean; onChange: (on: boolean) => void }) {

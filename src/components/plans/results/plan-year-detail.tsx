@@ -48,7 +48,7 @@ export function PlanYearDetail({ row, doc }: { row: YearRow; doc: PlanDocument }
           { label: "Asset purchases", value: row.assetPurchases },
           { label: "Asset sales", value: row.assetSales },
           { label: "Borrowed", value: row.borrowed },
-          { label: "Shortfall", value: row.shortfall },
+          { label: "Unfunded spending", value: row.shortfall },
         ]}
       />
     </div>

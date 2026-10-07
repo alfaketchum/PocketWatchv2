@@ -23,7 +23,7 @@ export function LoanStressTable({ outcomes, stress, running, isHidden }: { outco
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-foreground-muted">
               <th className="px-3 py-2 font-semibold text-left">Option</th>
-              <th className={head}>Money lasted</th>
+              <th className={head}>Fully funded</th>
               <th className={head}>Ended ahead of plan</th>
               <th className={head}>Bad period (10th pct)</th>
               <th className={head}>Typical</th>

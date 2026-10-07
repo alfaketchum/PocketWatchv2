@@ -59,7 +59,7 @@ function equityNote(members: CohortResult[]): string | null {
   const failed = members.filter((c) => c.depletedAge !== null)
   if (failed.length === 0) return null
   const typical = percentile(failed.map((c) => c.equityAtDepletion ?? 0), 0.5)
-  return typical >= 1 ? `Typically ${fmt(typical)} of home equity still left when it ran out` : null
+  return typical >= 1 ? `Typically ${fmt(typical)} of home equity remaining at depletion` : null
 }
 
 /** For periods that ran out: how many had already sold a home, and how many ran out before a sale the plan makes. */
@@ -67,7 +67,7 @@ function salesNote(members: CohortResult[]): string | null {
   const failed = members.filter((c) => c.depletedAge !== null && c.homeSales)
   const first = failed.filter((c) => c.homeSales!.some((s) => s.age <= c.depletedAge!)).length
   const before = failed.filter((c) => c.homeSales!.some((s) => s.planned && s.age > c.depletedAge!)).length
-  const parts = [first > 0 ? `${first} ran out after selling a home` : "", before > 0 ? `${before} ran out before the plan's home sale` : ""]
+  const parts = [first > 0 ? `${first} depleted after selling a home` : "", before > 0 ? `${before} depleted before the plan's home sale` : ""]
   return parts.filter(Boolean).join(" · ") || null
 }
 
@@ -94,22 +94,22 @@ export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): O
   const what = worth ? "net worth" : "money in your accounts"
   const cushion = y.yearlySpending * CUSHION_YEARS
   const rules: Record<OutcomeKey, { label: string; rule: string }> = {
-    surplus: { label: "Surplus", rule: `Lasted and ended with more ${what} than today's ${fmt(y.startValue)}` },
+    surplus: { label: "Surplus", rule: `Fully funded, ending with more ${what} than today's ${fmt(y.startValue)}` },
     steady: {
-      label: "Steady",
-      rule: cushion > 0 ? `Lasted, ending with ${fmt(cushion)}–${fmt(y.startValue)} (at least ${CUSHION_YEARS} years of spending)` : `Lasted, ending with up to ${fmt(y.startValue)}`,
+      label: "Funded, solid reserve",
+      rule: cushion > 0 ? `Fully funded, ending with ${fmt(cushion)}–${fmt(y.startValue)} (at least ${CUSHION_YEARS} years of spending)` : `Fully funded, ending with up to ${fmt(y.startValue)}`,
     },
     justMadeIt: {
-      label: "Just made it",
-      rule: cushion > 0 ? `Lasted, but with less than ${CUSHION_YEARS} years of spending (${fmt(cushion)}) left` : "Lasted with almost nothing left (this plan has no spending to measure a cushion by)",
+      label: "Funded, thin reserve",
+      rule: cushion > 0 ? `Fully funded, but ending with less than ${CUSHION_YEARS} years of spending (${fmt(cushion)})` : "Fully funded, ending with almost nothing (this plan has no spending to measure a reserve against)",
     },
-    soldHome: { label: "Lasted by selling the home", rule: "Lasted only because a home's backup plan sold it when the money ran low" },
-    outOfCash: { label: "Out of cash", rule: "Your accounts ran out before any home was sold, without going broke: the home could still be sold" },
+    soldHome: { label: "Funded by a home sale", rule: "Fully funded only because a home was sold when the accounts were depleted" },
+    outOfCash: { label: "Accounts depleted", rule: "Accounts were depleted before any home was sold, but assets were never exhausted: the home could still be sold" },
     almostSurvived: {
-      label: "Almost survived",
-      rule: worth ? `Ran out at ${y.endAge - CLOSE_YEARS} or later, after selling a home or going broke` : `Ran out in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
+      label: "Late depletion",
+      rule: worth ? `Accounts depleted at ${y.endAge - CLOSE_YEARS} or later, after a home sale or with assets exhausted` : `Accounts depleted in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
     },
-    catastrophic: { label: "Catastrophic", rule: worth ? `Ran out before ${y.endAge - CLOSE_YEARS}, after selling a home or going broke` : `Ran out before ${y.endAge - CLOSE_YEARS}` },
+    catastrophic: { label: "Early depletion", rule: worth ? `Accounts depleted before ${y.endAge - CLOSE_YEARS}, after a home sale or with assets exhausted` : `Accounts depleted before ${y.endAge - CLOSE_YEARS}` },
   }
   const order: OutcomeKey[] = ["surplus", "steady", "justMadeIt", "soldHome", "outOfCash", "almostSurvived", "catastrophic"]
   const byKey = new Map<OutcomeKey, CohortResult[]>(order.map((k) => [k, []]))

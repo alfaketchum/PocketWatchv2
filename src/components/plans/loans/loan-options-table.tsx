@@ -105,7 +105,7 @@ export function LoanOptionsTable({ outcomes, colors, loanYear, extra, onExtra, r
               </td>
               <td className={num}>
                 {o.runsOutAge !== null ? (
-                  <span className="text-error font-medium">Out at {o.runsOutAge}</span>
+                  <span className="text-error font-medium">Depleted at {o.runsOutAge}</span>
                 ) : (
                   <WithGap value={o.netWorthEnd} planned={outcomes[0].netWorthEnd} isPlanned={i === 0} />
                 )}

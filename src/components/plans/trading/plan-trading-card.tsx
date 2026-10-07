@@ -30,7 +30,7 @@ function Cell({ outcome, best }: { outcome: TradingOutcome; best: boolean }) {
   return (
     <td className={cn("px-3 py-2 text-right tabular-nums whitespace-nowrap", best && "bg-success/10")}>
       {outcome.runsOutAge !== null ? (
-        <span className="text-error font-medium">Out at {outcome.runsOutAge}</span>
+        <span className="text-error font-medium">Depleted at {outcome.runsOutAge}</span>
       ) : (
         <span className={cn(best ? "text-success font-semibold" : "text-foreground")}>{fmtCompact(outcome.endWealth)}</span>
       )}
