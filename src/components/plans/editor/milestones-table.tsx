@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { fiMilestone } from "@/lib/plans/plan-fi-milestone"
+import { duplicateMilestone, linkToMilestone } from "@/lib/plans/plan-milestone-links"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { payoffMilestones } from "@/lib/plans/plan-payoff-milestones"
@@ -23,7 +24,7 @@ const COLUMNS = [
   { label: "", width: "w-16" },
 ]
 
-/** Milestones as a table: yours editable, generated ones (kids, assets) read-only, all in date order. */
+/** Milestones as a table: yours editable, generated ones (kids, assets) read-only (with a link button when one duplicates yours), in date order. */
 export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEditorProps & { onDelete: (id: string) => void }) {
   const { milestones: groupColors } = usePlanColors()
   const payoffs = useMemo(() => payoffMilestones(doc), [doc])
@@ -37,12 +38,12 @@ export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEdito
     ...payoffs.map((m) => ({ m, generated: true, unreached: false })),
     ...(fi ? [{ m: fi.milestone, generated: true, unreached: !fi.reached }] : []),
   ]
-    .map((r) => ({ ...r, index: resolveTiming(r.m.timing, ctx) }))
+    .map((r) => ({ ...r, index: resolveTiming(r.m.timing, ctx), twin: r.generated ? duplicateMilestone(doc, r.m) : null }))
     .sort((a, b) => (a.index ?? Infinity) - (b.index ?? Infinity))
 
   return (
     <PlanTable columns={COLUMNS}>
-      {rows.map(({ m, generated, unreached, index }) => (
+      {rows.map(({ m, generated, unreached, index, twin }) => (
         <Row key={m.id} muted={generated}>
           <Cell>
             <span className="flex items-center">
@@ -81,6 +82,13 @@ export function MilestonesTable({ doc, update, onEditItem, onDelete }: PlanEdito
             <span className="px-2 tabular-nums">{index === null || unreached ? "—" : age0 + index}</span>
           </Cell>
           <Cell align="center">
+            {twin && (
+              <RowButton
+                icon="link"
+                label={`Same date as your "${twin.name}" milestone but not linked: link them so they move together`}
+                onClick={() => update((d) => linkToMilestone(d, m, twin.id))}
+              />
+            )}
             {!generated && (
               <span className="flex">
                 <RowButton icon="edit" label={`Edit ${m.name} in detailed view`} onClick={() => onEditItem?.(planItemAnchor(m.id))} />

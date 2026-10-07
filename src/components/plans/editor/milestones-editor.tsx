@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { FI_SAFE_WITHDRAWAL_RATE, PLAN_LIMITS } from "@/lib/plans/plan-constants"
 import { fiMilestone } from "@/lib/plans/plan-fi-milestone"
+import { duplicateMilestone, linkToMilestone } from "@/lib/plans/plan-milestone-links"
 import { milestoneSource, milestoneUses, MILESTONE_SOURCE_LABELS } from "@/lib/plans/plan-milestone-uses"
 import { generatedMilestones } from "@/lib/plans/plan-milestones"
 import { payoffMilestones } from "@/lib/plans/plan-payoff-milestones"
@@ -66,8 +67,11 @@ function sourceTab(m: { kind: string }): { tab: string; label: string } {
   return { tab: "assets", label: "Assets & debts" }
 }
 
-/** Milestones created by kids, assets bought or sold, and incomes like Social Security; edited where they come from. */
-function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
+/**
+ * Milestones created by kids, assets bought or sold, and incomes like Social Security; edited where they come from. One
+ * that matches a milestone of yours (same year, same event) offers to link them, so the two can't drift apart.
+ */
+function GeneratedMilestones({ doc, update }: Pick<PlanEditorProps, "doc" | "update">) {
   const { milestones: groupColors } = usePlanColors()
   const payoffs = useMemo(() => payoffMilestones(doc), [doc])
   const marks = [...generatedMilestones(doc), ...payoffs]
@@ -76,22 +80,34 @@ function GeneratedMilestones({ doc }: { doc: PlanDocument }) {
     <div className="rounded-xl border border-dashed border-card-border p-3 space-y-1.5">
       <p className="text-xs font-semibold text-foreground">From your kids, assets and income</p>
       <p className="text-[11px] text-foreground-muted">Edit them where they come from.</p>
-      {marks.map((m) => (
-        <Link
-          key={m.id}
-          href={`?tab=${sourceTab(m).tab}`}
-          scroll={false}
-          className="flex items-center gap-2 text-xs rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/5"
-        >
-          <span className="material-symbols-rounded" style={{ fontSize: 15, color: groupColors[milestoneGroup(m)] }}>
-            {m.icon ?? "flag"}
-          </span>
-          <span className="text-foreground">{m.name}</span>
-          <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
-          <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
-          <span className="ml-auto text-[11px] text-primary">Edit on {sourceTab(m).label} →</span>
-        </Link>
-      ))}
+      {marks.map((m) => {
+        const twin = duplicateMilestone(doc, m)
+        return (
+          <div key={m.id}>
+            <Link
+              href={`?tab=${sourceTab(m).tab}`}
+              scroll={false}
+              className="flex items-center gap-2 text-xs rounded-md -mx-1 px-1 py-0.5 hover:bg-foreground/5"
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 15, color: groupColors[milestoneGroup(m)] }}>
+                {m.icon ?? "flag"}
+              </span>
+              <span className="text-foreground">{m.name}</span>
+              <span className="text-foreground-muted">{whenLabel(doc, m)}</span>
+              <Badge>{MILESTONE_SOURCE_LABELS[milestoneSource(m)]}</Badge>
+              <span className="ml-auto text-[11px] text-primary">Edit on {sourceTab(m).label} →</span>
+            </Link>
+            {twin && (
+              <p className="flex flex-wrap items-center gap-x-2 pl-6 text-[11px] text-warning">
+                Same date as your &ldquo;{twin.name}&rdquo; milestone, but not linked: moving one won&apos;t move the other.
+                <button type="button" className="font-medium text-primary hover:underline" onClick={() => update((d) => linkToMilestone(d, m, twin.id))}>
+                  Link them
+                </button>
+              </p>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -150,7 +166,7 @@ export function MilestonesEditor({ doc, update, view, onEditItem, viewToggle }: 
       {view !== "compact" && (
         <>
           <FiMilestoneCard doc={doc} />
-          <GeneratedMilestones doc={doc} />
+          <GeneratedMilestones doc={doc} update={update} />
         </>
       )}
       {adding && <AddMilestoneDialog doc={doc} update={update} onClose={() => setAdding(false)} />}
