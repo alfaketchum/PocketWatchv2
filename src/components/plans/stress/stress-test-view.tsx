@@ -61,8 +61,8 @@ function useStressTab(): [StressTab, (tab: StressTab) => void] {
 }
 
 /**
- * The plan through simulated or historical markets. One run feeds every tab: the result above them, then Summary,
- * Improve, Outcomes, Trials and Setup. What would help and the solvers start once Improve is first opened.
+ * The plan through simulated or historical markets. One run feeds every tab: the result above them, then Setup (where
+ * it opens), Summary, Improve, Outcomes and Trials. What would help and the solvers start once Improve is first opened.
  */
 export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [tab, setTab] = useStressTab()
