@@ -152,6 +152,16 @@ function buildJobs(): readonly JobConfig[] {
       headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
     },
     {
+      // Monthly at 05:15 on the 1st — record last month against each primary plan;
+      // again on the 8th to refresh its actuals once late transactions have posted.
+      name: "plan-check-in",
+      schedule: "35 15 5 1,8 * *",
+      endpoint: "/api/internal/plan-check-in",
+      method: "POST",
+      headers: bearerHeader(process.env.SNAPSHOT_WORKER_SECRET),
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
+    {
       // Daily at 04:30 — refresh the login/account directory from Gmail.
       name: "accounts-scan",
       schedule: "55 30 4 * * *",
@@ -217,7 +227,7 @@ const REQUIRED_SECRETS: Record<string, string> = {
   FINANCE_SYNC_SECRET: "finance-sync",
   PORTFOLIO_REFRESH_CRON_SECRET: "portfolio-refresh",
   STAKING_CRON_SECRET: "staking-snapshot",
-  SNAPSHOT_WORKER_SECRET: "snapshot-worker, asset-history, classify-transactions, backup-worker",
+  SNAPSHOT_WORKER_SECRET: "snapshot-worker, asset-history, classify-transactions, backup-worker, plan-check-in",
   TRAVEL_PRICE_CHECK_SECRET: "travel-price-check",
   FINANCE_DIGEST_SECRET: "finance-digest",
   ACCOUNTS_SCAN_SECRET: "accounts-scan, sender-scan",

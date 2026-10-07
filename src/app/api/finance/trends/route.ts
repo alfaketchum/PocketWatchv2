@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { apiError } from "@/lib/api-error"
 import { db } from "@/lib/db"
 import { getCached, setCache } from "@/lib/cache"
+import { bucketCashflow } from "@/lib/finance/monthly-cashflow"
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod/v4"
 
@@ -70,32 +71,7 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    // Group by month
-    const monthMap = new Map<string, { income: number; spending: number; categories: Map<string, number> }>()
-    for (const ms of monthStrings) {
-      monthMap.set(ms, { income: 0, spending: 0, categories: new Map() })
-    }
-
-    const NON_SPENDING = new Set(["Transfer", "Income", "Investment", "Crypto"])
-    for (const tx of transactions) {
-      const monthKey = tx.date.toISOString().slice(0, 7)
-      const bucket = monthMap.get(monthKey)
-      if (!bucket) continue
-
-      if (tx.amount < 0) {
-        // Only count actual income, not refunds/transfer credits
-        const cat = (tx.category ?? "").toLowerCase()
-        if (cat === "income") {
-          bucket.income += Math.abs(tx.amount)
-        }
-      } else {
-        // Exclude transfers/income/investment from spending
-        const cat = tx.category ?? "Uncategorized"
-        if (NON_SPENDING.has(cat)) continue
-        bucket.spending += tx.amount
-        bucket.categories.set(cat, (bucket.categories.get(cat) ?? 0) + tx.amount)
-      }
-    }
+    const monthMap = bucketCashflow(transactions, monthStrings)
 
     // Collect all categories across all months so every month has a value for each
     const allCategories = new Set<string>()

@@ -15,12 +15,15 @@ interface Point {
   x: number
   actual?: number
   plan?: number
+  /** What the plan said for this month when it was recorded. */
+  then?: number
 }
 
-function merge(actual: ProgressPoint[], plan: ProgressPoint[], until: number): Point[] {
+function merge(actual: ProgressPoint[], plan: ProgressPoint[], atTheTime: ProgressPoint[], until: number): Point[] {
   const points: Point[] = [
     ...actual.map((p) => ({ x: p.x, actual: p.value })),
     ...plan.filter((p) => p.x <= until).map((p) => ({ x: p.x, plan: p.value })),
+    ...atTheTime.map((p) => ({ x: p.x, then: p.value })),
   ]
   return points.sort((a, b) => a.x - b.x)
 }
@@ -34,38 +37,41 @@ function monthLabel(x: number): string {
 function ProgressTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: Point }> }) {
   if (!active || !payload?.length) return null
   const p = payload[0].payload
-  const value = p.actual ?? p.plan
+  const value = p.actual ?? p.then ?? p.plan
   if (value === undefined) return null
+  const kind = p.actual !== undefined ? "actual" : p.then !== undefined ? "plan at the time" : "plan"
   return (
     <div className="rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className="text-foreground-muted">
-        {monthLabel(p.x)} · {p.actual !== undefined ? "actual" : "plan"}
+        {monthLabel(p.x)} · {kind}
       </p>
       <p className="font-semibold text-foreground tabular-nums">{fmtMoney(value)}</p>
     </div>
   )
 }
 
-/** Actual net worth (solid) against the plan's path (dashed), nominal dollars. */
+/** Actual net worth (solid) against the plan's path (dashed) and, as dots, the plan at each check-in; nominal dollars. */
 export function ProgressChart({
   actual,
   plan,
+  atTheTime,
   now,
   isHidden,
 }: {
   actual: ProgressPoint[]
   plan: ProgressPoint[]
+  atTheTime: ProgressPoint[]
   now: number
   isHidden: boolean
 }) {
   const { primary, foregroundMuted, border } = useChartTheme()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
-  const data = useMemo(() => merge(actual, plan, now + YEARS_AHEAD), [actual, plan, now])
+  const data = useMemo(() => merge(actual, plan, atTheTime, now + YEARS_AHEAD), [actual, plan, atTheTime, now])
   return (
     <FireSectionCard
       eyebrow="Plan vs actual"
       title="Net worth, accounts minus debts"
-      info="Actual comes from your linked accounts and wallets. Homes and other manual assets are left out of both lines, since your history doesn't track them. Both lines are in dollars of the day (not inflation-adjusted)."
+      info="Actual comes from your linked accounts and wallets. Homes and other manual assets are left out of both lines, since your history doesn't track them. Both lines are in dollars of the day (not inflation-adjusted). Dots mark what the plan said for a month when that month was recorded, so they don't move when you edit the plan."
     >
       <div style={{ filter: isHidden ? "blur(8px)" : undefined }}>
         <ResponsiveContainer width="100%" height={300}>
@@ -77,6 +83,7 @@ export function ProgressChart({
             <ReferenceLine x={now} stroke={foregroundMuted} strokeDasharray="4 4" label={{ value: "Today", position: "insideTopRight", fontSize: 10, fill: foregroundMuted }} />
             <Line type="monotone" dataKey="actual" stroke={primary} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
             <Line type="linear" dataKey="plan" stroke={foregroundMuted} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls isAnimationActive={false} />
+            <Line dataKey="then" stroke="none" dot={{ r: 3, fill: foregroundMuted, stroke: foregroundMuted }} activeDot={{ r: 4 }} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

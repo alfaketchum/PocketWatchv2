@@ -78,6 +78,7 @@ model User {
   mailSenders                   MailSender[]
   fireProfile                   FireProfile?
   plans                         Plan[]
+  planCheckIns                  PlanCheckIn[]
   roadmapItems                  RoadmapItem[]
   realAssets                    RealAsset[]
   creditScores                  CreditScore[]
@@ -192,7 +193,43 @@ model Plan {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns      PlanCheckIn[]
 
+  @@index([userId])
+}
+
+/// A month of the primary plan against reality, recorded after the month ends. The planned fields are frozen when
+/// the row is created (what the plan said then); later runs only refresh the actuals. Flows are per month, nominal $.
+/// `plannedSource`: live (recorded by the monthly job) | backfill (estimated later from the plan at backfill time).
+model PlanCheckIn {
+  id                String   @id @default(cuid())
+  userId            String
+  planId            String?
+  planName          String
+  /// First day of the month.
+  month             DateTime @db.Date
+  /// sha256 of the plan document when the planned fields were recorded.
+  planHash          String
+  planUpdatedAt     DateTime
+  plannedSource     String   @default("live")
+  /// Financial net worth (accounts − debts) at month end; null before the plan starts.
+  plannedNetWorth   Float?
+  /// Take-home pay: gross − payroll contributions − income and payroll tax.
+  plannedIncome     Float
+  plannedSpending   Float
+  plannedByCategory Json
+  /// One-time items in the plan year holding this month (kept out of the monthly figures).
+  plannedOneTime    Float    @default(0)
+  actualNetWorth    Float?
+  actualIncome      Float
+  actualSpending    Float
+  actualByCategory  Json
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan              Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, month])
   @@index([userId])
 }
 

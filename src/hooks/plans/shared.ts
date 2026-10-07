@@ -52,6 +52,7 @@ export const plansKeys = {
   linkedSources: () => [...plansKeys.all, "linked-sources"] as const,
   marketInflation: () => [...plansKeys.all, "market-inflation"] as const,
   categorySpending: () => [...plansKeys.all, "category-spending"] as const,
+  checkIns: () => [...plansKeys.all, "check-ins"] as const,
 }
 
 export interface PlanMeta {

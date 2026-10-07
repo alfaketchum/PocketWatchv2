@@ -5,13 +5,16 @@ import Link from "next/link"
 import { useMemo } from "react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { fmtMoney } from "@/components/fire/fire-helpers"
+import { usePlanCheckIns } from "@/hooks/plans/use-plan-check-ins"
 import { usePlanDetail } from "@/hooks/plans/use-plan-document"
 import { usePlansList } from "@/hooks/plans/use-plans-list"
 import { useCombinedNetWorth } from "@/hooks/use-combined-net-worth"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { nowFractionalYear } from "@/lib/fire/fire-history"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
+import { plannedAtTheTime } from "@/lib/plans/check-in/check-in-rows"
 import { monthlyActual, planPath, progressStatus, type ProgressStatus } from "@/lib/plans/plan-progress"
+import { CheckInTable } from "./check-in-table"
 
 const ProgressChart = dynamic(() => import("./progress-chart").then((m) => m.ProgressChart), {
   ssr: false,
@@ -44,6 +47,7 @@ export function ProgressView() {
   const primary = list.data?.plans.find((p) => p.isPrimary) ?? null
   const detail = usePlanDetail(primary?.id ?? "")
   const netWorth = useCombinedNetWorth("all")
+  const checkIns = usePlanCheckIns()
   const doc = detail.data?.document ?? null
 
   const path = useMemo(() => (doc ? planPath(doc, simulatePlan(doc)) : []), [doc])
@@ -53,6 +57,8 @@ export function ProgressView() {
     [netWorth.data],
   )
   const status = useMemo(() => progressStatus(path, actual), [path, actual])
+  const checkInRows = useMemo(() => checkIns.data?.checkIns ?? [], [checkIns.data])
+  const atTheTime = useMemo(() => plannedAtTheTime(checkInRows), [checkInRows])
   const now = nowFractionalYear(new Date())
 
   if (list.isLoading || (primary && (detail.isLoading || netWorth.isLoading))) {
@@ -80,7 +86,17 @@ export function ProgressView() {
         , your primary plan, from {planStart}.
       </p>
       <StatusLine status={status} planStart={planStart} isHidden={isHidden} />
-      <ProgressChart actual={actual} plan={path} now={now} isHidden={isHidden} />
+      <ProgressChart actual={actual} plan={path} atTheTime={atTheTime} now={now} isHidden={isHidden} />
+      {checkInRows.length > 0 ? (
+        <CheckInTable rows={checkInRows} isHidden={isHidden} />
+      ) : (
+        !checkIns.isLoading && (
+          <p className="text-[11px] text-foreground-muted">
+            On the 1st of each month the last month is recorded here: net worth, take-home pay and spending by category against
+            what the plan said at the time.
+          </p>
+        )
+      )}
       {doc.assets.length > 0 && (
         <p className="text-[11px] text-foreground-muted">
           This plan includes a home or other assets. Both lines leave their value out (financial net worth only, even for homes and
@@ -88,6 +104,7 @@ export function ProgressView() {
         </p>
       )}
       {netWorth.error && <p className="text-xs text-error">Couldn&apos;t load your net-worth history: {netWorth.error.message}</p>}
+      {checkIns.error && <p className="text-xs text-error">Couldn&apos;t load your monthly check-ins: {checkIns.error.message}</p>}
     </div>
   )
 }
