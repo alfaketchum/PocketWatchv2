@@ -11,6 +11,7 @@ import { runStress } from "./stress-run-client"
 /** Simulated trials per what-if: the first of the same markets, enough to rank the changes in seconds. */
 export const IMPACT_TRIALS = 250
 export const BASELINE_KEY = "baseline"
+const NO_RESULTS: ImpactResult[] = []
 
 interface Args {
   doc: PlanDocument
@@ -30,7 +31,7 @@ export function useStressImpacts({ doc, annual, anchor, inflation, sampling, ena
   const { method, trials, blockLength, seed } = sampling
   const runs = useMemo(() => [{ key: BASELINE_KEY, label: "Your plan as it is", doc }, ...impactVariants(doc)], [doc])
   const [state, setState] = useState<{ runs: typeof runs; results: ImpactResult[] } | null>(null)
-  const results = state && state.runs === runs ? state.results : []
+  const results = state && state.runs === runs ? state.results : NO_RESULTS
 
   useEffect(() => {
     if (!enabled || !annual || anchor === null || runs.length < 2) return
@@ -60,5 +61,5 @@ export function useStressImpacts({ doc, annual, anchor, inflation, sampling, ena
   }, [enabled, annual, anchor, inflation, method, trials, blockLength, seed, runs])
 
   const variants = useMemo(() => new Map(runs.flatMap((r) => ("apply" in r ? [[r.key, r] as const] : []))), [runs])
-  return { results, total: runs.length, available: runs.length > 1, variants }
+  return useMemo(() => ({ results, total: runs.length, available: runs.length > 1, variants }), [results, runs.length, variants])
 }

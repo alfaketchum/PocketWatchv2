@@ -43,7 +43,8 @@ export function useStressSolvers({ doc, annual, anchor, inflation, sampling, tar
   const keys = useMemo(() => SOLVER_KEYS.filter((k) => solverApplies(doc, k)), [doc])
   const [state, setState] = useState<{ doc: PlanDocument; target: number; goal: StressGoal; rows: SolverRow[] } | null>(null)
   const current = (s: typeof state) => !!s && s.doc === doc && s.target === target && s.goal === goal
-  const rows = current(state) ? state!.rows : keys.map((key) => ({ key, steps: 0 }))
+  const blank = useMemo(() => keys.map((key) => ({ key, steps: 0 })), [keys])
+  const rows = current(state) ? state!.rows : blank
 
   useEffect(() => {
     if (!enabled || !annual || anchor === null || keys.length === 0) return

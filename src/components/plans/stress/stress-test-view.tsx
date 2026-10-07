@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { deflator } from "@/lib/plans/plan-dollars"
 import { inflationOf } from "@/lib/plans/plan-inflation"
 import type { PlanProjection } from "@/lib/plans/plan-types"
@@ -81,13 +81,18 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [chartView, setChartView] = useState<ChartView>("range")
   const [endView, setEndView] = useState<EndingView>("netWorth")
   const [binChoice, setBin] = useState<{ slice: HistogramSlice; of: CohortResult[] } | null>(null)
-  const { annual, anchor, cohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
+  const { annual, anchor, cohorts: runCohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
   // Each run plays its animation once; the results take over when it's done.
   const [finishedRun, setFinishedRun] = useState<number | null>(null)
   const animating = runId !== null && runId !== finishedRun
+  // The heavy part (summaries, insights, every tab's charts) follows a run only once its animation is done, so the
+  // animation has the main thread to itself; until then the last results stay (dimmed).
+  const shownRef = useRef(runCohorts)
+  if (!animating) shownRef.current = runCohorts
+  const cohorts = shownRef.current
   const [target, setTarget] = useState(DEFAULT_TARGET)
   const [goal, setGoal] = useState<StressGoal>("cash")
-  const background = improveOpened && !running && cohorts !== null
+  const background = improveOpened && !running && !animating && cohorts !== null
   const solvers = useStressSolvers({ doc, annual, anchor, inflation, sampling, target, goal, enabled: background })
   const impacts = useStressImpacts({ doc, annual, anchor, inflation, sampling, enabled: background })
   // Labels follow the results on screen, which lag the controls while a new run is in progress.
@@ -129,8 +134,8 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     runId !== null ? (
       <StressRunAnimation
         key={`chart-${runId}`}
-        trials={live?.trials ?? cohorts ?? []}
-        total={live?.total ?? cohorts?.length ?? 0}
+        trials={live?.trials ?? runCohorts ?? []}
+        total={live?.total ?? runCohorts?.length ?? 0}
         plan={planNetWorth}
         complete={!live}
         onFinished={() => setFinishedRun(runId)}
@@ -159,18 +164,43 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
     </>
   )
 
-  const setup: StressSetupModel = { doc, update, annual, sampling, setSampling, align, setAlign, canAlignRetirement, cape, setCape, inflation, setInflation }
-  const v: StressViewModel | null = ready
-    ? {
-        ...setup,
-        projection, isHidden, cohorts, all, summary, simulated, unit, age0,
-        retirementIndex: anchorIndex(doc, "retirement"),
-        bin, setBin: (slice) => setBin(slice && cohorts ? { slice, of: cohorts } : null),
-        insights, runOutAge, onFix, yardsticks, endView, setEndView, chartView, setChartView, measure, setMeasure,
-        bands: { netWorth: summary.netWorthBands, invested: summary.investedBands, withdrawalRate: summary.withdrawalBands }[measure],
-        plan, planCushion, planNetWorth, target, setTarget, goal, setGoal, solvers, impacts,
-      }
-    : null
+  // Memoized so a tab only re-renders when what it shows changes, not on every progress tick of a run.
+  const setup = useMemo<StressSetupModel>(
+    () => ({ doc, update, annual, sampling, setSampling, align, setAlign, canAlignRetirement, cape, setCape, inflation, setInflation }),
+    [doc, update, annual, sampling, align, canAlignRetirement, cape, inflation],
+  )
+  const pickBin = useCallback((slice: HistogramSlice | null) => setBin(slice && cohorts ? { slice, of: cohorts } : null), [cohorts])
+  const retirementIndex = anchorIndex(doc, "retirement")
+  const v = useMemo<StressViewModel | null>(
+    () =>
+      summary && all && summary.cohorts.length > 0
+        ? {
+            ...setup,
+            projection, isHidden, cohorts, all, summary, simulated, unit, age0, retirementIndex,
+            bin, setBin: pickBin,
+            insights, runOutAge, onFix, yardsticks, endView, setEndView, chartView, setChartView, measure, setMeasure,
+            bands: { netWorth: summary.netWorthBands, invested: summary.investedBands, withdrawalRate: summary.withdrawalBands }[measure],
+            plan, planCushion, planNetWorth, target, setTarget, goal, setGoal, solvers, impacts,
+          }
+        : null,
+    [setup, projection, isHidden, cohorts, all, summary, simulated, unit, age0, retirementIndex, bin, pickBin, insights, runOutAge, onFix, yardsticks, endView, chartView, measure, plan, planCushion, planNetWorth, target, goal, solvers, impacts],
+  )
+  // The same element while nothing it reads changes, so React skips the tab entirely during a run.
+  const panel = useMemo(
+    () =>
+      tab === "setup" ? (
+        <StressTabSetup v={setup} />
+      ) : v === null ? null : tab === "summary" ? (
+        <StressTabSummary v={v} />
+      ) : tab === "improve" ? (
+        <StressTabImprove v={v} />
+      ) : tab === "outcomes" ? (
+        <StressTabOutcomes v={v} />
+      ) : (
+        <StressTabTrials v={v} />
+      ),
+    [tab, setup, v],
+  )
 
   return (
     <div className="space-y-5">
@@ -185,19 +215,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         {headline}
       </StressResultBar>
       <StressTabs value={tab} onChange={setTab} />
-      <div className={animating || running ? "opacity-50 transition-opacity" : "transition-opacity"}>
-        {tab === "setup" ? (
-          <StressTabSetup v={setup} />
-        ) : v === null ? null : tab === "summary" ? (
-          <StressTabSummary v={v} />
-        ) : tab === "improve" ? (
-          <StressTabImprove v={v} />
-        ) : tab === "outcomes" ? (
-          <StressTabOutcomes v={v} />
-        ) : (
-          <StressTabTrials v={v} />
-        )}
-      </div>
+      <div className={animating || running ? "opacity-50 transition-opacity" : "transition-opacity"}>{panel}</div>
     </div>
   )
 }

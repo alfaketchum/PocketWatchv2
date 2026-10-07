@@ -11,6 +11,8 @@ import { runStress, type Handlers } from "./stress-run-client"
 
 /** Wait for edits to settle before running. */
 const DEBOUNCE_MS = 350
+/** How often trials that have finished are handed to the page while a run is in progress. */
+const LIVE_MS = 250
 
 /** A run in progress: the trials finished so far (for the live animation) out of how many. */
 export interface StressLive {
@@ -38,12 +40,25 @@ export function useStressTest(doc: PlanDocument | null, align: StressAlign, infl
     if (!doc || !annual || anchor === null) return
     const request: StressRunRequest = { doc, annual, anchor, inflation, sampling: { method, trials, blockLength, seed } }
     let cancel = () => {}
+    // Finished trials reach the page a few times a second, not per chunk: each update re-renders the page.
+    let pending: CohortResult[] = []
+    let flushTimer: ReturnType<typeof setTimeout> | null = null
     const timer = setTimeout(() => {
       const runId = Date.now()
       setLive({ runId, trials: [], total: 0 })
+      const flush = (total: number) => {
+        flushTimer = null
+        const chunk = pending
+        pending = []
+        setLive((l) => (l && l.runId === runId ? { runId, trials: [...l.trials, ...chunk], total } : l))
+      }
       const handlers: Handlers = {
-        onChunk: (chunk, total) => setLive((l) => (l && l.runId === runId ? { runId, trials: [...l.trials, ...chunk], total } : l)),
+        onChunk: (chunk, total) => {
+          pending = pending.concat(chunk)
+          if (flushTimer === null) flushTimer = setTimeout(() => flush(total), LIVE_MS)
+        },
         onDone: (out) => {
+          if (flushTimer !== null) clearTimeout(flushTimer)
           setResult({ cohorts: out, method, runId })
           setLive(null)
         },
@@ -52,6 +67,7 @@ export function useStressTest(doc: PlanDocument | null, align: StressAlign, infl
     }, DEBOUNCE_MS)
     return () => {
       clearTimeout(timer)
+      if (flushTimer !== null) clearTimeout(flushTimer)
       cancel()
     }
   }, [doc, annual, anchor, inflation, method, trials, blockLength, seed])

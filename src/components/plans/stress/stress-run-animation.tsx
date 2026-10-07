@@ -6,8 +6,10 @@ import { isBroke, type CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** The whole run plays over at least this long, however fast the trials finish (the reveal is part of the point). */
 const PLAYBACK_MS = 2600
-/** How long one trial's line takes to sweep across the chart. */
-const SWEEP_MS = 650
+/** How long one trial's line takes to sweep across the chart (shorter keeps fewer lines in flight at once). */
+const SWEEP_MS = 450
+/** How often the counter updates while lines land: often enough to tick, rarely enough not to re-render each frame. */
+const REPORT_MS = 120
 /** A beat after the last line lands, before the results take over. */
 const HOLD_MS = 350
 /** Settled lines: faint when the money lasted, stronger red when it ran out. */
@@ -113,14 +115,18 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
     const x = (i: number) => pad.left + (i / years) * (width - pad.left - pad.right)
     // Not capped at the top: lines run off the plot (clipped) rather than flattening along its edge.
     const y = (v: number) => height - pad.bottom - (Math.max(0, v) / yTop) * (height - pad.top - pad.bottom)
-    const trace = (c: CanvasRenderingContext2D, values: number[], upTo: number) => {
-      c.beginPath()
+    // Adds a line to the current path (callers stroke many at once: one stroke per colour, not per line).
+    const addLine = (c: CanvasRenderingContext2D, values: number[], upTo: number) => {
       const whole = Math.floor(upTo)
       for (let i = 0; i <= Math.min(whole, values.length - 1); i++) (i === 0 ? c.moveTo : c.lineTo).call(c, x(i), y(values[i]))
       if (whole < values.length - 1) {
         const f = upTo - whole
         c.lineTo(x(whole + f), y(values[whole] + (values[whole + 1] - values[whole]) * f))
       }
+    }
+    const trace = (c: CanvasRenderingContext2D, values: number[], upTo: number) => {
+      c.beginPath()
+      addLine(c, values, upTo)
       c.stroke()
     }
 
@@ -131,7 +137,14 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
     let lastReport = 0
     let doneAt: number | null = null
     let frame = 0
-    const active: { c: CohortResult; born: number }[] = []
+    /** In flight: the trial, when it started, and how it ended (worked out once, not every frame). */
+    const active: { c: CohortResult; born: number; status: "lasted" | "short" | "failed" }[] = []
+    const statusOf = (c: CohortResult) => (isBroke(c) ? "failed" : c.depletedAge !== null ? "short" : "lasted") as "lasted" | "short" | "failed"
+    const landedStyle: Record<"lasted" | "short" | "failed", { color: string; alpha: number }> = {
+      lasted: { color: colors.lasted, alpha: LASTED_ALPHA },
+      short: { color: colors.short, alpha: FAILED_ALPHA },
+      failed: { color: colors.failed, alpha: FAILED_ALPHA },
+    }
 
     const tick = (now: number) => {
       const arrived = trialsRef.current
@@ -139,37 +152,53 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       const all = Math.max(totalRef.current, arrived.length, 1)
       // Spawn on schedule, but never ahead of the trials that have actually finished.
       const due = playback === 0 ? arrived.length : Math.min(arrived.length, Math.floor(((now - start) / playback) * all))
-      for (; spawned < due; spawned++) active.push({ c: arrived[spawned], born: now })
+      for (; spawned < due; spawned++) active.push({ c: arrived[spawned], born: now, status: statusOf(arrived[spawned]) })
 
       ctx.clearRect(0, 0, width, height)
       ctx.drawImage(settled, 0, 0, width, height)
       ctx.lineWidth = 1
+      // Lines that finished this frame land on the settled layer, one stroke per colour.
+      const landing = { lasted: [] as CohortResult[], short: [] as CohortResult[], failed: [] as CohortResult[] }
+      // Lines still sweeping: one path per colour for the lines, one for their heads.
+      const flying = { head: [] as [CohortResult, number][], failed: [] as [CohortResult, number][] }
       for (let k = active.length - 1; k >= 0; k--) {
-        const { c, born } = active[k]
+        const { c, born, status } = active[k]
         const t = instant ? 1 : Math.min(1, (now - born) / sweep)
-        const eased = 1 - Math.pow(1 - t, 3)
-        // Red: net worth hit $0. Amber: the cash ran out with property left. Faint: the money lasted.
-        const failed = isBroke(c)
-        const short = !failed && c.depletedAge !== null
         if (t >= 1) {
-          settledCtx.lineWidth = 1
-          settledCtx.strokeStyle = failed ? colors.failed : short ? colors.short : colors.lasted
-          settledCtx.globalAlpha = failed || short ? FAILED_ALPHA : LASTED_ALPHA
-          trace(settledCtx, c.netWorth, years)
+          landing[status].push(c)
           active.splice(k, 1)
           landed++
-          if (!failed) survived++
+          if (status !== "failed") survived++
           continue
         }
-        const upTo = eased * years
-        ctx.strokeStyle = failed ? colors.failed : colors.head
+        flying[status === "failed" ? "failed" : "head"].push([c, (1 - Math.pow(1 - t, 3)) * years])
+      }
+      settledCtx.lineWidth = 1
+      for (const status of ["lasted", "short", "failed"] as const) {
+        if (landing[status].length === 0) continue
+        settledCtx.strokeStyle = landedStyle[status].color
+        settledCtx.globalAlpha = landedStyle[status].alpha
+        settledCtx.beginPath()
+        for (const c of landing[status]) addLine(settledCtx, c.netWorth, years)
+        settledCtx.stroke()
+      }
+      for (const kind of ["head", "failed"] as const) {
+        const lines = flying[kind]
+        if (lines.length === 0) continue
+        const color = kind === "failed" ? colors.failed : colors.head
+        ctx.strokeStyle = color
+        ctx.fillStyle = color
         ctx.globalAlpha = 0.5
-        trace(ctx, c.netWorth, upTo)
-        const i = Math.min(Math.floor(upTo), c.netWorth.length - 1)
-        ctx.globalAlpha = 1
-        ctx.fillStyle = failed ? colors.failed : colors.head
         ctx.beginPath()
-        ctx.arc(x(upTo), y(c.netWorth[i] ?? 0), 1.8, 0, Math.PI * 2)
+        for (const [c, upTo] of lines) addLine(ctx, c.netWorth, upTo)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+        ctx.beginPath()
+        for (const [c, upTo] of lines) {
+          const i = Math.min(Math.floor(upTo), c.netWorth.length - 1)
+          ctx.moveTo(x(upTo) + 1.8, y(c.netWorth[i] ?? 0))
+          ctx.arc(x(upTo), y(c.netWorth[i] ?? 0), 1.8, 0, Math.PI * 2)
+        }
         ctx.fill()
       }
       if (yTop > 0) {
@@ -182,7 +211,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       }
       ctx.globalAlpha = 1
 
-      if (now - lastReport > 50) {
+      if (now - lastReport > REPORT_MS) {
         lastReport = now
         setShown({ count: landed, survived })
       }
