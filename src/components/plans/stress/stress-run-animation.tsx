@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { fmtSuccess } from "@/components/fire/fire-helpers"
+import { fmtCompact, fmtSuccess } from "@/components/fire/fire-helpers"
 import { isBroke, type CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** The whole run plays over at least this long, however fast the trials finish (the reveal is part of the point). */
@@ -19,8 +19,43 @@ const FAILED_ALPHA = 0.22
 const Y_PERCENTILE = 0.9
 const Y_HEADROOM = 1.2
 
+/** Room on the left for the y-axis's dollar labels, and the plot's top and bottom inset. */
+const AXIS_LEFT = 56
+const PAD_Y = 8
+
+/** Two or three round dollar gridlines under the top of the scale: steps of 1, 2 or 5 × a power of ten. */
+function yTicks(top: number): number[] {
+  const raw = top / 3
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+  const step = ([1, 2, 5, 10].map((m) => m * pow).find((s) => s >= raw) ?? 10 * pow)
+  const ticks: number[] = []
+  for (let v = 0; v < top * 0.95; v += step) ticks.push(v)
+  return ticks
+}
+
+type Status = "lasted" | "short" | "failed"
+const statusOf = (c: CohortResult): Status => (isBroke(c) ? "failed" : c.depletedAge !== null ? "short" : "lasted")
+
+/**
+ * Each outcome's share as whole percents that always add up to 100 (largest remainder: floor them all, then hand the
+ * leftover points to the biggest fractions). An outcome that happened but rounds to zero reads "<1%", and one that
+ * rounds to 100 beside it reads ">99%".
+ */
+function outcomeShares(n: Record<Status, number>): Record<Status, string> {
+  const total = n.lasted + n.short + n.failed
+  const keys: Status[] = ["lasted", "short", "failed"]
+  if (total === 0) return { lasted: "—", short: "—", failed: "—" }
+  const exact = keys.map((k) => (n[k] / total) * 100)
+  const pct = exact.map(Math.floor)
+  const order = keys.map((_, i) => i).sort((a, b) => exact[b] - pct[b] - (exact[a] - pct[a]))
+  for (let left = 100 - pct.reduce((s, v) => s + v, 0), j = 0; left > 0; left--, j++) pct[order[j]]++
+  const label = (k: Status, p: number) => (p === 0 && n[k] > 0 ? "<1%" : p === 100 && n[k] < total ? ">99%" : `${p}%`)
+  return Object.fromEntries(keys.map((k, i) => [k, label(k, pct[i])])) as Record<Status, string>
+}
+
 interface Colors {
   lasted: string
+  grid: string
   failed: string
   short: string
   head: string
@@ -30,7 +65,7 @@ interface Colors {
 function readColors(el: HTMLElement): Colors {
   const css = getComputedStyle(el)
   const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback
-  return { lasted: v("--success", "#1f9d57"), failed: v("--error", "#e5484d"), short: v("--warning", "#b5791a"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
+  return { lasted: v("--success", "#1f9d57"), grid: v("--card-border", "#e7e7ef"), failed: v("--error", "#e5484d"), short: v("--warning", "#b5791a"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
 }
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -72,6 +107,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   // No animation (reduced motion, or the card is hidden and has no size): finish as soon as the run does.
   const staticRef = useRef(false)
   const [shown, setShown] = useState({ count: 0, survived: 0 })
+  const [yTopShown, setYTopShown] = useState(0)
   trialsRef.current = trials
   completeRef.current = complete
   totalRef.current = total
@@ -109,7 +145,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       c.clip()
     }
 
-    const pad = { top: 8, bottom: 8, left: 4, right: 4 }
+    const pad = { top: PAD_Y, bottom: PAD_Y, left: AXIS_LEFT, right: 4 }
     let yTop = 0
     const years = Math.max(1, plan.length - 1)
     const x = (i: number) => pad.left + (i / years) * (width - pad.left - pad.right)
@@ -138,9 +174,8 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
     let doneAt: number | null = null
     let frame = 0
     /** In flight: the trial, when it started, and how it ended (worked out once, not every frame). */
-    const active: { c: CohortResult; born: number; status: "lasted" | "short" | "failed" }[] = []
-    const statusOf = (c: CohortResult) => (isBroke(c) ? "failed" : c.depletedAge !== null ? "short" : "lasted") as "lasted" | "short" | "failed"
-    const landedStyle: Record<"lasted" | "short" | "failed", { color: string; alpha: number }> = {
+    const active: { c: CohortResult; born: number; status: Status }[] = []
+    const landedStyle: Record<Status, { color: string; alpha: number }> = {
       lasted: { color: colors.lasted, alpha: LASTED_ALPHA },
       short: { color: colors.short, alpha: FAILED_ALPHA },
       failed: { color: colors.failed, alpha: FAILED_ALPHA },
@@ -148,13 +183,27 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
 
     const tick = (now: number) => {
       const arrived = trialsRef.current
-      if (yTop === 0 && arrived.length > 0) yTop = yTopFor(arrived, plan)
+      if (yTop === 0 && arrived.length > 0) {
+        yTop = yTopFor(arrived, plan)
+        setYTopShown(yTop)
+      }
       const all = Math.max(totalRef.current, arrived.length, 1)
       // Spawn on schedule, but never ahead of the trials that have actually finished.
       const due = playback === 0 ? arrived.length : Math.min(arrived.length, Math.floor(((now - start) / playback) * all))
       for (; spawned < due; spawned++) active.push({ c: arrived[spawned], born: now, status: statusOf(arrived[spawned]) })
 
       ctx.clearRect(0, 0, width, height)
+      if (yTop > 0) {
+        ctx.strokeStyle = colors.grid
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        for (const v of yTicks(yTop)) {
+          const gy = Math.round(y(v)) + 0.5
+          ctx.moveTo(pad.left, gy)
+          ctx.lineTo(width - pad.right, gy)
+        }
+        ctx.stroke()
+      }
       ctx.drawImage(settled, 0, 0, width, height)
       ctx.lineWidth = 1
       // Lines that finished this frame land on the settled layer, one stroke per colour.
@@ -240,11 +289,12 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   return (
     <div className="relative" aria-live="polite">
       <canvas ref={canvasRef} className="block w-full" style={{ height }} aria-hidden="true" />
+      {yTopShown > 0 && <YAxis top={yTopShown} height={height} />}
       {done ? (
-        <Legend />
+        <Legend trials={trials} />
       ) : (
         <>
-          <div className="pointer-events-none absolute left-0 top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
+          <div style={{ left: AXIS_LEFT }} className="pointer-events-none absolute top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
             <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
             <p className="text-[11px] tabular-nums text-foreground-muted">
               solvent · {counts.count.toLocaleString()}
@@ -260,8 +310,28 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   )
 }
 
-/** Under the finished chart: what each kind of line means. */
-function Legend() {
+/** Dollar labels on the gridlines in the canvas's left gutter, with the axis title running up its edge. */
+function YAxis({ top, height }: { top: number; height: number }) {
+  const at = (v: number) => height - PAD_Y - (v / top) * (height - 2 * PAD_Y)
+  return (
+    <div className="pointer-events-none absolute inset-y-0 left-0" style={{ width: AXIS_LEFT, height }} aria-hidden="true">
+      <span className="absolute inset-y-0 left-0 flex rotate-180 items-center justify-center whitespace-nowrap text-[10px] text-foreground-muted [writing-mode:vertical-rl]">
+        Net worth ($)
+      </span>
+      {yTicks(top).map((v) => (
+        <span key={v} className="absolute right-1.5 -translate-y-1/2 font-data text-[10px] tabular-nums text-foreground-muted" style={{ top: at(v) }}>
+          {fmtCompact(v)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Under the finished chart: what each kind of line means, with each outcome's share of the trials (they don't overlap). */
+function Legend({ trials }: { trials: CohortResult[] }) {
+  const n = { lasted: 0, short: 0, failed: 0 }
+  for (const c of trials) n[statusOf(c)]++
+  const share = outcomeShares(n)
   const swatch = (color: string, label: string, dashed = false) => (
     <span className="inline-flex items-center gap-1.5">
       <span className="inline-block w-4" style={{ borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} aria-hidden="true" />
@@ -270,11 +340,11 @@ function Legend() {
   )
   return (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground-muted">
-      {swatch("var(--success)", "Fully funded plan")}
-      {swatch("var(--warning)", "Portfolio depleted")}
-      {swatch("var(--error)", "Assets exhausted")}
+      {swatch("var(--success)", `Fully funded plan (${share.lasted})`)}
+      {swatch("var(--warning)", `Portfolio depleted, still solvent (${share.short})`)}
+      {swatch("var(--error)", `Assets exhausted (${share.failed})`)}
       {swatch("var(--foreground)", "Your plan (steady returns)", true)}
-      <span>Net worth by age, today&apos;s dollars</span>
+      <span>By age, today&apos;s dollars</span>
     </div>
   )
 }
