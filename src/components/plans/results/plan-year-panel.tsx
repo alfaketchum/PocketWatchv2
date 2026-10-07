@@ -211,6 +211,13 @@ export function PlanYearPanel({ metrics: m, age, year, pinned, onUnpin, colors }
             hint="The IRS minimum from 401(k)s and IRAs, from 73 (75 if born 1960+): last year-end's balance ÷ an IRS life-expectancy factor. Part of Withdrawals; what isn't spent is reinvested."
           />
         )}
+        {!isBasic && m.conversions >= 0.5 && (
+          <Line
+            label="Roth conversions"
+            value={fmtMoney(m.conversions)}
+            hint={`Moved from 401(k)/IRA to Roth: taxed as income (${fmtMoney(m.conversionTax)} of this year's income tax), not spent. Not part of Withdrawals.`}
+          />
+        )}
         {!isBasic && (
           <Line
             label="Withdrawal rate"

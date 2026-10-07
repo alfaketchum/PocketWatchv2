@@ -39,6 +39,8 @@ export const LEDGER_COLUMNS: LedgerColumn[] = [
   { id: "payrollTax", label: "Payroll tax", hint: "Social Security and Medicare on wages (6.2% to the wage base + 1.45%), and self-employment tax", kind: "flow", tone: "neg", value: (r) => -r.payrollTax },
   { id: "earlyPenalty", label: "Early penalty", hint: "10% extra tax on 401(k)/IRA withdrawals before 59½", kind: "flow", tone: "neg", value: (r) => -r.earlyWithdrawalPenalty },
   { id: "required", label: "Required withdrawals", hint: "IRS minimum taken from 401(k)/IRA from 73 (75 if born 1960+); part of Withdrawals", kind: "flow", value: (r) => r.requiredWithdrawals },
+  { id: "conversions", label: "Roth conversions", hint: "Moved from 401(k)/IRA to Roth: taxed as income, not spent (not part of Withdrawn)", kind: "flow", value: (r) => r.conversions },
+  { id: "conversionTax", label: "Conversion tax", hint: "The income tax Roth conversions add this year (part of Income tax)", kind: "flow", tone: "neg", value: (r) => -r.conversionTax },
   { id: "debtPayments", label: "Debt payments", hint: "Loan payments: principal plus interest", kind: "flow", tone: "neg", value: (r) => -r.debtPayments },
   { id: "principal", label: "Principal", hint: "The part of loan payments that pays the balance down", kind: "flow", tone: "neg", value: (r) => -(r.debtPayments - interest(r)) },
   { id: "interest", label: "Interest", hint: "The part of loan payments that is interest", kind: "flow", tone: "neg", value: (r) => -interest(r) },
@@ -80,9 +82,9 @@ export const LEDGER_VIEWS = {
   summary: { label: "Summary", columns: ["income", "taxes", "spending", "debtPayments", "contributions", "withdrawals", "invested", "netWorth"] },
   cashflow: {
     label: "Cash flow",
-    columns: ["income", "received", "splitOut", "withdrawals", "required", "assetSales", "borrowed", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
+    columns: ["income", "received", "splitOut", "withdrawals", "required", "conversions", "assetSales", "borrowed", "spending", "taxes", "debtPayments", "assetPurchases", "contributions", "employerMatch", "shortfall"],
   },
-  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "shortGainsTax", "longGainsTax", "payrollTax", "earlyPenalty", "taxes", "effectiveRate", "realizedGains"] },
+  taxes: { label: "Taxes", columns: ["taxableIncome", "deduction", "incomeTax", "conversionTax", "shortGainsTax", "longGainsTax", "payrollTax", "earlyPenalty", "taxes", "effectiveRate", "realizedGains"] },
   balances: {
     label: "Balances & debt",
     columns: ["growth", "returnRate", "invested", "liquid", "property", "principal", "interest", "debtOwed", "netWorth", "savingsRate", "withdrawalRate"],

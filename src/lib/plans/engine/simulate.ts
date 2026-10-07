@@ -27,12 +27,16 @@ import { propertyYear } from "./engine-property"
 import { realizeTrading } from "./engine-trading"
 import { penalizedAccounts, takeRequired } from "./engine-rmd"
 import { NO_RULE, ruleYear, rulePortfolio, type RuleState } from "./engine-spending-rule"
+import { conversionEntries, convertYear, NO_CONVERSION, type ConversionEntry } from "./engine-conversions"
+import { initialRothLedgers, rothTranches, withInflows, withWithdrawals, type RothLedgers } from "./engine-roth-ledger"
 import { retirementAge } from "../plan-spending-patterns"
 
 /** Differences smaller than this (dollars) aren't worth another pass. */
 const TRUE_UP_MIN = 1
 /** Each pass shrinks the difference by the marginal rate, so a few passes settle it. */
 const MAX_TRUE_UP_PASSES = 6
+/** Conversions sized to a bracket also move with last pass's shortfall draws, so allow a couple more. */
+const MAX_PASSES_WITH_CONVERSIONS = 8
 import { coverDeficit, deposit, depositSurplus, type Holdings } from "./engine-cashflow"
 import { applyTransfers, drawEarmarked, transferEntries, type TransferEntry } from "./engine-education"
 import { applyDeposits, depositEntries, drainInherited, type DepositEntry } from "./engine-inheritance"
@@ -81,6 +85,7 @@ interface Plan {
   deposits: DepositEntry[]
   /** Social Security estimated from earnings records (plus the plan's own salaries), by income id. */
   ssEstimates: Record<string, { pia: number; eligibleYear: number | null }>
+  conversions: ConversionEntry[]
 }
 
 interface State {
@@ -94,6 +99,8 @@ interface State {
   rule: RuleState
   /** Bills the accounts couldn't pay so far, nominal: they pile up as a debt. */
   unpaid: number
+  /** Roth contributions and conversion lots, for the 5-year rule (only kept when the plan converts). */
+  roth: RothLedgers
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -129,6 +136,7 @@ function preparePlan(original: PlanDocument, opts: SimulateOptions): Plan {
     transfers: transferEntries(childTransfers(original), ctx),
     adjustments: adjustmentEntries(doc.adjustments ?? [], ctx),
     deposits: depositEntries(doc.deposits ?? [], ctx),
+    conversions: conversionEntries(doc, ctx),
     ssEstimates: Object.fromEntries(
       doc.incomes.flatMap((i) => {
         const estimate = estimatedPia(doc, i)
@@ -243,7 +251,7 @@ type Flows = ReturnType<typeof yearFlows>
  * (college from a 529), inherited deposits and drawdowns, and finally the surplus or shortfall per
  * the cash-flow rules. `extraTax` is the bracket true-up owed on top of what was charged.
  */
-function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraTax = 0) {
+function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraTax = 0, hint: Hint = NO_HINT) {
   const { doc } = flows
   const inflationFactor = priceIndex(plan.inflation, index)
   const grownState = growHoldings(state.holdings, doc, index, plan.returnFor)
@@ -260,34 +268,64 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
   const drained = drainInherited(doc.accounts, deposits.holdings, year, doc.settings.incomeTaxRate)
   // Required withdrawals are figured on last year-end's balances (before this year's growth).
   const required = takeRequired(doc, state.holdings, drained.holdings, year, doc.settings.incomeTaxRate)
-  holdings = required.holdings
   const { income, expenses, debts, events, incomeTax } = flows
+  const conversion = plan.conversions.length > 0
+    ? convertYear(plan.conversions, required.holdings, {
+        doc, tax: flows.tax, index, year, inflationFactor,
+        prior: {
+          ordinaryWithdrawn: drained.taxable + required.taxable + hint.ordinaryWithdrawn,
+          shortGains: events.saleShortGains + trading.shortGains + hint.shortGains,
+          longGains: events.saleGains + trading.longGains + hint.longGains,
+          realEstateGains: events.saleRealEstateGains,
+        },
+      })
+    : { ...NO_CONVERSION, holdings: required.holdings }
+  holdings = conversion.holdings
   const net =
     income.total - income.employeeContributions - incomeTax - flows.payroll.total - extraTax - trading.tax - expenses.total - debts.paid -
-    events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net + required.net
+    events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net + required.net + conversion.net
+  const tranches = plan.conversions.length > 0 ? rothTranches(withInflows(state.roth, {}, conversion.intoBy, year), doc, year) : {}
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
-  const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor, penalizedAccounts(doc, year)) : null
+  const deficit = net < 0 ? coverDeficit(-net, holdings, doc, inflationFactor, penalizedAccounts(doc, year), tranches) : null
   return {
     holdings: surplus?.holdings ?? deficit?.holdings ?? holdings,
     growth: grownState.growth,
     trading,
     contributionsBy: mergeSums(mergeSums(income.deposits, transfers.byAccount), surplus?.depositsBy ?? {}),
-    withdrawalsBy: mergeSums(mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), required.byAccount), deficit?.withdrawalsBy ?? {}),
+    withdrawalsBy: mergeSums(mergeSums(mergeSums(mergeSums(earmarked.byAccount, drained.byAccount), required.byAccount), deficit?.withdrawalsBy ?? {}), conversion.withheldBy),
     deposits,
     drained,
     required,
     surplusBy: surplus?.depositsBy ?? {},
     shortfallBy: deficit?.withdrawalsBy ?? {},
     deficit,
+    conversion,
   }
 }
 
 type Moved = ReturnType<typeof moveMoney>
 
+/** Shortfall draws from the previous pass: conversions sized to a bracket count them as the year's income. */
+interface Hint {
+  ordinaryWithdrawn: number
+  shortGains: number
+  longGains: number
+}
+
+const NO_HINT: Hint = { ordinaryWithdrawn: 0, shortGains: 0, longGains: 0 }
+
+function hintOf(moved: Moved): Hint {
+  const d = moved.deficit
+  return { ordinaryWithdrawn: d?.ordinaryWithdrawn ?? 0, shortGains: d?.shortGainsRealized ?? 0, longGains: d?.gainsRealized ?? 0 }
+}
+
+const hintMoved = (a: Hint, b: Hint) =>
+  Math.abs(a.ordinaryWithdrawn - b.ordinaryWithdrawn) + Math.abs(a.shortGains - b.shortGains) + Math.abs(a.longGains - b.longGains) >= TRUE_UP_MIN
+
 /** What's taxed this year beyond earned income: withdrawals, and gains from sales, drawdowns and trading. */
 function taxedAmounts(flows: Flows, moved: Moved) {
   return {
-    ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable + moved.required.taxable,
+    ordinaryWithdrawn: (moved.deficit?.ordinaryWithdrawn ?? 0) + moved.drained.taxable + moved.required.taxable + moved.conversion.taxable,
     shortGains: (moved.deficit?.shortGainsRealized ?? 0) + flows.events.saleShortGains + moved.trading.shortGains,
     longGains: (moved.deficit?.gainsRealized ?? 0) + flows.events.saleGains + moved.trading.longGains,
     realEstateGains: flows.events.saleRealEstateGains,
@@ -300,16 +338,22 @@ function taxedAmounts(flows: Flows, moved: Moved) {
  */
 function settleTax(plan: Plan, state: State, index: number, flows: Flows): { moved: Moved; trueUp: number } {
   let trueUp = 0
+  let hint = NO_HINT
   let moved = moveMoney(plan, state, index, flows)
   if (!flows.tax.situation) return { moved, trueUp }
-  for (let pass = 0; pass < MAX_TRUE_UP_PASSES; pass++) {
+  const converts = plan.conversions.length > 0
+  for (let pass = 0; pass < (converts ? MAX_PASSES_WITH_CONVERSIONS : MAX_TRUE_UP_PASSES); pass++) {
     const diff = taxTrueUp(flows.tax, {
       ...taxedAmounts(flows, moved),
-      charged: flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax + flows.events.saleTax + moved.trading.tax,
+      charged:
+        flows.incomeTax + trueUp + (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax + flows.events.saleTax +
+        moved.trading.tax + moved.conversion.tax,
     })
-    if (Math.abs(diff) < TRUE_UP_MIN) break
+    const next = converts ? hintOf(moved) : NO_HINT
+    if (Math.abs(diff) < TRUE_UP_MIN && !hintMoved(hint, next)) break
     trueUp += diff
-    moved = moveMoney(plan, state, index, flows, trueUp)
+    hint = next
+    moved = moveMoney(plan, state, index, flows, trueUp, hint)
   }
   return { moved, trueUp }
 }
@@ -328,7 +372,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   const unpaid = state.unpaid + shortfall
   const debtBalances = unpaid > 0 ? { ...debts.debtBalances, [UNPAID_BILLS_ID]: unpaid } : debts.debtBalances
   const debtsTotal = sum(debtBalances)
-  const withdrawalTax = (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax
+  const { conversion } = moved
+  const withdrawalTax = (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax + conversion.tax
   const kinds = taxesByKind(flows.tax, taxedAmounts(flows, moved), incomeTax + trueUp + withdrawalTax + events.saleTax + moved.trading.tax)
   const row: YearRow = {
     index,
@@ -345,7 +390,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     shortGainsTax: kinds.shortGains,
     longGainsTax: kinds.longGains,
     earnedIncomeTax: kinds.earnedOnly,
-    earlyWithdrawalPenalty: moved.deficit?.penalty ?? 0,
+    earlyWithdrawalPenalty: (moved.deficit?.penalty ?? 0) + conversion.penalty,
     saleTax: events.saleTax,
     tradingTax: moved.trading.tax,
     realizedGains: moved.trading.shortGains + moved.trading.longGains,
@@ -354,7 +399,7 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     splitOut: moved.deposits.splitOut,
     taxableIncome:
       income.taxableIncome + (moved.deficit?.taxableWithdrawn ?? 0) + moved.drained.taxable + moved.required.taxable +
-      moved.trading.shortGains + moved.trading.longGains,
+      moved.trading.shortGains + moved.trading.longGains + conversion.taxable,
     expenses: expenses.total,
     expensesBy: expenses.byId,
     plannedSpending: flows.ruled.planned,
@@ -374,6 +419,10 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     withdrawalsBy: moved.withdrawalsBy,
     requiredWithdrawals: sum(moved.required.byAccount),
     requiredBy: moved.required.byAccount,
+    conversions: conversion.taxable,
+    conversionsBy: conversion.fromBy,
+    conversionsInto: conversion.intoBy,
+    conversionTax: conversion.attributableTax,
     surplusBy: moved.surplusBy,
     shortfallBy: moved.shortfallBy,
     growth: moved.growth,
@@ -392,7 +441,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   }
   const minimum = yearMinimumTax(flows.tax, taxedAmounts(flows, moved))
   const amtCredit = state.amtCredit - (minimum?.creditUsed ?? 0) + (minimum?.creditEarned ?? 0)
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule, unpaid } }
+  const roth = plan.conversions.length > 0 ? withWithdrawals(withInflows(state.roth, moved.contributionsBy, conversion.intoBy, row.year), moved.withdrawalsBy) : state.roth
+  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule, unpaid, roth } }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -434,7 +484,8 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
 
 function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE, unpaid: 0 }
+  const roth = plan.conversions.length > 0 ? initialRothLedgers(plan.doc) : {}
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE, unpaid: 0, roth }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)

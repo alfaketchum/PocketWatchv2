@@ -31,6 +31,8 @@ const FLOW_FIELDS = [
   "contributions",
   "withdrawals",
   "requiredWithdrawals",
+  "conversions",
+  "conversionTax",
   "growth",
   "shortfall",
 ] as const
@@ -61,6 +63,8 @@ export function rowInTodaysDollars(row: YearRow, inflation: Inflation): YearRow 
     employerMatchBy: scaleRecord(row.employerMatchBy, flow),
     withdrawalsBy: scaleRecord(row.withdrawalsBy, flow),
     requiredBy: scaleRecord(row.requiredBy, flow),
+    conversionsBy: scaleRecord(row.conversionsBy, flow),
+    conversionsInto: scaleRecord(row.conversionsInto, flow),
     depositsBy: scaleRecord(row.depositsBy, flow),
     surplusBy: scaleRecord(row.surplusBy, flow),
     shortfallBy: scaleRecord(row.shortfallBy, flow),

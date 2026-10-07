@@ -62,6 +62,9 @@ export interface YearMetrics {
   withdrawals: number
   /** Of `withdrawals`: the IRS minimum from traditional accounts (73 / 75 and up). */
   requiredWithdrawals: number
+  /** Moved from traditional accounts to Roth (not part of `withdrawals`), and the tax that adds. */
+  conversions: number
+  conversionTax: number
   /** Withdrawals over the accounts' start-of-year balance; null when nothing is withdrawn. */
   withdrawalRate: number | null
   taxBalance: TaxBalance
@@ -129,6 +132,8 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     splitOut: row.splitOut,
     withdrawals: row.withdrawals,
     requiredWithdrawals: row.requiredWithdrawals,
+    conversions: row.conversions,
+    conversionTax: row.conversionTax,
     withdrawalRate: row.withdrawals > 0.5 && startBalance > 0 ? row.withdrawals / startBalance : null,
     taxBalance: { cash: layers.cash, taxable: layers.taxable, taxDeferred: layers.taxDeferred, taxFree: layers.taxFree + layers.taxFree529 },
     allocations: allocations(doc, row),

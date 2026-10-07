@@ -67,6 +67,14 @@ export interface YearRow {
   /** Required minimum distributions (included in `withdrawals`): from traditional accounts once the owner reaches 73 / 75. */
   requiredWithdrawals: number
   requiredBy: Record<string, number>
+  /** Moved from traditional accounts to Roth (gross, ordinary income); not part of `withdrawals` or `contributions`. */
+  conversions: number
+  /** Converted by source (traditional) account. */
+  conversionsBy: Record<string, number>
+  /** Reaching each Roth account (less any tax withheld). */
+  conversionsInto: Record<string, number>
+  /** The tax the conversions add (already inside `incomeTax` / `withdrawalTax`; shown for reference). */
+  conversionTax: number
   /** Leftover cash flow deposited per account by the cash-flow rules (buffer top-up included). */
   surplusBy: Record<string, number>
   /** Withdrawals per account made to cover a shortfall (not earmarked 529 draws). */
@@ -136,6 +144,14 @@ export interface PlanSummary {
   endingNetWorth: number
   /** Today's dollars. */
   lifetimeTaxes: number
+  /**
+   * Ending net worth less the tax heirs would owe on the traditional (pre-tax) balances left, at the plan's heirs' tax
+   * rate; today's dollars. What the Roth optimizer maximizes.
+   */
+  afterTaxEndingNetWorth: number
+  /** Roth conversions and required withdrawals over the plan, today's dollars. */
+  lifetimeConversions: number
+  lifetimeRequired: number
   /** Net worth per year in today's dollars, for sparklines. */
   spark: number[]
   /** The inflation the plan uses (a market path's equivalent single rate) and where it comes from. */

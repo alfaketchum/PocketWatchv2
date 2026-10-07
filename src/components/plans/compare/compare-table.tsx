@@ -32,6 +32,14 @@ export const METRICS: Metric[] = [
   },
   { label: "Ending net worth", value: (s) => fmtCompact(s.endingNetWorth), num: (s) => s.endingNetWorth, fmtDelta: moneyDelta, better: "higher", money: true },
   {
+    label: "After-tax net worth",
+    value: (s) => fmtCompact(s.afterTaxEndingNetWorth ?? s.endingNetWorth),
+    num: (s) => s.afterTaxEndingNetWorth ?? s.endingNetWorth,
+    fmtDelta: moneyDelta,
+    better: "higher",
+    money: true,
+  },
+  {
     label: "Funded through",
     value: (s) => (s.depletedAge === null ? `Age ${s.endAge} (full plan)` : s.brokeAge !== null ? `Age ${s.depletedAge} (assets exhausted at ${s.brokeAge})` : `Age ${s.depletedAge}`),
     num: (s) => s.depletedAge ?? s.endAge,

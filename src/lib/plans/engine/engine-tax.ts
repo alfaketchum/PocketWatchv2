@@ -125,7 +125,7 @@ export interface TaxedAmounts {
   charged: number
 }
 
-function finalBase(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): TaxBase {
+export function finalBase(tax: YearTax, amounts: Omit<TaxedAmounts, "charged">): TaxBase {
   return taxBase({
     ordinary: tax.earnedOrdinary + amounts.ordinaryWithdrawn,
     shortGains: amounts.shortGains,

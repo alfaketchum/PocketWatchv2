@@ -1,6 +1,7 @@
 import { DEFAULT_WITHDRAWAL_ORDER, SURPLUS_OVERFLOW_ORDER } from "../plan-constants"
 import type { PlanAccount, PlanDocument, TaxTreatment } from "../plan-types"
 import { EARLY_WITHDRAWAL_PENALTY } from "../tax/retirement-rules-2026"
+import type { RothTranche } from "./engine-roth-ledger"
 
 /** Account balances and taxable cost basis, keyed by account id. */
 export interface Holdings {
@@ -151,10 +152,48 @@ export interface DeficitResult {
   shortfall: number
 }
 
+interface DeficitPass {
+  account: PlanAccount
+  /** Left in the account by this pass (the protected buffer). */
+  keep: number
+  /** Most this pass takes (a Roth tranche); Infinity for the rest of the account. */
+  cap: number
+  penaltyRate: number
+}
+
+/**
+ * Roth accounts with conversions still seasoning come out in tranches: penalty-free money first, the young
+ * conversions (10%) after, then earnings. With `avoidEarly` the penalized tranche waits until the end.
+ */
+function rothPasses(account: PlanAccount, tranche: RothTranche, avoidEarly: boolean): { now: DeficitPass[]; last: DeficitPass[] } {
+  const free = { account, keep: 0, cap: tranche.free, penaltyRate: 0 }
+  const young = { account, keep: 0, cap: tranche.penalized, penaltyRate: EARLY_WITHDRAWAL_PENALTY }
+  const earnings = { account, keep: 0, cap: Infinity, penaltyRate: 0 }
+  return avoidEarly ? { now: [free], last: [young, earnings] } : { now: [free, young, earnings], last: [] }
+}
+
+function deficitPasses(doc: PlanDocument, penalized: ReadonlySet<string>, tranches: Record<string, RothTranche>, buffer: PlanAccount | null, reserve: number): DeficitPass[] {
+  const avoidEarly = doc.cashFlow.avoidEarlyPenalty !== false
+  const now: DeficitPass[] = []
+  const last: DeficitPass[] = []
+  for (const account of withdrawalSequence(doc, penalized)) {
+    const tranche = tranches[account.id]
+    if (tranche) {
+      const roth = rothPasses(account, tranche, avoidEarly)
+      now.push(...roth.now)
+      last.push(...roth.last)
+      continue
+    }
+    const penaltyRate = penalized.has(account.id) ? EARLY_WITHDRAWAL_PENALTY : 0
+    now.push({ account, keep: account.id === buffer?.id ? reserve : 0, cap: Infinity, penaltyRate })
+  }
+  return [...now, ...last, ...(buffer && reserve > 0 ? [{ account: buffer, keep: 0, cap: Infinity, penaltyRate: 0 }] : [])]
+}
+
 /**
  * Cover `need` (after tax) by withdrawing in order, grossing each withdrawal up for its tax (and the 10% penalty on
- * `penalized` accounts). With a protected buffer, the buffer account first gives only what's above the buffer; the
- * buffer itself is spent last, once every other account is empty.
+ * `penalized` accounts and on Roth conversions still seasoning, per `tranches`). With a protected buffer, the buffer
+ * account first gives only what's above the buffer; the buffer itself is spent last, once every other account is empty.
  */
 export function coverDeficit(
   need: number,
@@ -162,13 +201,11 @@ export function coverDeficit(
   doc: PlanDocument,
   inflationFactor: number,
   penalized: ReadonlySet<string> = new Set(),
+  tranches: Record<string, RothTranche> = {},
 ): DeficitResult {
   const buffer = doc.settings.protectBuffer ? bufferAccount(doc) : null
   const reserve = buffer ? doc.settings.cashBuffer * inflationFactor : 0
-  const passes: { account: PlanAccount; keep: number }[] = [
-    ...withdrawalSequence(doc, penalized).map((account) => ({ account, keep: account.id === buffer?.id ? reserve : 0 })),
-    ...(buffer && reserve > 0 ? [{ account: buffer, keep: 0 }] : []),
-  ]
+  const passes = deficitPasses(doc, penalized, tranches, buffer, reserve)
   let left = need
   let current = holdings
   let withdrawalsBy: Record<string, number> = {}
@@ -177,10 +214,9 @@ export function coverDeficit(
   let gainsRealized = 0
   let shortGainsRealized = 0
   let penalty = 0
-  for (const { account, keep } of passes) {
+  for (const { account, keep, cap, penaltyRate } of passes) {
     if (left <= 0) break
-    const balance = (current.balances[account.id] ?? 0) - keep
-    const penaltyRate = penalized.has(account.id) ? EARLY_WITHDRAWAL_PENALTY : 0
+    const balance = Math.min((current.balances[account.id] ?? 0) - keep, cap)
     const rate = withdrawalTaxRate(account, current, doc) + penaltyRate
     if (balance <= 0 || rate >= 1) continue
     const net = Math.min(left, balance * (1 - rate))

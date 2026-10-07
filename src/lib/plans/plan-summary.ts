@@ -7,6 +7,7 @@ import { expandPlan } from "./plan-expand"
 import { homeEquity } from "./plan-home-fallback"
 import { isBrokeYear } from "./stress/stress-test"
 import { UNPAID_BILLS_ID } from "./plan-constants"
+import { heirsTaxRate } from "./plan-conversions"
 
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
@@ -34,6 +35,8 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
   const retireRow = retireIndex !== null && retireIndex > 0 && retireIndex <= rows.length ? rows[retireIndex - 1] : null
   const last = rows[rows.length - 1]
   const equity = depleted ? homeEquity(expandPlan(doc), depleted) : 0
+  const endingNetWorth = last ? last.netWorth : projection.startNetWorth
+  const traditionalLeft = last ? doc.accounts.filter((a) => a.taxTreatment === "traditional").reduce((s, a) => s + (last.balances[a.id] ?? 0), 0) : 0
   return {
     retirementYear: retireIndex === null ? null : settings.startYear + retireIndex,
     retirementAge: retireIndex === null ? null : startAge + retireIndex,
@@ -48,8 +51,11 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     homeSales: (projection.homeSales ?? []).map((s) => ({ name: s.name, year: s.year, age: startAge + s.index })),
     endYear: last ? last.year : settings.startYear,
     endAge: startAge + rows.length,
-    endingNetWorth: last ? last.netWorth : projection.startNetWorth,
+    endingNetWorth,
     lifetimeTaxes: rows.reduce((s, r) => s + rowTaxes(r), 0),
+    afterTaxEndingNetWorth: endingNetWorth - Math.max(0, traditionalLeft) * heirsTaxRate(settings),
+    lifetimeConversions: rows.reduce((s, r) => s + r.conversions, 0),
+    lifetimeRequired: rows.reduce((s, r) => s + r.requiredWithdrawals, 0),
     spark: rows.map((r) => r.netWorth),
     inflation: settings.inflation,
     inflationMode: settings.inflationMode ?? "custom",

@@ -21,6 +21,8 @@ const LAST_TABLE_AGE = 120
 
 /** The 10% additional tax on traditional withdrawals before 59½. */
 export const EARLY_WITHDRAWAL_PENALTY = 0.1
+/** Converted money withdrawn from a Roth within 5 years (counted by tax year) before 59½ pays the 10% too (§408A(d)(3)(F)). */
+export const CONVERSION_SEASONING_YEARS = 5
 const PENALTY_FREE_AGE = 59
 /** Born in the first half of the year: 59½ is reached in the year they turn 59. */
 const HALF_YEAR_MONTH = 6
