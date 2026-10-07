@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useParams } from "next/navigation"
 import { inflationOf } from "@/lib/plans/plan-inflation"
 import { useMemo } from "react"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
@@ -27,6 +29,8 @@ function exampleYears(rows: YearRow[]): { surplus: YearRow | null; shortfall: Ye
  */
 export function CashFlowEditor(props: PlanEditorProps) {
   const { doc } = props
+  const planId = useParams<{ id?: string }>()?.id
+  const conversions = (doc.conversions ?? []).length
   const examples = useMemo(
     () => exampleYears(simulatePlan(doc).rows.map((r) => rowInTodaysDollars(r, inflationOf(doc.settings)))),
     [doc],
@@ -38,6 +42,15 @@ export function CashFlowEditor(props: PlanEditorProps) {
         a <span className="text-success font-medium">surplus</span> or a <span className="text-error font-medium">deficit</span>.
       </p>
       <CashBufferEditor {...props} />
+      {planId && (
+        <Link href={`/plans/${planId}/roth`} className="flex items-center justify-between gap-3 rounded-xl border border-card-border px-4 py-3 text-xs hover:border-card-border-hover">
+          <span className="text-foreground">
+            <span className="font-medium">Roth conversions</span>
+            <span className="text-foreground-muted"> · {conversions === 0 ? "none yet" : `${conversions} rule${conversions === 1 ? "" : "s"}`}</span>
+          </span>
+          <span className="text-primary">Open the Roth page</span>
+        </Link>
+      )}
       <div className="grid gap-8 lg:grid-cols-2">
         <SurplusWaterfall {...props} example={examples.surplus} />
         <ShortfallWaterfall {...props} example={examples.shortfall} />

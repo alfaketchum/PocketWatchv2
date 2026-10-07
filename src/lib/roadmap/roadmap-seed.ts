@@ -144,7 +144,7 @@ export const ROADMAP_SEED: RoadmapSeed[] = [
     summary: "Roth conversions by bracket or amount and drawdown up to a tax bracket, with an optimizer.",
     demand: "238 · 92 · 70 · 333 Optimizers (all shipped Apr 2026)",
     plStatus: "Shipped",
-    ourStatus: "Tax brackets exist; no conversions",
+    ourStatus: "Conversion rules (fixed, bracket, income target, convert all; IRMAA and 0% gains caps; 5-year rule) and an optimizer on the Roth page",
     effort: "L",
   },
   {

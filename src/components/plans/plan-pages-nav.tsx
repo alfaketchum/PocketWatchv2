@@ -30,6 +30,13 @@ const PLAN_PAGES: PlanPage[] = [
     hint: "Each loan's amortization, and what paying extra, investing the difference or a shorter loan does to your plan",
     advanced: true,
   },
+  {
+    path: "roth",
+    label: "Roth",
+    icon: "conversion_path",
+    hint: "Roth conversions: rules that move traditional money to Roth, what they save, and an optimizer that finds the best",
+    advanced: true,
+  },
   { path: "stress", label: "Stress test", icon: "thunderstorm", hint: "Your plan through 500 markets built from history since 1871, crashes and stagflation included", advanced: true },
 ]
 

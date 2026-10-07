@@ -107,7 +107,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
           "**You set, with a partner**: who owns each 401(k)/IRA (Accounts › Owner), so it follows the right person's age.",
           "**Where to look**: a marker on the chart where they start, \"Required withdrawals\" in the side panel and the ledger.",
           "**Spending that flexes**: Expenses › Spending rule lets retirement spending follow your portfolio (guardrails, a % of it, or the CAPE rule). The stress test then shows how deep the cuts get in bad markets.",
-          "**Tip**: big required withdrawals can push you into a higher bracket in your 70s. Drawing some pre-tax money earlier (in lower-income years) can even this out; Roth conversions aren't modeled yet.",
+          "**Tip**: big required withdrawals can push you into a higher bracket in your 70s. Converting some to Roth in lower-income years evens this out: the plan's **Roth** page has conversion rules and an optimizer that finds the best strategy.",
           "**No required withdrawals** from Roth accounts or HSAs.",
         ],
       },
@@ -141,7 +141,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
       {
         kind: "list",
         items: [
-          "Roth conversions; Medicare IRMAA surcharges; HSA medical-spending rules (HSA withdrawals are treated as medical, tax-free); Roth's 5-year rule.",
+          "Medicare IRMAA surcharges (IRMAA tiers can cap Roth conversions, but the surcharges themselves aren't charged); HSA medical-spending rules (HSA withdrawals are treated as medical, tax-free); the 5-year rule on Roth earnings (the one on conversions is modeled).",
           "Tax law is 2026's, carried forward. Scheduled changes already in the law are included; future laws aren't.",
           "The exact formulas, sources and every figure we keep up to date are on **How it's calculated**.",
         ],

@@ -91,6 +91,18 @@ export const PLAN_SECTIONS: MethodSection[] = [
         kind: "text",
         text: "**Required minimum distributions**: from the year the account's owner reaches 73 (75 if born in 1960 or later), each of their traditional 401(k)s and IRAs pays out at least last year-end's balance ÷ the IRS Uniform Lifetime factor for their age (26.5 at 73, 24.6 at 75, 12.2 at 90; IRS Pub 590-B). It's taxed as income and goes into the year's cash flow: it pays spending first, and whatever isn't needed is saved by the surplus rules. Roth, HSA and inherited accounts have none. With a partner, each 401(k)/IRA follows its owner's age (Owner on the account).",
       },
+      {
+        kind: "text",
+        text: "**Roth conversions** (the plan's Roth page) run right after the year's required withdrawals, which can't be converted and count toward any bracket being filled. Each rule moves money from the owner's traditional accounts (pro rata) to their Roth every year in its range: a fixed amount, enough to fill a federal bracket or reach a taxable-income target, or an even share of what's left so it's all converted by the end. Bracket and income amounts are found on the year's exact tax (taxable Social Security, deductions and their phase-outs included), and two caps can hold a rule back: staying under a Medicare IRMAA tier from 63 (premiums use income from two years earlier) and keeping long-term gains in the 0% bracket. The conversion is taxed as income that year; the tax comes from cash flow, or is withheld from the conversion, in which case the withheld part counts as a withdrawal and pays the 10% penalty before 59½.",
+      },
+      {
+        kind: "text",
+        text: "**The Roth 5-year rule on conversions**: each year's conversion is its own lot. Roth withdrawals come out contributions first, then conversions oldest first, then earnings; before 59½, converted money withdrawn within 5 years pays the 10% penalty, and the shortfall order uses it last (like a 401(k) before 59½). Assumed: a Roth's balance at plan start is all contributions, and earnings come out tax- and penalty-free.",
+      },
+      {
+        kind: "text",
+        text: "**After-tax net worth** (used by the Roth optimizer and Compare) is ending net worth less the tax heirs would pay on what's left in traditional accounts, at the heirs' tax rate on the Roth page (24% unless changed). The optimizer tries a couple of hundred strategies over several windows, keeps those that don't make the money run out sooner, fine-tunes the best and ranks them on it.",
+      },
     ],
   },
   {
