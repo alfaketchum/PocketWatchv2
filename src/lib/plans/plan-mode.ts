@@ -71,7 +71,7 @@ const CHECKS: Check[] = [
     label: "Home & vehicle details",
     tab: "assets",
     inUse: (d) =>
-      own(d.assets).some((a) => !!a.rental || !!a.fallback || !!a.replaceEveryYears || a.acquired === "received" || a.costBasis != null),
+      own(d.assets).some((a) => !!a.rental || (!!a.fallback && a.fallback.then !== "keep") || !!a.replaceEveryYears || a.acquired === "received" || a.costBasis != null),
   },
   { key: "heloc", label: "Home equity line", tab: "assets", inUse: (d) => d.debts.some((x) => x.kind === "heloc") },
   { key: "cashBuffer", label: "Cash buffer", tab: "cashflow", inUse: (d) => d.settings.cashBuffer !== DEFAULT_CASH_BUFFER || d.settings.bufferAccountId !== null || !d.settings.protectBuffer },

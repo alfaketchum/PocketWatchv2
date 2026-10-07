@@ -9,7 +9,8 @@ import { runCohort, summarize } from "@/lib/plans/stress/stress-test"
 
 const NOW = new Date(2026, 0, 15)
 
-const home = (fallback?: HomeFallback, extra: Partial<PlanAsset> = {}): PlanAsset => ({
+/** With no backup plan given, the home is kept (left unset, a lived-in home would sell and rent). */
+const home = (fallback: HomeFallback = { then: "keep", monthlyRent: 0, price: 0 }, extra: Partial<PlanAsset> = {}): PlanAsset => ({
   id: "h",
   name: "Home",
   kind: "home",
@@ -20,7 +21,7 @@ const home = (fallback?: HomeFallback, extra: Partial<PlanAsset> = {}): PlanAsse
   costBasis: 100_000,
   primaryResidence: true,
   runningCosts: [],
-  ...(fallback ? { fallback } : {}),
+  fallback,
   ...extra,
 })
 

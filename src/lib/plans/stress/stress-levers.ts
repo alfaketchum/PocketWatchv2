@@ -5,7 +5,7 @@
 
 import { RETIREMENT_MILESTONE_ID } from "../plan-constants"
 import { livesIn } from "../plan-asset-costs"
-import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
+import { defaultFallback, effectiveFallback, fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
 import { ageAtStart, resolveRange, resolveTiming, timingContext } from "../plan-timing"
 import type { AccountMix, PlanAccount, PlanDocument, PlanIncome } from "../plan-types"
 import { claimFactor, SS_EARLIEST_AGE, SS_LATEST_AGE, yearlyBenefit } from "../social-security"
@@ -138,11 +138,8 @@ export function claimSocialSecurityAt(doc: PlanDocument, age: number): PlanDocum
   return { ...doc, incomes: doc.incomes.map((i) => (i.id === ss.income.id ? next : i)) }
 }
 
-/** Rent at about 0.4% of the home's value a month, as the stress test setup guesses. */
-const RENT_PER_VALUE = 0.004
-
 /** Homes the plan keeps with no backup plan (the ones "sell if the money runs out" would change). */
-export const homesWithoutBackup = (doc: PlanDocument) => fallbackHomes(doc).filter((h) => !h.fallback && plannedSaleIndex(doc, h) === null)
+export const homesWithoutBackup = (doc: PlanDocument) => fallbackHomes(doc).filter((h) => !effectiveFallback(h, doc) && plannedSaleIndex(doc, h) === null)
 
 /** Every kept home with no backup plan sells if the money runs out: you rent after selling the one you live in; a
  *  second home or a rental is just sold. */
@@ -152,7 +149,7 @@ export function sellHomesIfNeeded(doc: PlanDocument): PlanDocument {
   return {
     ...doc,
     assets: doc.assets.map((a) =>
-      ids.has(a.id) ? { ...a, fallback: { then: livesIn(a) ? ("rent" as const) : ("sell" as const), monthlyRent: livesIn(a) ? Math.round(a.value * RENT_PER_VALUE) : 0, price: 0 } } : a,
+      ids.has(a.id) ? { ...a, fallback: defaultFallback(a, livesIn(a) ? "rent" : "sell", doc) } : a,
     ),
   }
 }

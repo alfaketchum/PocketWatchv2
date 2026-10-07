@@ -1,12 +1,44 @@
-import { typicalRunningCosts } from "./plan-asset-costs"
+import { livesIn, typicalRunningCosts } from "./plan-asset-costs"
 import { resolveRange, timingContext } from "./plan-timing"
-import type { HomeSale, PlanAsset, PlanDocument, PlanExpense, Timing, YearRow } from "./plan-types"
+import type { HomeFallback, HomeSale, PlanAsset, PlanDocument, PlanExpense, Timing, YearRow } from "./plan-types"
 
 /** A year counts as running out when this much (or more) spending goes unfunded. */
 export const SHORTFALL = 0.5
 /** Suffixes of what a backup plan adds (generated at simulation time, never stored). */
 export const FALLBACK_RENT = "~fallback-rent"
 export const FALLBACK_HOME = "~fallback-home"
+
+/** First guesses: rent at about 0.4% of the home's value a month, or a smaller home at 60% of its value. */
+const RENT_PER_VALUE = 0.004
+const SMALLER_SHARE = 0.6
+const ROUND = 10_000
+
+/** A backup plan that sells the home (not "keep"). */
+export type ActiveFallback = HomeFallback & { then: Exclude<HomeFallback["then"], "keep"> }
+
+/**
+ * What the plan already spends on housing a month: its recurring Housing expenses (rent before buying, an HOA), in
+ * today's dollars. Null when it has none.
+ */
+export function planHousingRent(doc: PlanDocument): number | null {
+  const yearly = doc.expenses.filter((e) => e.category === "Housing" && !e.oneTime).reduce((sum, e) => sum + e.amount, 0)
+  return yearly > 0 ? Math.round(yearly / 12) : null
+}
+
+/** A backup plan's first-guess amounts: rent at the plan's Housing costs (else about 0.4% of the home's value a month), a smaller home at 60%. */
+export function defaultFallback(home: PlanAsset, then: HomeFallback["then"], doc: PlanDocument): HomeFallback {
+  const rent = planHousingRent(doc) ?? home.value * RENT_PER_VALUE
+  return { then, monthlyRent: Math.round(rent), price: Math.round((home.value * SMALLER_SHARE) / ROUND) * ROUND }
+}
+
+/**
+ * The backup plan a home actually has: the one chosen ("keep" is none), or for a home you live in with no choice made,
+ * sell it and rent (at the plan's Housing costs, else about 0.4% of its value a month).
+ */
+export function effectiveFallback(home: PlanAsset, doc: PlanDocument): ActiveFallback | null {
+  const chosen = home.fallback ?? (livesIn(home) ? defaultFallback(home, "rent", doc) : null)
+  return chosen && chosen.then !== "keep" ? (chosen as ActiveFallback) : null
+}
 
 /** The plan's own homes that can have a backup plan (not a later home a replacement cycle adds). */
 export const fallbackHomes = (doc: PlanDocument): PlanAsset[] => doc.assets.filter((a) => a.kind === "home" && !a.replacementOf)
@@ -27,7 +59,7 @@ export function homeToSellAt(doc: PlanDocument, index: number): { home: PlanAsse
     const range = resolveRange(home.start, home.end, ctx)
     if (Math.max(0, range.start) > index || index >= range.end) continue
     if (plannedSaleIndex(doc, home, ctx) !== null) return { home, early: true }
-    if (home.fallback) return { home, early: false }
+    if (effectiveFallback(home, doc)) return { home, early: false }
   }
   return null
 }
@@ -54,9 +86,9 @@ export function withPlannedSaleEarly(doc: PlanDocument, home: PlanAsset, index: 
  */
 export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number): { doc: PlanDocument; sale: HomeSale } {
   const year = doc.settings.startYear + index
-  const fallback = home.fallback!
+  const fallback = effectiveFallback(home, doc)!
   const when = { type: "year" as const, year }
-  const assets = doc.assets.map((a) => (a.id === home.id ? { ...a, end: when, fallback: undefined } : a))
+  const assets = doc.assets.map((a) => (a.id === home.id ? { ...a, end: when, fallback: { ...fallback, then: "keep" as const } } : a))
   const rent: PlanExpense = {
     id: `${home.id}${FALLBACK_RENT}`,
     name: `Rent after selling ${home.name}`,
@@ -77,6 +109,8 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
     end: { type: "planEnd" },
     financing: { mode: "cash", downShare: 1, rate: 0, termYears: 1 },
     runningCosts: typicalRunningCosts("home", doc.settings.state),
+    // The backup plan's own home is never sold in turn.
+    fallback: { then: "keep", monthlyRent: 0, price: 0 },
     ...(home.primaryResidence !== undefined ? { primaryResidence: home.primaryResidence } : {}),
   }
   const next =

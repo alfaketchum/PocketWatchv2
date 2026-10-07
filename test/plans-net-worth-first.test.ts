@@ -21,6 +21,7 @@ const home = (value: number): PlanAsset => ({
   acquired: "received",
   primaryResidence: true,
   runningCosts: [],
+  fallback: { then: "keep", monthlyRent: 0, price: 0 },
 })
 
 /** Age 60 to 80: $100k in the accounts, $50k a year of spending, no income, a paid-off home; no taxes or inflation. */

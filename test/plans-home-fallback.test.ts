@@ -3,16 +3,18 @@ import assert from "node:assert/strict"
 import { simulatePlan } from "@/lib/plans/engine/simulate"
 import { blankPlanDocument } from "@/lib/plans/plan-constants"
 import { applyDispose } from "@/lib/plans/plan-dispose"
-import { plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
+import { effectiveFallback, plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import { summarizePlan } from "@/lib/plans/plan-summary"
 import type { HomeFallback, PlanDocument } from "@/lib/plans/plan-types"
 
 const SHORT = 0.5
 /** Home sales only happen under stress. */
 const STRESS = { homeFallbacks: true }
+const KEEP: HomeFallback = { then: "keep", monthlyRent: 0, price: 0 }
 
 /** $100k in the bank, $50k a year of spending, no income, a paid-off $500k home; no inflation, no taxes, 2026 start. */
-function plan(fallback?: HomeFallback): PlanDocument {
+/** With no backup plan given, the home is kept (a deliberate Keep; left unset, a lived-in home would sell and rent). */
+function plan(fallback: HomeFallback = KEEP): PlanDocument {
   const base = blankPlanDocument(new Date(2026, 0, 15), 60)
   return {
     ...base,
@@ -20,7 +22,7 @@ function plan(fallback?: HomeFallback): PlanDocument {
     incomes: [],
     expenses: [{ id: "e", name: "Living", category: "Living", amount: 50_000, growth: null, start: { type: "planStart" }, end: { type: "planEnd" }, oneTime: false }],
     accounts: [{ ...base.accounts[0], balance: 100_000, returnRate: 0 }],
-    assets: [{ id: "h", name: "Home", kind: "home", value: 500_000, appreciation: 0, start: { type: "planStart" }, end: { type: "planEnd" }, costBasis: 100_000, primaryResidence: true, runningCosts: [], ...(fallback ? { fallback } : {}) }],
+    assets: [{ id: "h", name: "Home", kind: "home", value: 500_000, appreciation: 0, start: { type: "planStart" }, end: { type: "planEnd" }, costBasis: 100_000, primaryResidence: true, runningCosts: [], fallback }],
     debts: [],
   }
 }
@@ -71,7 +73,7 @@ test("a backup plan that isn't needed never fires", () => {
   const rich = { ...plan({ then: "rent", monthlyRent: 1_000, price: 0 }), accounts: [{ ...plan().accounts[0], balance: 5_000_000 }] }
   const p = simulatePlan(rich, STRESS)
   assert.equal(p.homeSales, undefined)
-  assert.deepEqual(p.rows, simulatePlan({ ...rich, assets: rich.assets.map((a) => ({ ...a, fallback: undefined })) }).rows)
+  assert.deepEqual(p.rows, simulatePlan({ ...rich, assets: rich.assets.map((a) => ({ ...a, fallback: KEEP })) }).rows)
 })
 
 const downsizeIn = (doc: PlanDocument, year: number) =>
@@ -109,4 +111,19 @@ test("sell it: a second home is sold when the money runs out, and nothing replac
   const after = p.rows.find((r) => r.year === 2030)!
   assert.equal(after.expenses, 50_000, "no rent added")
   assert.ok(!Object.keys(after.assetValues).some((id) => id.endsWith("~fallback-home")), "no new home")
+})
+
+test("a lived-in home with no choice made sells and rents by default, at the plan's Housing costs", () => {
+  const base = plan()
+  const unset = { ...base, assets: base.assets.map(({ fallback: _, ...a }) => a) }
+  const withRent = { ...unset, expenses: [...unset.expenses, { id: "hoa", name: "HOA", category: "Housing", amount: 24_000, growth: null, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, oneTime: false }] }
+  assert.deepEqual(effectiveFallback(withRent.assets[0], withRent), { then: "rent", monthlyRent: 2_000, price: 300_000 })
+  assert.equal(effectiveFallback(unset.assets[0], unset)!.monthlyRent, 2_000, "no Housing costs: about 0.4% of $500k")
+  assert.equal(simulatePlan(unset, STRESS).homeSales?.length, 1)
+})
+
+test("a Keep you chose is never replaced by the default", () => {
+  const kept = plan()
+  assert.equal(effectiveFallback(kept.assets[0], kept), null)
+  assert.equal(simulatePlan(kept, STRESS).homeSales, undefined)
 })

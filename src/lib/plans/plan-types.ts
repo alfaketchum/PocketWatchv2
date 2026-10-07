@@ -491,8 +491,11 @@ export interface PlanDocument {
 
 /** If the accounts run dry, sell this home that year, then rent or buy a smaller one (today's dollars). */
 export interface HomeFallback {
-  /** After the sale: rent, buy a smaller home with cash, or nothing (a second home or a rental). */
-  then: "rent" | "smaller" | "sell"
+  /**
+   * After the sale: rent, buy a smaller home with cash, or nothing (a second home or a rental). "keep" never sells it,
+   * and is stored so a deliberate Keep isn't replaced by the default (a home you live in sells and rents).
+   */
+  then: "keep" | "rent" | "smaller" | "sell"
   monthlyRent: number
   price: number
 }

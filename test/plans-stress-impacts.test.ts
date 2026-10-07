@@ -91,14 +91,16 @@ test("the biggest future purchases are each skipped; homes owned now and inherit
 test("homes kept with no backup plan try selling if the money runs out; sold or covered homes don't", () => {
   const doc = plan({
     assets: [
-      asset("kept", { name: "Home" }),
+      asset("kept", { name: "Home", fallback: { then: "keep", monthlyRent: 0, price: 0 } }),
       asset("covered", { name: "Cabin", fallback: { then: "rent", monthlyRent: 1_000, price: 0 } }),
       asset("sold", { name: "Condo", end: { type: "year", year: 2035 } }),
     ],
   })
   const sell = impactVariants(doc).find((v) => v.key === "sell-homes")!
   assert.equal(sell.label, "Sell Home if the portfolio is depleted")
-  assert.deepEqual(sell.doc.assets.find((a) => a.id === "kept")!.fallback, { then: "rent", monthlyRent: 2_000, price: 0 })
+  const kept = sell.doc.assets.find((a) => a.id === "kept")!.fallback!
+  assert.equal(kept.then, "rent")
+  assert.equal(kept.monthlyRent, 2_000)
   assert.equal(sell.doc.assets.find((a) => a.id === "sold")!.fallback, undefined)
 })
 

@@ -97,7 +97,7 @@ export interface HomeSale {
   index: number
   year: number
   /** What came after: the backup plan's rent or smaller home, or the plan's own sale brought forward. */
-  then: HomeFallback["then"] | "asPlanned"
+  then: Exclude<HomeFallback["then"], "keep"> | "asPlanned"
   /** A planned sale brought forward: the year the plan had it. */
   plannedYear?: number
 }
