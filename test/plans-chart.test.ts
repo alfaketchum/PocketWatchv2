@@ -164,3 +164,21 @@ test("debtPoints: each loan's balance at year end, positive, with the total owed
   assert.equal(points[0].owed, 6_000)
   assert.equal(points[1].car, 0)
 })
+
+test("chartMilestones marks where Roth conversions start and, when they stop early, their last year", () => {
+  const base = blankPlanDocument(new Date(2026, 0, 15), 60)
+  const plan = {
+    ...base,
+    settings: { ...base.settings, taxMode: "brackets" as const, inflation: 0, endAge: 80 },
+    accounts: [
+      { id: "ira", name: "IRA", taxTreatment: "traditional" as const, balance: 500_000, costBasis: null, returnRate: 0, owner: null, source: null },
+      { id: "roth", name: "Roth", taxTreatment: "roth" as const, balance: 0, costBasis: null, returnRate: 0, owner: null, source: null },
+    ],
+    conversions: [{
+      id: "c", name: "Convert", mode: "fixed" as const, amount: 50_000, amountBasis: "nominal" as const, start: { type: "year" as const, year: 2028 },
+      end: { type: "year" as const, year: 2031 }, sourceAccountIds: ["ira"], destAccountId: "roth", caps: {}, payTaxFrom: "cashFlow" as const,
+    }],
+  }
+  const marks = chartMilestones(plan, simulatePlan(plan)).filter((m) => m.kind === "conversion")
+  assert.deepEqual(marks.map((m) => [m.year, m.age]), [[2028, 62], [2030, 64]])
+})

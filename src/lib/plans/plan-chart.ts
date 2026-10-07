@@ -65,7 +65,7 @@ export interface ChartMilestone {
   /** The milestone's id; empty for "money runs out". */
   id: string
   name: string
-  kind: MilestoneKind | "payoff" | "depleted" | "broke" | "rmd"
+  kind: MilestoneKind | "payoff" | "depleted" | "broke" | "rmd" | "conversion"
   icon?: string
   age: number
   year: number
@@ -103,6 +103,28 @@ function requiredStartMarks(doc: PlanDocument, projection: PlanProjection, age0:
   })
 }
 
+const CONVERSION_ICON = "conversion_path"
+
+/**
+ * Where each Roth conversion rule first converts and, if it stops before the plan ends, its last year. A rule that
+ * never converts (nothing left, or no room in the bracket) gets no marks.
+ */
+function conversionMarks(doc: PlanDocument, projection: PlanProjection, age0: number): ChartMilestone[] {
+  const rules = doc.conversions ?? []
+  const lastIndex = projection.rows.length - 1
+  return rules.flatMap((rule) => {
+    const active = projection.rows.filter((r) => rule.sourceAccountIds.some((id) => (r.conversionsBy[id] ?? 0) > 0.5))
+    const first = active[0]
+    const last = active[active.length - 1]
+    if (!first || !last) return []
+    const label = rules.length > 1 ? rule.name : "Roth conversions"
+    const mark = (row: typeof first, suffix: string, end: boolean): ChartMilestone => ({
+      id: `conversion-${rule.id}-${end ? "end" : "start"}`, name: `${label} ${suffix}`, kind: "conversion", icon: CONVERSION_ICON, age: age0 + row.index, year: row.year,
+    })
+    return last.index < lastIndex && last.index !== first.index ? [mark(first, "start", false), mark(last, "end (last year)", true)] : [mark(first, "start", false)]
+  })
+}
+
 export function chartMilestones(doc: PlanDocument, projection: PlanProjection): ChartMilestone[] {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0
@@ -114,6 +136,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   })
   marks.push(...payoffMarks(doc, projection, age0))
   marks.push(...requiredStartMarks(doc, projection, age0))
+  marks.push(...conversionMarks(doc, projection, age0))
   for (const sale of projection.homeSales ?? []) {
     marks.push({ id: "", name: `Sold ${sale.name} to fund spending`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
   }
@@ -247,6 +270,7 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   sell: "property",
   credit_score: "money",
   event_repeat: "money",
+  conversion_path: "money",
   elderly: "money",
   account_balance: "money",
 }

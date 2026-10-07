@@ -25,6 +25,7 @@ export const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   depleted: "warning",
   broke: "error",
   rmd: "event_repeat",
+  conversion: "conversion_path",
 }
 
 export interface HoveredMark {
