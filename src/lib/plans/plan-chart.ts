@@ -190,6 +190,9 @@ export function cashFlowFor(doc: PlanDocument, row: YearRow, age: number): CashF
   return point
 }
 
+/** A year's net cash flow: income and sales less spending, taxes, debt and purchases (above zero saved, below drawn down). */
+export const netCashFlow = (p: CashFlowPoint): number => p.income + p.assetSales + p.spending + p.taxes + p.debtPayments + p.assetPurchases
+
 export function cashFlowPoints(doc: PlanDocument, rows: YearRow[]): CashFlowPoint[] {
   const person = doc.people[0]
   const age0 = person ? ageAtStart(person, doc.settings) : 0

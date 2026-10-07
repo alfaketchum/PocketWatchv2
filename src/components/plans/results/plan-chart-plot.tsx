@@ -104,6 +104,8 @@ interface ChartPlotProps {
   hasDebt: boolean
   /** Draw the dashed all-steady spending line (Expenses view) */
   showSteady: boolean
+  /** Draw the faint dashed net cash flow line (Cash flow view) */
+  showNet?: boolean
   selected: number | null
   markColor: (m: ChartMilestone) => string
   onHover: (index: number | null) => void
@@ -142,6 +144,7 @@ export const ChartPlot = memo(function ChartPlot({
   mode,
   hasDebt,
   showSteady,
+  showNet = false,
   selected,
   markColor,
   onHover,
@@ -230,6 +233,9 @@ export const ChartPlot = memo(function ChartPlot({
         )}
         {mode === "debt" && (
           <Line yAxisId="owed" dataKey="owedLine" stroke={foreground} strokeOpacity={0.5} strokeDasharray="4 3" strokeWidth={1.25} dot={false} activeDot={false} isAnimationActive={false} />
+        )}
+        {showNet && (
+          <Line dataKey="net" stroke={foreground} strokeOpacity={0.35} strokeDasharray="4 3" strokeWidth={1.25} dot={false} activeDot={false} isAnimationActive={false} />
         )}
         {showSteady && (
           <Line dataKey="steady" stroke={foreground} strokeOpacity={0.55} strokeDasharray="5 4" strokeWidth={1.5} dot={false} activeDot={false} isAnimationActive={false} />

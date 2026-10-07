@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useMemo, useRef, useState } from "react"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
-import { chartMilestones, milestoneGroup, type ChartMilestone } from "@/lib/plans/plan-chart"
+import { cashFlowPoints, chartMilestones, milestoneGroup, netCashFlow, type ChartMilestone } from "@/lib/plans/plan-chart"
 import type { DollarBasis, PlanDocument, PlanProjection, YearRow } from "@/lib/plans/plan-types"
 import { yearMetrics } from "@/lib/plans/plan-year-metrics"
 import { ChartPlot, ICON_ROW, ICON_STACK, type HoveredMark } from "./plan-chart-plot"
@@ -30,7 +30,7 @@ const INFO: Record<ChartMode, string> = {
   accounts:
     "Each account's year-end balance, stacked: what's in your accounts and how it's split, account by account. Colors follow the tax treatment (shades of the Net worth bands). Homes and loans are left out; they have their own views. Hover or tap a bar to see each account.",
   cashflow:
-    "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. Employer match is left out.",
+    "Money in above zero (income, withdrawals by account type, asset sales) and where it went below zero (spending, taxes, debt, purchases, savings). The two sides balance every year. The dashed line is net cash flow: income and sales less spending, taxes, debt and purchases; above zero it's saved, below zero it's drawn from your accounts. Employer match is left out.",
   income:
     "Everything earned each year, before tax, by kind: work, stock pay, Social Security, pensions, rent and other income. Turn on Subcategories for each income line. Employer match is left out (it goes straight into the account).",
   expenses:
@@ -89,8 +89,12 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
   const plotPoints = useMemo(() => {
     if (steady) return points.map((p, i) => ({ ...p, steady: steady[i] ?? 0 }))
     if (view === "debt") return withOwedLine(points)
+    if (view === "cashflow") {
+      const net = cashFlowPoints(doc, rows).map(netCashFlow)
+      return points.map((p, i) => ({ ...p, net: net[i] ?? 0 }))
+    }
     return points
-  }, [points, steady, view])
+  }, [points, steady, view, doc, rows])
   /** Year view: the pinned year alone, its bar filling the chart. Entered from the header, left with All years. */
   const [focus, setFocus] = useState<number | null>(null)
   const focused = focus !== null && plotPoints[focus] ? focus : null
@@ -183,6 +187,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
               mode={view}
               hasDebt={hasDebt}
               showSteady={steady !== null && focused === null}
+              showNet={view === "cashflow" && focused === null}
               steadyLabel={baseline?.label}
               selected={focused === null ? selected : 0}
               markColor={markColor}
@@ -195,7 +200,7 @@ export const PlanNetWorthChart = memo(function PlanNetWorthChart({ doc, projecti
           </div>
           <PlanChartLegend
             series={series}
-            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(baseline ? [baseline.label] : [])]}
+            lines={[...(view === "debt" ? ["Still owed (right axis)"] : []), ...(view === "cashflow" ? ["Net cash flow"] : []), ...(baseline ? [baseline.label] : [])]}
             marks={marks}
             markColor={markColor}
           />
