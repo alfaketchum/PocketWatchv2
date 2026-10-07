@@ -10,6 +10,23 @@ export const DEFAULT_RENTAL = { vacancy: 0.05, managementFee: 0.08, growth: null
 
 export const rentIncomeId = (assetId: string) => `rent-${assetId}`
 
+/** A first guess at monthly rent: about 0.4% of the home's value. */
+const RENT_PER_VALUE = 0.004
+
+/** How a home is used: you live in it, it's rented out, or neither (a second home, held empty). */
+export type HomeUse = "live" | "rented" | "other"
+
+export function homeUse(asset: Pick<PlanAsset, "kind" | "rental" | "primaryResidence" | "acquired">): HomeUse {
+  if (asset.rental) return "rented"
+  return (asset.primaryResidence ?? asset.acquired !== "received") ? "live" : "other"
+}
+
+/** The change that gives a home that use; renting it starts at a typical rent for its value. */
+export function withHomeUse(asset: Pick<PlanAsset, "value" | "rental">, use: HomeUse): Partial<PlanAsset> {
+  if (use === "rented") return { rental: asset.rental ?? { monthlyRent: Math.round(asset.value * RENT_PER_VALUE), start: null, ...DEFAULT_RENTAL }, primaryResidence: false }
+  return { rental: undefined, primaryResidence: use === "live" }
+}
+
 /** Rent actually collected in a year, today's dollars: 12 months less vacancy and the manager's cut. */
 export function netYearlyRent(asset: Pick<PlanAsset, "rental">): number {
   const r = asset.rental

@@ -4,13 +4,10 @@ import { fmtMoney } from "@/components/fire/fire-helpers"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { Toggle } from "@/components/fire/fire-input-controls"
 import { livesIn } from "@/lib/plans/plan-asset-costs"
-import { DEFAULT_RENTAL, netYearlyRent } from "@/lib/plans/plan-rentals"
+import { netYearlyRent, withHomeUse } from "@/lib/plans/plan-rentals"
 import type { AssetRental, PlanAsset, PlanDocument } from "@/lib/plans/plan-types"
 import { GrowthField } from "./growth-field"
 import { ASSET_START_TYPES, TimingPicker } from "./timing-picker"
-
-/** A first guess at monthly rent: about 0.4% of the home's value. */
-const RENT_PER_VALUE = 0.004
 
 interface Props {
   asset: PlanAsset
@@ -25,8 +22,7 @@ interface Props {
 export function AssetHomeFields({ asset, doc, onChange }: Props) {
   const rental = asset.rental
   const setRental = (change: Partial<AssetRental>) => rental && onChange({ rental: { ...rental, ...change } })
-  const startRenting = () =>
-    onChange({ rental: { monthlyRent: Math.round(asset.value * RENT_PER_VALUE), start: null, ...DEFAULT_RENTAL }, primaryResidence: false })
+  const startRenting = () => onChange(withHomeUse(asset, "rented"))
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-x-6 gap-y-1">

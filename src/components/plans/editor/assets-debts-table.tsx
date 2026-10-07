@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { homeUse, withHomeUse, type HomeUse } from "@/lib/plans/plan-rentals"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import type { AssetKind, PlanAsset, PlanDebt } from "@/lib/plans/plan-types"
 import { milestoneAsAge, patchItem, planItemAnchor, type PlanEditorProps } from "../plans-helpers"
@@ -28,7 +29,14 @@ const ASSET_COLUMNS = [
   { label: "Owned from", width: "w-32" },
   { label: "Sold", width: "w-32" },
   { label: "Paid with", width: "w-32" },
+  { label: "Use", width: "w-32" },
   { label: "", width: "w-24" },
+]
+
+const HOME_USES: { value: HomeUse; label: string }[] = [
+  { value: "live", label: "I live in it" },
+  { value: "rented", label: "Rented out" },
+  { value: "other", label: "Neither" },
 ]
 
 const DEBT_COLUMNS = [
@@ -86,7 +94,7 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
               Assets
             </td>
             <td className="px-2 py-2 text-right tabular-nums">{fmtMoney(doc.assets.reduce((s, a) => s + a.value, 0))}</td>
-            <td colSpan={5} />
+            <td colSpan={6} />
           </tr>
         }
       >
@@ -122,6 +130,13 @@ export function AssetsDebtsTable({ doc, update, onEditItem }: PlanEditorProps) {
             </Cell>
             <Cell>
               <span className="block truncate px-2 text-xs text-foreground-muted">{paidWithLabel(a, doc)}</span>
+            </Cell>
+            <Cell>
+              {a.kind === "home" ? (
+                <CellSelect label={`How ${a.name} is used`} value={homeUse(a)} options={HOME_USES} onChange={(use) => patchAsset(a.id, withHomeUse(a, use))} />
+              ) : (
+                <span className="block px-2 text-xs text-foreground-muted">—</span>
+              )}
             </Cell>
             <Cell align="center">
               <Actions

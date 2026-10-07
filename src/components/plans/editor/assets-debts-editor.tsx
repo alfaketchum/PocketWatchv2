@@ -159,7 +159,7 @@ function AssetsList({ doc, update }: PlanEditorProps) {
               {a.kind === "home" ? "Sell or downsize" : "Sell"}
             </button>
           )}
-          {!isBasic && a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
+          {a.kind === "home" && <AssetHomeFields asset={a} doc={doc} onChange={(change) => patch(a.id, change)} />}
           <AssetFinancingFields asset={a} doc={doc} onChange={(financing) => patch(a.id, { financing })} />
           {!isBasic && <AssetRunningCostsFields asset={a} state={doc.settings.state} onChange={(runningCosts) => patch(a.id, { runningCosts })} />}
         </ItemCard>

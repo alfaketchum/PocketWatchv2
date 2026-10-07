@@ -3,6 +3,7 @@
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireNumberField } from "@/components/fire/fire-number-field"
 import { livesIn } from "@/lib/plans/plan-asset-costs"
+import { homeUse, type HomeUse } from "@/lib/plans/plan-rentals"
 import { fallbackHomes, plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import type { HomeFallback, PlanAsset } from "@/lib/plans/plan-types"
 import { patchItem, type PlanEditorProps } from "../plans-helpers"
@@ -38,13 +39,26 @@ const defaultFallback = (home: PlanAsset, then: HomeFallback["then"]): HomeFallb
   price: Math.round((home.value * SMALLER_SHARE) / ROUND) * ROUND,
 })
 
+const USE_CHIPS: Record<HomeUse, { label: string; title: string } | null> = {
+  rented: { label: "Rented out in your plan", title: "Your plan collects rent on it (set on Assets & debts); a sale here ends the rent too" },
+  live: { label: "You live in it", title: "Your plan has you living in it (set on Assets & debts)" },
+  other: null,
+}
+
+/** The home's name, and a chip saying how the plan uses it (rented out, or lived in). */
 function HomeName({ home }: { home: PlanAsset }) {
+  const chip = USE_CHIPS[homeUse(home)]
   return (
-    <span className="inline-flex min-h-9 w-full items-center gap-1.5 text-xs font-medium text-foreground sm:w-auto sm:min-w-32 md:min-h-8">
+    <span className="inline-flex min-h-9 w-full flex-wrap items-center gap-1.5 text-xs font-medium text-foreground sm:w-auto sm:min-w-32 md:min-h-8">
       <span className="material-symbols-rounded text-foreground-muted" style={{ fontSize: 15 }} aria-hidden="true">
         home
       </span>
       <span className="truncate">{home.name}</span>
+      {chip && (
+        <span title={chip.title} className="rounded-full border border-card-border bg-background-secondary px-2 py-0.5 text-[10px] font-medium text-foreground-muted">
+          {chip.label}
+        </span>
+      )}
     </span>
   )
 }
