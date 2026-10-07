@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { fmtCompact } from "@/components/fire/fire-helpers"
+import { HoverHint } from "@/components/ui/hover-hint"
 import { sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { endingValue } from "@/lib/plans/stress/stress-histogram"
 import { bucketOf, outcomeBuckets, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
@@ -113,21 +114,22 @@ export function StressTrialsGroups({ cohorts, yardsticks, age0, planNetWorth, is
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Show trials that">
-        {[{ key: null, label: "All", count: total }, ...groups.map((g) => ({ key: g.key, label: g.label, count: g.trials.length }))].map((chip) => {
+        {[{ key: null, label: "All", count: total }, ...groups.map((g) => ({ key: g.key, label: g.label, count: g.trials.length, rule: g.rule }))].map((chip) => {
           const active = only === chip.key
           return (
-            <button
-              key={chip.key ?? "all"}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => setOnly(chip.key)}
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 ${active ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground"}`}
-            >
-              {chip.key && <span className="h-2 w-2 rounded-[2px]" style={{ background: colors[chip.key] }} aria-hidden="true" />}
-              {chip.label}
-              <span className="font-data tabular-nums opacity-70">{chip.count.toLocaleString()}</span>
-            </button>
+            <HoverHint key={chip.key ?? "all"} hint={"rule" in chip ? chip.rule : undefined}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setOnly(chip.key)}
+                className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors md:min-h-0 ${active ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground"}`}
+              >
+                {chip.key && <span className="h-2 w-2 rounded-[2px]" style={{ background: colors[chip.key] }} aria-hidden="true" />}
+                {chip.label}
+                <span className="font-data tabular-nums opacity-70">{chip.count.toLocaleString()}</span>
+              </button>
+            </HoverHint>
           )
         })}
       </div>

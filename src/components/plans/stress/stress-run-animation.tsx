@@ -20,8 +20,9 @@ const Y_PERCENTILE = 0.9
 const Y_HEADROOM = 1.2
 
 /** Room on the left for the y-axis's dollar labels, and the plot's top and bottom inset. */
-const AXIS_LEFT = 56
+const AXIS_LEFT = 44
 const PAD_Y = 8
+const PAD_RIGHT = 4
 
 /** Two or three round dollar gridlines under the top of the scale: steps of 1, 2 or 5 × a power of ten. */
 function yTicks(top: number): number[] {
@@ -90,6 +91,8 @@ interface Props {
   onFinished: () => void
   unit: string
   height?: number
+  /** The plan's first calendar year, for the year axis (none without it). */
+  startYear?: number
   /** The run is over and its numbers show elsewhere: keep the finished chart, drop the counter, add a legend. */
   done?: boolean
 }
@@ -98,7 +101,7 @@ interface Props {
  * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint green if fully funded, red
  * if assets were exhausted, amber if only the portfolio was depleted) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
-export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, done = false }: Props) {
+export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, startYear, done = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const trialsRef = useRef(trials)
   const completeRef = useRef(complete)
@@ -145,7 +148,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       c.clip()
     }
 
-    const pad = { top: PAD_Y, bottom: PAD_Y, left: AXIS_LEFT, right: 4 }
+    const pad = { top: PAD_Y, bottom: PAD_Y, left: AXIS_LEFT, right: PAD_RIGHT }
     let yTop = 0
     const years = Math.max(1, plan.length - 1)
     const x = (i: number) => pad.left + (i / years) * (width - pad.left - pad.right)
@@ -287,20 +290,31 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   const rate = counts.count > 0 ? counts.survived / counts.count : null
   const all = Math.max(total, trials.length)
   return (
-    <div className="relative" aria-live="polite">
-      <canvas ref={canvasRef} className="block w-full" style={{ height }} aria-hidden="true" />
-      {yTopShown > 0 && <YAxis top={yTopShown} height={height} />}
+    <div aria-live="polite">
+      <div className="flex">
+        {/* The y-axis title sits outside the plot, left of the dollar labels. */}
+        <span className="flex shrink-0 rotate-180 items-center justify-center whitespace-nowrap text-[10px] text-foreground-muted [writing-mode:vertical-rl]" style={{ height }} aria-hidden="true">
+          Net worth ($)
+        </span>
+        <div className="relative min-w-0 flex-1">
+          <canvas ref={canvasRef} className="block w-full" style={{ height }} aria-hidden="true" />
+          {yTopShown > 0 && <YAxis top={yTopShown} height={height} />}
+          {startYear !== undefined && plan.length > 1 && <XAxis startYear={startYear} years={plan.length - 1} />}
+          {!done && (
+            <div style={{ left: AXIS_LEFT }} className="pointer-events-none absolute top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
+              <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
+              <p className="text-[11px] tabular-nums text-foreground-muted">
+                solvent · {counts.count.toLocaleString()}
+                {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
       {done ? (
         <Legend trials={trials} />
       ) : (
         <>
-          <div style={{ left: AXIS_LEFT }} className="pointer-events-none absolute top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
-            <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
-            <p className="text-[11px] tabular-nums text-foreground-muted">
-              solvent · {counts.count.toLocaleString()}
-              {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
-            </p>
-          </div>
           <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-card-border/60">
             <div className="h-full rounded-full bg-primary transition-[width] duration-100" style={{ width: `${all > 0 ? (counts.count / all) * 100 : 0}%` }} />
           </div>
@@ -310,17 +324,34 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   )
 }
 
-/** Dollar labels on the gridlines in the canvas's left gutter, with the axis title running up its edge. */
+/** Dollar labels on the gridlines, in the canvas's left gutter. */
 function YAxis({ top, height }: { top: number; height: number }) {
   const at = (v: number) => height - PAD_Y - (v / top) * (height - 2 * PAD_Y)
   return (
     <div className="pointer-events-none absolute inset-y-0 left-0" style={{ width: AXIS_LEFT, height }} aria-hidden="true">
-      <span className="absolute inset-y-0 left-0 flex rotate-180 items-center justify-center whitespace-nowrap text-[10px] text-foreground-muted [writing-mode:vertical-rl]">
-        Net worth ($)
-      </span>
       {yTicks(top).map((v) => (
         <span key={v} className="absolute right-1.5 -translate-y-1/2 font-data text-[10px] tabular-nums text-foreground-muted" style={{ top: at(v) }}>
           {fmtCompact(v)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Calendar years under the plot, on round 5-year marks (10-year on long plans so they don't crowd). */
+function XAxis({ startYear, years }: { startYear: number; years: number }) {
+  const step = years > 40 ? 10 : 5
+  const marks: number[] = []
+  for (let i = 0; i <= years; i++) if ((startYear + i) % step === 0) marks.push(i)
+  return (
+    <div className="pointer-events-none relative h-4" aria-hidden="true">
+      {marks.map((i) => (
+        <span
+          key={i}
+          className="absolute top-0.5 -translate-x-1/2 font-data text-[10px] tabular-nums text-foreground-muted"
+          style={{ left: `calc(${AXIS_LEFT}px + ${i / years} * (100% - ${AXIS_LEFT + PAD_RIGHT}px))` }}
+        >
+          {startYear + i}
         </span>
       ))}
     </div>
@@ -344,7 +375,7 @@ function Legend({ trials }: { trials: CohortResult[] }) {
       {swatch("var(--warning)", `Portfolio depleted, still solvent (${share.short})`)}
       {swatch("var(--error)", `Assets exhausted (${share.failed})`)}
       {swatch("var(--foreground)", "Your plan (steady returns)", true)}
-      <span>By age, today&apos;s dollars</span>
+      <span>Today&apos;s dollars</span>
     </div>
   )
 }

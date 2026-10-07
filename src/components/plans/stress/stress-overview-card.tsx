@@ -59,6 +59,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
             onFinished={() => setFinishedRun(runId)}
             unit="markets"
             height={96}
+            startYear={doc.settings.startYear}
             done={!animating}
           />
         </div>

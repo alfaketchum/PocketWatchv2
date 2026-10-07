@@ -152,6 +152,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         onFinished={() => setFinishedRun(runId)}
         unit={isSimulated(sampling.method) ? "simulated markets" : "historical periods"}
         height={RESULT_CHART_HEIGHT}
+        startYear={doc.settings.startYear}
         done={!animating}
       />
     ) : null
