@@ -49,7 +49,8 @@ export function withPlannedSaleEarly(doc: PlanDocument, home: PlanAsset, index: 
 
 /**
  * The plan with a home's backup plan carried out in year `index`: sold at the start of that year (its loans paid off
- * from the sale), then rent from that year on or a smaller home bought with cash. The backup plan is used up.
+ * from the sale), then rent from that year on, a smaller home bought with cash, or nothing (a second home or a
+ * rental: its costs just stop). The backup plan is used up.
  */
 export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number): { doc: PlanDocument; sale: HomeSale } {
   const year = doc.settings.startYear + index
@@ -81,7 +82,9 @@ export function withHomeSold(doc: PlanDocument, home: PlanAsset, index: number):
   const next =
     fallback.then === "rent"
       ? { ...doc, assets, expenses: [...doc.expenses, rent] }
-      : { ...doc, assets: [...assets, smaller] }
+      : fallback.then === "smaller"
+        ? { ...doc, assets: [...assets, smaller] }
+        : { ...doc, assets }
   return { doc: next, sale: { assetId: home.id, name: home.name, index, year, then: fallback.then } }
 }
 

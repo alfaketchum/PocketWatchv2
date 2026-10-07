@@ -10,6 +10,7 @@ import {
   investmentLadder,
   portfolioMix,
   retireAt,
+  sellHomesIfNeeded,
   retirementAge,
   scaleEverydaySpending,
   socialSecurityOf,
@@ -126,4 +127,11 @@ test("everyday spending today counts only the lines running now, not later ones"
     ],
   })
   assert.equal(everydaySpending(doc), 40_000)
+})
+
+test("sell if the money runs out: rent after the home you live in, just sell a second home", () => {
+  const home = (id: string, primaryResidence: boolean) => ({ id, name: id, kind: "home" as const, value: 500_000, appreciation: 0.03, start: { type: "planStart" as const }, end: { type: "planEnd" as const }, runningCosts: [], primaryResidence })
+  const doc = sellHomesIfNeeded(plan({ assets: [home("main", true), home("beach", false)] }))
+  assert.equal(doc.assets[0].fallback?.then, "rent")
+  assert.equal(doc.assets[1].fallback?.then, "sell")
 })

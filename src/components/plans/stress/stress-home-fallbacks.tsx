@@ -2,6 +2,7 @@
 
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { FireNumberField } from "@/components/fire/fire-number-field"
+import { livesIn } from "@/lib/plans/plan-asset-costs"
 import { fallbackHomes, plannedSaleIndex } from "@/lib/plans/plan-home-fallback"
 import type { HomeFallback, PlanAsset } from "@/lib/plans/plan-types"
 import { patchItem, type PlanEditorProps } from "../plans-helpers"
@@ -14,14 +15,21 @@ const ROUND = 10_000
 
 type Choice = "keep" | HomeFallback["then"]
 
-const OPTIONS: { value: Choice; label: string }[] = [
-  { value: "keep", label: "Keep it" },
-  { value: "rent", label: "Sell it and rent" },
-  { value: "smaller", label: "Sell it and buy smaller" },
-]
+const LABELS: Record<Choice, string> = { keep: "Keep it", rent: "Sell it and rent", smaller: "Sell it and buy smaller", sell: "Sell it" }
+
+/**
+ * The home you live in is sold and replaced (rent, or a smaller home); a second home or a rental is simply sold.
+ * A choice already made stays listed.
+ */
+function optionsFor(home: PlanAsset): { value: Choice; label: string }[] {
+  const choices: Choice[] = livesIn(home) ? ["keep", "rent", "smaller"] : ["keep", "sell"]
+  const current = home.fallback?.then
+  if (current && !choices.includes(current)) choices.push(current)
+  return choices.map((value) => ({ value, label: LABELS[value] }))
+}
 
 const INFO =
-  "What happens to each home in a trial where your accounts can't pay a year's bills. Kept, it's never sold, so a trial can run out of money with its equity untouched. Sold, it goes that year, its loans are paid off from the sale, and you rent or buy a smaller home with cash from then on; those trials count as \"Lasted by selling the home\". A home your plan already sells keeps that sale, but in a trial where the money runs out first it's sold that year instead, as someone watching their accounts drain would. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
+  "What happens to each home in a trial where your accounts can't pay a year's bills. Kept, it's never sold, so a trial can run out of money with its equity untouched. Sold, it goes that year and its loans are paid off from the sale; for the home you live in you then rent or buy a smaller home with cash, while a second home or a rental is just sold and its costs stop; those trials count as \"Lasted by selling the home\". A home your plan already sells keeps that sale, but in a trial where the money runs out first it's sold that year instead, as someone watching their accounts drain would. Only the stress test sells a home this way; your plan itself never does. Changing it re-runs the test."
 
 /** The first-guess backup plan when one is turned on. */
 const defaultFallback = (home: PlanAsset, then: HomeFallback["then"]): HomeFallback => ({
@@ -63,8 +71,8 @@ function HomeRow({ home, onChange }: { home: PlanAsset; onChange: (fallback: Hom
   return (
     <li className="flex flex-wrap items-end gap-x-4 gap-y-2">
       <HomeName home={home} />
-      <ChoiceChips label={`If the money runs out: ${home.name}`} options={OPTIONS} value={fallback?.then ?? "keep"} onChange={choose} />
-      {fallback && (
+      <ChoiceChips label={`If the money runs out: ${home.name}`} options={optionsFor(home)} value={fallback?.then ?? "keep"} onChange={choose} />
+      {fallback && fallback.then !== "sell" && (
         <div className="w-44">
           {fallback.then === "rent" ? (
             <FireNumberField label="Rent / month (today's $)" prefix="$" min={0} value={fallback.monthlyRent} onChange={(monthlyRent) => set({ monthlyRent })} />

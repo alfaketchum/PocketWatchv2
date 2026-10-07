@@ -4,6 +4,7 @@
  */
 
 import { RETIREMENT_MILESTONE_ID } from "../plan-constants"
+import { livesIn } from "../plan-asset-costs"
 import { fallbackHomes, plannedSaleIndex } from "../plan-home-fallback"
 import { ageAtStart, resolveRange, resolveTiming, timingContext } from "../plan-timing"
 import type { AccountMix, PlanAccount, PlanDocument, PlanIncome } from "../plan-types"
@@ -143,13 +144,16 @@ const RENT_PER_VALUE = 0.004
 /** Homes the plan keeps with no backup plan (the ones "sell if the money runs out" would change). */
 export const homesWithoutBackup = (doc: PlanDocument) => fallbackHomes(doc).filter((h) => !h.fallback && plannedSaleIndex(doc, h) === null)
 
-/** Every kept home with no backup plan sells (and you rent) if the money runs out. */
+/** Every kept home with no backup plan sells if the money runs out: you rent after selling the one you live in; a
+ *  second home or a rental is just sold. */
 export function sellHomesIfNeeded(doc: PlanDocument): PlanDocument {
   const ids = new Set(homesWithoutBackup(doc).map((h) => h.id))
   if (ids.size === 0) return doc
   return {
     ...doc,
-    assets: doc.assets.map((a) => (ids.has(a.id) ? { ...a, fallback: { then: "rent" as const, monthlyRent: Math.round(a.value * RENT_PER_VALUE), price: 0 } } : a)),
+    assets: doc.assets.map((a) =>
+      ids.has(a.id) ? { ...a, fallback: { then: livesIn(a) ? ("rent" as const) : ("sell" as const), monthlyRent: livesIn(a) ? Math.round(a.value * RENT_PER_VALUE) : 0, price: 0 } } : a,
+    ),
   }
 }
 

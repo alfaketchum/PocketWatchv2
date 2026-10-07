@@ -100,3 +100,13 @@ test("the plan itself never brings a sale forward: only the stress test does", (
   assert.equal(simulatePlan(doc).homeSales, undefined)
   assert.deepEqual(simulatePlan(doc).rows.filter((r) => r.assetSales > 0).map((r) => r.year), [2032])
 })
+
+test("sell it: a second home is sold when the money runs out, and nothing replaces it", () => {
+  const doc = plan({ then: "sell", monthlyRent: 0, price: 0 })
+  const second = { ...doc, assets: doc.assets.map((a) => ({ ...a, primaryResidence: false })) }
+  const p = simulatePlan(second, STRESS)
+  assert.deepEqual(p.homeSales?.map((s) => [s.year, s.then]), [[2028, "sell"]])
+  const after = p.rows.find((r) => r.year === 2030)!
+  assert.equal(after.expenses, 50_000, "no rent added")
+  assert.ok(!Object.keys(after.assetValues).some((id) => id.endsWith("~fallback-home")), "no new home")
+})
