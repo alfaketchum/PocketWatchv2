@@ -59,7 +59,7 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
     const failed = status !== "ok"
     const id = trialId(c)
     const active = hover === id
-    const stroke = status === "bad" ? "var(--error)" : status === "warn" ? "var(--warning)" : highlight ? "var(--primary)" : "var(--foreground-muted)"
+    const stroke = status === "bad" ? "var(--error)" : status === "warn" ? "var(--warning)" : highlight ? "var(--primary)" : "var(--success)"
     const opacity = active ? 0.95 : highlight ? 0.9 : failed ? 0.45 : 0.2
     return (
       <g key={id} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onClick={() => setHover(id)}>
@@ -106,7 +106,7 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
         {!simulated && <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-primary" /> Crisis start years</span>}
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-warning" /> Portfolio depleted</span>
         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-error" /> Assets exhausted</span>
-        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-foreground-muted/40" /> Fully funded</span>
+        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 bg-success/60" /> Fully funded plan</span>
         <span className="flex items-center gap-1"><span className="inline-block w-3 border-t-[1.5px] border-dashed border-foreground/70" /> Your plan (steady returns)</span>
         <span>Values above {fmtCompact(top)} are clipped. {simulated ? `A sample of ${cohorts.length} trials. Hover or tap a line for its years.` : "Hover or tap a line for its start year."}</span>
       </div>

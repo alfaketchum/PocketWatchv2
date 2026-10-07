@@ -12,8 +12,8 @@ const SWEEP_MS = 450
 const REPORT_MS = 120
 /** A beat after the last line lands, before the results take over. */
 const HOLD_MS = 350
-/** Settled lines: faint when fully funded, amber when accounts were depleted, red when assets were exhausted. */
-const LASTED_ALPHA = 0.07
+/** Settled lines: faint green when fully funded, amber when accounts were depleted, red when assets were exhausted. */
+const LASTED_ALPHA = 0.1
 const FAILED_ALPHA = 0.22
 /** The y-axis tops out a bit above the 90th percentile of the first trials, so booms don't flatten the rest. */
 const Y_PERCENTILE = 0.9
@@ -30,7 +30,7 @@ interface Colors {
 function readColors(el: HTMLElement): Colors {
   const css = getComputedStyle(el)
   const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback
-  return { lasted: v("--foreground-muted", "#888"), failed: v("--error", "#e5484d"), short: v("--warning", "#b5791a"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
+  return { lasted: v("--success", "#1f9d57"), failed: v("--error", "#e5484d"), short: v("--warning", "#b5791a"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
 }
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -60,7 +60,7 @@ interface Props {
 }
 
 /**
- * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if fully funded, red
+ * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint green if fully funded, red
  * if assets were exhausted, amber if only the portfolio was depleted) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
 export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, done = false }: Props) {
@@ -270,7 +270,7 @@ function Legend() {
   )
   return (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground-muted">
-      {swatch("var(--foreground-muted)", "Fully funded")}
+      {swatch("var(--success)", "Fully funded plan")}
       {swatch("var(--warning)", "Portfolio depleted")}
       {swatch("var(--error)", "Assets exhausted")}
       {swatch("var(--foreground)", "Your plan (steady returns)", true)}
