@@ -86,7 +86,7 @@ export function taxBase(part: Partial<TaxBase>): TaxBase {
 }
 
 /** The base with Social Security's taxable part moved into ordinary income (safe to apply twice). */
-function withTaxableSocialSecurity(b: TaxBase, s: TaxSituation): TaxBase {
+export function withTaxableSocialSecurity(b: TaxBase, s: TaxSituation): TaxBase {
   if (b.socialSecurity <= 0) return b
   const taxable = taxableSocialSecurity(b.socialSecurity, b.ordinary + b.shortGains + b.longGains, s.status)
   return { ...b, ordinary: b.ordinary + taxable, socialSecurity: 0 }
