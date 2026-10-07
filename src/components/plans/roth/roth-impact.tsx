@@ -22,6 +22,7 @@ const METRICS: Metric[] = [
   { label: "After-tax net worth at the end", value: (o) => o.afterTaxNetWorth, better: "higher" },
   { label: "Net worth at the end", value: (o) => o.endingNetWorth, better: "higher" },
   { label: "Lifetime taxes", value: (o) => o.lifetimeTaxes, better: "lower" },
+  { label: "Of which Medicare IRMAA", value: (o) => o.lifetimeIrmaa, better: "lower" },
   { label: "Required withdrawals", value: (o) => o.lifetimeRequired, better: null },
   { label: "Converted", value: (o) => o.lifetimeConversions, better: null },
 ]

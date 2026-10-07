@@ -7,11 +7,12 @@ export const TAX_PARTS = [
   { key: "tax:long", label: "Long-term gains tax", field: "longGainsTax" },
   { key: "tax:payroll", label: "Payroll tax", field: "payrollTax" },
   { key: "tax:penalty", label: "Early-withdrawal penalty", field: "earlyWithdrawalPenalty" },
+  { key: "tax:irmaa", label: "Medicare IRMAA", field: "irmaaSurcharge" },
 ] as const
 
 type TaxField = (typeof TAX_PARTS)[number]["field"]
 
-/** Every tax paid in a year (each kind in TAX_PARTS), the early-withdrawal penalty included. */
+/** Every tax paid in a year (each kind in TAX_PARTS), the early-withdrawal penalty and Medicare IRMAA included. */
 export function rowTaxes(r: Pick<YearRow, TaxField>): number {
   return TAX_PARTS.reduce((sum, t) => sum + r[t.field], 0)
 }

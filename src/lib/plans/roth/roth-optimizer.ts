@@ -18,6 +18,7 @@ export interface RothOutcome {
   lifetimeTaxes: number
   lifetimeRequired: number
   lifetimeConversions: number
+  lifetimeIrmaa: number
   /** Age the accounts run dry; null when they don't. */
   depletedAge: number | null
 }
@@ -46,6 +47,7 @@ export function evaluate(doc: PlanDocument): RothOutcome {
     lifetimeTaxes: s.lifetimeTaxes,
     lifetimeRequired: s.lifetimeRequired,
     lifetimeConversions: s.lifetimeConversions,
+    lifetimeIrmaa: s.lifetimeIrmaa,
     depletedAge: s.depletedAge,
   }
 }

@@ -18,7 +18,7 @@ import {
 } from "./engine-assets"
 import { childTransfers } from "../plan-children"
 import { expandPlan } from "../plan-expand"
-import { adjustmentEntries, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
+import { adjustmentEntries, filingStatusAt, spendingFactorAt, type AdjustmentEntry } from "../plan-adjustments"
 import { taxesByKind, taxTrueUp, yearDeduction, yearMinimumTax, yearPayroll, yearTax } from "./engine-tax"
 import { socialSecurityYear, type WithheldMonths } from "./engine-social-security"
 import { estimatedPia } from "../ss-plan-earnings"
@@ -28,6 +28,7 @@ import { realizeTrading } from "./engine-trading"
 import { penalizedAccounts, takeRequired } from "./engine-rmd"
 import { NO_RULE, ruleYear, rulePortfolio, type RuleState } from "./engine-spending-rule"
 import { conversionEntries, convertYear, NO_CONVERSION, type ConversionEntry } from "./engine-conversions"
+import { earnedMagi, irmaaYear, lookbackMagi, yearMagi } from "./engine-irmaa"
 import { initialRothLedgers, rothTranches, withInflows, withWithdrawals, type RothLedgers } from "./engine-roth-ledger"
 import { retirementAge } from "../plan-spending-patterns"
 
@@ -101,6 +102,9 @@ interface State {
   unpaid: number
   /** Roth contributions and conversion lots, for the 5-year rule (only kept when the plan converts). */
   roth: RothLedgers
+  /** MAGI by year so far (nominal), for Medicare IRMAA two years later; `magiSeed` stands in for the years before. */
+  magi: number[]
+  magiSeed: number | null
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -241,7 +245,11 @@ function yearFlows(plan: Plan, state: State, index: number) {
   const hasProperty = rentalTaxable > 0 || itemized.propertyTax > 0 || itemized.mortgageInterest > 0
   const income = rentalTaxable > 0 ? { ...baseIncome, taxableIncome: baseIncome.taxableIncome + rentalTaxable } : baseIncome
   const tax = hasProperty ? yearTax(plan.doc, plan.adjustments, index, income, inflation, itemized, state.amtCredit) : earnedTax
-  return { doc: tax.doc, tax, events, debts, income, expenses, ruled, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld }
+  const year = startYear + index
+  const magiSeed = state.magiSeed ?? earnedMagi(tax)
+  const status = filingStatusAt(plan.adjustments, plan.doc.settings, index)
+  const irmaa = irmaaYear(plan.doc, status, year, thresholdIndex(year, inflation, startYear), lookbackMagi(state.magi, index, magiSeed))
+  return { doc: tax.doc, tax, events, debts, income, expenses, ruled, incomeTax: tax.incomeTax, payroll, rentalTaxable, ssWithheld: ss.withheld, irmaa, magiSeed }
 }
 
 type Flows = ReturnType<typeof yearFlows>
@@ -282,7 +290,7 @@ function moveMoney(plan: Plan, state: State, index: number, flows: Flows, extraT
     : { ...NO_CONVERSION, holdings: required.holdings }
   holdings = conversion.holdings
   const net =
-    income.total - income.employeeContributions - incomeTax - flows.payroll.total - extraTax - trading.tax - expenses.total - debts.paid -
+    income.total - income.employeeContributions - incomeTax - flows.payroll.total - flows.irmaa.surcharge - extraTax - trading.tax - expenses.total - debts.paid -
     events.purchases + events.sales + events.borrowed - events.saleTax - transfers.total + earmarked.drawn + drained.net + required.net + conversion.net
   const tranches = plan.conversions.length > 0 ? rothTranches(withInflows(state.roth, {}, conversion.intoBy, year), doc, year) : {}
   const surplus = net >= 0 ? depositSurplus(net, holdings, doc, inflationFactor) : null
@@ -391,6 +399,8 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     longGainsTax: kinds.longGains,
     earnedIncomeTax: kinds.earnedOnly,
     earlyWithdrawalPenalty: (moved.deficit?.penalty ?? 0) + conversion.penalty,
+    irmaaSurcharge: flows.irmaa.surcharge,
+    irmaaTier: flows.irmaa.tier,
     saleTax: events.saleTax,
     tradingTax: moved.trading.tax,
     realizedGains: moved.trading.shortGains + moved.trading.longGains,
@@ -442,7 +452,11 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   const minimum = yearMinimumTax(flows.tax, taxedAmounts(flows, moved))
   const amtCredit = state.amtCredit - (minimum?.creditUsed ?? 0) + (minimum?.creditEarned ?? 0)
   const roth = plan.conversions.length > 0 ? withWithdrawals(withInflows(state.roth, moved.contributionsBy, conversion.intoBy, row.year), moved.withdrawalsBy) : state.roth
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule, unpaid, roth } }
+  const magi = [...state.magi, yearMagi(flows.tax, taxedAmounts(flows, moved))]
+  return {
+    row,
+    state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule, unpaid, roth, magi, magiSeed: flows.magiSeed },
+  }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -485,7 +499,7 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
 function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
   const roth = plan.conversions.length > 0 ? initialRothLedgers(plan.doc) : {}
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE, unpaid: 0, roth }
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE, unpaid: 0, roth, magi: [], magiSeed: null }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)

@@ -4,7 +4,7 @@
  * phase-outs bend the curve, so the room is found by bisection on the exact rules.
  */
 import { FEDERAL_LTCG, FEDERAL_ORDINARY, type FilingStatus } from "./federal-2026"
-import { IRMAA_TIERS } from "./irmaa-2026"
+import { irmaaLine } from "./irmaa-2026"
 import { federalDeduction, seniorDeduction, stateTax, withTaxableSocialSecurity, type TaxBase, type TaxSituation } from "./tax-calc"
 
 const BISECT_STEPS = 40
@@ -65,9 +65,9 @@ export function roomToTaxable(b: TaxBase, s: TaxSituation, upper: number, target
 
 /** Room before MAGI reaches the line where IRMAA tier `tier` + 1 starts (lines are cliffs). */
 export function roomUnderIrmaa(b: TaxBase, s: TaxSituation, upper: number, tier: number): number {
-  const line = IRMAA_TIERS[s.status][tier]
-  if (line === undefined) return upper
-  const limit = line * s.index - TOLERANCE
+  const line = irmaaLine(s.status, tier, s.index, s.year ?? 0)
+  if (line === Infinity) return upper
+  const limit = line - TOLERANCE
   return largestAddition(upper, (x) => magi(addOrdinary(b, x), s) <= limit)
 }
 

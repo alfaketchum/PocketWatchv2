@@ -25,6 +25,7 @@ export const TAX_SECTIONS: MethodSection[] = [
           "**Brackets and deductions rise with the plan's inflation** each year, as the IRS indexes them.",
           "**State tax** for all 50 states and DC, with each state's brackets and standard deduction. Most states tax gains like other income; the exceptions are modeled (e.g. AR, AZ, ND, SC and WI exclude part of long-term gains, HI caps their rate, MT has separate gains brackets, WA taxes large long-term gains though it has no income tax).",
           "Moving states or changing filing status partway through is supported through plan changes.",
+          "**Medicare IRMAA** (in both tax modes): from 65, each person on Medicare (you, and your partner on a joint return) pays extra Part B and D premiums when MAGI from two years earlier passes the 2026 lines: $109,000 / $137,000 / $171,000 / $205,000 / $500,000 single, $218,000 / $274,000 / $342,000 / $410,000 / $750,000 joint. Per person that's $95.70, $240.40, $385.00, $529.60 or $578.00 a month on top of the standard premium (CMS 2026). MAGI is the year's income after taxable Social Security (flat rates: taxable income); the lines and amounts rise with the plan's inflation, except the top line, which the law only indexes from 2028. The two years before the plan are assumed to have the first year's pay, pensions and Social Security. It's counted with taxes (it's caused by income), so Roth conversions at 63 and later are weighed against it. The standard premium itself ($202.90 a month in 2026) isn't added: include it in your healthcare spending.",
         ],
       },
       { kind: "text", text: "Withdrawals are taxed in two steps:" },
@@ -42,6 +43,7 @@ export const TAX_SECTIONS: MethodSection[] = [
     ],
     sources: [
       { label: "IRS Rev. Proc. 2025-32 (2026 brackets)", url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf" },
+      { label: "CMS: 2026 Medicare Parts A & B premiums (IRMAA)", url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles" },
       { label: "Tax Foundation: state income tax rates 2026", url: "https://taxfoundation.org/data/all/state/state-income-tax-rates/" },
     ],
   },

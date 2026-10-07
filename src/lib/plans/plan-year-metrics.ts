@@ -109,7 +109,7 @@ export function yearMetrics(doc: PlanDocument, rows: YearRow[], index: number, s
     income: row.income,
     taxableIncome: row.taxableIncome,
     taxes,
-    taxesBy: TAX_PARTS.map((t) => ({ label: t.label, value: row[t.field] })).filter((t) => t.value >= 0.5),
+    taxesBy: TAX_PARTS.map((t) => ({ label: t.field === "irmaaSurcharge" ? `${t.label} (tier ${row.irmaaTier})` : t.label, value: row[t.field] })).filter((t) => t.value >= 0.5),
     effectiveTaxRate: row.taxableIncome > 0.5 ? taxes / row.taxableIncome : null,
     deduction: row.deduction ?? null,
     spendingRule: doc.settings.spendingRule ? row.spendingFactor : null,

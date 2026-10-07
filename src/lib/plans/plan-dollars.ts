@@ -8,6 +8,7 @@ const FLOW_FIELDS = [
   "payrollTax",
   "withdrawalTax",
   "earlyWithdrawalPenalty",
+  "irmaaSurcharge",
   "ordinaryIncomeTax",
   "shortGainsTax",
   "longGainsTax",

@@ -56,6 +56,7 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     afterTaxEndingNetWorth: endingNetWorth - Math.max(0, traditionalLeft) * heirsTaxRate(settings),
     lifetimeConversions: rows.reduce((s, r) => s + r.conversions, 0),
     lifetimeRequired: rows.reduce((s, r) => s + r.requiredWithdrawals, 0),
+    lifetimeIrmaa: rows.reduce((s, r) => s + r.irmaaSurcharge, 0),
     spark: rows.map((r) => r.netWorth),
     inflation: settings.inflation,
     inflationMode: settings.inflationMode ?? "custom",

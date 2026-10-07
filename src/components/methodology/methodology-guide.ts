@@ -89,7 +89,8 @@ export const GUIDE_SECTIONS: MethodSection[] = [
         items: [
           "**Automatic**: the standard deduction grows by $2,050 (single) or $1,650 per spouse who's 65+.",
           "**Automatic, 2025 to 2028 only**: the $6,000 senior deduction per person 65+, shrinking above $75,000 single / $150,000 joint income. It shows as its own line in the side panel.",
-          "**Not covered**: Medicare premiums and the IRMAA surcharges on higher incomes. Add premiums as an expense if you want them in the plan. Roth conversion rules can stay under an IRMAA tier from 63 (the Roth page), since premiums look back two years.",
+          "**Automatic**: Medicare IRMAA surcharges, the extra premiums from 65 when income two years earlier passes the IRMAA lines. They show with taxes; Roth conversion rules can stay under a tier from 63 (the Roth page).",
+          "**You add**: the standard Medicare premiums ($202.90 a month for Part B in 2026, plus your Part D plan) as healthcare spending.",
         ],
       },
     ],
@@ -141,7 +142,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
       {
         kind: "list",
         items: [
-          "Medicare IRMAA surcharges (IRMAA tiers can cap Roth conversions, but the surcharges themselves aren't charged); HSA medical-spending rules (HSA withdrawals are treated as medical, tax-free); the 5-year rule on Roth earnings (the one on conversions is modeled).",
+          "Standard Medicare premiums (add them as spending; IRMAA surcharges are included); HSA medical-spending rules (HSA withdrawals are treated as medical, tax-free); the 5-year rule on Roth earnings (the one on conversions is modeled).",
           "Tax law is 2026's, carried forward. Scheduled changes already in the law are included; future laws aren't.",
           "The exact formulas, sources and every figure we keep up to date are on **How it's calculated**.",
         ],

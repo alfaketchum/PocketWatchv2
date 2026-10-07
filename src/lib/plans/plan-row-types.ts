@@ -26,6 +26,10 @@ export interface YearRow {
   earnedIncomeTax: number
   /** The 10% additional tax on traditional withdrawals before 59½. */
   earlyWithdrawalPenalty: number
+  /** Medicare IRMAA: extra Part B and D premiums from 65 on MAGI from two years earlier (counted with taxes). */
+  irmaaSurcharge: number
+  /** Its tier (0 = no surcharge … 5). */
+  irmaaTier: number
   /** Capital-gains tax on assets sold this year (after any home-sale exclusion). */
   saleTax: number
   /** Tax on gains realized by trading inside taxable accounts. */
@@ -152,6 +156,8 @@ export interface PlanSummary {
   /** Roth conversions and required withdrawals over the plan, today's dollars. */
   lifetimeConversions: number
   lifetimeRequired: number
+  /** Medicare IRMAA surcharges over the plan, today's dollars (already inside lifetimeTaxes). */
+  lifetimeIrmaa: number
   /** Net worth per year in today's dollars, for sparklines. */
   spark: number[]
   /** The inflation the plan uses (a market path's equivalent single rate) and where it comes from. */
