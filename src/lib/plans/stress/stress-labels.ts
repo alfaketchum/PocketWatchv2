@@ -40,3 +40,6 @@ export function trialStatus(c: Pick<CohortResult, "depletedAge" | "brokeAge">): 
 }
 
 export const TRIAL_TONE_CLASS = { ok: "text-success", warn: "text-warning", bad: "text-error" } as const
+
+/** A share of trials to two decimals, so a single trial still shows (1 of 500 is "0.20%"). */
+export const fmtTrialShare = (share: number): string => `${(share * 100).toFixed(2)}%`

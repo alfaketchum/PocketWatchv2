@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { HoverHint } from "@/components/ui/hover-hint"
-import { sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
+import { fmtTrialShare, sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { endingValue } from "@/lib/plans/stress/stress-histogram"
 import { bucketOf, outcomeBuckets, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import { percentile, type CohortResult } from "@/lib/plans/stress/stress-test"
@@ -141,7 +141,7 @@ export function StressTrialsGroups({ cohorts, yardsticks, age0, planNetWorth, is
               <span className="h-2.5 w-2.5 shrink-0 self-center rounded-[3px]" style={{ background: colors[g.key] }} aria-hidden="true" />
               <h4 className="text-sm font-semibold text-foreground">{g.label}</h4>
               <span className="font-data text-xs tabular-nums text-foreground-muted">
-                {g.trials.length.toLocaleString()} · {Math.round((g.trials.length / Math.max(1, total)) * 100)}%
+                {g.trials.length.toLocaleString()} · {fmtTrialShare(g.trials.length / Math.max(1, total))}
               </span>
               <span className="basis-full text-[11px] text-foreground-muted sm:basis-auto">{g.rule}</span>
             </header>

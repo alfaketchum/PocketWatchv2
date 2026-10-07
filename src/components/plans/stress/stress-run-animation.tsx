@@ -38,19 +38,19 @@ type Status = "lasted" | "short" | "failed"
 const statusOf = (c: CohortResult): Status => (isBroke(c) ? "failed" : c.depletedAge !== null ? "short" : "lasted")
 
 /**
- * Each outcome's share as whole percents that always add up to 100 (largest remainder: floor them all, then hand the
- * leftover points to the biggest fractions). An outcome that happened but rounds to zero reads "<1%", and one that
- * rounds to 100 beside it reads ">99%".
+ * Each outcome's share to two decimals, always adding up to 100.00% (largest remainder in hundredths of a percent: floor
+ * them all, then hand the leftover hundredths to the biggest fractions). Two decimals so a single trial still shows
+ * (1 of 500 is 0.20%); one that still rounds to zero reads "<0.01%", and one that rounds to 100 beside it ">99.99%".
  */
 function outcomeShares(n: Record<Status, number>): Record<Status, string> {
   const total = n.lasted + n.short + n.failed
   const keys: Status[] = ["lasted", "short", "failed"]
   if (total === 0) return { lasted: "—", short: "—", failed: "—" }
-  const exact = keys.map((k) => (n[k] / total) * 100)
+  const exact = keys.map((k) => (n[k] / total) * 10_000)
   const pct = exact.map(Math.floor)
   const order = keys.map((_, i) => i).sort((a, b) => exact[b] - pct[b] - (exact[a] - pct[a]))
-  for (let left = 100 - pct.reduce((s, v) => s + v, 0), j = 0; left > 0; left--, j++) pct[order[j]]++
-  const label = (k: Status, p: number) => (p === 0 && n[k] > 0 ? "<1%" : p === 100 && n[k] < total ? ">99%" : `${p}%`)
+  for (let left = 10_000 - pct.reduce((s, v) => s + v, 0), j = 0; left > 0; left--, j++) pct[order[j]]++
+  const label = (k: Status, p: number) => (p === 0 && n[k] > 0 ? "<0.01%" : p === 10_000 && n[k] < total ? ">99.99%" : `${(p / 100).toFixed(2)}%`)
   return Object.fromEntries(keys.map((k, i) => [k, label(k, pct[i])])) as Record<Status, string>
 }
 

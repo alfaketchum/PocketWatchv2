@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { useOutcomeColors } from "./use-outcome-colors"
 import { DANGER_YEARS } from "@/lib/plans/stress/stress-close-calls"
+import { fmtTrialShare } from "@/lib/plans/stress/stress-labels"
 import { outcomeBuckets, type OutcomeBucket, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
@@ -44,7 +45,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
           </span>
         </InfoTooltip>
       </div>
-      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={buckets.map((b) => `${b.label} ${Math.round(b.share * 100)}%`).join(", ")}>
+      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={buckets.map((b) => `${b.label} ${fmtTrialShare(b.share)}`).join(", ")}>
         {buckets
           .filter((b) => b.count > 0)
           .map((b) => (
@@ -59,7 +60,7 @@ export function StressOutcomeBuckets({ cohorts, yardsticks, isHidden }: { cohort
               {b.label}
             </span>
             <span className="text-right text-sm tabular-nums text-foreground sm:text-left">
-              {Math.round(b.share * 100)}% <span className="text-[11px] text-foreground-muted">· {b.count}</span>
+              {fmtTrialShare(b.share)} <span className="text-[11px] text-foreground-muted">· {b.count}</span>
             </span>
             <span className="col-span-2 text-[11px] leading-snug text-foreground-muted sm:col-span-1">
               {b.rule}
