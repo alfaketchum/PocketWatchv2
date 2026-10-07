@@ -35,6 +35,8 @@ import { useStressTest } from "./use-stress-test"
 
 /** The success rate the diagnosis and solvers aim for, until changed on the page. */
 const DEFAULT_TARGET = 0.9
+/** The trials chart above every tab: tall enough to read the spread, short enough to leave room for the tab. */
+const RESULT_CHART_HEIGHT = 180
 /** A beat for the Improve tab to render before scrolling to a fix's row. */
 const SCROLL_DELAY_MS = 60
 
@@ -121,8 +123,9 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   )
 
   const ready = summary && all && summary.cohorts.length > 0
-  const headline =
-    animating && runId !== null ? (
+  // The run's chart stays once it has played: every trial's line, the satisfying part, with the numbers under it.
+  const chart =
+    runId !== null ? (
       <StressRunAnimation
         key={runId}
         trials={live?.trials ?? cohorts ?? []}
@@ -131,20 +134,29 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         complete={!live}
         onFinished={() => setFinishedRun(runId)}
         unit={isSimulated(sampling.method) ? "simulated markets" : "historical periods"}
+        height={RESULT_CHART_HEIGHT}
+        done={!animating}
       />
-    ) : loading || !summary ? (
-      <div className="h-16 animate-shimmer rounded-xl" />
-    ) : !ready ? (
-      <p className="text-sm text-foreground-muted">
-        No {unit} match{cape !== "all" ? " this CAPE filter" : ""}
-        {simulated ? "." : " with enough history after them for a plan this long."}
-        {!simulated && align === "start" && canAlignRetirement && " Try lining history up with retirement, or a simulated method."}
-      </p>
-    ) : (
-      <div key={runId ?? 0} className="animate-scale-in">
-        <StressHeadline summary={summary} simulated={simulated} />
-      </div>
-    )
+    ) : null
+  const numbers = animating ? null : loading || !summary ? (
+    <div className="h-16 animate-shimmer rounded-xl" />
+  ) : !ready ? (
+    <p className="text-sm text-foreground-muted">
+      No {unit} match{cape !== "all" ? " this CAPE filter" : ""}
+      {simulated ? "." : " with enough history after them for a plan this long."}
+      {!simulated && align === "start" && canAlignRetirement && " Try lining history up with retirement, or a simulated method."}
+    </p>
+  ) : (
+    <div key={runId ?? 0} className="animate-scale-in">
+      <StressHeadline summary={summary} simulated={simulated} />
+    </div>
+  )
+  const headline = (
+    <>
+      {chart}
+      {numbers}
+    </>
+  )
 
   const setup: StressSetupModel = { doc, update, annual, sampling, setSampling, align, setAlign, canAlignRetirement, cape, setCape, inflation, setInflation }
   const v: StressViewModel | null = ready

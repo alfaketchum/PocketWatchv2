@@ -48,18 +48,22 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
   )
   return (
     <FireSectionCard eyebrow="How safe is this plan?" right={details}>
-      {animating && runId !== null ? (
-        <StressRunAnimation
-          key={runId}
-          trials={live?.trials ?? cohorts ?? []}
-          total={live?.total ?? cohorts?.length ?? 0}
-          plan={plan}
-          complete={!live}
-          onFinished={() => setFinishedRun(runId)}
-          unit="markets"
-          height={96}
-        />
-      ) : loading || !summary ? (
+      {runId !== null && (
+        <div className="mb-3">
+          <StressRunAnimation
+            key={runId}
+            trials={live?.trials ?? cohorts ?? []}
+            total={live?.total ?? cohorts?.length ?? 0}
+            plan={plan}
+            complete={!live}
+            onFinished={() => setFinishedRun(runId)}
+            unit="markets"
+            height={96}
+            done={!animating}
+          />
+        </div>
+      )}
+      {animating ? null : loading || !summary ? (
         <div className="h-12 animate-shimmer rounded-xl" />
       ) : !verdict ? (
         <p className="text-sm text-foreground-muted">Couldn&apos;t run this plan through simulated markets.</p>

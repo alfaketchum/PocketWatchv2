@@ -53,13 +53,15 @@ interface Props {
   onFinished: () => void
   unit: string
   height?: number
+  /** The run is over and its numbers show elsewhere: keep the finished chart, drop the counter, add a legend. */
+  done?: boolean
 }
 
 /**
  * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if the money lasted, red
  * if net worth hit $0, amber if only the cash ran out) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
-export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220 }: Props) {
+export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, done = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const trialsRef = useRef(trials)
   const completeRef = useRef(complete)
@@ -78,11 +80,16 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
     const ctx = canvas?.getContext("2d")
     if (!canvas || !ctx) return
     const { width } = canvas.getBoundingClientRect()
-    staticRef.current = reducedMotion() || width < 1
+    // Nowhere to draw (a hidden card): finish as soon as the run does. Without motion: every line lands at once.
+    staticRef.current = width < 1
     if (staticRef.current) {
       if (completeRef.current) finishedRef.current()
       return
     }
+    const instant = reducedMotion()
+    const playback = instant ? 0 : PLAYBACK_MS
+    const sweep = instant ? 1 : SWEEP_MS
+    const hold = instant ? 0 : HOLD_MS
     const colors = readColors(canvas)
     const dpr = window.devicePixelRatio || 1
     canvas.width = Math.round(width * dpr)
@@ -131,7 +138,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       if (yTop === 0 && arrived.length > 0) yTop = yTopFor(arrived, plan)
       const all = Math.max(totalRef.current, arrived.length, 1)
       // Spawn on schedule, but never ahead of the trials that have actually finished.
-      const due = Math.min(arrived.length, Math.floor(((now - start) / PLAYBACK_MS) * all))
+      const due = playback === 0 ? arrived.length : Math.min(arrived.length, Math.floor(((now - start) / playback) * all))
       for (; spawned < due; spawned++) active.push({ c: arrived[spawned], born: now })
 
       ctx.clearRect(0, 0, width, height)
@@ -139,7 +146,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       ctx.lineWidth = 1
       for (let k = active.length - 1; k >= 0; k--) {
         const { c, born } = active[k]
-        const t = Math.min(1, (now - born) / SWEEP_MS)
+        const t = instant ? 1 : Math.min(1, (now - born) / sweep)
         const eased = 1 - Math.pow(1 - t, 3)
         // Red: net worth hit $0. Amber: the cash ran out with property left. Faint: the money lasted.
         const failed = isBroke(c)
@@ -184,7 +191,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
         doneAt = now
         setShown({ count: landed, survived })
       }
-      if (doneAt !== null && now - doneAt > HOLD_MS) {
+      if (doneAt !== null && now - doneAt >= hold) {
         finishedRef.current()
         return
       }
@@ -198,23 +205,47 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
     if (complete && staticRef.current) finishedRef.current()
   }, [complete])
 
-  // Without motion the counter simply follows the trials as they finish.
-  const counts = reducedMotion() ? { count: trials.length, survived: trials.filter((c) => !isBroke(c)).length } : shown
+  const counts = shown
   const rate = counts.count > 0 ? counts.survived / counts.count : null
   const all = Math.max(total, trials.length)
   return (
     <div className="relative" aria-live="polite">
       <canvas ref={canvasRef} className="block w-full" style={{ height }} aria-hidden="true" />
-      <div className="pointer-events-none absolute left-0 top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
-        <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
-        <p className="text-[11px] tabular-nums text-foreground-muted">
-          net worth lasts · {counts.count.toLocaleString()}
-          {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
-        </p>
-      </div>
-      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-card-border/60">
-        <div className="h-full rounded-full bg-primary transition-[width] duration-100" style={{ width: `${all > 0 ? (counts.count / all) * 100 : 0}%` }} />
-      </div>
+      {done ? (
+        <Legend />
+      ) : (
+        <>
+          <div className="pointer-events-none absolute left-0 top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
+            <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
+            <p className="text-[11px] tabular-nums text-foreground-muted">
+              net worth lasts · {counts.count.toLocaleString()}
+              {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
+            </p>
+          </div>
+          <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-card-border/60">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-100" style={{ width: `${all > 0 ? (counts.count / all) * 100 : 0}%` }} />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Under the finished chart: what each kind of line means. */
+function Legend() {
+  const swatch = (color: string, label: string, dashed = false) => (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="inline-block w-4" style={{ borderTop: `2px ${dashed ? "dashed" : "solid"} ${color}` }} aria-hidden="true" />
+      {label}
+    </span>
+  )
+  return (
+    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground-muted">
+      {swatch("var(--foreground-muted)", "Lasted")}
+      {swatch("var(--warning)", "Cash ran out")}
+      {swatch("var(--error)", "Went broke")}
+      {swatch("var(--foreground)", "Your plan (steady returns)", true)}
+      <span>Net worth by age, today&apos;s dollars</span>
     </div>
   )
 }
