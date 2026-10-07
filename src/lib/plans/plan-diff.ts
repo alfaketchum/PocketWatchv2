@@ -1,4 +1,5 @@
 import { UNCATEGORIZED } from "./plan-constants"
+import { heirsTaxRate } from "./plan-conversions"
 import { ITEM_KINDS, money, pct, ruleLabel, yesNo, type ItemKind } from "./plan-diff-items"
 import type { PlanDocument, PlanExpense, PlanSettings } from "./plan-types"
 
@@ -38,6 +39,7 @@ const SETTING_FIELDS: { label: string; value: (s: PlanSettings) => string }[] = 
   { label: "Returns shown", value: (s) => s.returnBasis ?? "nominal" },
   { label: "Social Security cut", value: (s) => (s.ssCut ? `${pct(s.ssCut.share, 0)} from ${s.ssCut.fromYear}` : "None") },
   { label: "Credit score", value: (s) => (s.credit ? String(s.credit.score) : "—") },
+  { label: "Heirs' tax rate", value: (s) => pct(heirsTaxRate(s), 0) },
 ]
 
 function settingChanges(a: PlanDocument, b: PlanDocument): InputChange[] {

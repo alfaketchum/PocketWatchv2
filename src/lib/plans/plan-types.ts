@@ -86,6 +86,8 @@ export interface PlanSettings {
   ssCut?: { share: number; fromYear: number }
   /** Credit score at plan start: prices loans the plan hasn't fixed, and is projected year by year. */
   credit?: PlanCredit
+  /** Tax rate heirs pay on inherited traditional balances, for after-tax ending net worth; missing = 24%. */
+  heirsTaxRate?: number
 }
 
 export interface PlanCredit {
@@ -487,6 +489,8 @@ export interface PlanDocument {
   deposits: PlanDeposit[]
   /** Linked accounts (finance account ids) the user chose not to bring into this plan. */
   ignoredSources?: string[]
+  /** Roth conversion rules, applied in order each year; missing = none. */
+  conversions?: PlanConversion[]
 }
 
 /** If the accounts run dry, sell this home that year, then rent or buy a smaller one (today's dollars). */
@@ -499,6 +503,10 @@ export interface HomeFallback {
   monthlyRent: number
   price: number
 }
+
+// Roth conversion rules live in plan-conversion-types.ts; re-exported so imports stay "./plan-types".
+import type { PlanConversion } from "./plan-conversion-types"
+export type { ConversionCaps, ConversionMode, PlanConversion } from "./plan-conversion-types"
 
 // Simulation results live in plan-row-types.ts; re-exported so imports stay "./plan-types".
 export type { DollarBasis, HomeSale, PlanProjection, PlanSummary, YearRow } from "./plan-row-types"

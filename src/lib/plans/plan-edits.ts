@@ -1,8 +1,16 @@
-import type { PlanDocument, Timing } from "./plan-types"
+import type { PlanConversion, PlanDocument, Timing } from "./plan-types"
 
 /** Plan edits that must also clean up references, shared by the editors and milestone removal. */
 
-/** Remove an account and every reference to it (cash-flow orders, payroll contributions). */
+/** Conversion rules without the account: a rule losing its Roth or its last source goes. */
+function conversionsWithout(conversions: PlanConversion[] | undefined, accountId: string): PlanConversion[] {
+  return (conversions ?? [])
+    .filter((c) => c.destAccountId !== accountId)
+    .map((c) => ({ ...c, sourceAccountIds: c.sourceAccountIds.filter((id) => id !== accountId) }))
+    .filter((c) => c.sourceAccountIds.length > 0)
+}
+
+/** Remove an account and every reference to it (cash-flow orders, payroll contributions, conversions). */
 export function removeAccount(doc: PlanDocument, accountId: string): PlanDocument {
   return {
     ...doc,
@@ -12,6 +20,7 @@ export function removeAccount(doc: PlanDocument, accountId: string): PlanDocumen
       contributions: inc.contributions.filter((c) => c.accountId !== accountId),
     })),
     deposits: (doc.deposits ?? []).filter((d) => d.accountId !== accountId),
+    conversions: conversionsWithout(doc.conversions, accountId),
     cashFlow: {
       surplusOrder: doc.cashFlow.surplusOrder.filter((t) => t.accountId !== accountId),
       withdrawalOrder: doc.cashFlow.withdrawalOrder.filter((id) => id !== accountId),
@@ -51,6 +60,7 @@ export function mapTimings(doc: PlanDocument, fn: (t: Timing) => Timing): PlanDo
     milestones: doc.milestones.map((m) => ({ ...m, timing: fn(m.timing) })),
     adjustments: (doc.adjustments ?? []).map((a) => ({ ...a, timing: fn(a.timing) })),
     deposits: (doc.deposits ?? []).map((d) => ({ ...d, timing: fn(d.timing) })),
+    conversions: (doc.conversions ?? []).map((c) => ({ ...c, start: fn(c.start), end: fn(c.end) })),
   }
 }
 

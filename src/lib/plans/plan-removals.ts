@@ -12,6 +12,7 @@ const LISTS: { pick: (doc: PlanDocument) => Named[]; noun: string }[] = [
   { pick: (d) => d.milestones, noun: "milestone" },
   { pick: (d) => d.children ?? [], noun: "child" },
   { pick: (d) => d.people, noun: "person" },
+  { pick: (d) => d.conversions ?? [], noun: "conversion" },
 ]
 
 /** Names of the things in `before` that are gone from `after` (by id), in list order. */

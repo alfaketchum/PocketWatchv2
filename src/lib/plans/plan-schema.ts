@@ -54,6 +54,7 @@ const settings = z.object({
   credit: z
     .object({ score: z.number().int().min(300).max(850), asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), cardLimit: money.optional() })
     .optional(),
+  heirsTaxRate: share.optional(),
   marketInflation: z
     .object({
       asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -247,6 +248,24 @@ const adjustment = z.discriminatedUnion("kind", [
   z.object({ id, kind: z.literal("state"), timing, state: stateCode.nullable(), origin }),
 ])
 
+const conversionBase = {
+  id,
+  name,
+  start: timing,
+  end: timing,
+  sourceAccountIds: z.array(id).min(1).max(PLAN_LIMITS.accounts),
+  destAccountId: id,
+  caps: z.object({ irmaaTier: z.number().int().min(0).max(4).nullable().optional(), keepLtcgZero: z.boolean().optional() }),
+  payTaxFrom: z.enum(["cashFlow", "withhold"]).default("cashFlow"),
+  origin,
+}
+const conversion = z.discriminatedUnion("mode", [
+  z.object({ ...conversionBase, mode: z.literal("fixed"), amount: money, amountBasis: z.enum(["today", "nominal"]) }),
+  z.object({ ...conversionBase, mode: z.literal("bracket"), bracketRate: z.number().min(0.1).max(0.37) }),
+  z.object({ ...conversionBase, mode: z.literal("targetIncome"), targetIncome: money }),
+  z.object({ ...conversionBase, mode: z.literal("convertAll") }),
+])
+
 const child = z.object({
   id,
   name,
@@ -282,6 +301,7 @@ export const planDocumentSchema = z.object({
   adjustments: z.array(adjustment).max(PLAN_LIMITS.adjustments),
   deposits: z.array(z.object({ id, name, accountId: id, amount: money, share: z.number().min(0).max(1).optional(), timing, origin })).max(PLAN_LIMITS.deposits),
   ignoredSources: z.array(z.string().max(100)).max(200).optional(),
+  conversions: z.array(conversion).max(PLAN_LIMITS.conversions).optional(),
 })
 
 export const planNameSchema = z.string().trim().min(1, "Name is required").max(80)

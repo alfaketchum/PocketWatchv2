@@ -15,10 +15,15 @@ export const PLAN_LIMITS = {
   children: 10,
   adjustments: 30,
   deposits: 30,
+  conversions: 20,
   contributionsPerIncome: 10,
 } as const
 
 export const DEFAULT_RETURN_RATE = 0.07
+/** Heirs' tax rate on inherited traditional balances, for after-tax ending net worth. */
+export const DEFAULT_HEIRS_TAX_RATE = 0.24
+/** `origin` of conversion rules the Roth optimizer applied. */
+export const ROTH_OPTIMIZER_ORIGIN = "roth-optimizer"
 /** Income paid as wages: payroll tax and Social Security earnings. Equity is RSU vests and option exercises. */
 export const WAGE_KINDS: ReadonlySet<IncomeKind> = new Set<IncomeKind>(["salary", "equity"])
 
@@ -106,6 +111,7 @@ export function blankPlanDocument(now: Date, age = DEFAULT_PERSON_AGE): PlanDocu
     children: [],
     adjustments: [],
     deposits: [],
+    conversions: [],
     milestones: [
       {
         id: RETIREMENT_MILESTONE_ID,

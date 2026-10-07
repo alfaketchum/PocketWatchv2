@@ -1,6 +1,7 @@
 import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { timingLabel } from "@/components/plans/plans-helpers"
-import type { PlanAdjustment, PlanDocument, SpendingRule, Timing } from "./plan-types"
+import { conversionModeLabel } from "./plan-conversions"
+import type { PlanAdjustment, PlanConversion, PlanDocument, SpendingRule, Timing } from "./plan-types"
 
 /**
  * What Compare lists for each kind of plan item: the fields worth naming, each shown as text. Values are formatted
@@ -156,4 +157,20 @@ export const ITEM_KINDS: ItemKind<{ id: string }>[] = [
       { label: "When", value: (x, d) => when(x.timing, d) },
     ],
   } satisfies ItemKind<PlanDocument["deposits"][number]>,
+  {
+    key: "conversions",
+    title: "Roth conversions",
+    items: (d) => d.conversions ?? [],
+    name: (c) => c.name,
+    fields: [
+      { label: "Amount", value: (c) => conversionModeLabel(c) },
+      { label: "From", value: (c, d) => c.sourceAccountIds.map((id) => accountName(d, id)).join(", ") },
+      { label: "Into", value: (c, d) => accountName(d, c.destAccountId) },
+      { label: "Starts", value: (c, d) => when(c.start, d) },
+      { label: "Ends", value: (c, d) => when(c.end, d) },
+      { label: "IRMAA cap", value: (c) => (c.caps.irmaaTier == null ? "None" : `Tier ${c.caps.irmaaTier}`) },
+      { label: "Keep 0% gains", value: (c) => yesNo(c.caps.keepLtcgZero) },
+      { label: "Tax paid from", value: (c) => (c.payTaxFrom === "withhold" ? "The conversion" : "Cash flow") },
+    ],
+  } satisfies ItemKind<PlanConversion>,
 ] as unknown as ItemKind<{ id: string }>[]
