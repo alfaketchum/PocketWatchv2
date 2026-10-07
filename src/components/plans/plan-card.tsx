@@ -73,7 +73,7 @@ export function PlanCard({
           <div style={blur}>
             <dt className="truncate text-foreground-muted">At {s.endAge}</dt>
             <dd className="font-semibold text-foreground tabular-nums">{fmtCompact(s.endingNetWorth)}</dd>
-            {s.depletedAge !== null && <dd className={`truncate text-[10px] ${CASH_TONE_CLASS[cashStatus(s).tone]}`}>{s.brokeAge !== null ? `assets exhausted at ${s.brokeAge}` : `accounts depleted at ${s.depletedAge}`}</dd>}
+            {s.depletedAge !== null && <dd className={`truncate text-[10px] ${CASH_TONE_CLASS[cashStatus(s).tone]}`}>{s.brokeAge !== null ? `assets exhausted at ${s.brokeAge}` : `portfolio depleted at ${s.depletedAge}`}</dd>}
           </div>
         </dl>
       ) : (

@@ -84,7 +84,7 @@ export function StressOverviewCard({ doc, planId, projection }: { doc: PlanDocum
                 ? `Your whole plan run through ${summary.cohorts.length.toLocaleString()} markets built from real history since 1871.`
                 : `Your whole plan through ${summary.cohorts.length.toLocaleString()} simulated markets (${DEFAULT_SAMPLING.blockLength}-year blocks of history since 1871).`}
               {!isBasic && summary.spendingDip && ` Your spending rule cut spending to ${fmtPct(summary.spendingDip.worst10, 0)} of plan in the worst 10% of them.`}
-              {early > 0 && ` Includes selling a home sooner than planned in ${early.toLocaleString()} of them, when the accounts were depleted first.`}
+              {early > 0 && ` Includes selling a home sooner than planned in ${early.toLocaleString()} of them, when the portfolio was depleted first.`}
             </p>
           </div>
         </div>

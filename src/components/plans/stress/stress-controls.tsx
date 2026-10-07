@@ -9,28 +9,28 @@ import type { StressAlign, StressInflation } from "@/lib/plans/stress/stress-tes
 export type Cape = "all" | "20" | "30"
 
 /** The four ways to draw trials; the switch sits on the result chart. */
-export const METHOD_OPTIONS: { value: StressSampling; label: string }[] = [
-  { value: "block", label: "Simulated" },
-  { value: "history", label: "History" },
-  { value: "restart", label: "Random restart" },
-  { value: "random", label: "Random years" },
+export const METHOD_OPTIONS: { value: StressSampling; label: string; hint: string }[] = [
+  { value: "block", label: "Simulated", hint: "Random multi-year stretches of real market history stitched together, keeping crashes and recoveries intact." },
+  { value: "history", label: "History", hint: "Your plan replayed once for each actual start year since 1871." },
+  { value: "restart", label: "Random restart", hint: "History in order from each start year, jumping to a random year when the record ends." },
+  { value: "random", label: "Random years", hint: "A random historical year for every plan year; breaks up streaks and tends to look rosier." },
 ]
 export const METHOD_INFO =
   "Simulated (block bootstrap): each trial stitches together random runs of consecutive historical years, so crashes, recoveries and inflation streaks stay intact while eras mix; it covers today's start too, which history can't. History: your plan once per complete start year since 1871, exactly as it happened. Random restart: each start year in order, jumping to a random year whenever history runs out (ProjectionLab's default). Random years: a random year for every year of the plan, which breaks up streaks and usually looks rosier. Every trial keeps a year's stocks, bonds, inflation and valuation together. A fixed seed keeps the numbers steady; Reroll draws a new set."
-const ALIGN_OPTIONS: { value: StressAlign; label: string }[] = [
-  { value: "start", label: "From today" },
-  { value: "retirement", label: "From retirement" },
+const ALIGN_OPTIONS: { value: StressAlign; label: string; hint: string }[] = [
+  { value: "start", label: "From today", hint: "Each market sequence starts this year." },
+  { value: "retirement", label: "From retirement", hint: "Each market sequence starts in your retirement year, when a crash does the most damage." },
 ]
-const INFLATION_OPTIONS: { value: StressInflation; label: string }[] = [
-  { value: "plan", label: "Plan's rate" },
-  { value: "history", label: "Historical" },
+export const INFLATION_OPTIONS: { value: StressInflation; label: string; hint: string }[] = [
+  { value: "plan", label: "Plan's rate", hint: "Prices rise at your plan's assumed inflation rate every year." },
+  { value: "history", label: "Historical", hint: "Each year uses that year's actual CPI inflation (from 1913)." },
 ]
 const INFLATION_INFO =
   "The historical returns already have each year's real inflation taken out, so for anything that rises with prices the inflation rate cancels. \"Historical\" also runs each year through its real inflation (official CPI, from 1913): pensions without raises lose buying power faster in the 1970s, fixed loan payments get cheaper, and tax lines fixed in dollars catch more income. Earlier years keep the plan's rate."
-const CAPE_OPTIONS: { value: Cape; label: string }[] = [
-  { value: "all", label: "Any" },
-  { value: "20", label: "CAPE ≥ 20" },
-  { value: "30", label: "CAPE ≥ 30" },
+const CAPE_OPTIONS: { value: Cape; label: string; hint: string }[] = [
+  { value: "all", label: "Any", hint: "Every start year counts, whatever stocks cost then." },
+  { value: "20", label: "CAPE ≥ 20", hint: "Only start years when stocks cost 20+ times their ten-year average earnings." },
+  { value: "30", label: "CAPE ≥ 30", hint: "Only start years when stocks cost 30+ times their ten-year average earnings." },
 ]
 const capeInfo = (latest: number | null) =>
   `Only starts in expensive markets (CAPE: price over ten years of earnings).${latest !== null ? ` Today's CAPE is ${latest.toFixed(1)}; high readings have historically come before weaker returns.` : ""}`

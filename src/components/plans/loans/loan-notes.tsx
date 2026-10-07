@@ -11,7 +11,7 @@ const NOTES: { title: string; text: string }[] = [
   },
   {
     title: "Home equity counts, but you can't spend it.",
-    text: "Net worth includes the home, so paying down the loan isn't a loss. But equity can only be reached by selling or borrowing, while invested money can be withdrawn in a bad year. Watch the at-retirement column and whether the accounts are depleted, not just the end.",
+    text: "Net worth includes the home, so paying down the loan isn't a loss. But equity can only be reached by selling or borrowing, while invested money can be withdrawn in a bad year. Watch the at-retirement column and whether the portfolio is depleted, not just the end.",
   },
   {
     title: "The deduction only helps if you itemize.",

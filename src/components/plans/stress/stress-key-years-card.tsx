@@ -7,7 +7,7 @@ import type { PlanDocument, PlanProjection } from "@/lib/plans/plan-types"
 import { keyYears } from "@/lib/plans/stress/stress-key-years"
 
 const INFO =
-  "Only the years where something happens in your plan: a job starts or ends, a purchase (with its down payment), a child, a move, retirement, money arriving, and the year the accounts are depleted (amber) or assets are exhausted (net worth below one year of spending) (red), on your plan's steady returns. Pay is household pay (salaries, business and stock pay); Out is spending plus loan payments; Accounts and Net worth are at the year's end. All in today's dollars. The median stress trial's depletion age is marked too."
+  "Only the years where something happens in your plan: a job starts or ends, a purchase (with its down payment), a child, a move, retirement, money arriving, and the year the portfolio is depleted (amber) or assets are exhausted (net worth below one year of spending) (red), on your plan's steady returns. Pay is household pay (salaries, business and stock pay); Out is spending plus loan payments; Accounts and Net worth are at the year's end. All in today's dollars. The median stress trial's depletion age is marked too."
 
 interface Props {
   doc: PlanDocument

@@ -23,7 +23,7 @@ const ICONS: Record<InsightKey, string> = {
 export const fixAnchor = (fix: InsightFix) => `stress-fix-${fix}`
 
 const INFO =
-  "Common causes of plan failure, checked against yours: when the accounts are depleted, where the money goes at that point (today's dollars), what you're invested in, whether a paycheck covers spending, money that arrives too late, wealth tied up in property, your plan's assumed returns, and taxes. Only the ones that apply are shown. See fix jumps to the setting that pulls that lever."
+  "Common causes of plan failure, checked against yours: when the portfolio is depleted, where the money goes at that point (today's dollars), what you're invested in, whether a paycheck covers spending, money that arrives too late, wealth tied up in property, your plan's assumed returns, and taxes. Only the ones that apply are shown. See fix jumps to the setting that pulls that lever."
 
 /** "Why it fails": the failed trials explained, most telling first, each with a jump to the lever that fixes it. */
 export function StressDiagnosisCard({ insights, onFix }: { insights: Insight[]; onFix: (fix: InsightFix) => void }) {

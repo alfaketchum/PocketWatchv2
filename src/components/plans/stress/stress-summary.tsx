@@ -52,7 +52,7 @@ export function StressStats({ summary, simulated, isHidden }: { summary: Summary
     c.brokeAge !== undefined
       ? `assets exhausted at ${c.brokeAge}`
       : c.depletedAge !== null
-        ? `accounts depleted at ${c.depletedAge}, net worth ${fmtCompact(c.netWorth.at(-1) ?? 0)}`
+        ? `portfolio depleted at ${c.depletedAge}, net worth ${fmtCompact(c.netWorth.at(-1) ?? 0)}`
         : `${fmtCompact(c.netWorth.at(-1) ?? 0)} net worth`
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">

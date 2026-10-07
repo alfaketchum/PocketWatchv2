@@ -19,7 +19,7 @@ export function StressTabTrials({ v }: { v: StressViewModel }) {
       </FireSectionCard>
       {!v.simulated && (
         <div className="grid gap-5 xl:grid-cols-2">
-          <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year: amber where the accounts were depleted, red where assets were exhausted.">
+          <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year: amber where the portfolio was depleted, red where assets were exhausted.">
             <StressCohortBars cohorts={v.summary.cohorts} isHidden={v.isHidden} />
           </FireSectionCard>
           <FireSectionCard eyebrow="Worst periods" title="Starting in a crisis">

@@ -7,13 +7,13 @@ test("both rates high: holds up", () => {
 })
 
 test("net worth holds but the cash runs short in the worst markets", () => {
-  assert.equal(stressVerdict(0.85, 0.99).text, "Solvent throughout; accounts depleted in the worst markets")
+  assert.equal(stressVerdict(0.85, 0.99).text, "Solvent throughout; portfolio depleted in the worst markets")
   assert.equal(stressVerdict(0.85, 0.99).tone, "warn")
 })
 
 test("rich in property, short on cash: says so instead of reading as a failure", () => {
   const v = stressVerdict(0.52, 0.98)
-  assert.equal(v.text, "Asset-rich, cash-constrained: accounts depleted in 48% of markets, with property remaining")
+  assert.equal(v.text, "Asset-rich, cash-constrained: portfolio depleted in 48% of markets, with property remaining")
   assert.equal(v.tone, "warn")
 })
 

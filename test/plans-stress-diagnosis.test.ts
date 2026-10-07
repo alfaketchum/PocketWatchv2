@@ -60,7 +60,7 @@ test("nothing ran out: nothing to explain", () => {
 test("when: the share that runs out and the typical age, first", () => {
   const w = insights(plan())[0]
   assert.equal(w.key, "when")
-  assert.equal(w.title, "Accounts depleted in 50% of trials, typically at 62")
+  assert.equal(w.title, "Portfolio depleted in 50% of trials, typically at 62")
   assert.equal(w.detail, "Most between 60 and 64.")
 })
 

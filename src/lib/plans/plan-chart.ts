@@ -119,7 +119,7 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   }
   // The cash running out is a warning; net worth hitting $0 after it is the real failure.
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
-  if (depleted) marks.push({ id: "", name: "Accounts depleted", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
+  if (depleted) marks.push({ id: "", name: "Portfolio depleted", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
   const broke = depleted ? projection.rows.slice(depleted.index).find((r) => isBrokeYear(r.netWorth, r.expenses)) : undefined
   if (broke) marks.push({ id: "", name: "Assets exhausted", kind: "broke", age: age0 + broke.index, year: broke.year })
   return marks

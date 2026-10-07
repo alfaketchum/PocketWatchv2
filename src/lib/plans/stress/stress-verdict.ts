@@ -13,8 +13,8 @@ const pct = (v: number) => `${Math.round(v * 100)}%`
 export function stressVerdict(cashRate: number, netWorthRate: number, markets = "markets"): { text: string; tone: VerdictTone } {
   if (netWorthRate >= SAFE) {
     if (cashRate >= SAFE) return { text: `Fully funded in almost every ${markets.replace(/s$/, "")}`, tone: "good" }
-    if (cashRate >= SHAKY) return { text: `Solvent throughout; accounts depleted in the worst ${markets}`, tone: "warn" }
-    return { text: `Asset-rich, cash-constrained: accounts depleted in ${pct(1 - cashRate)} of ${markets}, with property remaining`, tone: "warn" }
+    if (cashRate >= SHAKY) return { text: `Solvent throughout; portfolio depleted in the worst ${markets}`, tone: "warn" }
+    return { text: `Asset-rich, cash-constrained: portfolio depleted in ${pct(1 - cashRate)} of ${markets}, with property remaining`, tone: "warn" }
   }
   if (netWorthRate >= SHAKY) return { text: `Assets exhausted in the worst ${markets} (${pct(1 - netWorthRate)})`, tone: "warn" }
   return { text: `Assets exhausted in ${pct(1 - netWorthRate)} of ${markets}`, tone: "bad" }

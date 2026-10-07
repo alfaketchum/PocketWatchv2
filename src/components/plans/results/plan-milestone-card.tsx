@@ -2,13 +2,14 @@
 
 import type { ChartMilestone } from "@/lib/plans/plan-chart"
 import { milestoneUses } from "@/lib/plans/plan-milestone-uses"
+import { MARK_DEFINITIONS } from "@/lib/plans/plan-term-definitions"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import type { HoveredMark } from "./plan-chart-plot"
 
 /** What to say under a milestone's name: what's tied to it, or where it comes from. */
 function milestoneSubtext(mark: ChartMilestone, doc: PlanDocument): string {
-  if (mark.kind === "depleted") return "Every account is empty and this year's spending goes unfunded. Property and other assets are still owned and could be sold."
-  if (mark.kind === "broke") return "Net worth has fallen below one year of spending. Accounts are empty and little is left to sell."
+  const definition = MARK_DEFINITIONS[mark.kind]
+  if (definition) return definition
   if (mark.kind === "child") return "From Kids · edit on Expenses → Kids"
   if (mark.kind === "asset") return "From Assets & debts · edit it there"
   if (mark.kind === "income") return "From Income · edit it there"

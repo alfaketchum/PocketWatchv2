@@ -103,13 +103,13 @@ export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): O
       label: "Funded, thin reserve",
       rule: cushion > 0 ? `Fully funded, but ending with less than ${CUSHION_YEARS} years of spending (${fmt(cushion)})` : "Fully funded, ending with almost nothing (this plan has no spending to measure a reserve against)",
     },
-    soldHome: { label: "Funded by a home sale", rule: "Fully funded only because a home was sold when the accounts were depleted" },
-    outOfCash: { label: "Accounts depleted", rule: "Accounts were depleted before any home was sold, but assets were never exhausted: the home could still be sold" },
+    soldHome: { label: "Funded by a home sale", rule: "Fully funded only because a home was sold when the portfolio was depleted" },
+    outOfCash: { label: "Portfolio depleted", rule: "The portfolio was depleted before any home was sold, but assets were never exhausted: the home could still be sold" },
     almostSurvived: {
       label: "Late depletion",
-      rule: worth ? `Accounts depleted at ${y.endAge - CLOSE_YEARS} or later, after a home sale or with assets exhausted` : `Accounts depleted in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
+      rule: worth ? `Portfolio depleted at ${y.endAge - CLOSE_YEARS} or later, after a home sale or with assets exhausted` : `Portfolio depleted in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
     },
-    catastrophic: { label: "Early depletion", rule: worth ? `Accounts depleted before ${y.endAge - CLOSE_YEARS}, after a home sale or with assets exhausted` : `Accounts depleted before ${y.endAge - CLOSE_YEARS}` },
+    catastrophic: { label: "Early depletion", rule: worth ? `Portfolio depleted before ${y.endAge - CLOSE_YEARS}, after a home sale or with assets exhausted` : `Portfolio depleted before ${y.endAge - CLOSE_YEARS}` },
   }
   const order: OutcomeKey[] = ["surplus", "steady", "justMadeIt", "soldHome", "outOfCash", "almostSurvived", "catastrophic"]
   const byKey = new Map<OutcomeKey, CohortResult[]>(order.map((k) => [k, []]))

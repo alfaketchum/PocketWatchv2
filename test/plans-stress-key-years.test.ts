@@ -38,7 +38,7 @@ test("today and the plan's end are always there, with pay, what goes out and the
 test("a job that ends on a date, retirement and the money running out each get a row", () => {
   assert.ok(texts(plan(), 54).includes("Salary ends"))
   const short = years(plan()).find((y) => y.events.some((e) => e.tone === "warn"))!
-  assert.equal(short.events.find((e) => e.tone === "warn")!.text, "Accounts depleted (steady returns)")
+  assert.equal(short.events.find((e) => e.tone === "warn")!.text, "Portfolio depleted (steady returns)")
   assert.ok(short.accounts < 1)
   assert.ok(years(plan()).some((y) => y.events.some((e) => e.tone === "bad" && e.text === "Assets exhausted (steady returns)")), "nothing else is owned, so net worth hits $0 too")
 })
@@ -56,7 +56,7 @@ test("a purchase shows its down payment; a child is born; an inheritance arrives
 
 test("the stress test's typical run-out age gets its own marker", () => {
   const e = at(plan(), 70, 70)!.events
-  assert.ok(e.some((x) => x.text === "Accounts depleted (median stress trial)" && x.tone === "warn"))
+  assert.ok(e.some((x) => x.text === "Portfolio depleted (median stress trial)" && x.tone === "warn"))
 })
 
 test("pay tied to a milestone isn't listed twice (the milestone names it)", () => {

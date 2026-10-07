@@ -31,11 +31,11 @@ export function sequenceLabel(sequence: (number | null)[], maxRuns = Infinity): 
   return shown.join(" · ") + (runs.length > shown.length ? ` · +${runs.length - shown.length} more` : "")
 }
 
-/** One trial's ending in words: assets exhausted is the failure (bad); accounts depleted with property left is
+/** One trial's ending in words: assets exhausted is the failure (bad); portfolio depleted with property left is
  *  a warning (warn); otherwise it was fully funded (ok). */
 export function trialStatus(c: Pick<CohortResult, "depletedAge" | "brokeAge">): { text: string; tone: "ok" | "warn" | "bad" } {
   if (c.brokeAge !== undefined) return { text: `Assets exhausted at ${c.brokeAge}`, tone: "bad" }
-  if (c.depletedAge !== null) return { text: `Accounts depleted at ${c.depletedAge}`, tone: "warn" }
+  if (c.depletedAge !== null) return { text: `Portfolio depleted at ${c.depletedAge}`, tone: "warn" }
   return { text: "Fully funded", tone: "ok" }
 }
 

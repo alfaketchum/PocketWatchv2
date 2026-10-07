@@ -10,7 +10,7 @@ import type { CohortResult } from "@/lib/plans/stress/stress-test"
 /** Outcomes listed only when some trial lands in them. */
 const CONDITIONAL: OutcomeKey[] = ["soldHome", "outOfCash"]
 
-const BUCKETS_INFO = `Measured on whichever the chart shows. Accounts depleted means your accounts couldn't fund a year's spending. On Money in accounts that's late or early depletion; on Net worth it's Accounts depleted if no home had been sold yet and assets weren't exhausted (the home could still be sold), and late or early depletion once a home was already sold or assets are exhausted (net worth below one year of spending). Your home and other property don't fund spending unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that reserve counts half). Typical values shown.`
+const BUCKETS_INFO = `Measured on whichever the chart shows. Portfolio depleted means your accounts couldn't fund a year's spending. On Money in accounts that's late or early depletion; on Net worth it's Portfolio depleted if no home had been sold yet and assets weren't exhausted (the home could still be sold), and late or early depletion once a home was already sold or assets are exhausted (net worth below one year of spending). Your home and other property don't fund spending unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that reserve counts half). Typical values shown.`
 
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6

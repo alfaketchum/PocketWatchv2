@@ -61,7 +61,7 @@ interface Props {
 
 /**
  * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if fully funded, red
- * if assets were exhausted, amber if only the accounts were depleted) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
+ * if assets were exhausted, amber if only the portfolio was depleted) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
 export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220, done = false }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -271,7 +271,7 @@ function Legend() {
   return (
     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-foreground-muted">
       {swatch("var(--foreground-muted)", "Fully funded")}
-      {swatch("var(--warning)", "Accounts depleted")}
+      {swatch("var(--warning)", "Portfolio depleted")}
       {swatch("var(--error)", "Assets exhausted")}
       {swatch("var(--foreground)", "Your plan (steady returns)", true)}
       <span>Net worth by age, today&apos;s dollars</span>

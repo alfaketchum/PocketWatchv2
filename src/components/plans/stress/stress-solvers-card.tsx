@@ -19,7 +19,7 @@ const LEVERS: Record<SolverKey, string> = {
 }
 
 const INFO =
-  "Each lever moved on its own until your plan meets the goal in the target share of trials, on the same simulated markets as What would help. Goal: Fully funded (your accounts fund every year's spending, the stricter one) or Solvent (assets never exhausted: net worth never falls below one year of spending after the accounts are depleted). Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
+  "Each lever moved on its own until your plan meets the goal in the target share of trials, on the same simulated markets as What would help. Goal: Fully funded (your accounts fund every year's spending, the stricter one) or Solvent (assets never exhausted: net worth never falls below one year of spending after the portfolio is depleted). Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
 
 const money = (v: number | string) => (typeof v === "number" ? `${fmtCompact(v)} a year` : v)
 

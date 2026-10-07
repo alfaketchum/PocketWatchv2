@@ -39,8 +39,8 @@ function HowItEnded({ v }: { v: StressViewModel }) {
       title={accounts ? "Left in accounts, today's dollars" : "Net worth at the end, today's dollars"}
       info={
         accounts
-          ? `How many ${v.unit} depleted their accounts, and how many of the rest ended with each amount in your accounts, colored by outcome. Money in accounts is what funds spending. Click a bar to show only those ${v.unit} on every tab; click it again to clear.`
-          : `How many ${v.unit} depleted their accounts, and how many of the rest ended with each net worth, each bar split by how much of it is money in your accounts versus home and other property (net of debts). Click a bar to show only those ${v.unit} on every tab; click it again to clear.`
+          ? `How many ${v.unit} depleted their portfolio, and how many of the rest ended with each amount in your accounts, colored by outcome. Money in accounts is what funds spending. Click a bar to show only those ${v.unit} on every tab; click it again to clear.`
+          : `How many ${v.unit} depleted their portfolio, and how many of the rest ended with each net worth, each bar split by how much of it is money in your accounts versus home and other property (net of debts). Click a bar to show only those ${v.unit} on every tab; click it again to clear.`
       }
       right={<ChoiceChips label="Ending" options={ENDING_OPTIONS} value={v.endView} onChange={v.setEndView} />}
     >
@@ -67,8 +67,8 @@ function ByAge({ v }: { v: StressViewModel }) {
         range
           ? `Shaded: the middle 80% and middle 50% of ${v.unit}. Solid: the median. Dashed: your plan with its steady assumed returns. Red: the worst ${v.simulated ? "trial" : "start year"}. Withdrawal rate: each year's withdrawals over what your accounts held at its start, capped at 100% (a year they couldn't cover counts as 100%).`
           : v.simulated
-            ? `${SAMPLE_LINES} of the trials, evenly picked. Amber lines depleted their accounts; red lines exhausted their assets. Dashed: your plan with steady returns.`
-            : "Each line is your plan starting in one historical year. Amber lines depleted their accounts; red lines exhausted their assets; crisis years (1929, 1937, 1966, 1973, 2000, 2007) are highlighted. Dashed: your plan with steady returns."
+            ? `${SAMPLE_LINES} of the trials, evenly picked. Amber lines depleted their portfolio; red lines exhausted their assets. Dashed: your plan with steady returns.`
+            : "Each line is your plan starting in one historical year. Amber lines depleted their portfolio; red lines exhausted their assets; crisis years (1929, 1937, 1966, 1973, 2000, 2007) are highlighted. Dashed: your plan with steady returns."
       }
       right={
         <div className="flex flex-wrap items-center gap-3">

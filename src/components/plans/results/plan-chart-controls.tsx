@@ -1,17 +1,18 @@
 "use client"
 
+import { HoverHint } from "@/components/ui/hover-hint"
 import { cn } from "@/lib/utils"
 import { BASIC_CHART_VIEWS } from "@/lib/plans/plan-mode"
 import type { ChartMode } from "./use-chart-series"
 
-export const MODES: { value: ChartMode; label: string }[] = [
-  { value: "networth", label: "Net worth" },
-  { value: "cashflow", label: "Cash flow" },
-  { value: "income", label: "Income" },
-  { value: "expenses", label: "Expenses" },
-  { value: "debt", label: "Debt" },
-  { value: "taxes", label: "Taxes" },
-  { value: "accounts", label: "Accounts" },
+export const MODES: { value: ChartMode; label: string; hint: string }[] = [
+  { value: "networth", label: "Net worth", hint: "Everything you own minus everything you owe, by year." },
+  { value: "cashflow", label: "Cash flow", hint: "Money coming in each year and where it goes." },
+  { value: "income", label: "Income", hint: "Pay, Social Security and other income, by year." },
+  { value: "expenses", label: "Expenses", hint: "Spending by category, by year." },
+  { value: "debt", label: "Debt", hint: "What you still owe on each loan, by year." },
+  { value: "taxes", label: "Taxes", hint: "Taxes owed each year, by type." },
+  { value: "accounts", label: "Accounts", hint: "The balance of each savings and investment account, by year." },
 ]
 
 /** The chart views offered: Debt only with debt, and Basic's short list. */
@@ -39,23 +40,24 @@ export function DetailToggle({ checked, onChange, label = "Subcategories" }: { c
 }
 
 /** A chart's view switch: one bordered strip of options, the chosen one filled; scrolls sideways on a phone. */
-export function SegmentedToggle<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[]; label: string }) {
+export function SegmentedToggle<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; hint?: string }[]; label: string }) {
   return (
     <div role="radiogroup" aria-label={label} className="scrollbar-hide inline-flex max-w-full overflow-x-auto rounded-lg border border-card-border p-0.5">
       {options.map((m) => (
-        <button
-          key={m.value}
-          type="button"
-          role="radio"
-          aria-checked={value === m.value}
-          onClick={() => onChange(m.value)}
-          className={cn(
-            "min-h-9 shrink-0 whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors lg:min-h-0 lg:px-2.5 lg:text-[11px]",
-            value === m.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
-          )}
-        >
-          {m.label}
-        </button>
+        <HoverHint key={m.value} hint={m.hint}>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={value === m.value}
+            onClick={() => onChange(m.value)}
+            className={cn(
+              "min-h-9 shrink-0 whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium transition-colors lg:min-h-0 lg:px-2.5 lg:text-[11px]",
+              value === m.value ? "bg-primary text-white" : "text-foreground-muted hover:text-foreground",
+            )}
+          >
+            {m.label}
+          </button>
+        </HoverHint>
       ))}
     </div>
   )

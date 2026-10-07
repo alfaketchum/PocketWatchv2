@@ -48,7 +48,7 @@ export function StressImpactsTable({ results, total, unit, sampleSize, onApply, 
               <th className="py-1.5 font-semibold">Change</th>
               <th className="w-[38%] py-1.5 pl-3 font-semibold">{goal === "cash" ? "Fully funded" : "Solvent"}</th>
               <th className="py-1.5 pl-2 text-right font-semibold">vs now</th>
-              <th className="py-1.5 pl-3 text-right font-semibold" title="Median age the accounts were depleted, among trials where they were">Median depletion age</th>
+              <th className="py-1.5 pl-3 text-right font-semibold" title="Median age the portfolio was depleted, among trials where it was">Median depletion age</th>
               <th className="py-1.5 pl-3" aria-label="Apply" />
             </tr>
           </thead>

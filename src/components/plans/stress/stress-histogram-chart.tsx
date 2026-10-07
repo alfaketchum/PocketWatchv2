@@ -19,7 +19,7 @@ const LABELS: Record<OutcomeKey, string> = {
   steady: "Solid reserve",
   justMadeIt: "Thin reserve",
   soldHome: "Home sale",
-  outOfCash: "Accounts depleted",
+  outOfCash: "Portfolio depleted",
   almostSurvived: "Late depletion",
   catastrophic: "Early depletion",
 }

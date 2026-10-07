@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, type ReactNode } from "react"
+import { HoverHint } from "@/components/ui/hover-hint"
 import { cn } from "@/lib/utils"
 
 /** Inside this, every InputBlock lays out as a settings row: its title on the left, its fields on the right. */
@@ -52,23 +53,24 @@ export function Toggle({ label, checked, onChange }: { label: string; checked: b
 /** Pill-style single choice. */
 export function ChoiceChips<T extends string>({
   options, value, onChange, label,
-}: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+}: { options: { value: T; label: string; hint?: string }[]; value: T; onChange: (v: T) => void; label: string }) {
   return (
     <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
       {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "min-h-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0",
-            value === o.value ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
-          )}
-        >
-          {o.label}
-        </button>
+        <HoverHint key={o.value} hint={o.hint}>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "min-h-9 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors md:min-h-0",
+              value === o.value ? "border-primary bg-primary/10 text-primary" : "border-card-border text-foreground-muted hover:text-foreground",
+            )}
+          >
+            {o.label}
+          </button>
+        </HoverHint>
       ))}
     </div>
   )

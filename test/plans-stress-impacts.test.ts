@@ -97,7 +97,7 @@ test("homes kept with no backup plan try selling if the money runs out; sold or 
     ],
   })
   const sell = impactVariants(doc).find((v) => v.key === "sell-homes")!
-  assert.equal(sell.label, "Sell Home if accounts are depleted")
+  assert.equal(sell.label, "Sell Home if the portfolio is depleted")
   assert.deepEqual(sell.doc.assets.find((a) => a.id === "kept")!.fallback, { then: "rent", monthlyRent: 2_000, price: 0 })
   assert.equal(sell.doc.assets.find((a) => a.id === "sold")!.fallback, undefined)
 })

@@ -4,17 +4,13 @@ import { useState } from "react"
 import * as Popover from "@radix-ui/react-popover"
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { BLOCK_OPTIONS, TRIAL_OPTIONS, type SamplingOptions } from "@/lib/plans/stress/stress-sampling"
-import type { StressInflation } from "@/lib/plans/stress/stress-test"
 import { MENU_COLLISION_PADDING, MENU_PANEL } from "../editor/chip-menu"
 import { SegmentedToggle } from "../results/plan-chart-controls"
-import { METHOD_OPTIONS, Setting } from "./stress-controls"
+import type { StressInflation } from "@/lib/plans/stress/stress-test"
+import { INFLATION_OPTIONS, METHOD_OPTIONS, Setting } from "./stress-controls"
 
 const trialOptions = TRIAL_OPTIONS.map((n) => ({ value: String(n), label: n.toLocaleString() }))
 const blockOptions = BLOCK_OPTIONS.map((n) => ({ value: String(n), label: `${n} yrs` }))
-const INFLATION_OPTIONS: { value: StressInflation; label: string }[] = [
-  { value: "plan", label: "Plan's rate" },
-  { value: "history", label: "Historical" },
-]
 
 interface Props {
   sampling: SamplingOptions

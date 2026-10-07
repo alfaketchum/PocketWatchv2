@@ -107,10 +107,10 @@ export function keyYears(doc: PlanDocument, projection: PlanProjection, runOutAg
   assetEvents(doc, rows, today, add)
   lifeEvents(doc, rows, today, add)
   const short = rows.findIndex((r) => r.shortfall > SHORTFALL)
-  if (short >= 0) add(short, "Accounts depleted (steady returns)", "warn")
+  if (short >= 0) add(short, "Portfolio depleted (steady returns)", "warn")
   const broke = short >= 0 ? rows.findIndex((r, i) => i >= short && isBrokeYear(r.netWorth, r.expenses)) : -1
   if (broke >= 0) add(broke, "Assets exhausted (steady returns)", "bad")
-  if (runOutAge !== null) add(runOutAge - age0, "Accounts depleted (median stress trial)", "warn")
+  if (runOutAge !== null) add(runOutAge - age0, "Portfolio depleted (median stress trial)", "warn")
   add(rows.length - 1, "Plan ends")
   // Over the limit: today, the end and the money running out always stay, then the earliest of the rest.
   const all = [...events.keys()].sort((a, b) => a - b)

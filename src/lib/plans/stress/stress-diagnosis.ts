@@ -78,7 +78,7 @@ function when(c: Context, total: number): Insight {
   const [p10, p90] = [percentile(c.ages, 0.1), percentile(c.ages, 0.9)].map(Math.round)
   return {
     key: "when",
-    title: `Accounts depleted in ${pct(c.ages.length / total)} of trials, typically at ${c.age}`,
+    title: `Portfolio depleted in ${pct(c.ages.length / total)} of trials, typically at ${c.age}`,
     detail: p10 === p90 ? `All of them at about ${c.age}.` : `Most between ${p10} and ${p90}.`,
   }
 }
