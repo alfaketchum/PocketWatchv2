@@ -30,3 +30,13 @@ export function sequenceLabel(sequence: (number | null)[], maxRuns = Infinity): 
   const shown = runs.slice(0, maxRuns)
   return shown.join(" · ") + (runs.length > shown.length ? ` · +${runs.length - shown.length} more` : "")
 }
+
+/** One trial's ending in words: going broke is the failure (bad); the cash running out with property left is
+ *  a warning (warn); otherwise it lasted (ok). */
+export function trialStatus(c: Pick<CohortResult, "depletedAge" | "brokeAge">): { text: string; tone: "ok" | "warn" | "bad" } {
+  if (c.brokeAge !== undefined) return { text: `Goes broke at ${c.brokeAge}`, tone: "bad" }
+  if (c.depletedAge !== null) return { text: `Cash runs out at ${c.depletedAge}`, tone: "warn" }
+  return { text: "Lasts", tone: "ok" }
+}
+
+export const TRIAL_TONE_CLASS = { ok: "text-success", warn: "text-warning", bad: "text-error" } as const

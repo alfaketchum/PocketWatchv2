@@ -53,6 +53,9 @@ export interface CohortResult {
   equityAtDepletion?: number
   /** When it ran out: the lowest net worth from then to the end, today's dollars (above 0: never broke). */
   lowestWorthAfterRunOut?: number
+  /** Age the trial went broke: at or after the cash ran out, net worth down to less than a year of spending
+   *  (nothing meaningful left to sell). Unset: it never did. */
+  brokeAge?: number
   /** Lowest point and area under the danger line (stress-close-calls). */
   lowPoint?: CloseCall["lowPoint"]
   dangerArea?: number
@@ -88,6 +91,21 @@ function trialHomeSales(doc: PlanDocument, projection: PlanProjection, age0: num
   const stressed = sales.filter((s) => s.then !== "asPlanned").map((s) => ({ name: s.name, age: age0 + s.index, planned: false }))
   return [...planned, ...stressed].sort((a, b) => a.age - b.age)
 }
+
+/** From the year the cash ran out: the lowest net worth, and the age it was first worth less than a year of spending. */
+function brokeFields(after: { index: number; worth: number; spending: number }[], age0: number): Pick<CohortResult, "lowestWorthAfterRunOut" | "brokeAge"> {
+  const broke = after.find((r) => isBrokeYear(r.worth, r.spending))
+  return { lowestWorthAfterRunOut: Math.min(...after.map((r) => r.worth)), ...(broke ? { brokeAge: age0 + broke.index } : {}) }
+}
+
+/**
+ * A year with nothing meaningful left: net worth below a year of that year's spending (a leftover car doesn't keep
+ * you solvent). Only counted once the cash has run out, so a plan that starts in debt isn't broke for that alone.
+ */
+export const isBrokeYear = (netWorth: number, spending: number) => netWorth < Math.max(1, spending)
+
+/** Net worth gone: the cash ran out and, then or later, net worth fell below a year of spending. */
+export const isBroke = (c: CohortResult) => c.brokeAge !== undefined
 
 const withSales = (sales: TrialHomeSale[]) => (sales.length > 0 ? { homeSales: sales } : {})
 
@@ -224,7 +242,12 @@ export function runPath(doc: PlanDocument, annual: AnnualHistory, path: number[]
     soldHome: (projection.homeSales?.length ?? 0) > 0,
     ...withSales(trialHomeSales(doc, projection, age0)),
     equityAtDepletion: failed ? real(homeEquity(expandPlan(doc, inflation), failed), failed.index) : 0,
-    ...(failed ? { lowestWorthAfterRunOut: Math.min(...projection.rows.slice(failed.index).map((r) => real(r.netWorth, r.index))) } : {}),
+    ...(failed
+      ? brokeFields(
+          projection.rows.slice(failed.index).map((r) => ({ index: r.index, worth: real(r.netWorth, r.index), spending: r.expenses / deflator(inflation, r.index, "flow") })),
+          age0,
+        )
+      : {}),
     ...closeCall(projection.rows, age0),
     ...(doc.settings.spendingRule ? { lowestSpending: Math.min(1, ...projection.rows.map((r) => r.spendingFactor)) } : {}),
     netWorth: projection.rows.map((r) => real(r.netWorth, r.index)),
@@ -247,15 +270,17 @@ export const BANDS = [0.1, 0.25, 0.5, 0.75, 0.9] as const
 
 export interface StressSummary {
   cohorts: CohortResult[]
-  /** Share of cohorts in which the money lasts to the end of the plan. */
+  /** "Cash lasts": share of cohorts whose accounts pay every year's bills to the end of the plan. */
   successRate: number
+  /** "Net worth lasts": share of cohorts that never go broke (see isBroke). */
+  netWorthRate: number
   /** Ending net worth (home and property included): median and 10th percentile, today's dollars. */
   medianEnd: number
   p10End: number
   /** Money left in the accounts at the end: median and 10th percentile, today's dollars. */
   medianEndInvested: number
   p10EndInvested: number
-  /** Earliest run-out, or the lowest ending net worth when every cohort lasts. */
+  /** Earliest to hit $0 net worth, else the earliest cash run-out, else the lowest ending net worth. */
   worst: CohortResult | null
   /** Per plan year: net worth / invested / withdrawal-rate percentiles (BANDS order). */
   netWorthBands: number[][]
@@ -283,11 +308,12 @@ export function summarize(all: CohortResult[], capeMin: number | null, keep?: (c
   return {
     cohorts,
     successRate: cohorts.length > 0 ? 1 - failures.length / cohorts.length : 0,
+    netWorthRate: cohorts.length > 0 ? 1 - cohorts.filter(isBroke).length / cohorts.length : 0,
     medianEnd: percentile(ends, 0.5),
     p10End: percentile(ends, 0.1),
     medianEndInvested: percentile(endsInvested, 0.5),
     p10EndInvested: percentile(endsInvested, 0.1),
-    worst: failures[0] ?? lowest,
+    worst: [...failures].filter(isBroke).sort((a, b) => (a.brokeAge ?? 0) - (b.brokeAge ?? 0))[0] ?? failures[0] ?? lowest,
     netWorthBands: bands("netWorth"),
     investedBands: bands("invested"),
     withdrawalBands: bands("withdrawalRate"),

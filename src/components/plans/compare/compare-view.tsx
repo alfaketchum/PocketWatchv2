@@ -13,7 +13,7 @@ import { useStressTest } from "../stress/use-stress-test"
 import { usePlanColors } from "../results/use-plan-colors"
 import { CompareInputsDiff } from "./compare-inputs-diff"
 import { ComparePickers } from "./compare-pickers"
-import { CompareTable } from "./compare-table"
+import { CompareTable, type Safety } from "./compare-table"
 
 const CompareCharts = dynamic(() => import("./compare-charts").then((m) => m.CompareCharts), {
   ssr: false,
@@ -30,10 +30,14 @@ function lengthNote(a: YearRow[], b: YearRow[]): string | null {
 }
 
 /** Plan A against plan B: what's different in the inputs, then what that does to every chart. */
-/** A plan's success rate through the default simulated markets (null while loading or running). */
-function useSafety(doc: PlanDocument | null): number | null {
+/** A plan's rates through the default simulated markets (null while loading or running). */
+function useSafety(doc: PlanDocument | null): Safety | null {
   const { cohorts, running } = useStressTest(doc, "start", "plan", DEFAULT_SAMPLING)
-  return useMemo(() => (cohorts && !running && cohorts.length > 0 ? summarize(cohorts, null).successRate : null), [cohorts, running])
+  return useMemo(() => {
+    if (!cohorts || running || cohorts.length === 0) return null
+    const s = summarize(cohorts, null)
+    return { netWorth: s.netWorthRate, cash: s.successRate }
+  }, [cohorts, running])
 }
 
 export function CompareView() {
@@ -42,7 +46,7 @@ export function CompareView() {
   const { series } = usePlanColors()
   const colors: [string, string] = [series[0], series[1]]
   const { isBasic } = usePlanMode()
-  const safety: [number | null, number | null] = [useSafety(a.plan?.document ?? null), useSafety(b.plan?.document ?? null)]
+  const safety: [Safety | null, Safety | null] = [useSafety(a.plan?.document ?? null), useSafety(b.plan?.document ?? null)]
   // Basic always shows today's dollars (its toggle is Advanced).
   useEffect(() => {
     if (isBasic) setBasis("today")

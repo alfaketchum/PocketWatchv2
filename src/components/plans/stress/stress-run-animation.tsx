@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { fmtSuccess } from "@/components/fire/fire-helpers"
-import type { CohortResult } from "@/lib/plans/stress/stress-test"
+import { isBroke, type CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** The whole run plays over at least this long, however fast the trials finish (the reveal is part of the point). */
 const PLAYBACK_MS = 2600
@@ -20,6 +20,7 @@ const Y_HEADROOM = 1.2
 interface Colors {
   lasted: string
   failed: string
+  short: string
   head: string
   plan: string
 }
@@ -27,7 +28,7 @@ interface Colors {
 function readColors(el: HTMLElement): Colors {
   const css = getComputedStyle(el)
   const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback
-  return { lasted: v("--foreground-muted", "#888"), failed: v("--error", "#e5484d"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
+  return { lasted: v("--foreground-muted", "#888"), failed: v("--error", "#e5484d"), short: v("--warning", "#b5791a"), head: v("--primary", "#5b5bd6"), plan: v("--foreground", "#111") }
 }
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -56,7 +57,7 @@ interface Props {
 
 /**
  * The run as it happens: each trial's net worth sweeps across by age as it finishes (faint if the money lasted, red
- * if it ran out) while the count and the share that survived tick up. Paced so even an instant run plays out.
+ * if net worth hit $0, amber if only the cash ran out) while the count and the share that kept their net worth tick up. Paced so even an instant run plays out.
  */
 export function StressRunAnimation({ trials, total, plan, complete, onFinished, unit, height = 220 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -140,11 +141,13 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
         const { c, born } = active[k]
         const t = Math.min(1, (now - born) / SWEEP_MS)
         const eased = 1 - Math.pow(1 - t, 3)
-        const failed = c.depletedAge !== null
+        // Red: net worth hit $0. Amber: the cash ran out with property left. Faint: the money lasted.
+        const failed = isBroke(c)
+        const short = !failed && c.depletedAge !== null
         if (t >= 1) {
           settledCtx.lineWidth = 1
-          settledCtx.strokeStyle = failed ? colors.failed : colors.lasted
-          settledCtx.globalAlpha = failed ? FAILED_ALPHA : LASTED_ALPHA
+          settledCtx.strokeStyle = failed ? colors.failed : short ? colors.short : colors.lasted
+          settledCtx.globalAlpha = failed || short ? FAILED_ALPHA : LASTED_ALPHA
           trace(settledCtx, c.netWorth, years)
           active.splice(k, 1)
           landed++
@@ -196,7 +199,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
   }, [complete])
 
   // Without motion the counter simply follows the trials as they finish.
-  const counts = reducedMotion() ? { count: trials.length, survived: trials.filter((c) => c.depletedAge === null).length } : shown
+  const counts = reducedMotion() ? { count: trials.length, survived: trials.filter((c) => !isBroke(c)).length } : shown
   const rate = counts.count > 0 ? counts.survived / counts.count : null
   const all = Math.max(total, trials.length)
   return (
@@ -205,7 +208,7 @@ export function StressRunAnimation({ trials, total, plan, complete, onFinished, 
       <div className="pointer-events-none absolute left-0 top-0 flex flex-col gap-0.5 rounded-lg bg-card/80 px-2.5 py-1.5 backdrop-blur-sm">
         <p className="font-data text-2xl font-semibold tabular-nums text-foreground">{rate === null ? "—" : fmtSuccess(rate)}</p>
         <p className="text-[11px] tabular-nums text-foreground-muted">
-          survive · {counts.count.toLocaleString()}
+          net worth lasts · {counts.count.toLocaleString()}
           {all > 0 ? ` of ${all.toLocaleString()}` : ""} {unit}
         </p>
       </div>

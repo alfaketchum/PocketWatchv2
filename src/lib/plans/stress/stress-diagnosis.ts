@@ -78,7 +78,7 @@ function when(c: Context, total: number): Insight {
   const [p10, p90] = [percentile(c.ages, 0.1), percentile(c.ages, 0.9)].map(Math.round)
   return {
     key: "when",
-    title: `${pct(c.ages.length / total)} of trials run out, typically at ${c.age}`,
+    title: `${pct(c.ages.length / total)} of trials run out of cash, typically at ${c.age}`,
     detail: p10 === p90 ? `All of them at about ${c.age}.` : `Most between ${p10} and ${p90}.`,
   }
 }
@@ -258,7 +258,7 @@ function lateMoney(c: Context): Insight | null {
   if (big.length === 0) return null
   return {
     key: "lateMoney",
-    title: `Money that arrives after ${c.age} can't help`,
+    title: `Money that arrives after ${c.age} comes too late`,
     detail: `${big.map((l) => `${l.name} (${k(l.value)}) at ${l.age}`).join(", ")}: most failures happen first.`,
   }
 }
@@ -269,7 +269,7 @@ function illiquid(c: Context, failed: CohortResult[]): Insight | null {
   if (equity < c.spending) return null
   return {
     key: "illiquid",
-    title: `Typically ${k(equity)} of property left when the money runs out`,
+    title: `Typically ${k(equity)} of property left when the cash runs out`,
     detail: "Homes and property only pay the bills if they're sold or rented.",
     fix: "sell-homes",
   }
@@ -289,7 +289,7 @@ function optimism(c: Context, annual: AnnualHistory | null): Insight | null {
   const history = stock !== null && mix ? mix.stocks * stock + crypto : null
   return {
     key: "optimism",
-    title: "Your plan's steady line never runs out; real markets do",
+    title: "Your plan's steady line never runs short; real markets do",
     detail:
       history !== null && assumed > history + 0.005
         ? `It assumes ${pct(assumed)} a year after inflation, every year. History averages less for this mix and comes in booms and crashes.`

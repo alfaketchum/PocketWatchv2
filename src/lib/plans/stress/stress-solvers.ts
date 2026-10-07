@@ -21,7 +21,7 @@ import {
   withInvestmentMix,
 } from "./stress-levers"
 import type { SamplingOptions } from "./stress-sampling"
-import { runPath, stressPaths, type StressInflation } from "./stress-test"
+import { isBroke, runPath, stressPaths, type CohortResult, type StressInflation } from "./stress-test"
 
 export type SolverKey = "spending" | "mix" | "retirement" | "socialSecurity"
 export const SOLVER_KEYS: SolverKey[] = ["spending", "mix", "retirement", "socialSecurity"]
@@ -46,6 +46,12 @@ export interface SolverResult {
   baselineRate: number
 }
 
+/** What a trial has to do to count: keep paying the bills from the accounts, or never go broke. */
+export type StressGoal = "cash" | "netWorth"
+
+/** Whether a trial meets the goal. */
+export const meetsGoal = (c: CohortResult, goal: StressGoal) => (goal === "cash" ? c.depletedAge === null : !isBroke(c))
+
 export interface SolveRequest {
   key: SolverKey
   doc: PlanDocument
@@ -54,6 +60,8 @@ export interface SolveRequest {
   inflation: StressInflation
   sampling: SamplingOptions
   target: number
+  /** Cash lasts unless set. */
+  goal?: StressGoal
 }
 
 /** Spending factors searched, and how close the answer gets. */
@@ -99,7 +107,7 @@ function evaluator(req: SolveRequest, onStep: () => void): Evaluate {
     let failed = 0
     for (let i = 0; i < total; i++) {
       const c = runPath(doc, req.annual, paths[i], req.anchor, req.inflation, i)
-      if (c.depletedAge === null) ok++
+      if (meetsGoal(c, req.goal ?? "cash")) ok++
       else failed++
       if (early && (ok >= need || failed > total - need)) break
     }

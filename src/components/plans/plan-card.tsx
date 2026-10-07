@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { CASH_TONE_CLASS, cashStatus } from "./results/cash-status"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import type { PlanListItem } from "@/hooks/plans/shared"
 
@@ -69,11 +70,10 @@ export function PlanCard({
               {s.netWorthAtRetirement === null ? "—" : fmtCompact(s.netWorthAtRetirement)}
             </dd>
           </div>
-          <div>
-            <dt className="truncate text-foreground-muted">Money lasts</dt>
-            <dd className={`font-semibold tabular-nums ${s.depletedAge === null ? "text-success" : "text-error"}`}>
-              {s.depletedAge === null ? `Past ${s.endAge}` : `Until ${s.depletedAge}`}
-            </dd>
+          <div style={blur}>
+            <dt className="truncate text-foreground-muted">At {s.endAge}</dt>
+            <dd className="font-semibold text-foreground tabular-nums">{fmtCompact(s.endingNetWorth)}</dd>
+            {s.depletedAge !== null && <dd className={`truncate text-[10px] ${CASH_TONE_CLASS[cashStatus(s).tone]}`}>{s.brokeAge !== null ? `broke at ${s.brokeAge}` : `cash out at ${s.depletedAge}`}</dd>}
           </div>
         </dl>
       ) : (

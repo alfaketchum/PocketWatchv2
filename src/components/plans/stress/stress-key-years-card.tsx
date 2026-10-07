@@ -7,7 +7,7 @@ import type { PlanDocument, PlanProjection } from "@/lib/plans/plan-types"
 import { keyYears } from "@/lib/plans/stress/stress-key-years"
 
 const INFO =
-  "Only the years where something happens in your plan: a job starts or ends, a purchase (with its down payment), a child, a move, retirement, money arriving, and the year the money runs out, on your plan's steady returns. Pay is household pay (salaries, business and stock pay); Out is spending plus loan payments; Accounts and Net worth are at the year's end. All in today's dollars. The typical stress trial's run-out age is marked too."
+  "Only the years where something happens in your plan: a job starts or ends, a purchase (with its down payment), a child, a move, retirement, money arriving, and the year the cash runs out (amber) or it goes broke (net worth below a year of spending) (red), on your plan's steady returns. Pay is household pay (salaries, business and stock pay); Out is spending plus loan payments; Accounts and Net worth are at the year's end. All in today's dollars. The age the typical stress trial's cash runs out is marked too."
 
 interface Props {
   doc: PlanDocument
@@ -49,7 +49,7 @@ export function StressKeyYearsCard({ doc, projection, runOutAge, isHidden }: Pro
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right font-data text-foreground-muted" style={blur}>
                   {money(r.out)}
                 </td>
-                <td className={`whitespace-nowrap py-1.5 pl-2 text-right font-data ${r.accounts < 500 ? "text-error" : "text-foreground"}`} style={blur}>
+                <td className={`whitespace-nowrap py-1.5 pl-2 text-right font-data ${r.accounts < 500 ? "text-warning" : "text-foreground"}`} style={blur}>
                   {money(r.accounts)}
                 </td>
                 <td className="whitespace-nowrap py-1.5 pl-2 text-right font-data text-foreground-muted" style={blur}>
@@ -57,7 +57,7 @@ export function StressKeyYearsCard({ doc, projection, runOutAge, isHidden }: Pro
                 </td>
                 <td className="py-1.5 pl-4">
                   {r.events.map((e) => (
-                    <span key={e.text} className={`block ${e.tone === "bad" ? "font-medium text-error" : "text-foreground"}`}>
+                    <span key={e.text} className={`block ${e.tone === "bad" ? "font-medium text-error" : e.tone === "warn" ? "font-medium text-warning" : "text-foreground"}`}>
                       {e.text}
                     </span>
                   ))}

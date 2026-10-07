@@ -1,5 +1,6 @@
 "use client"
 
+import { trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { fmtMoney, fmtPct } from "@/components/fire/fire-helpers"
 import { NOTABLE_PERIODS } from "@/lib/fire/fire-constants"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
@@ -27,9 +28,7 @@ export function StressPeriodsTable({ cohorts, isHidden }: { cohorts: CohortResul
               <td className="py-1.5 text-foreground">{p.label}</td>
               {c ? (
                 <>
-                  <td className={`py-1.5 ${c.depletedAge !== null ? "text-error" : "text-success"}`}>
-                    {c.depletedAge !== null ? `Runs out at ${c.depletedAge}` : "Lasts"}
-                  </td>
+                  <td className={`py-1.5 ${TRIAL_TONE_CLASS[trialStatus(c).tone]}`}>{trialStatus(c).text}</td>
                   <td className="hidden py-1.5 text-right tabular-nums text-foreground-muted sm:table-cell">{c.avgInflation === null ? "—" : fmtPct(c.avgInflation, 1)}</td>
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums text-foreground" style={blur}>{fmtMoney(Math.min(...c.invested))}</td>
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right tabular-nums text-foreground" style={blur}>{fmtMoney(c.netWorth.at(-1) ?? 0)}</td>

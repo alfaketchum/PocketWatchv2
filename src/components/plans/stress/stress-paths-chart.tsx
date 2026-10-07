@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { fmtCompact } from "@/components/fire/fire-helpers"
 import { useIsNarrow } from "@/hooks/use-is-narrow"
 import { NOTABLE_PERIODS } from "@/lib/fire/fire-constants"
-import { sequenceLabel, trialId, trialName } from "@/lib/plans/stress/stress-labels"
+import { sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
 /** Drawn at a size close to the screen's, so the labels stay readable when the SVG scales to fit. */
@@ -35,7 +35,8 @@ function yTop(cohorts: CohortResult[], measure: Props["measure"], plan: number[]
 
 /**
  * Every historical start year as its own line (today's dollars by age), like the FIRE lab's chart: grey
- * when the money lasts, red when it runs out, crisis years highlighted, your steady plan dashed.
+ * when the money lasts, amber when the cash runs out, red when it goes broke, crisis years highlighted (accent),
+ * your steady plan dashed.
  */
 export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Props) {
   const [hover, setHover] = useState<number | null>(null)
@@ -54,10 +55,11 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
   const ageTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * years))
 
   const path = (c: CohortResult, highlight: boolean) => {
-    const failed = c.depletedAge !== null
+    const status = trialStatus(c).tone
+    const failed = status !== "ok"
     const id = trialId(c)
     const active = hover === id
-    const stroke = failed ? "var(--error)" : highlight ? "var(--warning)" : "var(--foreground-muted)"
+    const stroke = status === "bad" ? "var(--error)" : status === "warn" ? "var(--warning)" : highlight ? "var(--primary)" : "var(--foreground-muted)"
     const opacity = active ? 0.95 : highlight ? 0.9 : failed ? 0.45 : 0.2
     return (
       <g key={id} onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onClick={() => setHover(id)}>
@@ -94,8 +96,8 @@ export function StressPathsChart({ cohorts, age0, plan, measure, isHidden }: Pro
             {isNotable(hovered) ? ` · ${notableLabel.get(hovered.year)}` : ""}
           </p>
           {hovered.trial !== undefined && <p className="max-w-64 text-foreground-muted">{sequenceLabel(hovered.sequence, 4)}</p>}
-          <p className={hovered.depletedAge !== null ? "text-error" : "text-foreground-muted"}>
-            {hovered.depletedAge !== null ? `Money runs out at ${hovered.depletedAge}` : `Ends with ${fmtCompact(hovered[measure].at(-1) ?? 0)}`}
+          <p className={trialStatus(hovered).tone === "ok" ? "text-foreground-muted" : TRIAL_TONE_CLASS[trialStatus(hovered).tone]}>
+            {trialStatus(hovered).tone === "ok" ? `Ends with ${fmtCompact(hovered[measure].at(-1) ?? 0)}` : trialStatus(hovered).text}
           </p>
           {hovered.cape !== null && hovered.trial === undefined && <p className="text-foreground-muted">CAPE then: {hovered.cape.toFixed(1)}</p>}
         </div>

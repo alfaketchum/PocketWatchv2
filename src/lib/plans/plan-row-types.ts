@@ -116,8 +116,16 @@ export interface PlanSummary {
   retirementAge: number | null
   /** Today's dollars. */
   netWorthAtRetirement: number | null
+  /** When the cash runs out: the accounts can't pay a year's bills. */
   depletedAge: number | null
   depletedYear: number | null
+  /** When the plan goes broke: at or after the cash runs out, net worth below a year of spending (null: never). */
+  brokeAge: number | null
+  brokeYear: number | null
+  /** Net worth split into money in the accounts and everything else (homes and other property, less their loans and
+   *  other debts), today's dollars. */
+  retirementSplit: { accounts: number; property: number } | null
+  endingSplit: { accounts: number; property: number }
   /** When the money runs out: home equity left (today's dollars) and how many years of that year's spending it is. */
   equityAtDepletion?: { value: number; years: number } | null
   /** Homes sold by their backup plan when the money would have run out. */

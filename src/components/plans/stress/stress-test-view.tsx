@@ -27,7 +27,7 @@ import { StressDiagnosisCard } from "./stress-diagnosis-card"
 import { StressKeyYearsCard } from "./stress-key-years-card"
 import { changeLabel, StressSolversCard } from "./stress-solvers-card"
 import { useStressSolvers } from "./use-stress-solvers"
-import { applyChange } from "@/lib/plans/stress/stress-solvers"
+import { applyChange, type StressGoal } from "@/lib/plans/stress/stress-solvers"
 import { diagnose } from "@/lib/plans/stress/stress-diagnosis"
 import { IMPACT_TRIALS, useStressImpacts } from "./use-stress-impacts"
 import { InflationSource } from "../editor/inflation-source"
@@ -49,8 +49,8 @@ const VIEW_OPTIONS: { value: ChartView; label: string }[] = [
 ]
 type EndingView = "accounts" | "netWorth"
 const ENDING_OPTIONS: { value: EndingView; label: string }[] = [
-  { value: "accounts", label: "Money in accounts" },
   { value: "netWorth", label: "Net worth" },
+  { value: "accounts", label: "Money in accounts" },
 ]
 const MEASURE_OPTIONS: { value: FanMeasure; label: string }[] = [
   { value: "netWorth", label: "Net worth" },
@@ -85,14 +85,15 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
   const [inflation, setInflation] = useState<StressInflation>("plan")
   const [measureChoice, setMeasure] = useState<FanMeasure>("netWorth")
   const [chartView, setChartView] = useState<ChartView>("range")
-  const [endView, setEndView] = useState<EndingView>("accounts")
+  const [endView, setEndView] = useState<EndingView>("netWorth")
   const [binChoice, setBin] = useState<{ slice: HistogramSlice; of: CohortResult[] } | null>(null)
   const { annual, anchor, cohorts, method, runId, running, live, loading, error } = useStressTest(doc, align, inflation, sampling)
   // Each run plays its animation once; the results take over when it's done.
   const [finishedRun, setFinishedRun] = useState<number | null>(null)
   const animating = runId !== null && runId !== finishedRun
   const [target, setTarget] = useState(DEFAULT_TARGET)
-  const solvers = useStressSolvers({ doc, annual, anchor, inflation, sampling, target, enabled: !running && cohorts !== null })
+  const [goal, setGoal] = useState<StressGoal>("cash")
+  const solvers = useStressSolvers({ doc, annual, anchor, inflation, sampling, target, goal, enabled: !running && cohorts !== null })
   const impacts = useStressImpacts({ doc, annual, anchor, inflation, sampling, enabled: !running && cohorts !== null })
   // Labels follow the results on screen, which lag the controls while a new run is in progress.
   const simulated = isSimulated(method)
@@ -182,11 +183,12 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
 
       {summary && all && summary.cohorts.length > 0 && (
         <div className={animating || running ? "space-y-5 opacity-50 transition-opacity" : "space-y-5 transition-opacity"}>
-          {all.successRate < target && <StressDiagnosisCard insights={insights} />}
+          {(goal === "cash" ? all.successRate : all.netWorthRate) < target && <StressDiagnosisCard insights={insights} />}
           <StressKeyYearsCard doc={doc} projection={projection} runOutAge={runOutAge} isHidden={isHidden} />
           {impacts.available && (
-            <FireSectionCard eyebrow="What would help" title="How often the money lasts with one change" info={IMPACTS_INFO}>
+            <FireSectionCard eyebrow="What would help" title="How each change moves the odds" info={IMPACTS_INFO}>
               <StressImpactsTable
+                goal={goal}
                 results={impacts.results}
                 total={impacts.total}
                 unit={unit}
@@ -198,7 +200,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
               />
             </FireSectionCard>
           )}
-          <StressSolversCard rows={solvers} target={target} onTarget={setTarget} onApply={(r) => update((d) => applyChange(d, r.change), { undoLabel: changeLabel(r) })} />
+          <StressSolversCard rows={solvers} target={target} onTarget={setTarget} goal={goal} onGoal={setGoal} onApply={(r) => update((d) => applyChange(d, r.change), { undoLabel: changeLabel(r) })} />
           <FireSectionCard
             eyebrow="How it ended"
             title={endView === "accounts" ? "Left in accounts, today's dollars" : "Net worth at the end, today's dollars"}
@@ -260,7 +262,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
           </FireSectionCard>
           {!simulated && (
             <div className="grid gap-5 xl:grid-cols-2">
-              <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year; red where the money ran out before the plan's end.">
+              <FireSectionCard eyebrow="By start year" title="Ending net worth" info="One bar per historical start year: amber where the cash ran out, red where net worth hit $0.">
                 <StressCohortBars cohorts={summary.cohorts} isHidden={isHidden} />
               </FireSectionCard>
               <FireSectionCard eyebrow="Worst periods" title="Starting in a crisis">

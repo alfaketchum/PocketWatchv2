@@ -18,7 +18,7 @@ import {
   withInvestmentMix,
 } from "./stress-levers"
 import { DEFAULT_STOCK_SHARE } from "./stress-mix"
-import type { CohortResult } from "./stress-test"
+import { isBroke, type CohortResult } from "./stress-test"
 
 /** How much less everyday spending to try. */
 const SPEND_CUT = 0.1
@@ -41,8 +41,11 @@ export interface ImpactVariant {
 export interface ImpactResult {
   key: string
   label: string
+  /** Cash lasts. */
   successRate: number
-  /** The typical age the money ran out in the trials that ran out, or null when none did. */
+  /** Net worth lasts (never goes broke). */
+  netWorthRate: number
+  /** The typical age the cash ran out in the trials that ran out, or null when none did. */
   medianRunOutAge: number | null
 }
 
@@ -93,5 +96,6 @@ export function impactVariants(doc: PlanDocument): ImpactVariant[] {
 export function impactOf(key: string, label: string, cohorts: CohortResult[]): ImpactResult {
   const ages = cohorts.flatMap((c) => (c.depletedAge !== null ? [c.depletedAge] : [])).sort((a, b) => a - b)
   const successRate = cohorts.length > 0 ? 1 - ages.length / cohorts.length : 0
-  return { key, label, successRate, medianRunOutAge: ages.length > 0 ? ages[Math.floor((ages.length - 1) / 2)] : null }
+  const netWorthRate = cohorts.length > 0 ? 1 - cohorts.filter(isBroke).length / cohorts.length : 0
+  return { key, label, successRate, netWorthRate, medianRunOutAge: ages.length > 0 ? ages[Math.floor((ages.length - 1) / 2)] : null }
 }

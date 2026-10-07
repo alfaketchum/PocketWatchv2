@@ -117,7 +117,7 @@ function buildPlanColors(t: {
     loan: { principal: error, interest: warning },
     series: [primary, warning, accentHead, mix(primary, card, LIGHTER)],
     // Work life indigo, family green, school teal (between the two), money in gold, property slate (like its band), other changes dark neutral.
-    milestones: { work: primary, family: success, education: mix(success, primary, 0.5), money: warning, property: accentHead, life: foreground, alert: error },
+    milestones: { work: primary, family: success, education: mix(success, primary, 0.5), money: warning, property: accentHead, life: foreground, caution: warning, alert: error },
   }
 }
 

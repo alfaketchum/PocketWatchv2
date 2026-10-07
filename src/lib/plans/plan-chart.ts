@@ -1,4 +1,5 @@
 import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principalKey } from "./plan-loan-parts"
+import { isBrokeYear } from "./stress/stress-test"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { MilestoneKind, PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
 import { rowTaxes } from "./plan-row-taxes"
@@ -62,7 +63,7 @@ export interface ChartMilestone {
   /** The milestone's id; empty for "money runs out". */
   id: string
   name: string
-  kind: MilestoneKind | "payoff" | "depleted" | "rmd"
+  kind: MilestoneKind | "payoff" | "depleted" | "broke" | "rmd"
   icon?: string
   age: number
   year: number
@@ -114,8 +115,11 @@ export function chartMilestones(doc: PlanDocument, projection: PlanProjection): 
   for (const sale of projection.homeSales ?? []) {
     marks.push({ id: "", name: `Sold ${sale.name} (money ran low)`, kind: "custom", icon: "real_estate_agent", age: age0 + sale.index, year: sale.year })
   }
+  // The cash running out is a warning; net worth hitting $0 after it is the real failure.
   const depleted = projection.rows.find((r) => r.shortfall > 0.5)
-  if (depleted) marks.push({ id: "", name: "Money runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
+  if (depleted) marks.push({ id: "", name: "Cash runs out", kind: "depleted", age: age0 + depleted.index, year: depleted.year })
+  const broke = depleted ? projection.rows.slice(depleted.index).find((r) => isBrokeYear(r.netWorth, r.expenses)) : undefined
+  if (broke) marks.push({ id: "", name: "Broke: nothing left to sell", kind: "broke", age: age0 + broke.index, year: broke.year })
   return marks
 }
 
@@ -134,7 +138,7 @@ export const CASH_FLOW_LABELS: Record<CashFlowLayer, string> = {
   wdTaxFree529: "Withdrawals · tax-free (529)",
   assetSales: "Asset sales",
   borrowed: "Borrowed",
-  unfunded: "Unfunded (money ran out)",
+  unfunded: "Unpaid (cash ran out)",
   spending: "Spending",
   taxes: "Taxes",
   debtPayments: "Debt payments",
@@ -215,7 +219,7 @@ export function debtPoints(doc: PlanDocument, rows: YearRow[]): DebtPoint[] {
 }
 
 /** What a milestone is about, for its color: work life, family, school, money coming in, property, other life changes, or trouble. */
-export type MilestoneGroup = "work" | "family" | "education" | "money" | "property" | "life" | "alert"
+export type MilestoneGroup = "work" | "family" | "education" | "money" | "property" | "life" | "caution" | "alert"
 
 const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
   beach_access: "work",
@@ -243,7 +247,8 @@ const GROUP_BY_ICON: Record<string, MilestoneGroup> = {
 }
 
 export function milestoneGroup(m: Pick<ChartMilestone, "kind" | "icon">): MilestoneGroup {
-  if (m.kind === "depleted") return "alert"
+  if (m.kind === "broke") return "alert"
+  if (m.kind === "depleted") return "caution"
   if (m.kind === "retirement") return "work"
   if (m.kind === "payoff") return "money"
   const byIcon = m.icon ? GROUP_BY_ICON[m.icon] : undefined

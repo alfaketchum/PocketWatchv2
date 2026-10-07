@@ -23,7 +23,7 @@ const ICONS: Record<InsightKey, string> = {
 export const fixAnchor = (fix: InsightFix) => `stress-fix-${fix}`
 
 const INFO =
-  "Patterns that commonly sink a plan, checked against yours: when the money runs out, what it goes to then (today's dollars), what you're invested in, whether a paycheck covers the bills, money that arrives too late, wealth that can't pay bills, your plan's assumed returns, and taxes. Only the ones that apply are shown. See fix jumps to the setting that pulls that lever."
+  "Patterns that commonly sink a plan, checked against yours: when the cash runs out, what it goes to then (today's dollars), what you're invested in, whether a paycheck covers the bills, money that arrives too late, wealth that can't pay bills, your plan's assumed returns, and taxes. Only the ones that apply are shown. See fix jumps to the setting that pulls that lever."
 
 /** "Why it fails": the failed trials explained, most telling first, each with a jump to the lever that fixes it. */
 export function StressDiagnosisCard({ insights }: { insights: Insight[] }) {

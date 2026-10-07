@@ -3,8 +3,10 @@ import assert from "node:assert/strict"
 import { outcomeBuckets } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
 
+/** A trial that ran out of cash with nothing left (an ending of $0) went broke when it ran out. */
 const run = (year: number, end: number, depletedAge: number | null = null): CohortResult => ({
   year, cape: null, avgInflation: null, depletedAge, netWorth: [end], invested: [end],
+  ...(depletedAge !== null && end <= 0 ? { brokeAge: depletedAge } : {}),
 })
 const yard = { startValue: 1_000_000, yearlySpending: 50_000, endAge: 95, measure: "netWorth" as const }
 
@@ -43,7 +45,7 @@ test("on net worth, running out with net worth left is out of cash; only hitting
   assert.deepEqual(by.outOfCash.years, [1929])
   assert.deepEqual(by.catastrophic.years, [1937])
   assert.deepEqual(by.almostSurvived.years, [1966])
-  assert.match(by.catastrophic.rule, /net worth at \$0/)
+  assert.match(by.catastrophic.rule, /going broke/)
 })
 
 test("on net worth, running out after a home sale is catastrophic even with net worth left", () => {

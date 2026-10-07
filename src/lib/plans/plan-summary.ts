@@ -5,6 +5,7 @@ import type { PlanDocument, PlanProjection, PlanSummary } from "./plan-types"
 import { rowTaxes } from "./plan-row-taxes"
 import { expandPlan } from "./plan-expand"
 import { homeEquity } from "./plan-home-fallback"
+import { isBrokeYear } from "./stress/stress-test"
 
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
@@ -23,6 +24,9 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
         ? projection.startNetWorth
         : rows[retireIndex - 1].netWorth
   const depleted = rows.find((r) => r.shortfall > 0.5)
+  const broke = depleted ? rows.slice(depleted.index).find((r) => isBrokeYear(r.netWorth, r.expenses)) : undefined
+  const split = (r: (typeof rows)[number]) => ({ accounts: r.accountsTotal, property: r.netWorth - r.accountsTotal })
+  const retireRow = retireIndex !== null && retireIndex > 0 && retireIndex <= rows.length ? rows[retireIndex - 1] : null
   const last = rows[rows.length - 1]
   const equity = depleted ? homeEquity(expandPlan(doc), depleted) : 0
   return {
@@ -31,6 +35,10 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
     netWorthAtRetirement: atRetirement,
     depletedAge: depleted ? startAge + depleted.index : null,
     depletedYear: depleted ? depleted.year : null,
+    brokeAge: broke ? startAge + broke.index : null,
+    brokeYear: broke ? broke.year : null,
+    retirementSplit: retireRow ? split(retireRow) : null,
+    endingSplit: last ? split(last) : { accounts: projection.startNetWorth, property: 0 },
     equityAtDepletion: depleted && equity > 0 ? { value: equity, years: depleted.expenses > 0 ? equity / depleted.expenses : 0 } : null,
     homeSales: (projection.homeSales ?? []).map((s) => ({ name: s.name, year: s.year, age: startAge + s.index })),
     endYear: last ? last.year : settings.startYear,

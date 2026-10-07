@@ -10,7 +10,7 @@ import type { CohortResult } from "@/lib/plans/stress/stress-test"
 /** Outcomes listed only when some trial lands in them. */
 const CONDITIONAL: OutcomeKey[] = ["soldHome", "outOfCash"]
 
-const BUCKETS_INFO = `Measured on whichever the chart shows. Running out means your accounts couldn't pay a year's spending; on Money in accounts that's catastrophic, while on Net worth it's out of cash if no home had been sold yet and net worth stayed above $0 (the home could still be sold), and catastrophic once a home was already sold or net worth hits $0. Your home and other property don't pay the bills unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that cushion counts half). Typical values shown.`
+const BUCKETS_INFO = `Measured on whichever the chart shows. Running out means your accounts couldn't pay a year's spending; on Money in accounts that's catastrophic, while on Net worth it's out of cash if no home had been sold yet and net worth stayed above $0 (the home could still be sold), and catastrophic once a home was already sold or it goes broke (net worth below a year of spending). Your home and other property don't pay the bills unless the plan sells them. Lowest point is the fewest years of spending your accounts held while you lived off them; each year under ${DANGER_YEARS} years adds to the danger-years (a year at $0 counts 1, a year at half that cushion counts half). Typical values shown.`
 
 /** Years listed per bucket before "and N more". */
 const MAX_YEARS = 6

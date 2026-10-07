@@ -60,7 +60,7 @@ test("nothing ran out: nothing to explain", () => {
 test("when: the share that runs out and the typical age, first", () => {
   const w = insights(plan())[0]
   assert.equal(w.key, "when")
-  assert.equal(w.title, "50% of trials run out, typically at 62")
+  assert.equal(w.title, "50% of trials run out of cash, typically at 62")
   assert.equal(w.detail, "Most between 60 and 64.")
 })
 
@@ -142,7 +142,7 @@ test("crunch: spending at the run-out age vs today, naming what grew", () => {
 test("late money: an inheritance after the typical run-out age, with its age and amount", () => {
   const doc = plan({ deposits: [{ id: "d", name: "Inheritance", accountId: "Brokerage", amount: 500_000, timing: { type: "year", year: 2056 } }] })
   const l = find(doc, "lateMoney")!
-  assert.equal(l.title, "Money that arrives after 62 can't help")
+  assert.equal(l.title, "Money that arrives after 62 comes too late")
   assert.match(l.detail, /Inheritance \(\$500k\) at 70/)
 })
 
@@ -152,7 +152,7 @@ test("an inheritance before the failures isn't late", () => {
 })
 
 test("illiquid: failed trials that still owned a lot of property", () => {
-  assert.equal(find(plan(), "illiquid", halfFail(800_000))!.title, "Typically $800k of property left when the money runs out")
+  assert.equal(find(plan(), "illiquid", halfFail(800_000))!.title, "Typically $800k of property left when the cash runs out")
   assert.ok(!keys(plan(), halfFail(0)).includes("illiquid"))
 })
 

@@ -48,7 +48,7 @@ export function PlanLedgerRow({
     <>
       <tr
         onClick={onToggle}
-        className={cn("group border-t border-card-border cursor-pointer hover:bg-row-hover", row.shortfall > 0.5 && "bg-error/5")}
+        className={cn("group border-t border-card-border cursor-pointer hover:bg-row-hover", row.shortfall > 0.5 && (row.netWorth < row.expenses ? "bg-error/5" : "bg-warning/5"))}
       >
         <td className={cn("px-3 py-2 whitespace-nowrap group-hover:bg-row-hover", STICKY_YEAR)}>
           <span className="material-symbols-rounded align-middle text-foreground-muted mr-1" style={{ fontSize: 14 }}>

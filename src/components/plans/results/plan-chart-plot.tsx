@@ -23,6 +23,7 @@ export const MILESTONE_ICONS: Record<ChartMilestone["kind"], string> = {
   income: "payments",
   payoff: "credit_score",
   depleted: "warning",
+  broke: "error",
   rmd: "event_repeat",
 }
 
@@ -151,7 +152,7 @@ export const ChartPlot = memo(function ChartPlot({
   steadyLabel,
   syncId,
 }: ChartPlotProps) {
-  const { error, foregroundMuted, border, foreground } = useChartTheme()
+  const { error, warning, foregroundMuted, border, foreground } = useChartTheme()
   // Phones: slimmer axes leave the bars room, and the tooltip sits at the top of the plot rather than over the bar.
   const isNarrow = useIsNarrow()
   const axisWidth = isNarrow ? NARROW_AXIS_WIDTH : 56
@@ -238,7 +239,7 @@ export const ChartPlot = memo(function ChartPlot({
           <ReferenceLine
             key={`${m.name}-${m.age}`}
             segment={[{ x: m.age, y: barTops.get(m.age) ?? 0 }, { x: m.age, y: yAxis.domain[1] }]}
-            stroke={m.kind === "depleted" ? error : foregroundMuted}
+            stroke={m.kind === "broke" ? error : m.kind === "depleted" ? warning : foregroundMuted}
             strokeDasharray="2 3"
             strokeWidth={0.75}
             strokeOpacity={0.5}

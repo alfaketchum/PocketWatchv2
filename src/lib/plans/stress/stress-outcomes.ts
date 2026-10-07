@@ -1,4 +1,4 @@
-import { percentile, type CohortResult } from "./stress-test"
+import { isBroke, percentile, type CohortResult } from "./stress-test"
 
 /** How many years of spending count as a real cushion, and how close to the end "almost" means. */
 export const CUSHION_YEARS = 5
@@ -45,7 +45,7 @@ export function bucketOf(c: CohortResult, y: OutcomeYardsticks): OutcomeKey {
   if (c.depletedAge !== null) {
     // Measured on net worth, running out with a home not yet sold isn't going broke: it can still be sold. Running out
     // after a sale is, since the home was already spent.
-    if (y.measure === "netWorth" && (c.lowestWorthAfterRunOut ?? 0) > 0 && !soldBefore(c)) return "outOfCash"
+    if (y.measure === "netWorth" && !isBroke(c) && !soldBefore(c)) return "outOfCash"
     return c.depletedAge >= y.endAge - CLOSE_YEARS ? "almostSurvived" : "catastrophic"
   }
   if (c.soldHome) return "soldHome"
@@ -87,7 +87,7 @@ function closeness(members: CohortResult[]): Pick<OutcomeBucket, "lowPoint" | "d
 /**
  * Every historical period sorted into outcomes, measured against this plan: did the money last, and if so with more
  * than you have today, a cushion of years of spending, barely, or only by selling a home; if not, near the end or well
- * before it. Measured on net worth, running out with net worth still above $0 is its own outcome, out of cash.
+ * before it. Measured on net worth, running out without going broke is its own outcome, out of cash.
  */
 export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): OutcomeBucket[] {
   const worth = y.measure === "netWorth"
@@ -104,12 +104,12 @@ export function outcomeBuckets(cohorts: CohortResult[], y: OutcomeYardsticks): O
       rule: cushion > 0 ? `Lasted, but with less than ${CUSHION_YEARS} years of spending (${fmt(cushion)}) left` : "Lasted with almost nothing left (this plan has no spending to measure a cushion by)",
     },
     soldHome: { label: "Lasted by selling the home", rule: "Lasted only because a home's backup plan sold it when the money ran low" },
-    outOfCash: { label: "Out of cash", rule: "Your accounts ran out before any home was sold, and net worth never hit $0: the home could still be sold" },
+    outOfCash: { label: "Out of cash", rule: "Your accounts ran out before any home was sold, without going broke: the home could still be sold" },
     almostSurvived: {
       label: "Almost survived",
-      rule: worth ? `Ran out at ${y.endAge - CLOSE_YEARS} or later, after selling a home or with net worth at $0` : `Ran out in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
+      rule: worth ? `Ran out at ${y.endAge - CLOSE_YEARS} or later, after selling a home or going broke` : `Ran out in the last ${CLOSE_YEARS} years, at ${y.endAge - CLOSE_YEARS} or later`,
     },
-    catastrophic: { label: "Catastrophic", rule: worth ? `Ran out before ${y.endAge - CLOSE_YEARS}, after selling a home or with net worth at $0` : `Ran out before ${y.endAge - CLOSE_YEARS}` },
+    catastrophic: { label: "Catastrophic", rule: worth ? `Ran out before ${y.endAge - CLOSE_YEARS}, after selling a home or going broke` : `Ran out before ${y.endAge - CLOSE_YEARS}` },
   }
   const order: OutcomeKey[] = ["surplus", "steady", "justMadeIt", "soldHome", "outOfCash", "almostSurvived", "catastrophic"]
   const byKey = new Map<OutcomeKey, CohortResult[]>(order.map((k) => [k, []]))

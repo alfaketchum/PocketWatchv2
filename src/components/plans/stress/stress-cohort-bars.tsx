@@ -1,5 +1,6 @@
 "use client"
 
+import { trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { fmtCompact, fmtMoney } from "@/components/fire/fire-helpers"
 import { useChartTheme } from "@/hooks/use-chart-theme"
@@ -14,18 +15,16 @@ function CohortTooltip({ active, payload }: { active?: boolean; payload?: Array<
   return (
     <div className="space-y-0.5 rounded-lg border border-card-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className="font-semibold text-foreground">Starting {c.year}</p>
-      <p className={c.depletedAge !== null ? "text-error" : "text-success"}>
-        {c.depletedAge !== null ? `Money runs out at ${c.depletedAge}` : "Money lasts"}
-      </p>
+      <p className={TRIAL_TONE_CLASS[trialStatus(c).tone]}>{trialStatus(c).text}</p>
       <p className="text-foreground-muted">Ending net worth: {fmtMoney(c.end)}</p>
       {c.cape !== null && <p className="text-foreground-muted">CAPE then: {c.cape.toFixed(1)}</p>}
     </div>
   )
 }
 
-/** Ending net worth (today's dollars) for each historical start year; red where the money ran out. */
+/** Ending net worth (today's dollars) for each historical start year; amber where the cash ran out, red where net worth hit $0. */
 export function StressCohortBars({ cohorts, isHidden }: { cohorts: CohortResult[]; isHidden: boolean }) {
-  const { primary, error, foregroundMuted, border, foreground } = useChartTheme()
+  const { primary, error, warning, foregroundMuted, border, foreground } = useChartTheme()
   const axisWidth = useIsNarrow() ? NARROW_AXIS_WIDTH : 56
   const data = cohorts.map((c) => ({ ...c, end: c.netWorth.at(-1) ?? 0 }))
   return (
@@ -38,7 +37,7 @@ export function StressCohortBars({ cohorts, isHidden }: { cohorts: CohortResult[
           <Tooltip content={<CohortTooltip />} cursor={{ fill: foreground, fillOpacity: 0.06 }} />
           <Bar dataKey="end" isAnimationActive={false}>
             {data.map((c) => (
-              <Cell key={c.year} fill={c.depletedAge !== null ? error : primary} fillOpacity={0.85} />
+              <Cell key={c.year} fill={{ ok: primary, warn: warning, bad: error }[trialStatus(c).tone]} fillOpacity={0.85} />
             ))}
           </Bar>
         </BarChart>

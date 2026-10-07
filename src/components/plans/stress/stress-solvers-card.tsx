@@ -3,7 +3,7 @@
 import { ChoiceChips } from "@/components/fire/fire-input-controls"
 import { fmtCompact, fmtSuccess } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
-import type { SolverKey, SolverResult } from "@/lib/plans/stress/stress-solvers"
+import type { SolverKey, SolverResult, StressGoal } from "@/lib/plans/stress/stress-solvers"
 import { fixAnchor } from "./stress-diagnosis-card"
 import { Bar, Delta } from "./stress-impacts-table"
 import type { SolverRow } from "./use-stress-solvers"
@@ -19,7 +19,7 @@ const LEVERS: Record<SolverKey, string> = {
 }
 
 const INFO =
-  "Each lever moved on its own until your plan lasts in the target share of trials, on the same simulated markets as What would help. Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
+  "Each lever moved on its own until your plan meets the goal in the target share of trials, on the same simulated markets as What would help. Goal: Cash lasts (your accounts pay every year's bills, the stricter one) or Net worth lasts (you never go broke: out of cash with less than a year of spending left in anything you own). Everyday spending is what you entered yourself (not kids, home and car costs, or one-time items); the mix goes to every invested account (not cash or 529s) and is what the stress test replays, while your assumed returns stay as they are. Apply makes the change in your plan, with Undo."
 
 const money = (v: number | string) => (typeof v === "number" ? `${fmtCompact(v)} a year` : v)
 
@@ -58,22 +58,34 @@ export function changeLabel(r: SolverResult): string {
 /** Nothing to apply when the answer is the plan as it is. */
 const changes = (r: SolverResult) => r.value !== r.now && !(r.key === "mix" && r.status === "alreadyMet")
 
+const GOAL_OPTIONS: { value: StressGoal; label: string }[] = [
+  { value: "cash", label: "Cash lasts" },
+  { value: "netWorth", label: "Net worth lasts" },
+]
+
 interface Props {
   rows: SolverRow[]
   target: number
   onTarget: (t: number) => void
+  goal: StressGoal
+  onGoal: (g: StressGoal) => void
   onApply: (r: SolverResult) => void
 }
 
 /** "Reach your target": how far each lever must move for the plan to last in the target share of trials. */
-export function StressSolversCard({ rows, target, onTarget, onApply }: Props) {
+export function StressSolversCard({ rows, target, onTarget, goal, onGoal, onApply }: Props) {
   if (rows.length === 0) return null
   return (
     <FireSectionCard
       eyebrow="Reach your target"
       title="How far each lever has to move"
       info={INFO}
-      right={<ChoiceChips label="Target success rate" options={TARGET_OPTIONS} value={String(target)} onChange={(v) => onTarget(Number(v))} />}
+      right={
+        <div className="flex flex-wrap items-center gap-3">
+          <ChoiceChips label="Goal" options={GOAL_OPTIONS} value={goal} onChange={onGoal} />
+          <ChoiceChips label="Target success rate" options={TARGET_OPTIONS} value={String(target)} onChange={(v) => onTarget(Number(v))} />
+        </div>
+      }
     >
       <ul className="divide-y divide-card-border/60">
         {rows.map((row) => (

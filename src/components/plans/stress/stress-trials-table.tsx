@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
-import { sequenceLabel, trialId, trialName } from "@/lib/plans/stress/stress-labels"
+import { sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { endingValue } from "@/lib/plans/stress/stress-histogram"
 import { bucketOf, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
 import type { CohortResult } from "@/lib/plans/stress/stress-test"
@@ -19,10 +19,11 @@ const OUTCOME_LABELS: Record<OutcomeKey, string> = {
   catastrophic: "Catastrophic",
 }
 
-/** Worst first: earliest run-out, then the lowest ending. */
+/** Worst first: net worth hitting $0 earliest, then the cash running out earliest, then the lowest ending net worth. */
 function worstFirst(a: CohortResult, b: CohortResult): number {
+  const broke = (c: CohortResult) => c.brokeAge ?? Infinity
   const ranOut = (c: CohortResult) => c.depletedAge ?? Infinity
-  return ranOut(a) - ranOut(b) || endingValue(a, "invested") - endingValue(b, "invested")
+  return broke(a) - broke(b) || ranOut(a) - ranOut(b) || endingValue(a, "netWorth") - endingValue(b, "netWorth")
 }
 
 interface Props {
@@ -50,8 +51,8 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
               <th className="py-1.5 font-semibold">Trial</th>
               <th className="hidden py-1.5 pl-3 font-semibold sm:table-cell">Years it lived through</th>
               {atRetirement && <th className="py-1.5 pl-2 text-right font-semibold">At retirement</th>}
-              <th className="py-1.5 pl-2 text-right font-semibold" title="Money left in your accounts at the end: what pays the bills">Ending in accounts</th>
               <th className="py-1.5 pl-2 text-right font-semibold" title="Accounts plus home and other property, minus debts">Ending net worth</th>
+              <th className="py-1.5 pl-2 text-right font-semibold" title="Money left in your accounts at the end: what pays the bills">Ending in accounts</th>
               {anySales && <th className="py-1.5 pl-3 font-semibold" title="Homes sold in this trial, and at what age: by your plan, or by the stress test because the money ran out">Home sold</th>}
               <th className="py-1.5 pl-3 font-semibold">Outcome</th>
             </tr>
@@ -69,10 +70,10 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
                     </td>
                   )}
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right font-data text-foreground" style={blur}>
-                    {fmtMoney(endingValue(c, "invested"))}
+                    {fmtMoney(endingValue(c, "netWorth"))}
                   </td>
                   <td className="whitespace-nowrap py-1.5 pl-2 text-right font-data text-foreground-muted" style={blur}>
-                    {fmtMoney(endingValue(c, "netWorth"))}
+                    {fmtMoney(endingValue(c, "invested"))}
                   </td>
                   {anySales && (
                     <td className="py-1.5 pl-3 text-foreground-muted">
@@ -88,7 +89,7 @@ export function StressTrialsTable({ cohorts, yardsticks, retirementIndex, isHidd
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 shrink-0 rounded-[2px]" style={{ background: colors[outcome] }} aria-hidden="true" />
                       {OUTCOME_LABELS[outcome]}
-                      {c.depletedAge !== null && <span className="text-foreground-muted">· at {c.depletedAge}</span>}
+                      {trialStatus(c).tone !== "ok" && <span className={TRIAL_TONE_CLASS[trialStatus(c).tone]}>· {trialStatus(c).text.replace(/^./, (x) => x.toLowerCase())}</span>}
                     </span>
                   </td>
                 </tr>

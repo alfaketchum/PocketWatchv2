@@ -3,16 +3,7 @@
 import { fmtCompact, fmtPct, fmtSuccess } from "@/components/fire/fire-helpers"
 import { sequenceLabel } from "@/lib/plans/stress/stress-labels"
 import type { StressSummary as Summary } from "@/lib/plans/stress/stress-test"
-
-const SAFE = 0.95
-const SHAKY = 0.8
-
-export function stressVerdict(rate: number, simulated = false): { text: string; tone: string } {
-  const markets = simulated ? "markets" : "historical markets"
-  if (rate >= SAFE) return { text: `Survives almost every ${simulated ? "simulated market" : "historical market"}`, tone: "text-success" }
-  if (rate >= SHAKY) return { text: `Survives most ${markets}, but not the worst ones`, tone: "text-warning" }
-  return { text: `Runs out of money in many ${markets}`, tone: "text-error" }
-}
+import { stressVerdict, VERDICT_TONE_CLASS } from "@/lib/plans/stress/stress-verdict"
 
 function Stat({ label, value, hint, isHidden }: { label: string; value: string; hint?: string; isHidden?: boolean }) {
   return (
@@ -25,29 +16,41 @@ function Stat({ label, value, hint, isHidden }: { label: string; value: string; 
   )
 }
 
-/** Headline: how often the plan lasts, typical and bad endings, and the worst start year. */
+/**
+ * Headline, net worth first: how often net worth lasts (the big number), how often the cash lasts beside
+ * it, the verdict, then typical and bad endings and the worst trial.
+ */
 export function StressSummary({ summary, simulated, isHidden }: { summary: Summary; simulated: boolean; isHidden: boolean }) {
-  const { successRate, cohorts, worst } = summary
-  const verdict = stressVerdict(successRate, simulated)
+  const { successRate, netWorthRate, cohorts, worst } = summary
   const unit = simulated ? "simulated trials" : "historical periods"
-  const failed = cohorts.length - Math.round(successRate * cohorts.length)
+  const verdict = stressVerdict(successRate, netWorthRate, simulated ? "markets" : "historical markets")
+  const worstText = (c: NonNullable<typeof worst>) =>
+    c.brokeAge !== undefined
+      ? `goes broke at ${c.brokeAge}`
+      : c.depletedAge !== null
+        ? `cash runs out at ${c.depletedAge}, net worth ${fmtCompact(c.netWorth.at(-1) ?? 0)}`
+        : `${fmtCompact(c.netWorth.at(-1) ?? 0)} net worth`
   return (
     <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
-      <div>
-        <p className={`text-4xl font-semibold tabular-nums ${verdict.tone}`}>{fmtSuccess(successRate)}</p>
-        <p className="text-[11px] text-foreground-muted">
-          of {cohorts.length.toLocaleString()} {unit} last
-        </p>
+      <div className="flex items-end gap-6">
+        <div>
+          <p className={`text-4xl font-semibold tabular-nums ${VERDICT_TONE_CLASS[verdict.tone]}`}>{fmtSuccess(netWorthRate)}</p>
+          <p className="text-[11px] text-foreground-muted">net worth lasts</p>
+        </div>
+        <div>
+          <p className={`text-2xl font-semibold tabular-nums ${successRate >= netWorthRate - 1e-9 ? "text-foreground" : "text-warning"}`}>{fmtSuccess(successRate)}</p>
+          <p className="text-[11px] text-foreground-muted">cash lasts</p>
+        </div>
       </div>
       <div className="min-w-0 flex-1 space-y-3">
-        <p className={`text-sm font-medium ${verdict.tone}`}>
+        <p className={`text-sm font-medium ${VERDICT_TONE_CLASS[verdict.tone]}`}>
           {verdict.text}
-          {failed > 0 && <span className="text-foreground-muted font-normal"> · runs out in {failed}</span>}
+          <span className="font-normal text-foreground-muted"> · {cohorts.length.toLocaleString()} {unit}</span>
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 [&>*:nth-child(odd):last-child]:col-span-2 sm:[&>*:nth-child(odd):last-child]:col-span-1">
-          <Stat label="Accounts · median" value={fmtCompact(summary.medianEndInvested)} hint={`Money left in your accounts at the end: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
-          <Stat label="Accounts · bad case" value={fmtCompact(summary.p10EndInvested)} hint={`9 in 10 ${unit} end with more than this in your accounts (10th percentile, today's dollars)`} isHidden={isHidden} />
-          <Stat label="Net worth · median" value={fmtCompact(summary.medianEnd)} hint={`Accounts plus your home and other property, minus debts: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
+          <Stat label="Net worth · median" value={fmtCompact(summary.medianEnd)} hint={`Accounts plus your home and other property, minus debts, at the end: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
+          <Stat label="Net worth · bad case" value={fmtCompact(summary.p10End)} hint={`9 in 10 ${unit} end with more net worth than this (10th percentile, today's dollars)`} isHidden={isHidden} />
+          <Stat label="Accounts · median" value={fmtCompact(summary.medianEndInvested)} hint={`Money left in your accounts at the end, what pays the bills: half of the ${unit} end above this (today's dollars)`} isHidden={isHidden} />
           {summary.spendingDip && (
             <Stat
               label="Lowest spending"
@@ -59,9 +62,9 @@ export function StressSummary({ summary, simulated, isHidden }: { summary: Summa
           {worst && (
             <Stat
               label={simulated ? "Worst trial" : "Worst start year"}
-              value={`${simulated ? sequenceLabel(worst.sequence, 1) : worst.year} · ${worst.depletedAge !== null ? `runs out at ${worst.depletedAge}` : `${fmtCompact(worst.invested.at(-1) ?? 0)} left`}`}
+              value={`${simulated ? sequenceLabel(worst.sequence, 1) : worst.year} · ${worstText(worst)}`}
               hint={simulated ? sequenceLabel(worst.sequence) : undefined}
-              isHidden={isHidden && worst.depletedAge === null}
+              isHidden={isHidden && worst.brokeAge === undefined}
             />
           )}
         </div>

@@ -2,6 +2,7 @@
 
 import { fmtSuccess } from "@/components/fire/fire-helpers"
 import type { ImpactResult } from "@/lib/plans/stress/stress-impacts"
+import type { StressGoal } from "@/lib/plans/stress/stress-solvers"
 import { BASELINE_KEY } from "./use-stress-impacts"
 
 /** A change this many points either way reads as no real difference (the trials are a sample). */
@@ -28,12 +29,15 @@ interface Props {
   sampleSize: number
   /** Makes a row's change in the plan. */
   onApply: (key: string) => void
+  /** Which rate the rows show and rank by. */
+  goal: StressGoal
 }
 
 /** The plan and each one-change what-if, most helpful first: how often the money lasts and the typical run-out age. */
-export function StressImpactsTable({ results, total, unit, sampleSize, onApply }: Props) {
+export function StressImpactsTable({ results, total, unit, sampleSize, onApply, goal }: Props) {
+  const rate = (r: ImpactResult) => (goal === "cash" ? r.successRate : r.netWorthRate)
   const baseline = results.find((r) => r.key === BASELINE_KEY)
-  const rows = [...results].sort((a, b) => (a.key === BASELINE_KEY ? -1 : b.key === BASELINE_KEY ? 1 : b.successRate - a.successRate))
+  const rows = [...results].sort((a, b) => (a.key === BASELINE_KEY ? -1 : b.key === BASELINE_KEY ? 1 : rate(b) - rate(a)))
   const pending = total - results.length
   return (
     <div className="space-y-2">
@@ -42,9 +46,9 @@ export function StressImpactsTable({ results, total, unit, sampleSize, onApply }
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wider text-foreground-muted">
               <th className="py-1.5 font-semibold">Change</th>
-              <th className="w-[38%] py-1.5 pl-3 font-semibold">Money lasts</th>
+              <th className="w-[38%] py-1.5 pl-3 font-semibold">{goal === "cash" ? "Cash lasts" : "Net worth lasts"}</th>
               <th className="py-1.5 pl-2 text-right font-semibold">vs now</th>
-              <th className="py-1.5 pl-3 text-right font-semibold" title="The typical age the money ran out, in the trials that ran out">Runs out at</th>
+              <th className="py-1.5 pl-3 text-right font-semibold" title="The typical age the cash ran out, in the trials where it did">Cash runs out at</th>
               <th className="py-1.5 pl-3" aria-label="Apply" />
             </tr>
           </thead>
@@ -56,11 +60,11 @@ export function StressImpactsTable({ results, total, unit, sampleSize, onApply }
                   <td className={`py-2 pr-2 ${isBase ? "font-semibold text-foreground" : "text-foreground"}`}>{r.label}</td>
                   <td className="py-2 pl-3">
                     <div className="flex items-center gap-2">
-                      <Bar rate={r.successRate} baseline={isBase} />
-                      <span className="w-10 shrink-0 text-right font-data text-foreground">{fmtSuccess(r.successRate)}</span>
+                      <Bar rate={rate(r)} baseline={isBase} />
+                      <span className="w-10 shrink-0 text-right font-data text-foreground">{fmtSuccess(rate(r))}</span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap py-2 pl-2 text-right font-data">{isBase || !baseline ? "" : <Delta points={(r.successRate - baseline.successRate) * 100} />}</td>
+                  <td className="whitespace-nowrap py-2 pl-2 text-right font-data">{isBase || !baseline ? "" : <Delta points={(rate(r) - rate(baseline)) * 100} />}</td>
                   <td className="whitespace-nowrap py-2 pl-3 text-right font-data text-foreground-muted">{r.medianRunOutAge ?? "—"}</td>
                   <td className="py-2 pl-3 text-right">
                     {!isBase && (

@@ -11,11 +11,12 @@ import { inflationOf } from "../plan-inflation"
 import { ageAtStart, resolveRange, resolveTiming, timingContext } from "../plan-timing"
 import type { PlanDocument, PlanProjection, YearRow } from "../plan-types"
 import { futurePurchases } from "./stress-levers"
+import { isBrokeYear } from "./stress-test"
 
 export interface KeyYearEvent {
   text: string
-  /** "bad" for the money running out; everything else is plain. */
-  tone?: "bad"
+  /** "bad" for net worth hitting $0, "warn" for the cash running out; everything else is plain. */
+  tone?: "bad" | "warn"
 }
 
 export interface KeyYear {
@@ -106,12 +107,14 @@ export function keyYears(doc: PlanDocument, projection: PlanProjection, runOutAg
   assetEvents(doc, rows, today, add)
   lifeEvents(doc, rows, today, add)
   const short = rows.findIndex((r) => r.shortfall > SHORTFALL)
-  if (short >= 0) add(short, "Money runs out (steady returns)", "bad")
-  if (runOutAge !== null) add(runOutAge - age0, "Typical stress trial runs out", "bad")
+  if (short >= 0) add(short, "Cash runs out (steady returns)", "warn")
+  const broke = short >= 0 ? rows.findIndex((r, i) => i >= short && isBrokeYear(r.netWorth, r.expenses)) : -1
+  if (broke >= 0) add(broke, "Broke: nothing left to sell (steady returns)", "bad")
+  if (runOutAge !== null) add(runOutAge - age0, "Typical stress trial's cash runs out", "warn")
   add(rows.length - 1, "Plan ends")
   // Over the limit: today, the end and the money running out always stay, then the earliest of the rest.
   const all = [...events.keys()].sort((a, b) => a - b)
-  const must = all.filter((i) => i === 0 || i === rows.length - 1 || events.get(i)!.some((e) => e.tone === "bad"))
+  const must = all.filter((i) => i === 0 || i === rows.length - 1 || events.get(i)!.some((e) => e.tone !== undefined))
   const rest = all.filter((i) => !must.includes(i)).slice(0, Math.max(0, MAX_ROWS - must.length))
   const keep = [...must, ...rest].sort((a, b) => a - b)
   const earned = doc.incomes.filter((i) => EARNED.has(i.kind)).map((i) => i.id)

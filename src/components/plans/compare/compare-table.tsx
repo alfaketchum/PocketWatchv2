@@ -23,13 +23,6 @@ const yearsDelta = (d: number) => signed(d, `${Math.abs(d)} yr${Math.abs(d) === 
 
 export const METRICS: Metric[] = [
   {
-    label: "Retire",
-    value: (s) => (s.retirementAge === null ? "—" : `Age ${s.retirementAge} (${s.retirementYear})`),
-    num: (s) => s.retirementAge,
-    fmtDelta: yearsDelta,
-    better: null,
-  },
-  {
     label: "Net worth at retirement",
     value: (s) => (s.netWorthAtRetirement === null ? "—" : fmtCompact(s.netWorthAtRetirement)),
     num: (s) => s.netWorthAtRetirement,
@@ -37,14 +30,21 @@ export const METRICS: Metric[] = [
     better: "higher",
     money: true,
   },
+  { label: "Ending net worth", value: (s) => fmtCompact(s.endingNetWorth), num: (s) => s.endingNetWorth, fmtDelta: moneyDelta, better: "higher", money: true },
   {
-    label: "Money lasts",
-    value: (s) => (s.depletedAge === null ? `Past ${s.endAge}` : `Until ${s.depletedAge}`),
+    label: "Cash lasts",
+    value: (s) => (s.depletedAge === null ? `Past ${s.endAge}` : s.brokeAge !== null ? `Until ${s.depletedAge} (broke at ${s.brokeAge})` : `Until ${s.depletedAge}`),
     num: (s) => s.depletedAge ?? s.endAge,
     fmtDelta: yearsDelta,
     better: "higher",
   },
-  { label: "Ending net worth", value: (s) => fmtCompact(s.endingNetWorth), num: (s) => s.endingNetWorth, fmtDelta: moneyDelta, better: "higher", money: true },
+  {
+    label: "Retire",
+    value: (s) => (s.retirementAge === null ? "—" : `Age ${s.retirementAge} (${s.retirementYear})`),
+    num: (s) => s.retirementAge,
+    fmtDelta: yearsDelta,
+    better: null,
+  },
   { label: "Lifetime taxes", value: (s) => fmtCompact(s.lifetimeTaxes), num: (s) => s.lifetimeTaxes, fmtDelta: moneyDelta, better: "lower", money: true },
 ]
 
@@ -68,19 +68,30 @@ interface Props {
   b: PlanSummary
   names: [string, string]
   colors: [string, string]
-  /** Each plan's success rate through the default simulated markets (null while it runs); the row shows when given. */
-  safety?: [number | null, number | null]
+  /** Each plan's rates through the default simulated markets (null while it runs); the rows show when given. */
+  safety?: [Safety | null, Safety | null]
   isHidden: boolean
 }
 
-/** Success rate through simulated markets, and B's difference in percentage points. */
-function SafetyRow({ safety }: { safety: [number | null, number | null] }) {
+/** Through simulated markets: how often net worth lasts (never goes broke), and how often the cash lasts. */
+export interface Safety {
+  netWorth: number
+  cash: number
+}
+
+const SAFETY_ROWS: { key: keyof Safety; label: string }[] = [
+  { key: "netWorth", label: "Net worth lasts" },
+  { key: "cash", label: "Cash lasts" },
+]
+
+/** One rate through simulated markets, and B's difference in percentage points. */
+function SafetyRow({ label, safety }: { label: string; safety: [number | null, number | null] }) {
   const [x, y] = safety
   const points = x === null || y === null ? null : Math.floor(y * 100 + 1e-9) - Math.floor(x * 100 + 1e-9)
   return (
     <tr className="border-t border-card-border">
       <td className="px-5 sm:px-6 py-2 text-xs text-foreground-muted whitespace-nowrap" title="The same 1,000 simulated markets for both plans, so the difference comes from the plans alone">
-        Survives simulated markets
+        {label} <span className="text-foreground-muted/70">· simulated markets</span>
       </td>
       {safety.map((rate, i) => (
         <td key={i} className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
@@ -133,7 +144,8 @@ export function CompareTable({ a, b, names, colors, safety, isHidden }: Props) {
                 </td>
               </tr>
             ))}
-            {safety && <SafetyRow safety={safety} />}
+            {safety &&
+              SAFETY_ROWS.map((r) => <SafetyRow key={r.key} label={r.label} safety={[safety[0]?.[r.key] ?? null, safety[1]?.[r.key] ?? null]} />)}
           </tbody>
         </table>
       </div>
