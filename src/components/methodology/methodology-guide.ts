@@ -89,7 +89,7 @@ export const GUIDE_SECTIONS: MethodSection[] = [
         items: [
           "**Automatic**: the standard deduction grows by $2,050 (single) or $1,650 per spouse who's 65+.",
           "**Automatic, 2025 to 2028 only**: the $6,000 senior deduction per person 65+, shrinking above $75,000 single / $150,000 joint income. It shows as its own line in the side panel.",
-          "**Not covered**: Medicare premiums and the IRMAA surcharges on higher incomes. Add premiums as an expense if you want them in the plan.",
+          "**Not covered**: Medicare premiums and the IRMAA surcharges on higher incomes. Add premiums as an expense if you want them in the plan. Roth conversion rules can stay under an IRMAA tier from 63 (the Roth page), since premiums look back two years.",
         ],
       },
     ],

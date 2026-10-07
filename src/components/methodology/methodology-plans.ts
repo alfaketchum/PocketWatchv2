@@ -21,6 +21,7 @@ export const PLAN_SECTIONS: MethodSection[] = [
           "**Assets and loans**: purchases, sales (with capital-gains tax), and this year's loan payments split into principal and interest.",
           "**Spending**: every expense line, grown by inflation (or its own growth rate) and shaped by its spending pattern.",
           "**Growth**: each account grows by its return on the balance it started the year with.",
+          "**Required withdrawals, then Roth conversions**: from 73/75 each 401(k)/IRA pays out its minimum; then any conversion rules move traditional money to Roth (taxed as income), sized on the year's income so far (see Cash flow).",
           "**Surplus or deficit**: a surplus is saved; a deficit is withdrawn from accounts (see Cash flow).",
           "**Tax true-up**: with brackets, the year's exact tax is recomputed on the final totals and the difference is settled.",
         ],
