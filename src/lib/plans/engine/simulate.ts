@@ -1,4 +1,5 @@
 import { inflationOf, priceIndex, rateAt, type Inflation } from "../plan-inflation"
+import { UNPAID_BILLS_ID } from "../plan-constants"
 import { nominalRate, realRate } from "../plan-dollars"
 import { ageAtStart, resolveTiming, timingContext, type TimingContext } from "../plan-timing"
 import type { HomeSale, PlanAccount, PlanDocument, PlanIncome, PlanProjection, YearRow } from "../plan-types"
@@ -91,6 +92,8 @@ interface State {
   amtCredit: number
   /** Where the spending rule stands (factor 1 without one). */
   rule: RuleState
+  /** Bills the accounts couldn't pay so far, nominal: they pile up as a debt. */
+  unpaid: number
 }
 
 const sum = (record: Record<string, number>) => Object.values(record).reduce((s, v) => s + v, 0)
@@ -320,7 +323,11 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
   const valueChange = assetValueChange(plan.assets, index)
   const accountsTotal = sum(moved.holdings.balances)
   const assetsTotal = sum(assetValues)
-  const debtsTotal = sum(debts.debtBalances)
+  // Bills the accounts can't pay don't vanish: they pile up as a debt (borrowing to stay afloat), so net worth counts them.
+  const shortfall = moved.deficit?.shortfall ?? 0
+  const unpaid = state.unpaid + shortfall
+  const debtBalances = unpaid > 0 ? { ...debts.debtBalances, [UNPAID_BILLS_ID]: unpaid } : debts.debtBalances
+  const debtsTotal = sum(debtBalances)
   const withdrawalTax = (moved.deficit?.tax ?? 0) + moved.drained.tax + moved.required.tax
   const kinds = taxesByKind(flows.tax, taxedAmounts(flows, moved), incomeTax + trueUp + withdrawalTax + events.saleTax + moved.trading.tax)
   const row: YearRow = {
@@ -374,18 +381,18 @@ function stepYear(plan: Plan, state: State, index: number): { row: YearRow; stat
     assetDepreciation: valueChange.depreciation,
     balances: moved.holdings.balances,
     assetValues,
-    debtBalances: debts.debtBalances,
+    debtBalances,
     accountsTotal,
     assetsTotal,
     debtsTotal,
     netWorth: accountsTotal + assetsTotal - debtsTotal,
     financialNetWorth: accountsTotal - debtsTotal,
-    shortfall: moved.deficit?.shortfall ?? 0,
+    shortfall,
     milestones: plan.milestoneYears.filter((m) => m.index === index).map((m) => m.name),
   }
   const minimum = yearMinimumTax(flows.tax, taxedAmounts(flows, moved))
   const amtCredit = state.amtCredit - (minimum?.creditUsed ?? 0) + (minimum?.creditEarned ?? 0)
-  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule } }
+  return { row, state: { holdings: moved.holdings, debtBalances: debts.debtBalances, ssWithheld: flows.ssWithheld, amtCredit, rule: flows.ruled.rule, unpaid } }
 }
 
 function mergeSums(a: Record<string, number>, b: Record<string, number>): Record<string, number> {
@@ -427,7 +434,7 @@ export function simulatePlan(doc: PlanDocument, opts: SimulateOptions = {}): Pla
 
 function simulateOnce(doc: PlanDocument, opts: SimulateOptions): PlanProjection {
   const plan = preparePlan(doc, opts)
-  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE }
+  let state: State = { holdings: initialHoldings(plan.doc), debtBalances: {}, ssWithheld: {}, amtCredit: 0, rule: NO_RULE, unpaid: 0 }
   const rows: YearRow[] = []
   for (let index = 0; index < plan.ctx.length; index++) {
     const step = stepYear(plan, state, index)

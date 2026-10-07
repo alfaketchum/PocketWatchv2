@@ -42,14 +42,22 @@ function flat(years = 40): AnnualHistory {
   return { years: zeros.map((_, i) => 1900 + i), stocks: zeros, bonds: zeros, cape: zeros.map(() => 20), inflation: zeros.map(() => null), stockLogMean: 0, latestCape: 20 }
 }
 
-test("running out of cash with a home left isn't broke; running out with nothing is", () => {
-  const withHome = runCohort(plan(500_000), flat(), 0, 0)
+test("running out of cash with enough home left isn't broke; running out with nothing is", () => {
+  const withHome = runCohort(plan(2_000_000), flat(), 0, 0)
   const without = runCohort(plan(0), flat(), 0, 0)
   assert.equal(withHome.depletedAge, 62)
-  assert.equal(isBroke(withHome), false)
-  assert.equal(withHome.brokeAge, undefined)
+  assert.equal(isBroke(withHome), false, "$2M of home outlasts 18 years of $50k unpaid bills")
   assert.equal(isBroke(without), true)
   assert.equal(without.brokeAge, 62)
+})
+
+test("unpaid bills pile up as debt: a smaller home is eaten by them and the plan goes broke later", () => {
+  const p = simulatePlan(plan(500_000))
+  const at = (age: number) => p.rows[age - 60]
+  assert.ok(Math.abs((at(64).debtBalances["~unpaid-bills"] ?? 0) - 150_000) < 1_000, "three years of $50k bills unpaid by 64")
+  assert.ok(at(64).netWorth < at(62).netWorth, "net worth falls as the bills go unpaid")
+  const c = runCohort(plan(500_000), flat(), 0, 0)
+  assert.ok(c.brokeAge !== undefined && c.brokeAge > 62 && c.brokeAge <= 72, `broke at ${c.brokeAge}`)
 })
 
 test("a plan that starts in debt isn't broke until its cash runs out", () => {
@@ -58,17 +66,17 @@ test("a plan that starts in debt isn't broke until its cash runs out", () => {
 })
 
 test("the summary has both rates: cash lasts and net worth lasts", () => {
-  const s = summarize([runCohort(plan(500_000), flat(), 0, 0), runCohort(plan(0), flat(), 0, 0)], null)
+  const s = summarize([runCohort(plan(2_000_000), flat(), 0, 0), runCohort(plan(0), flat(), 0, 0)], null)
   assert.equal(s.successRate, 0, "both run out of cash")
   assert.equal(s.netWorthRate, 0.5, "only the one without a home goes broke")
 })
 
 test("the plan summary says when it goes broke, and splits net worth into accounts and property", () => {
-  const withHome = summarizePlan(plan(500_000), simulatePlan(plan(500_000)))
+  const withHome = summarizePlan(plan(2_000_000), simulatePlan(plan(2_000_000)))
   assert.equal(withHome.depletedAge, 62)
   assert.equal(withHome.brokeAge, null)
-  assert.ok(Math.abs(withHome.endingSplit.property - 500_000) < 1)
-  assert.ok(withHome.endingSplit.accounts <= 1)
+  assert.ok(Math.abs(withHome.endingSplit.property - 2_000_000) < 1)
+  assert.ok(withHome.endingSplit.accounts < -800_000, "the unpaid bills come off the accounts side")
   const without = summarizePlan(plan(0), simulatePlan(plan(0)))
   assert.equal(without.brokeAge, 62)
 })

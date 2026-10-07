@@ -1,4 +1,5 @@
 import { interestKey, loanSplit, principalKey } from "./plan-loan-parts"
+import { UNPAID_BILLS_ID } from "./plan-constants"
 import {
   CASH_IN_LAYERS,
   CASH_OUT_LAYERS,
@@ -39,12 +40,15 @@ export function netWorthDetail(doc: PlanDocument, rows: YearRow[]): { series: De
     for (const a of doc.accounts) row[`a:${a.id}`] = r.balances[a.id] ?? 0
     for (const a of doc.assets) row[`p:${a.id}`] = r.assetValues[a.id] ?? 0
     for (const d of doc.debts) row[`d:${d.id}`] = -(r.debtBalances[d.id] ?? 0)
+    row[`d:${UNPAID_BILLS_ID}`] = -(r.debtBalances[UNPAID_BILLS_ID] ?? 0)
     return row
   })
+  const unpaid = rows.some((r) => (r.debtBalances[UNPAID_BILLS_ID] ?? 0) > 0)
   const series: DetailSeries[] = [
     ...doc.accounts.map((a) => ({ key: `a:${a.id}`, label: a.name, parent: LAYER_FOR[a.taxTreatment] })),
     ...doc.assets.map((a) => ({ key: `p:${a.id}`, label: a.name, parent: "realAssets" as const })),
     ...doc.debts.map((d) => ({ key: `d:${d.id}`, label: d.name, parent: "debt" as const })),
+    ...(unpaid ? [{ key: `d:${UNPAID_BILLS_ID}`, label: "Unpaid bills", parent: "debt" as const }] : []),
   ]
   return { series: ordered(series, [...NET_WORTH_LAYERS, "debt"], points), points }
 }

@@ -123,10 +123,17 @@ test("a trial that never runs short keeps the plan's sale year", () => {
 })
 
 test("a kept home is out of cash on net worth, catastrophic on money in accounts", () => {
-  const c = runCohort(plan(), flatHistory(), 0, 0)
-  assert.ok(Math.abs((c.lowestWorthAfterRunOut ?? 0) - 500_000) < 1, "the home's $500k is the net worth left")
+  // A $1.5M home outlasts the unpaid bills ($50k a year from 62 to 80), so net worth never runs out.
+  const c = runCohort(plan(undefined, 1_500_000), flatHistory(), 0, 0)
+  assert.equal(c.brokeAge, undefined)
   assert.equal(bucketOf(c, yard), "catastrophic")
   assert.equal(bucketOf(c, { ...yard, measure: "netWorth" }), "outOfCash")
+})
+
+test("a smaller kept home is eaten by the unpaid bills: catastrophic on net worth too", () => {
+  const c = runCohort(plan(), flatHistory(), 0, 0)
+  assert.ok(c.brokeAge !== undefined)
+  assert.equal(bucketOf(c, { ...yard, measure: "netWorth" }), "catastrophic")
 })
 
 test("each trial lists its home sales: the stress test's own, with the age", () => {

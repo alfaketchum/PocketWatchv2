@@ -48,6 +48,8 @@ export const TAX_TREATMENT_LABELS: Record<TaxTreatment, string> = {
 }
 
 export const RETIREMENT_MILESTONE_ID = "ms-retirement"
+/** Year rows' debt balance for bills the accounts couldn't pay (they pile up as debt, so net worth counts them). */
+export const UNPAID_BILLS_ID = "~unpaid-bills"
 export const PRIMARY_PERSON_ID = "person-1"
 
 /** Safe withdrawal rate behind the read-only "Financial independence" milestone. */

@@ -1,4 +1,5 @@
 import { interestKey, loanPayoffs, loanSplit, PAYOFF_ICON, payoffName, principalKey } from "./plan-loan-parts"
+import { UNPAID_BILLS_ID } from "./plan-constants"
 import { isBrokeYear } from "./stress/stress-test"
 import { ageAtStart, resolveTiming, timingContext } from "./plan-timing"
 import type { MilestoneKind, PlanDocument, PlanProjection, TaxTreatment, YearRow } from "./plan-types"
@@ -43,6 +44,7 @@ export function layersFor(doc: PlanDocument, balances: Balances): Record<NetWort
   for (const account of doc.accounts) layers[LAYER_FOR[account.taxTreatment]] += balances.accounts[account.id] ?? 0
   for (const asset of doc.assets) layers.realAssets += balances.assets[asset.id] ?? 0
   for (const debt of doc.debts) layers.debt -= balances.debts[debt.id] ?? 0
+  layers.debt -= balances.debts[UNPAID_BILLS_ID] ?? 0
   return layers
 }
 

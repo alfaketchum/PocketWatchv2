@@ -6,6 +6,7 @@ import { rowTaxes } from "./plan-row-taxes"
 import { expandPlan } from "./plan-expand"
 import { homeEquity } from "./plan-home-fallback"
 import { isBrokeYear } from "./stress/stress-test"
+import { UNPAID_BILLS_ID } from "./plan-constants"
 
 /** Key numbers of a projection, in today's dollars. */
 export function summarizePlan(doc: PlanDocument, projection: PlanProjection): PlanSummary {
@@ -25,7 +26,11 @@ export function summarizePlan(doc: PlanDocument, projection: PlanProjection): Pl
         : rows[retireIndex - 1].netWorth
   const depleted = rows.find((r) => r.shortfall > 0.5)
   const broke = depleted ? rows.slice(depleted.index).find((r) => isBrokeYear(r.netWorth, r.expenses)) : undefined
-  const split = (r: (typeof rows)[number]) => ({ accounts: r.accountsTotal, property: r.netWorth - r.accountsTotal })
+  // Unpaid bills come off the accounts side: what you'd have to find to pay them.
+  const split = (r: (typeof rows)[number]) => {
+    const accounts = r.accountsTotal - (r.debtBalances[UNPAID_BILLS_ID] ?? 0)
+    return { accounts, property: r.netWorth - accounts }
+  }
   const retireRow = retireIndex !== null && retireIndex > 0 && retireIndex <= rows.length ? rows[retireIndex - 1] : null
   const last = rows[rows.length - 1]
   const equity = depleted ? homeEquity(expandPlan(doc), depleted) : 0
