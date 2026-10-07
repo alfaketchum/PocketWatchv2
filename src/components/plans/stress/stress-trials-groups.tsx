@@ -6,7 +6,7 @@ import { HoverHint } from "@/components/ui/hover-hint"
 import { fmtTrialShare, sequenceLabel, trialId, trialName, trialStatus, TRIAL_TONE_CLASS } from "@/lib/plans/stress/stress-labels"
 import { endingValue } from "@/lib/plans/stress/stress-histogram"
 import { bucketOf, outcomeBuckets, type OutcomeKey, type OutcomeYardsticks } from "@/lib/plans/stress/stress-outcomes"
-import { percentile, type CohortResult } from "@/lib/plans/stress/stress-test"
+import type { CohortResult } from "@/lib/plans/stress/stress-test"
 import { StressPathsChart } from "./stress-paths-chart"
 import { useOutcomeColors } from "./use-outcome-colors"
 
@@ -25,12 +25,22 @@ function worstFirst(a: CohortResult, b: CohortResult): number {
   return broke(a) - broke(b) || ranOut(a) - ranOut(b) || endingValue(a, "netWorth") - endingValue(b, "netWorth")
 }
 
-/** A trial's net worth by age as a tiny line, on one scale for every trial so they compare at a glance. */
-function Spark({ values, top, color }: { values: number[]; top: number; color: string }) {
+/** Inset so a line along the top or bottom edge isn't cut in half. */
+const SPARK_PAD = 1.5
+
+/**
+ * A trial's net worth by age as a tiny line, scaled to its own low and high (below $0 included) so its shape is
+ * always true; the ending column beside it carries the amount.
+ */
+function Spark({ values, color }: { values: number[]; color: string }) {
   const n = Math.max(1, values.length - 1)
-  const points = values.map((v, i) => `${((i / n) * SPARK_W).toFixed(1)},${(SPARK_H - (Math.max(0, Math.min(v, top)) / top) * SPARK_H).toFixed(1)}`).join(" ")
+  const low = Math.min(0, ...values)
+  const range = Math.max(1, Math.max(...values) - low)
+  const y = (v: number) => SPARK_PAD + (1 - (v - low) / range) * (SPARK_H - 2 * SPARK_PAD)
+  const points = values.map((v, i) => `${((i / n) * SPARK_W).toFixed(1)},${y(v).toFixed(1)}`).join(" ")
   return (
-    <svg width={SPARK_W} height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} className="shrink-0" aria-hidden="true">
+    <svg width={SPARK_W} height={SPARK_H} viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} className="shrink-0 overflow-visible" aria-hidden="true">
+      {low < 0 && <line x1={0} x2={SPARK_W} y1={y(0)} y2={y(0)} stroke="var(--card-border)" strokeWidth={1} />}
       <polyline points={points} fill="none" stroke={color} strokeWidth={1.25} strokeLinejoin="round" />
     </svg>
   )
@@ -38,7 +48,6 @@ function Spark({ values, top, color }: { values: number[]; top: number; color: s
 
 interface RowProps {
   c: CohortResult
-  top: number
   color: string
   open: boolean
   onToggle: () => void
@@ -46,7 +55,7 @@ interface RowProps {
   isHidden: boolean
 }
 
-function TrialRow({ c, top, color, open, onToggle, detail, isHidden }: RowProps) {
+function TrialRow({ c, color, open, onToggle, detail, isHidden }: RowProps) {
   const status = trialStatus(c)
   const blur = isHidden ? { filter: "blur(6px)" } : undefined
   const sales = c.homeSales?.map((s) => `${s.name} sold at ${s.age}${s.plannedAge !== undefined ? ` (plan had ${s.plannedAge})` : s.planned ? " (plan)" : ""}`)
@@ -57,7 +66,7 @@ function TrialRow({ c, top, color, open, onToggle, detail, isHidden }: RowProps)
           {open ? "expand_less" : "expand_more"}
         </span>
         <span style={blur}>
-          <Spark values={c.netWorth} top={top} color={color} />
+          <Spark values={c.netWorth} color={color} />
         </span>
         <span className="w-24 shrink-0 truncate font-medium text-foreground">{trialName(c)}</span>
         <span className={`w-40 shrink-0 truncate ${TRIAL_TONE_CLASS[status.tone]}`}>{status.tone === "ok" ? "Fully funded" : status.text}</span>
@@ -106,8 +115,6 @@ export function StressTrialsGroups({ cohorts, yardsticks, age0, planNetWorth, is
     }
     return ORDER.filter((k) => by.has(k)).map((k) => ({ key: k, label: rules.get(k)!.label, rule: rules.get(k)!.rule, trials: by.get(k)!.sort(worstFirst) }))
   }, [cohorts, yardsticks])
-  // One scale for every sparkline: the 90th percentile of the trials' highest net worth.
-  const top = useMemo(() => Math.max(1, percentile(cohorts.map((c) => Math.max(...c.netWorth)), 0.9)), [cohorts])
   const visible = only ? groups.filter((g) => g.key === only) : groups
   const total = cohorts.length
 
@@ -150,7 +157,6 @@ export function StressTrialsGroups({ cohorts, yardsticks, age0, planNetWorth, is
                 <TrialRow
                   key={trialId(c)}
                   c={c}
-                  top={top}
                   color={colors[g.key]}
                   open={openTrial === trialId(c)}
                   onToggle={() => setOpenTrial((t) => (t === trialId(c) ? null : trialId(c)))}
