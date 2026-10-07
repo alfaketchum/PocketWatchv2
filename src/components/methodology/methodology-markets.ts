@@ -16,15 +16,15 @@ export const MARKET_SECTIONS: MethodSection[] = [
         kind: "table",
         head: ["Method", "Which years each run lives through"],
         rows: [
-          ["**Simulated** (default; the number on Overview and Compare)", "A block bootstrap: random runs of 10 consecutive historical years (5 or 15 if you pick), stitched together until the plan is covered. Crashes, recoveries and inflation streaks stay intact while eras mix, and it covers starting today, which history can't. 500 runs (1,000 or 2,000 if you pick)."],
-          ["**History**", "Early Retirement Now's replay: once per start year, in order, using only start years with history all the way to the plan's end."],
-          ["**Random restart**", "Each start year in order; when history runs out, it jumps to a random year and carries on (ProjectionLab's default)."],
-          ["**Random years**", "A random year for every plan year. Breaks up streaks, so bad decades are rarer and results usually look rosier."],
+          ["**Remixed history** (default; the number on Overview and Compare)", "A block bootstrap: random runs of 10 consecutive historical years (5 or 15 if you pick), stitched together until the plan is covered. Crashes, recoveries and inflation streaks stay intact while eras mix, and it covers starting today, which actual history can't. 500 runs (1,000 or 2,000 if you pick)."],
+          ["**Actual history**", "Early Retirement Now's replay: once per start year, in order, using only start years with history all the way to the plan's end."],
+          ["**Extended history**", "Each start year in order; when history runs out, it jumps to a random year and carries on (ProjectionLab's default)."],
+          ["**Shuffled years**", "A random year for every plan year. Breaks up streaks, so bad decades are rarer and results usually look rosier."],
         ],
       },
       {
         kind: "text",
-        text: "Every run keeps a year's stocks, bonds, inflation and valuation (CAPE) together, so they move as they really did. Simulated runs always start at the plan's first year. A fixed random seed means the same plan always gets the same runs, so the success rate only moves when the plan does; **Reroll** draws a new set to show how much the number wobbles. Compare runs both plans through the same 500 markets, so the difference comes from the plans alone.",
+        text: "Every run keeps a year's stocks, bonds, inflation and valuation (CAPE) together, so they move as they really did. Remixed, extended and shuffled runs always start at the plan's first year. A fixed random seed means the same plan always gets the same runs, so the success rate only moves when the plan does; **Reroll** draws a new set to show how much the number wobbles. Compare runs both plans through the same 500 markets, so the difference comes from the plans alone.",
       },
       {
         kind: "list",

@@ -10,13 +10,13 @@ export type Cape = "all" | "20" | "30"
 
 /** The four ways to draw trials; the switch sits on the result chart. */
 export const METHOD_OPTIONS: { value: StressSampling; label: string; hint: string }[] = [
-  { value: "block", label: "Simulated", hint: "Random multi-year stretches of real market history stitched together, keeping crashes and recoveries intact." },
-  { value: "history", label: "History", hint: "Your plan replayed once for each actual start year since 1871." },
-  { value: "restart", label: "Random restart", hint: "History in order from each start year, jumping to a random year when the record ends." },
-  { value: "random", label: "Random years", hint: "A random historical year for every plan year; breaks up streaks and tends to look rosier." },
+  { value: "block", label: "Remixed history", hint: "Multi-year stretches of real market history, reshuffled, so crashes and recoveries stay intact." },
+  { value: "history", label: "Actual history", hint: "Your plan replayed once for each real start year since 1871." },
+  { value: "restart", label: "Extended history", hint: "Real history in order, continued from a random year when the record ends." },
+  { value: "random", label: "Shuffled years", hint: "Each plan year gets a random historical year; breaks up streaks and tends to look rosier." },
 ]
 export const METHOD_INFO =
-  "Simulated (block bootstrap): each trial stitches together random runs of consecutive historical years, so crashes, recoveries and inflation streaks stay intact while eras mix; it covers today's start too, which history can't. History: your plan once per complete start year since 1871, exactly as it happened. Random restart: each start year in order, jumping to a random year whenever history runs out (ProjectionLab's default). Random years: a random year for every year of the plan, which breaks up streaks and usually looks rosier. Every trial keeps a year's stocks, bonds, inflation and valuation together. A fixed seed keeps the numbers steady; Reroll draws a new set."
+  "Remixed history (block bootstrap): each trial stitches together random runs of consecutive historical years, so crashes, recoveries and inflation streaks stay intact while eras mix; it covers today's start too, which actual history can't. Actual history: your plan once per complete start year since 1871, exactly as it happened. Extended history: each start year in order, jumping to a random year whenever history runs out (ProjectionLab's default). Shuffled years: a random year for every year of the plan, which breaks up streaks and usually looks rosier. Every trial keeps a year's stocks, bonds, inflation and valuation together. A fixed seed keeps the numbers steady; Reroll draws a new set."
 const ALIGN_OPTIONS: { value: StressAlign; label: string; hint: string }[] = [
   { value: "start", label: "From today", hint: "Each market sequence starts this year." },
   { value: "retirement", label: "From retirement", hint: "Each market sequence starts in your retirement year, when a crash does the most damage." },

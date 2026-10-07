@@ -8,7 +8,7 @@ import { StressMixTable } from "./stress-mix-table"
 import type { StressViewModel } from "./stress-view-model"
 
 const INFO =
-  "Your whole plan (income, spending, taxes, loans, purchases) re-run many times, with each account earning what its mix earned in the historical years the trial lives through, after inflation. Simulated trials stitch history's years together in new orders; History replays every complete start year since 1871 (Early Retirement Now's method). Crypto swings twice as hard as stocks around its assumed return."
+  "Your whole plan (income, spending, taxes, loans, purchases) re-run many times, with each account earning what its mix earned in the historical years the trial lives through, after inflation. Remixed history stitches history's years together in new orders; Actual history replays every complete start year since 1871 (Early Retirement Now's method). Crypto swings twice as hard as stocks around its assumed return."
 
 /** What Setup needs: only the settings, so it works before there are results (or when a filter matches none). */
 export type StressSetupModel = Pick<
