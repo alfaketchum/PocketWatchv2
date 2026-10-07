@@ -206,6 +206,25 @@ export function Row({ children, muted }: { children: ReactNode; muted?: boolean 
   return <tr className={cn("border-t border-card-border hover:bg-row-hover", muted && "text-foreground-muted")}>{children}</tr>
 }
 
+/**
+ * A section heading between a table's rows: the group's name (after an optional icon) and line count in the first
+ * column, then the caller's subtotal cells.
+ */
+export function GroupRow({ label, count, leading, children }: { label: string; count: number; leading?: ReactNode; children?: ReactNode }) {
+  return (
+    <tr className="border-t border-card-border text-xs font-semibold text-foreground-muted">
+      <td className="px-2 pb-1.5 pt-3">
+        <span className="flex items-center gap-1.5">
+          {leading}
+          <span className="text-[10px] uppercase tracking-wider text-accent-head">{label}</span>
+          <span className="text-[10px] font-medium tabular-nums">{count}</span>
+        </span>
+      </td>
+      {children}
+    </tr>
+  )
+}
+
 /** `omit` drops the cell, for a column the table leaves out (Basic mode). */
 export function Cell({
   children,

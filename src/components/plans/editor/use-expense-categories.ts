@@ -36,6 +36,19 @@ export function useExpenseCategories(): ExpenseCategory[] {
   }, [merged, spending])
 }
 
+/** A category's icon and color, for marking it in the Expenses table; null for a line with no category. */
+export function useExpenseCategoryStyle(): (category: string | null) => { icon: string; hex: string } | null {
+  const categories = useExpenseCategories()
+  return useMemo(() => {
+    const by = new Map(categories.map((c) => [c.label, c]))
+    return (category: string | null) => {
+      if (!category) return null
+      const c = by.get(category) ?? FINANCE_CATEGORIES[category] ?? FALLBACK
+      return { icon: c.icon, hex: c.hex }
+    }
+  }, [categories])
+}
+
 /** The select value for a line with no category. */
 export const NO_CATEGORY = "none"
 

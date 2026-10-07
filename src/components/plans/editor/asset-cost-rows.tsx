@@ -5,6 +5,7 @@ import { fmtMoney } from "@/components/fire/fire-helpers"
 import { usePlanMode } from "@/hooks/plans/use-plan-mode"
 import type { AssetCostLine } from "@/lib/plans/plan-asset-costs"
 import type { PlanDocument } from "@/lib/plans/plan-types"
+import { CategoryCell } from "./category-cell"
 import { Badge, Cell, Row, RowButton } from "./plan-table"
 import { TimingCell } from "./timing-cell"
 
@@ -27,7 +28,7 @@ export function AssetCostRows({ lines, doc }: { lines: AssetCostLine[]; doc: Pla
             </span>
           </Cell>
           <Cell>
-            <span className="px-2">{e.category ?? "—"}</span>
+            <CategoryCell category={e.category} />
           </Cell>
           <Cell omit={isBasic} />
           <Cell align="right">
