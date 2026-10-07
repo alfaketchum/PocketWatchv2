@@ -167,7 +167,7 @@ export function StressTestView({ doc, update, projection, isHidden }: Props) {
         bin, setBin: (slice) => setBin(slice && cohorts ? { slice, of: cohorts } : null),
         insights, runOutAge, onFix, yardsticks, endView, setEndView, chartView, setChartView, measure, setMeasure,
         bands: { netWorth: summary.netWorthBands, invested: summary.investedBands, withdrawalRate: summary.withdrawalBands }[measure],
-        plan, planCushion, target, setTarget, goal, setGoal, solvers, impacts,
+        plan, planCushion, planNetWorth, target, setTarget, goal, setGoal, solvers, impacts,
       }
     : null
 

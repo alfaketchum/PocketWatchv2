@@ -62,6 +62,8 @@ export interface StressViewModel extends Pick<PlanEditorProps, "doc" | "update">
   /** The steady plan, in the fan chart's measure, and its years-of-spending cushion. */
   plan: number[]
   planCushion: (number | null)[]
+  /** The steady plan's net worth by year, today's dollars. */
+  planNetWorth: number[]
   /** Improve. */
   target: number
   setTarget: (t: number) => void
