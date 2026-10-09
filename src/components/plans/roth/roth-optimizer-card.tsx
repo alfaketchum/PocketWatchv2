@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react"
 import { fmtMoney } from "@/components/fire/fire-helpers"
 import { FireSectionCard } from "@/components/fire/fire-section-card"
+import { InfoTooltip } from "@/components/ui/info-tooltip"
 import { applyCandidate, type RothOptimization, type RothResult } from "@/lib/plans/roth/roth-optimizer"
 import type { PlanDocument } from "@/lib/plans/plan-types"
 import type { DocUpdater } from "../plans-helpers"
@@ -12,6 +13,27 @@ const INFO =
   "Tries a couple of hundred strategies on your plan (fill each bracket, with and without the Medicare IRMAA cap, fixed amounts, converting everything by an age, over several windows), then fine-tunes the best few. Ranked by after-tax net worth at the end against converting nothing; strategies that make the money run out sooner are left out. Applying one replaces your conversion rules, which you can then edit. It uses your plan's own returns and inflation, so check the Stress test afterwards."
 
 const SHOWN = 8
+
+const COLUMNS: { label: string; hint: string }[] = [
+  { label: "After-tax gain", hint: "How much more you'd leave at the end, after your heirs' tax on traditional money, than if you converted nothing. Bigger is better." },
+  { label: "Lifetime taxes", hint: "Change in all the tax you pay over the plan. It can go up even when the strategy wins: Roth money grows tax-free, so paying earlier can still leave more." },
+  { label: "Converted", hint: "Total moved from traditional to Roth over the plan." },
+]
+
+function HeadHint({ label, hint }: { label: string; hint: string }) {
+  return (
+    <th className="py-1.5 pl-3 text-right font-semibold">
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <InfoTooltip content={hint}>
+          <span className="material-symbols-rounded cursor-help normal-case" style={{ fontSize: 12 }}>
+            info
+          </span>
+        </InfoTooltip>
+      </span>
+    </th>
+  )
+}
 
 function signed(v: number): string {
   return `${v > 0 ? "+" : ""}${fmtMoney(v)}`
@@ -55,9 +77,9 @@ function Results({ result, doc, update, blur }: { result: RothOptimization; doc:
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-foreground-muted">
                 <th className="py-1.5 pr-2 font-semibold">Strategy</th>
-                <th className="py-1.5 pl-3 text-right font-semibold">After-tax gain</th>
-                <th className="py-1.5 pl-3 text-right font-semibold">Lifetime taxes</th>
-                <th className="py-1.5 pl-3 text-right font-semibold">Converted</th>
+                {COLUMNS.map((c) => (
+                  <HeadHint key={c.label} label={c.label} hint={c.hint} />
+                ))}
                 <th className="py-1.5 pl-3" />
               </tr>
             </thead>
@@ -74,6 +96,11 @@ function Results({ result, doc, update, blur }: { result: RothOptimization; doc:
             </tbody>
           </table>
         </div>
+      )}
+      {result.top.length > 0 && (
+        <p className="text-[11px] text-foreground-muted">
+          Strategies are ranked best first. Apply swaps in that strategy as your conversion rule (Undo, shown for a few seconds, brings yours back); the Impact card then shows it year by year.
+        </p>
       )}
       {doc.settings.taxMode !== "brackets" && <p className="text-xs text-warning">Your plan uses flat tax rates, so only fixed amounts and converting everything were tried. Switch to tax brackets (Assumptions → Taxes) to fill brackets.</p>}
     </div>
@@ -107,7 +134,7 @@ export function RothOptimizerCard({ doc, update, isHidden }: { doc: PlanDocument
         </div>
       )}
       {!opt.running && !opt.result && (
-        <p className="text-xs text-foreground-muted">Runs your plan a couple of hundred times with different conversion strategies. Takes a few seconds.</p>
+        <p className="text-xs text-foreground-muted">Not sure where to start? Press Find the best: it runs your plan a couple of hundred times with different conversion strategies and ranks them by what they leave you after tax. Takes a few seconds, and changes nothing until you apply one.</p>
       )}
       {opt.result && (
         <div className="space-y-2">

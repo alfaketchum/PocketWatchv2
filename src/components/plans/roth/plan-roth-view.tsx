@@ -5,10 +5,11 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { usePlanDocument } from "@/hooks/plans/use-plan-document"
 import { usePrivacyMode } from "@/hooks/use-privacy-mode"
 import { ConversionRulesEditor } from "./conversion-rules-editor"
+import { RothGuide } from "./roth-guide"
 import { RothImpact } from "./roth-impact"
 import { RothOptimizerCard } from "./roth-optimizer-card"
 
-/** A plan's Roth page: conversion rules, what they do, and the optimizer. */
+/** A plan's Roth page: a guide, the optimizer, conversion rules, and what they do. */
 export function PlanRothView({ planId }: { planId: string }) {
   const { plan, document: doc, update, isLoading } = usePlanDocument(planId)
   const { isHidden } = usePrivacyMode()
@@ -33,9 +34,10 @@ export function PlanRothView({ planId }: { planId: string }) {
           </p>
         </div>
       </div>
+      <RothGuide doc={doc} isHidden={isHidden} />
+      <RothOptimizerCard doc={doc} update={update} isHidden={isHidden} />
       <ConversionRulesEditor doc={doc} update={update} />
       <RothImpact doc={doc} isHidden={isHidden} />
-      <RothOptimizerCard doc={doc} update={update} isHidden={isHidden} />
     </div>
   )
 }

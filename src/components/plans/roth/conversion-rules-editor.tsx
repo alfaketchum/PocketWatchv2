@@ -27,7 +27,7 @@ export function ConversionRulesEditor({ doc, update }: { doc: PlanDocument; upda
         {rules.length === 0 && (
           <EmptyNote>
             {blank
-              ? "No conversions yet. Add a rule, or run the optimizer below and apply what it finds."
+              ? "No conversions yet. Add a rule, or run the optimizer above and apply what it finds."
               : "Converting needs a traditional (pre-tax) account and a Roth account for the same person. Add them on Accounts, or let the optimizer open the Roth."}
           </EmptyNote>
         )}

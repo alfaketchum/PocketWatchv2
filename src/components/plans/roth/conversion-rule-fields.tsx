@@ -112,6 +112,9 @@ export function ConversionRuleFields({ doc, rule, onChange }: { doc: PlanDocumen
         <TimingPicker label="From" value={rule.start} doc={doc} onChange={(start) => onChange({ ...rule, start })} />
         <TimingPicker label="Until" value={rule.end} doc={doc} onChange={(end) => onChange({ ...rule, end })} />
       </div>
+      <p className="text-[11px] text-foreground-muted">
+        The best years are usually after you stop working and before Social Security and required withdrawals start, when your income is lowest.
+      </p>
       <AccountFields doc={doc} rule={rule} onChange={onChange} />
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField
@@ -124,6 +127,10 @@ export function ConversionRuleFields({ doc, rule, onChange }: { doc: PlanDocumen
           <Toggle label="Keep long-term gains at 0%" checked={!!rule.caps.keepLtcgZero} onChange={(on) => onChange({ ...rule, caps: { ...rule.caps, keepLtcgZero: on } })} />
         </div>
       </div>
+      <p className="text-[11px] text-foreground-muted">
+        Optional limits. The IRMAA cap stops a conversion where it would raise your Medicare premiums two years later (they look back at income from 63). The
+        0% option stops before your long-term gains and dividends start being taxed.
+      </p>
       <div>
         <span className="block text-[11px] font-medium text-foreground-muted mb-1">Pay the tax from</span>
         <ChoiceChips
